@@ -64,6 +64,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "muted": state.user_muted,
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
+                        "speaking_agents": state.speaking_agents,
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
                         "session_cost_usd": state.session_cost_usd,
@@ -157,9 +158,16 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 else:
                     self._respond({"error": "no known setting in body"}, status=400)
             elif self.path == "/speaking":
-                speaking = bool(self._read_json_body().get("speaking", False))
-                state.set_claude_speaking(speaking)
+                body = self._read_json_body()
+                speaking = bool(body.get("speaking", False))
+                state.set_claude_speaking(speaking, body.get("agent"))
                 self._respond({"speaking": speaking})
+            elif self.path == "/floor/acquire":
+                agent = str(self._read_json_body().get("agent", "?"))
+                self._respond({"granted": state.try_acquire_floor(agent)})
+            elif self.path == "/floor/release":
+                state.release_floor(str(self._read_json_body().get("agent", "?")))
+                self._respond({"released": True})
             elif self.path == "/mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_user_muted(muted)

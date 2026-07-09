@@ -59,6 +59,10 @@ DASHBOARD_HTML = """<!doctype html>
   .tabs button .live-dot { width: 8px; height: 8px; border-radius: 50%;
     background: var(--line); flex: none; }
   .tabs button.live .live-dot { background: var(--teal); animation: pulse 2s infinite; }
+  .tabs button.is-speaking { border-color: var(--violet); }
+  .tabs button .tab-speaking { animation: blink-speak 0.8s infinite; }
+  @keyframes blink-speak { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+  @media (prefers-reduced-motion: reduce) { .tabs button .tab-speaking { animation: none; } }
   .chip {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--line); background: var(--surface);
@@ -407,6 +411,7 @@ DASHBOARD_HTML = """<!doctype html>
   // Which agent's tab you're VIEWING (history + character). May differ from
   // the LIVE agent (the one currently listening). null = follow the live one.
   let viewedAgent = null;
+  let speakingSet = [];  // agents currently playing audio (may be a background tab)
 
   function renderTabs(agents, active) {
     const names = Object.keys(agents).sort();
@@ -417,9 +422,14 @@ DASHBOARD_HTML = """<!doctype html>
     tabs.innerHTML = "";
     for (const name of names) {
       const b = document.createElement("button");
-      b.innerHTML = '<span class="live-dot"></span>' + name;
+      const speaking = speakingSet.includes(name);
+      // Speaker icon (flashing) when THIS agent is talking — even if you're on
+      // another tab, so you see e.g. personal replying while viewing work.
+      b.innerHTML = '<span class="live-dot"></span>' + name +
+        (speaking ? '<span class="tab-speaking">🔊</span>' : "");
       if (name === viewedAgent) b.classList.add("viewing");
       if (name === active) b.classList.add("live");
+      if (speaking) b.classList.add("is-speaking");
       b.addEventListener("click", () => {
         if (viewedAgent === name) return;
         viewedAgent = name;
@@ -488,6 +498,7 @@ DASHBOARD_HTML = """<!doctype html>
         creditsChip.hidden = false;
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
+      speakingSet = s.speaking_agents || [];
       renderTabs(s.agents || {}, s.active_agent);
       setMode(s.mode || "batch");
       setTtsMode(s.tts_mode || "batch");

@@ -44,6 +44,27 @@ async def _listener_post(path: str, body: dict | None = None) -> None:
         pass
 
 
+async def _acquire_floor(agent: str, timeout_s: float = 30.0) -> None:
+    """Poll the daemon's cross-agent speaking floor until granted or timeout.
+
+    Timing out and speaking anyway is better than never speaking; the worst
+    case is a brief overlap, which the floor makes rare, not impossible.
+    """
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    deadline = asyncio.get_event_loop().time() + timeout_s
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            async with httpx.AsyncClient(timeout=0.5) as client:
+                r = await client.post(
+                    f"http://127.0.0.1:{port}/floor/acquire", json={"agent": agent}
+                )
+                if r.json().get("granted"):
+                    return
+        except (httpx.HTTPError, ValueError):
+            return  # daemon down → don't block speech
+        await asyncio.sleep(0.25)
+
+
 async def _dashboard_event(kind: str, detail: str, **extra: object) -> None:
     # Tag the event with our agent so Claude's card lands in the right
     # per-agent history even if another agent became active meanwhile.
@@ -164,9 +185,15 @@ async def _render_and_play(text: str, voice_id: str, language: str, speed: float
         speech_text = _emphasis_to_speech_tags(text)
         streaming = _tts_streaming_from(status)
 
+        agent_name = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip() or None
+        # Global floor: with multiple agents (separate MCP servers) the per-
+        # process lock can't stop two voices overlapping. Wait for the daemon's
+        # cross-agent floor before playing; time out so we never deadlock.
+        if agent_name:
+            await _acquire_floor(agent_name)
         # Mute the listener while we play, or the mic transcribes our own speech.
         await _listener_post("/pause")
-        await _listener_post("/speaking", {"speaking": True})
+        await _listener_post("/speaking", {"speaking": True, "agent": agent_name})
         try:
             if streaming:
                 await _dashboard_event("speak_audio", "streaming from Grok TTS")
@@ -183,8 +210,10 @@ async def _render_and_play(text: str, voice_id: str, language: str, speed: float
                 await playback.play(audio.audio, audio.content_type)
             await asyncio.sleep(ECHO_TAIL_SECONDS)
         finally:
-            await _listener_post("/speaking", {"speaking": False})
+            await _listener_post("/speaking", {"speaking": False, "agent": agent_name})
             await _listener_post("/resume")
+            if agent_name:
+                await _listener_post("/floor/release", {"agent": agent_name})
         await _dashboard_event("speak_done", f"głos '{resolved_voice}'")
     return resolved_voice
 
