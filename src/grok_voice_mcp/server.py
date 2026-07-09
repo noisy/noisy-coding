@@ -44,21 +44,21 @@ async def _dashboard_event(kind: str, detail: str, **extra: int) -> None:
     await _listener_post("/event", {"kind": kind, "detail": detail, **extra})
 
 
-async def _tts_streaming_enabled() -> bool:
-    """Whether to stream TTS: env override, else the daemon's tts_mode.
-
-    Defaults to batch (False) — the proven path — when nothing says otherwise
-    or the daemon is unreachable.
-    """
-    if os.environ.get("GROK_VOICE_TTS_MODE", "").lower() == "live":
-        return True
+async def _daemon_status() -> dict:
+    """Best-effort snapshot of the listener daemon's settings ({} if down)."""
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
     try:
         async with httpx.AsyncClient(timeout=0.5) as client:
-            response = await client.get(f"http://127.0.0.1:{port}/status")
-            return response.json().get("tts_mode") == "live"
+            return (await client.get(f"http://127.0.0.1:{port}/status")).json()
     except (httpx.HTTPError, ValueError):
-        return False
+        return {}
+
+
+def _tts_streaming_from(status: dict) -> bool:
+    """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
+    if os.environ.get("GROK_VOICE_TTS_MODE", "").lower() == "live":
+        return True
+    return status.get("tts_mode") == "live"
 
 
 @mcp.tool()
@@ -117,13 +117,22 @@ async def announce(text: str, voice_id: str = "", language: str = "", speed: flo
 
 async def _render_and_play(text: str, voice_id: str, language: str, speed: float) -> str:
     """Synthesize `text` and play it, serialized behind any current speech."""
+    status = await _daemon_status()
     resolved_voice = voice_id or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
-    resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
+    # Hybrid language: an explicit request arg wins for this one utterance;
+    # else the dashboard's choice IF it has set one (including "" = auto,
+    # which is a real choice — pass it through as "auto"); else env fallback.
+    if language:
+        resolved_language = language
+    elif "language" in status:
+        resolved_language = status["language"] or "auto"
+    else:
+        resolved_language = os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
     async with _speak_lock:  # queue behind any utterance still playing
         await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
         speech_text = _emphasis_to_speech_tags(text)
-        streaming = await _tts_streaming_enabled()
+        streaming = _tts_streaming_from(status)
 
         # Mute the listener while we play, or the mic transcribes our own speech.
         await _listener_post("/pause")
