@@ -57,12 +57,16 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"listening": True})
             elif self.path == "/character":
                 values = state.set_character(self._read_json_body())
-                summary = ", ".join(f"{k} {v}/100" for k, v in values.items())
+                traits = ", ".join(
+                    f"{k} {v}/100" for k, v in values.items() if k != "voice"
+                )
+                summary = f"{traits}, voice '{values['voice']}'"
                 state.add_event("character", summary)
                 state.add_transcript(
-                    f"[CHARACTER] Krzysztof moved your character sliders to: {summary}. "
-                    "Adjust the style of your spoken and written replies accordingly, "
-                    "and briefly acknowledge the new setting in character."
+                    f"[CHARACTER] The user moved your character sliders to: {summary}. "
+                    "Adjust the style of your spoken and written replies accordingly "
+                    f"(pass voice_id='{values['voice']}' to speak), and briefly "
+                    "acknowledge the new setting in character."
                 )
                 try:
                     CHARACTER_FILE.parent.mkdir(parents=True, exist_ok=True)

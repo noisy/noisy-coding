@@ -6,7 +6,8 @@ from collections import deque
 from dataclasses import dataclass
 
 EVENT_LOG_SIZE = 300
-DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50}
+DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50, "chatty": 50}
+DEFAULT_VOICE = "carina"
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,7 @@ class ListenerState:
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
         self._credits_usd: float | None = None
         self._mode = "batch"
-        self._character = dict(DEFAULT_CHARACTER)
+        self._character = dict(DEFAULT_CHARACTER) | {"voice": DEFAULT_VOICE}
 
     @property
     def character(self) -> dict:
@@ -45,6 +46,9 @@ class ListenerState:
             for trait in DEFAULT_CHARACTER:
                 if trait in values:
                     self._character[trait] = max(0, min(100, int(values[trait])))
+            voice = values.get("voice")
+            if isinstance(voice, str) and voice.isalpha():
+                self._character["voice"] = voice.lower()
             return dict(self._character)
 
     @property

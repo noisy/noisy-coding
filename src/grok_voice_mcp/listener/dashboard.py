@@ -68,10 +68,14 @@ DASHBOARD_HTML = """<!doctype html>
 
   .sliders { display: grid; gap: 10px; margin-top: 12px; }
   .sliders label {
-    display: grid; grid-template-columns: 130px 1fr 42px; gap: 10px;
+    display: grid; grid-template-columns: 168px 1fr 42px; gap: 10px;
     align-items: center; font-size: 0.85rem; font-weight: 600;
   }
-  .sliders label small { display: block; color: var(--muted); font-weight: 400; font-size: 0.72rem; }
+  .sliders .name small { display: block; color: var(--muted); font-weight: 400; font-size: 0.72rem; }
+  .sliders select {
+    font: inherit; color: inherit; background: var(--paper);
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px;
+  }
   .sliders input[type="range"] { width: 100%; accent-color: var(--teal); }
   .sliders .val { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem;
     color: var(--teal); text-align: right; font-variant-numeric: tabular-nums; }
@@ -130,12 +134,16 @@ DASHBOARD_HTML = """<!doctype html>
   <details class="rules" open>
     <summary>Character</summary>
     <div class="sliders">
-      <label>Humor <small>dry ↔ playful</small>
+      <label><span class="name">Humor <small>dry ↔ playful</small></span>
         <input type="range" id="ch-humor" min="0" max="100" step="5"><span class="val" id="ch-humor-val"></span></label>
-      <label>Honesty <small>diplomatic ↔ blunt</small>
+      <label><span class="name">Honesty <small>diplomatic ↔ blunt</small></span>
         <input type="range" id="ch-honesty" min="0" max="100" step="5"><span class="val" id="ch-honesty-val"></span></label>
-      <label>Brevity <small>detailed ↔ terse</small>
+      <label><span class="name">Brevity <small>detailed ↔ terse</small></span>
         <input type="range" id="ch-brevity" min="0" max="100" step="5"><span class="val" id="ch-brevity-val"></span></label>
+      <label><span class="name">Chatty <small>milestones only ↔ frequent updates</small></span>
+        <input type="range" id="ch-chatty" min="0" max="100" step="5"><span class="val" id="ch-chatty-val"></span></label>
+      <label><span class="name">Voice <small>who speaks to you</small></span>
+        <select id="ch-voice"></select><span class="val"></span></label>
     </div>
   </details>
 
@@ -209,18 +217,30 @@ DASHBOARD_HTML = """<!doctype html>
     document.getElementById("state-label").textContent = label;
   }
 
-  const TRAITS = ["humor", "honesty", "brevity"];
+  const TRAITS = ["humor", "honesty", "brevity", "chatty"];
+  const VOICES = ["altair","ara","atlas","carina","castor","celeste","cosmo","eve",
+    "helios","helix","iris","kepler","leo","lumen","luna","lux","naksh","orion",
+    "perseus","rex","rigel","sal","sirius","ursa","zagan","zenith"];
+  async function postCharacter() {
+    const body = { voice: document.getElementById("ch-voice").value };
+    for (const t of TRAITS) body[t] = Number(document.getElementById("ch-" + t).value);
+    await fetch("/character", { method: "POST", body: JSON.stringify(body) });
+  }
   function bindSliders() {
     for (const trait of TRAITS) {
       const input = document.getElementById("ch-" + trait);
       const val = document.getElementById("ch-" + trait + "-val");
       input.addEventListener("input", () => { val.textContent = input.value; });
-      input.addEventListener("change", async () => {
-        const body = {};
-        for (const t of TRAITS) body[t] = Number(document.getElementById("ch-" + t).value);
-        await fetch("/character", { method: "POST", body: JSON.stringify(body) });
-      });
+      input.addEventListener("change", postCharacter);
     }
+    const select = document.getElementById("ch-voice");
+    for (const v of VOICES) {
+      const option = document.createElement("option");
+      option.value = v;
+      option.textContent = v[0].toUpperCase() + v.slice(1);
+      select.appendChild(option);
+    }
+    select.addEventListener("change", postCharacter);
   }
   async function loadCharacter() {
     try {
@@ -230,6 +250,7 @@ DASHBOARD_HTML = """<!doctype html>
         input.value = data.character[trait];
         document.getElementById("ch-" + trait + "-val").textContent = input.value;
       }
+      document.getElementById("ch-voice").value = data.character.voice || "carina";
     } catch {}
   }
   bindSliders();
