@@ -8,3 +8,4 @@ dist/
 .claude/worktrees/
 TODO.md
 FEEDBACK.md
+.claude/settings.local.json
