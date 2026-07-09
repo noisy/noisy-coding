@@ -28,6 +28,7 @@ def main() -> None:
     print(
         json.dumps(
             {
+                "systemMessage": f"🎙️ Krzysztof: „{spoken}”",
                 "hookSpecificOutput": {
                     "hookEventName": "PostToolUse",
                     "additionalContext": (
