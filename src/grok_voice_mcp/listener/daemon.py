@@ -14,12 +14,13 @@ import httpx
 import numpy as np
 import sounddevice as sd
 
-from grok_voice_mcp.listener import pricing, stt
+from grok_voice_mcp.listener import pricing, stt, stt_stream
 from grok_voice_mcp.listener.http_api import DEFAULT_PORT, PORT_ENV_VAR, start_http_api
 from grok_voice_mcp.listener.state import ListenerState
 from grok_voice_mcp.listener.vad import UtteranceSegmenter, VadConfig
 
 STT_LANGUAGE_ENV_VAR = "GROK_VOICE_STT_LANGUAGE"
+MODE_ENV_VAR = "GROK_VOICE_MODE"
 MANAGEMENT_KEY_ENV_VAR = "GROK_VOICE_MANAGEMENT_KEY"
 TEAM_ID_ENV_VAR = "GROK_VOICE_TEAM_ID"
 CREDITS_POLL_SECONDS = 60.0
@@ -80,12 +81,49 @@ def _transcribe_and_enqueue(
     _log(f"[queued] ({seconds:.1f}s) {text}")
 
 
+def _start_stream(
+    segmenter, config: VadConfig, language: str, state: ListenerState, utterance_id: int
+) -> stt_stream.StreamingSession | None:
+    def on_partial(text: str) -> None:
+        state.update_utterance(utterance_id, text=text, status="transcribing (live)…")
+
+    try:
+        session = stt_stream.StreamingSession(config.sample_rate, language, on_partial)
+    except stt_stream.GrokStreamError as error:
+        _log(f"[stream-error] {error} — falling back to batch for this utterance")
+        return None
+    for frame in segmenter.recording_frames:
+        session.send(frame.tobytes())
+    return session
+
+
+def _finalize_stream(
+    session: stt_stream.StreamingSession,
+    seconds: float,
+    state: ListenerState,
+    utterance_id: int,
+) -> None:
+    cost = pricing.stt_streaming_cost_usd(seconds)
+    state.add_cost("user", cost)
+    state.update_utterance(
+        utterance_id, detail=f"{seconds:.1f}s audio · live", cost_usd=cost
+    )
+    text = session.finish()
+    if not text:
+        _log(f"[dropped] {seconds:.1f}s live stream transcribed to nothing")
+        state.update_utterance(utterance_id, status="empty — no speech")
+        return
+    state.add_transcript(text, utterance_id)
+    _log(f"[queued/live] ({seconds:.1f}s) {text}")
+
+
 def run(config: VadConfig | None = None) -> None:
     config = config or VadConfig()
     language = os.environ.get(STT_LANGUAGE_ENV_VAR, "")
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
     state = ListenerState()
+    state.set_mode(os.environ.get(MODE_ENV_VAR, "batch"))
     server = start_http_api(state, port)
     if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
         threading.Thread(target=_poll_credits, args=(state,), daemon=True).start()
@@ -108,6 +146,7 @@ def run(config: VadConfig | None = None) -> None:
     ):
         try:
             current_utterance_id = 0
+            stream: stt_stream.StreamingSession | None = None
             while True:
                 frame = frames.get()
                 if state.paused:
@@ -118,21 +157,37 @@ def run(config: VadConfig | None = None) -> None:
                 if segmenter.is_recording and not was_recording:
                     state.add_event("recording")
                     current_utterance_id = state.create_utterance("user", "recording…")
+                    if state.mode == "live":
+                        stream = _start_stream(
+                            segmenter, config, language, state, current_utterance_id
+                        )
+                elif segmenter.is_recording and stream is not None:
+                    stream.send(frame.tobytes())
                 elif was_recording and not segmenter.is_recording:
                     state.add_event("recording_done", "0.8s of silence — closing utterance")
                     if utterance is None:
                         state.update_utterance(
                             current_utterance_id, status="dropped — too short"
                         )
+                        if stream is not None:
+                            stream.abort()
+                            stream = None
                 if utterance is not None:
-                    stt_executor.submit(
-                        _transcribe_and_enqueue,
-                        utterance,
-                        config.sample_rate,
-                        language,
-                        state,
-                        current_utterance_id,
-                    )
+                    seconds = len(utterance) / config.sample_rate
+                    if stream is not None:
+                        stt_executor.submit(
+                            _finalize_stream, stream, seconds, state, current_utterance_id
+                        )
+                        stream = None
+                    else:
+                        stt_executor.submit(
+                            _transcribe_and_enqueue,
+                            utterance,
+                            config.sample_rate,
+                            language,
+                            state,
+                            current_utterance_id,
+                        )
         except KeyboardInterrupt:
             _log("\ngrok-voice-listener: stopping")
         finally:

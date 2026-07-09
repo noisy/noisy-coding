@@ -50,6 +50,11 @@ class UtteranceSegmenter:
     def is_recording(self) -> bool:
         return bool(self._recording)
 
+    @property
+    def recording_frames(self) -> list[np.ndarray]:
+        """Frames captured so far in the utterance in progress (incl. pre-roll)."""
+        return list(self._recording)
+
     def feed(self, frame: np.ndarray) -> np.ndarray | None:
         """Consume one frame; return a full utterance when one just ended."""
         loud = self._is_speech(_rms(frame))

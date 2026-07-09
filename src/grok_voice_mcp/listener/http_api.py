@@ -36,6 +36,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "last_transcript_at": state.last_transcript_at,
                         "session_cost_usd": state.session_cost_usd,
                         "credits_usd": state.credits_usd,
+                        "mode": state.mode,
                     }
                 )
             else:
@@ -50,6 +51,15 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.set_paused(False)
                 state.add_event("unmuted")
                 self._respond({"listening": True})
+            elif self.path == "/mode":
+                body = self._read_json_body()
+                mode = str(body.get("mode", ""))
+                if mode in ("batch", "live"):
+                    state.set_mode(mode)
+                    state.add_event("mode", f"transcription mode switched to {mode}")
+                    self._respond({"mode": mode})
+                else:
+                    self._respond({"error": "mode must be 'batch' or 'live'"}, status=400)
             elif self.path == "/event":
                 body = self._read_json_body()
                 kind = str(body.get("kind", "event"))

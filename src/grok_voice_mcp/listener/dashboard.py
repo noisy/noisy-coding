@@ -39,6 +39,11 @@ DASHBOARD_HTML = """<!doctype html>
   }
   .chip .num { font-variant-numeric: tabular-nums; }
   .chip small { color: var(--muted); font-weight: 500; }
+  button.chip { cursor: pointer; font: inherit; color: inherit; }
+  button.chip:hover { border-color: var(--teal); }
+  button.chip:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  #mode-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  #mode-label.live { color: var(--amber); }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
   .chip.listening .dot { background: var(--teal); animation: pulse 2s infinite; }
   .chip.recording .dot { background: var(--amber); animation: pulse 0.7s infinite; }
@@ -107,6 +112,9 @@ DASHBOARD_HTML = """<!doctype html>
     <span class="chip"><span class="num" id="queued">0</span>&nbsp;<small>queued</small></span>
     <span class="chip"><small>session</small>&nbsp;<span class="num" id="cost">$0.0000</span></span>
     <span class="chip" id="credits-chip" hidden><small>credits left</small>&nbsp;<span class="num" id="credits"></span></span>
+    <button class="chip" id="mode-toggle" type="button" title="Batch: transcribe after you stop talking ($0.10/h). Live: stream while you talk, text appears as you speak ($0.20/h).">
+      <small>mode</small>&nbsp;<span id="mode-label">…</span>
+    </button>
   </div>
 
   <details class="rules">
@@ -176,6 +184,18 @@ DASHBOARD_HTML = """<!doctype html>
     document.getElementById("state-label").textContent = label;
   }
 
+  let currentMode = null;
+  document.getElementById("mode-toggle").addEventListener("click", async () => {
+    const next = currentMode === "live" ? "batch" : "live";
+    await fetch("/mode", { method: "POST", body: JSON.stringify({ mode: next }) });
+  });
+  function setMode(mode) {
+    currentMode = mode;
+    const label = document.getElementById("mode-label");
+    label.textContent = mode;
+    label.className = mode === "live" ? "live" : "";
+  }
+
   async function tick() {
     try {
       const s = await (await fetch("/status")).json();
@@ -190,6 +210,7 @@ DASHBOARD_HTML = """<!doctype html>
         creditsChip.hidden = false;
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
+      setMode(s.mode || "batch");
       if (!s.listening) setState("muted", "muted — Claude is speaking");
       else if (s.recording) setState("recording", "recording your utterance");
       else setState("listening", "listening");

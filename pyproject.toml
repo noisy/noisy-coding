@@ -12,6 +12,7 @@ dependencies = [
     "mcp[cli]>=1.28.1",
     "numpy>=2.5.1",
     "sounddevice>=0.5.5",
+    "websockets>=16.0",
 ]
 
 [project.scripts]

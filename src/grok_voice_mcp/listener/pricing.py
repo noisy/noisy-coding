@@ -5,11 +5,16 @@ TTS $4.20 per million characters.
 """
 
 STT_USD_PER_AUDIO_HOUR = 0.10
+STT_STREAMING_USD_PER_AUDIO_HOUR = 0.20
 TTS_USD_PER_MILLION_CHARS = 4.20
 
 
 def stt_cost_usd(audio_seconds: float) -> float:
     return audio_seconds / 3600 * STT_USD_PER_AUDIO_HOUR
+
+
+def stt_streaming_cost_usd(audio_seconds: float) -> float:
+    return audio_seconds / 3600 * STT_STREAMING_USD_PER_AUDIO_HOUR
 
 
 def tts_cost_usd(characters: int) -> float:

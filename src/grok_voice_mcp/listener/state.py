@@ -31,6 +31,16 @@ class ListenerState:
         self._utterance_seq = 0
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
         self._credits_usd: float | None = None
+        self._mode = "batch"
+
+    @property
+    def mode(self) -> str:
+        with self._lock:
+            return self._mode
+
+    def set_mode(self, mode: str) -> None:
+        with self._lock:
+            self._mode = mode
 
     def add_cost(self, role: str, usd: float) -> None:
         with self._lock:
