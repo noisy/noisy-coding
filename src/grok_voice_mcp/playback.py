@@ -18,6 +18,28 @@ class PlaybackError(RuntimeError):
     """Raised when no audio player is available or playback fails."""
 
 
+# Currently-running player processes, so an interrupting speak can kill them.
+_active_players: set[asyncio.subprocess.Process] = set()
+
+
+def register_player(process: asyncio.subprocess.Process) -> None:
+    _active_players.add(process)
+
+
+def unregister_player(process: asyncio.subprocess.Process) -> None:
+    _active_players.discard(process)
+
+
+def stop_all_players() -> None:
+    """Terminate every playing audio process (used by interrupt=True)."""
+    for process in list(_active_players):
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass
+        _active_players.discard(process)
+
+
 def _player_command(audio_path: Path) -> list[str]:
     if sys.platform == "darwin":
         return ["afplay", str(audio_path)]
@@ -41,8 +63,13 @@ async def play(audio: bytes, content_type: str) -> None:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr = await process.communicate()
-        if process.returncode != 0:
+        register_player(process)
+        try:
+            _, stderr = await process.communicate()
+        finally:
+            unregister_player(process)
+        # returncode is negative when killed by an interrupt — not an error.
+        if process.returncode and process.returncode > 0:
             raise PlaybackError(
                 f"Audio player exited with code {process.returncode}: {stderr.decode(errors='replace')[:200]}"
             )

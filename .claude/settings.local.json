@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl *)",
+      "mcp__grok-voice__speak",
+      "WebFetch(domain:docs.x.ai)"
+    ]
+  }
+}
