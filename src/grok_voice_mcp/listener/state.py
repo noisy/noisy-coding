@@ -35,7 +35,9 @@ class ListenerState:
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._user_muted = False  # explicit mute from the dashboard
-        self._claude_speaking = False  # Claude is playing audio right now
+        self._claude_speaking = False  # any agent playing audio right now
+        self._speaking_agents: set[str] = set()  # which agents are speaking now
+        self._floor_holder: str | None = None  # global speaking floor (one at a time)
         self._recording = False
         self._last_transcript_at = 0.0
         self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
@@ -50,31 +52,47 @@ class ListenerState:
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
         self._language = ""  # "" = auto-detect
-        self._character = dict(DEFAULT_CHARACTER) | {
-            "voice": DEFAULT_VOICE,
-            "speed": DEFAULT_SPEED,
-        }
+        # Character is now PER AGENT: {agent_name: character_dict}. The special
+        # key "" holds the character used in single-agent mode (no agents
+        # registered) and as the template for a newly seen agent.
+        self._characters: dict[str, dict] = {"": self._default_character()}
 
-    @property
-    def character(self) -> dict:
-        with self._lock:
-            return dict(self._character)
+    @staticmethod
+    def _default_character() -> dict:
+        return dict(DEFAULT_CHARACTER) | {"voice": DEFAULT_VOICE, "speed": DEFAULT_SPEED}
 
-    def set_character(self, values: dict) -> dict:
+    def _character_bucket(self, agent: str | None) -> str:
+        # No agent given → use the active agent's bucket, else the shared one.
+        key = agent if agent is not None else (self._active_agent or "")
+        if key not in self._characters:
+            # Seed a new agent from the shared/default character.
+            self._characters[key] = dict(self._characters[""])
+        return key
+
+    def character(self, agent: str | None = None) -> dict:
         with self._lock:
+            return dict(self._characters[self._character_bucket(agent)])
+
+    def set_character(self, values: dict, agent: str | None = None) -> dict:
+        with self._lock:
+            key = self._character_bucket(agent)
+            char = self._characters[key]
             for trait in DEFAULT_CHARACTER:
                 if trait in values:
-                    self._character[trait] = max(0, min(100, int(values[trait])))
+                    char[trait] = max(0, min(100, int(values[trait])))
             voice = values.get("voice")
             if isinstance(voice, str) and voice.isalpha():
-                self._character["voice"] = voice.lower()
+                char["voice"] = voice.lower()
             if "speed" in values:
                 try:
-                    speed = float(values["speed"])
-                    self._character["speed"] = max(MIN_SPEED, min(MAX_SPEED, speed))
+                    char["speed"] = max(MIN_SPEED, min(MAX_SPEED, float(values["speed"])))
                 except (TypeError, ValueError):
                     pass
-            return dict(self._character)
+            return dict(char)
+
+    def all_characters(self) -> dict:
+        with self._lock:
+            return {k: dict(v) for k, v in self._characters.items()}
 
     @property
     def mode(self) -> str:
@@ -169,7 +187,9 @@ class ListenerState:
         with self._lock:
             return [e for e in self._events if e["seq"] > since_seq]
 
-    def create_utterance(self, role: str, status: str, text: str = "") -> int:
+    def create_utterance(
+        self, role: str, status: str, text: str = "", agent: str | None = None
+    ) -> int:
         with self._lock:
             self._utterance_seq += 1
             self._utterances.append(
@@ -180,6 +200,11 @@ class ListenerState:
                     "text": text,
                     "detail": "",
                     "cost_usd": 0.0,
+                    # Which agent this utterance belongs to. Claude's speech
+                    # passes its own agent explicitly (it may no longer be the
+                    # active one by the time it speaks); user speech defaults
+                    # to the active agent it was delivered to.
+                    "agent": agent if agent is not None else self._active_agent,
                     "started_at": time.time(),
                     "updated_at": time.time(),
                 }
@@ -197,16 +222,21 @@ class ListenerState:
                 utterance["updated_at"] = time.time()
                 return
 
-    def latest_utterance_id(self, role: str) -> int:
+    def latest_utterance_id(self, role: str, agent: str | None = None) -> int:
         with self._lock:
             for utterance in reversed(self._utterances):
-                if utterance["role"] == role:
+                if utterance["role"] == role and (
+                    agent is None or utterance.get("agent") == agent
+                ):
                     return utterance["id"]
             return 0
 
-    def utterances(self) -> list[dict]:
+    def utterances(self, agent: str | None = None) -> list[dict]:
         with self._lock:
-            return [dict(u) for u in self._utterances]
+            items = [dict(u) for u in self._utterances]
+        if agent is not None:
+            items = [u for u in items if u.get("agent") == agent]
+        return items
 
     def add_transcript(self, text: str, utterance_id: int = 0) -> None:
         with self._lock:
@@ -296,9 +326,38 @@ class ListenerState:
         with self._lock:
             return self._claude_speaking
 
-    def set_claude_speaking(self, speaking: bool) -> None:
+    @property
+    def speaking_agents(self) -> list:
+        with self._lock:
+            return sorted(self._speaking_agents)
+
+    def set_claude_speaking(self, speaking: bool, agent: str | None = None) -> None:
         with self._lock:
             self._claude_speaking = speaking
+            if agent:
+                if speaking:
+                    self._speaking_agents.add(agent)
+                else:
+                    self._speaking_agents.discard(agent)
+
+    def try_acquire_floor(self, agent: str) -> bool:
+        """Global speaking floor across agents: grant only if nobody else holds
+        it. Returns True if `agent` may speak now (or already holds it)."""
+        with self._lock:
+            if self._floor_holder in (None, agent):
+                self._floor_holder = agent
+                return True
+            return False
+
+    def release_floor(self, agent: str) -> None:
+        with self._lock:
+            if self._floor_holder == agent:
+                self._floor_holder = None
+
+    @property
+    def floor_holder(self) -> str | None:
+        with self._lock:
+            return self._floor_holder
 
     @property
     def user_muted(self) -> bool:

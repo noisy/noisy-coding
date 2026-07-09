@@ -24,17 +24,23 @@ agent leaves no orphan daemon.
 
 The server speaks on its own, but hearing you needs three hooks in
 `~/.claude/settings.json` (they poll the daemon's queue). Merge this into the
-`hooks` block — see `hooks/` in the repo for the scripts:
+`hooks` block — see `hooks/` in the repo for the scripts.
+
+IMPORTANT — use the project venv's python (`.venv/bin/python3`), NOT a bare
+`python3`: the system python3 on macOS can be 3.9, and the hooks use 3.10+
+annotation syntax. A bare `python3` that resolves to 3.9 makes the Stop hook
+crash silently, so speech never gets delivered when idle. Also set a unique
+`GROK_VOICE_AGENT_NAME` in every hook command if you run more than one agent.
 
 ```json
 {
   "hooks": {
     "PreToolUse": [{ "matcher": "mcp__grok-voice__speak",
-      "hooks": [{ "type": "command", "command": "python3 /path/to/grok-voice-mcp/hooks/pre_speak.py", "timeout": 5 }] }],
+      "hooks": [{ "type": "command", "command": "/path/to/grok-voice-mcp/.venv/bin/python3 /path/to/grok-voice-mcp/hooks/pre_speak.py", "timeout": 5 }] }],
     "PostToolUse": [{ "matcher": "*",
-      "hooks": [{ "type": "command", "command": "python3 /path/to/grok-voice-mcp/hooks/post_tool_use.py", "timeout": 5 }] }],
+      "hooks": [{ "type": "command", "command": "GROK_VOICE_AGENT_NAME=NAME /path/to/grok-voice-mcp/.venv/bin/python3 /path/to/grok-voice-mcp/hooks/post_tool_use.py", "timeout": 5 }] }],
     "Stop": [{ "hooks": [{ "type": "command",
-      "command": "GROK_VOICE_STOP_MODE=rewake python3 /path/to/grok-voice-mcp/hooks/stop.py",
+      "command": "GROK_VOICE_AGENT_NAME=NAME GROK_VOICE_STOP_MODE=rewake /path/to/grok-voice-mcp/.venv/bin/python3 /path/to/grok-voice-mcp/hooks/stop.py",
       "timeout": 3660, "asyncRewake": true }] }]
   }
 }

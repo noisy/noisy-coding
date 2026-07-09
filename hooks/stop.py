@@ -7,6 +7,10 @@ when voice was used recently, so keyboard-only sessions end turns instantly.
 Fails open (silent exit) whenever the listener daemon is not running.
 """
 
+# Keep `X | None` annotations from being evaluated at runtime, so this hook
+# runs on the system python3 (which may be 3.9, pre-PEP-604) as advertised.
+from __future__ import annotations
+
 import fcntl
 import json
 import os
@@ -26,7 +30,9 @@ POLL_INTERVAL_SECONDS = 0.5
 # with the transcript on stderr to wake the model.
 MODE = os.environ.get("GROK_VOICE_STOP_MODE", "sync")
 REWAKE_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_WAIT_SECONDS", "3600"))
-REWAKE_LOCK_FILE = Path.home() / ".config" / "grok-voice" / "rewake.lock"
+REWAKE_LOCK_FILE = Path.home() / ".config" / "grok-voice" / (
+    "rewake-" + (os.environ.get("GROK_VOICE_AGENT_NAME") or "default") + ".lock"
+)
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
 GRACE_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_GRACE_SECONDS", "2.0"))

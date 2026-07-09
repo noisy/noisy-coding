@@ -153,8 +153,14 @@ def run(config: VadConfig | None = None) -> None:
     state.set_mode(os.environ.get(MODE_ENV_VAR, "batch"))
     state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
     try:
-        state.set_character(json.loads(CHARACTER_FILE.read_text()))
-    except (OSError, ValueError):
+        saved_chars = json.loads(CHARACTER_FILE.read_text())
+        # New format: {agent: character}. Old format: a single character dict.
+        if saved_chars and all(isinstance(v, dict) for v in saved_chars.values()):
+            for agent_key, char in saved_chars.items():
+                state.set_character(char, agent_key)
+        else:
+            state.set_character(saved_chars)
+    except (OSError, ValueError, AttributeError):
         pass
     # Saved tuning (pause-split, smart_turn, mode) survives restarts and
     # overrides the env default for mode, since it reflects newer intent.

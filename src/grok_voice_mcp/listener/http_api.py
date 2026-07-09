@@ -52,9 +52,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
             elif url.path == "/utterances":
-                self._respond({"utterances": state.utterances()})
+                agent = parse_qs(url.query).get("agent", [None])[0]
+                self._respond({"utterances": state.utterances(agent)})
             elif url.path == "/character":
-                self._respond({"character": state.character})
+                agent = parse_qs(url.query).get("agent", [None])[0]
+                self._respond({"character": state.character(agent)})
             elif url.path == "/status":
                 self._respond(
                     {
@@ -62,6 +64,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "muted": state.user_muted,
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
+                        "speaking_agents": state.speaking_agents,
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
                         "session_cost_usd": state.session_cost_usd,
@@ -104,7 +107,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.add_event("unmuted")
                 self._respond({"listening": True})
             elif self.path == "/character":
-                values = state.set_character(self._read_json_body())
+                body = self._read_json_body()
+                agent = body.get("agent")  # which tab's character (None=active)
+                values = state.set_character(body, agent)
                 traits = ", ".join(
                     f"{k} {v}/100"
                     for k, v in values.items()
@@ -114,15 +119,18 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     f"{traits}, voice '{values['voice']}', speed {values['speed']}x"
                 )
                 state.add_event("character", summary)
-                state.add_transcript(
-                    f"[CHARACTER] The user moved your character sliders to: {summary}. "
-                    "Adjust the style of your spoken and written replies accordingly "
-                    f"(pass voice_id='{values['voice']}' and speed={values['speed']} "
-                    "to speak), and briefly acknowledge the new setting in character."
-                )
+                # The instruction reaches the agent via its queue only if it's
+                # the active one; editing a background tab just stores the values.
+                if agent in (None, state.active_agent):
+                    state.add_transcript(
+                        f"[CHARACTER] The user moved your character sliders to: {summary}. "
+                        "Adjust the style of your spoken and written replies accordingly "
+                        f"(pass voice_id='{values['voice']}' and speed={values['speed']} "
+                        "to speak), and briefly acknowledge the new setting in character."
+                    )
                 try:
                     CHARACTER_FILE.parent.mkdir(parents=True, exist_ok=True)
-                    CHARACTER_FILE.write_text(json.dumps(values))
+                    CHARACTER_FILE.write_text(json.dumps(state.all_characters()))
                 except OSError:
                     pass
                 self._respond({"character": values})
@@ -150,9 +158,16 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 else:
                     self._respond({"error": "no known setting in body"}, status=400)
             elif self.path == "/speaking":
-                speaking = bool(self._read_json_body().get("speaking", False))
-                state.set_claude_speaking(speaking)
+                body = self._read_json_body()
+                speaking = bool(body.get("speaking", False))
+                state.set_claude_speaking(speaking, body.get("agent"))
                 self._respond({"speaking": speaking})
+            elif self.path == "/floor/acquire":
+                agent = str(self._read_json_body().get("agent", "?"))
+                self._respond({"granted": state.try_acquire_floor(agent)})
+            elif self.path == "/floor/release":
+                state.release_floor(str(self._read_json_body().get("agent", "?")))
+                self._respond({"released": True})
             elif self.path == "/mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_user_muted(muted)
@@ -179,9 +194,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"error": "not found"}, status=404)
 
         def _track_speak_utterance(self, kind: str, detail: str, body: dict) -> None:
+            # The speaking agent tags its own utterance so it lands in that
+            # agent's history — even if a different agent is active by now.
+            agent = body.get("agent") or state.active_agent
             if kind == "speak":
                 utterance_id = state.create_utterance(
-                    "claude", "synthesizing (Grok TTS)…", text=detail
+                    "claude", "synthesizing (Grok TTS)…", text=detail, agent=agent
                 )
                 chars = int(body.get("chars", 0))
                 if chars:
@@ -190,13 +208,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     state.update_utterance(utterance_id, cost_usd=cost)
             elif kind == "speak_audio":
                 state.update_utterance(
-                    state.latest_utterance_id("claude"),
+                    state.latest_utterance_id("claude", agent),
                     status="playing through speakers…",
                     detail=detail,
                 )
             elif kind == "speak_done":
                 state.update_utterance(
-                    state.latest_utterance_id("claude"), status="played"
+                    state.latest_utterance_id("claude", agent), status="played"
                 )
 
         def _read_json_body(self) -> dict:
