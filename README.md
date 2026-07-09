@@ -27,8 +27,13 @@ mic -> VAD (energy, adaptive noise floor) -> Grok STT (POST /v1/stt)
     -> transcript queue -> HTTP on 127.0.0.1:8765
          ^ polled by hooks:
            - PostToolUse: injects queued speech after every tool call
-           - Stop: waits up to 30s for you to speak before the turn ends
-             (only 2s when voice wasn't used in the last 5 minutes)
+           - Stop: keeps the conversation alive at turn boundaries; two modes
+             via GROK_VOICE_STOP_MODE:
+               sync   — blocks the turn end while polling (30s / 2s when
+                        voice is inactive)
+               rewake — asyncRewake background hook: the turn ends instantly,
+                        the hook polls for up to 5 min and wakes the model
+                        when you speak (experimental)
 ```
 
 Start the daemon (first run triggers the macOS microphone permission prompt):

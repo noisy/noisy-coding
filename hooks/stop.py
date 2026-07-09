@@ -19,6 +19,11 @@ VOICE_ACTIVE_WINDOW_SECONDS = 300
 LONG_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_STOP_WAIT_SECONDS", "30"))
 SHORT_WAIT_SECONDS = 2.0
 POLL_INTERVAL_SECONDS = 0.5
+# "sync": block the turn end via stdout JSON while polling (documented path).
+# "rewake": run as an asyncRewake background hook — poll long, then exit(2)
+# with the transcript on stderr to wake the model.
+MODE = os.environ.get("GROK_VOICE_STOP_MODE", "sync")
+REWAKE_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_WAIT_SECONDS", "300"))
 
 
 def _get(path: str) -> dict:
@@ -34,29 +39,44 @@ def _wait_seconds() -> float:
     return LONG_WAIT_SECONDS if voice_recently_used else SHORT_WAIT_SECONDS
 
 
+def _poll_for_speech(wait_seconds: float) -> str | None:
+    deadline = time.time() + wait_seconds
+    while time.time() < deadline:
+        transcripts = _get("/drain")["transcripts"]
+        if transcripts:
+            return " ".join(t["text"] for t in transcripts)
+        time.sleep(POLL_INTERVAL_SECONDS)
+    return None
+
+
+VOICE_INSTRUCTION = (
+    "Treat this as his next message. Answer it now — aloud via the "
+    "grok-voice speak tool (briefly) and in text."
+)
+
+
 def main() -> None:
     sys.stdin.read()
     try:
-        deadline = time.time() + _wait_seconds()
-        while time.time() < deadline:
-            transcripts = _get("/drain")["transcripts"]
-            if transcripts:
-                spoken = " ".join(t["text"] for t in transcripts)
+        if MODE == "rewake":
+            spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
+            if spoken:
                 print(
-                    json.dumps(
-                        {
-                            "decision": "block",
-                            "reason": (
-                                f"[VOICE] Krzysztof said (spoken): {spoken}\n"
-                                "Treat this as his next message. Answer it now — "
-                                "aloud via the grok-voice speak tool (briefly) "
-                                "and in text."
-                            ),
-                        }
-                    )
+                    f"[VOICE] Krzysztof said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
+                    file=sys.stderr,
                 )
-                return
-            time.sleep(POLL_INTERVAL_SECONDS)
+                sys.exit(2)
+            return
+        spoken = _poll_for_speech(_wait_seconds())
+        if spoken:
+            print(
+                json.dumps(
+                    {
+                        "decision": "block",
+                        "reason": f"[VOICE] Krzysztof said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
+                    }
+                )
+            )
     except Exception:
         return
 
