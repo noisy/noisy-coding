@@ -16,6 +16,7 @@ from grok_voice_mcp import tts
 STREAM_URL_BASE = "wss://api.x.ai/v1/stt"
 CONNECT_TIMEOUT_SECONDS = 5.0
 FINISH_TIMEOUT_SECONDS = 10.0
+EMPTY_FINISH_TIMEOUT_SECONDS = 1.5
 
 
 class GrokStreamError(RuntimeError):
@@ -110,12 +111,18 @@ class StreamingSession:
         self._done.set()
 
     def finish(self) -> str:
-        """Signal end of audio and wait for the final transcript."""
+        """Signal end of audio and wait for the final transcript.
+
+        If nothing was transcribed yet, don't block the full timeout — an
+        empty utterance (noise/silence) may never get a clean final, and the
+        card would hang in a live status until then.
+        """
         try:
             self._ws.send(json.dumps({"type": "audio.done"}))
         except Exception:
             pass
-        self._done.wait(FINISH_TIMEOUT_SECONDS)
+        timeout = FINISH_TIMEOUT_SECONDS if self._full_text() else EMPTY_FINISH_TIMEOUT_SECONDS
+        self._done.wait(timeout)
         try:
             self._ws.close()
         except Exception:
