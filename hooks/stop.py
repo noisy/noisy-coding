@@ -85,6 +85,9 @@ def main() -> None:
             spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
             if spoken:
                 spoken = _collect_continuation(spoken)
+                # Experiment: some harness versions surface stdout systemMessage
+                # from async hooks too; harmless if ignored.
+                print(json.dumps({"systemMessage": f"🎙️ Krzysztof: „{spoken}”"}))
                 print(
                     f"[VOICE] Krzysztof said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
                     file=sys.stderr,
