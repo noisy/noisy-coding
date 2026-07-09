@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stop hook: keep a voice conversation alive across turn boundaries.
 
-When the turn is about to end, wait a moment for Krzysztof to speak; if he
+When the turn is about to end, wait a moment for the user to speak; if he
 does, block the stop and hand his words to the model. The wait is long only
 when voice was used recently, so keyboard-only sessions end turns instantly.
 Fails open (silent exit) whenever the listener daemon is not running.
@@ -89,7 +89,7 @@ def main() -> None:
                 # from async hooks too; harmless if ignored.
                 print(json.dumps({"systemMessage": f"🎙️ Voice: „{spoken}”"}))
                 print(
-                    f"[VOICE] Krzysztof said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
+                    f"[VOICE] The user said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
                     file=sys.stderr,
                 )
                 sys.exit(2)
@@ -100,7 +100,7 @@ def main() -> None:
                 json.dumps(
                     {
                         "decision": "block",
-                        "reason": f"[VOICE] Krzysztof said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
+                        "reason": f"[VOICE] The user said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
                     }
                 )
             )

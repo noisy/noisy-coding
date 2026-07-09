@@ -32,7 +32,7 @@ def main() -> None:
                 "hookSpecificOutput": {
                     "hookEventName": "PostToolUse",
                     "additionalContext": (
-                        f"[VOICE] Krzysztof just said (spoken, while you work): {spoken}\n"
+                        f"[VOICE] The user just said (spoken, while you work): {spoken}\n"
                         "If this asks you to stop or change course, do so now; "
                         "otherwise incorporate it and continue."
                     ),
