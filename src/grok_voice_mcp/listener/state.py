@@ -29,6 +29,10 @@ class ListenerState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._transcripts: list[Transcript] = []
+        # Multi-agent: registered agents by name, and which one is active.
+        # Transcripts are only delivered to the active agent (see drain).
+        self._agents: dict[str, float] = {}  # name -> last-seen time
+        self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._user_muted = False  # explicit mute from the dashboard
         self._claude_speaking = False  # Claude is playing audio right now
@@ -216,8 +220,16 @@ class ListenerState:
                 utterance_id, status="ready — awaiting pickup", text=text
             )
 
-    def drain(self) -> list[Transcript]:
+    def drain(self, agent: str | None = None) -> list[Transcript]:
         with self._lock:
+            # Register/refresh the caller and gate delivery on active agent.
+            # No agent registered yet → single-agent mode (everyone drains).
+            if agent is not None:
+                self._agents[agent] = time.time()
+                if self._active_agent is None:
+                    self._active_agent = agent  # first to register wins by default
+                if agent != self._active_agent:
+                    return []  # not your turn — the active agent gets the speech
             transcripts, self._transcripts = self._transcripts, []
             if transcripts:
                 self._add_event_locked(
@@ -228,6 +240,28 @@ class ListenerState:
                         transcript.utterance_id, status="delivered to Claude"
                     )
             return transcripts
+
+    @property
+    def agents(self) -> dict:
+        with self._lock:
+            return dict(self._agents)
+
+    @property
+    def active_agent(self) -> str | None:
+        with self._lock:
+            return self._active_agent
+
+    def register_agent(self, name: str) -> None:
+        with self._lock:
+            self._agents[name] = time.time()
+            if self._active_agent is None:
+                self._active_agent = name
+
+    def set_active_agent(self, name: str) -> str | None:
+        with self._lock:
+            if name in self._agents:
+                self._active_agent = name
+            return self._active_agent
 
     @property
     def queued_count(self) -> int:

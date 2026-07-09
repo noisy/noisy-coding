@@ -31,6 +31,8 @@ REWAKE_LOCK_FILE = Path.home() / ".config" / "grok-voice" / "rewake.lock"
 # waking the model, so a longer musing isn't answered mid-thought.
 GRACE_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_GRACE_SECONDS", "2.0"))
 GRACE_CAP_SECONDS = 20.0
+AGENT = os.environ.get("GROK_VOICE_AGENT_NAME", "")
+DRAIN_PATH = "/drain" + (f"?agent={AGENT}" if AGENT else "")
 
 
 def _get(path: str) -> dict:
@@ -49,7 +51,7 @@ def _wait_seconds() -> float:
 def _poll_for_speech(wait_seconds: float) -> str | None:
     deadline = time.time() + wait_seconds
     while time.time() < deadline:
-        transcripts = _get("/drain")["transcripts"]
+        transcripts = _get(DRAIN_PATH)["transcripts"]
         if transcripts:
             return " ".join(t["text"] for t in transcripts)
         time.sleep(POLL_INTERVAL_SECONDS)
@@ -66,7 +68,7 @@ def _collect_continuation(first: str) -> str:
         and time.time() - started < GRACE_CAP_SECONDS
     ):
         time.sleep(POLL_INTERVAL_SECONDS)
-        transcripts = _get("/drain")["transcripts"]
+        transcripts = _get(DRAIN_PATH)["transcripts"]
         if transcripts:
             parts.extend(t["text"] for t in transcripts)
             quiet_since = time.time()

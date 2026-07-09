@@ -206,8 +206,23 @@ def _ensure_daemon() -> None:
         pass  # fail open: speak still works, just no listening
 
 
+def _register_agent() -> None:
+    """Announce this agent to the daemon so it appears in the switcher."""
+    name = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    if not name:
+        return
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    try:
+        httpx.post(
+            f"http://127.0.0.1:{port}/register", json={"name": name}, timeout=1.0
+        )
+    except httpx.HTTPError:
+        pass
+
+
 def main() -> None:
     _ensure_daemon()
+    _register_agent()
     mcp.run()
 
 

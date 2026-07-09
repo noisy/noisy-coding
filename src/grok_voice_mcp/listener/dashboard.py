@@ -39,6 +39,16 @@ DASHBOARD_HTML = """<!doctype html>
   @media (prefers-reduced-motion: reduce) { .card.speaking { animation: none; } }
 
   .statusbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
+  .agents-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -8px 0 20px; }
+  .agents-bar .agents-label { font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+  .agents-bar button {
+    font: inherit; cursor: pointer; border: 1px solid var(--line);
+    background: var(--surface); color: var(--muted); border-radius: 999px;
+    padding: 5px 13px; font-size: 0.85rem; font-weight: 600;
+  }
+  .agents-bar button.active { border-color: var(--teal); color: var(--teal); background: var(--teal-soft); }
+  .agents-bar button:hover { border-color: var(--teal); }
   .chip {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--line); background: var(--surface);
@@ -143,6 +153,11 @@ DASHBOARD_HTML = """<!doctype html>
     <button class="chip" id="mute-toggle" type="button" title="Stop transcribing the mic (e.g. while talking to someone else). Claude keeps working; nothing you say reaches him until you unmute.">
       🎤&nbsp;<span id="mute-label">…</span>
     </button>
+  </div>
+
+  <div id="agents-bar" class="agents-bar" hidden>
+    <span class="agents-label">Agents</span>
+    <span id="agents-list"></span>
   </div>
 
   <details class="rules" open>
@@ -375,6 +390,26 @@ DASHBOARD_HTML = """<!doctype html>
     await fetch("/mode", { method: "POST", body: JSON.stringify({ mode: next }) });
   });
 
+  function renderAgents(agents, active) {
+    const names = Object.keys(agents);
+    const bar = document.getElementById("agents-bar");
+    // Only show the switcher when more than one agent is registered.
+    bar.hidden = names.length < 2;
+    if (bar.hidden) return;
+    const list = document.getElementById("agents-list");
+    list.innerHTML = "";
+    for (const name of names.sort()) {
+      const b = document.createElement("button");
+      b.textContent = name;
+      if (name === active) b.classList.add("active");
+      b.addEventListener("click", async () => {
+        await fetch("/active-agent", { method: "POST",
+          body: JSON.stringify({ name }) });
+      });
+      list.appendChild(b);
+    }
+  }
+
   let currentSmartMode = null;
   function setSmartMode(mode) {
     currentSmartMode = mode;
@@ -425,6 +460,7 @@ DASHBOARD_HTML = """<!doctype html>
         creditsChip.hidden = false;
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
+      renderAgents(s.agents || {}, s.active_agent);
       setMode(s.mode || "batch");
       setTtsMode(s.tts_mode || "batch");
       setSmartMode(s.smart_turn_mode || "soft");

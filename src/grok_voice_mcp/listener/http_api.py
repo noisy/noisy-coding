@@ -44,7 +44,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             if url.path == "/":
                 self._respond_html(DASHBOARD_HTML)
             elif url.path == "/drain":
-                self._respond({"transcripts": [asdict(t) for t in state.drain()]})
+                agent = parse_qs(url.query).get("agent", [None])[0]
+                self._respond(
+                    {"transcripts": [asdict(t) for t in state.drain(agent)]}
+                )
             elif url.path == "/events":
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
@@ -69,13 +72,30 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "smart_turn": state.smart_turn,
                         "smart_turn_mode": state.smart_turn_mode,
                         "language": state.language,
+                        "agents": state.agents,
+                        "active_agent": state.active_agent,
                     }
                 )
             else:
                 self._respond({"error": "not found"}, status=404)
 
         def do_POST(self) -> None:
-            if self.path == "/pause":
+            if self.path == "/register":
+                name = str(self._read_json_body().get("name", "")).strip()
+                if name:
+                    state.register_agent(name)
+                    state.add_event("agent", f"'{name}' registered")
+                    self._respond(
+                        {"registered": name, "active_agent": state.active_agent}
+                    )
+                else:
+                    self._respond({"error": "name required"}, status=400)
+            elif self.path == "/active-agent":
+                name = str(self._read_json_body().get("name", "")).strip()
+                active = state.set_active_agent(name)
+                state.add_event("agent", f"switched to '{active}'")
+                self._respond({"active_agent": active})
+            elif self.path == "/pause":
                 state.set_paused(True)
                 state.add_event("muted")
                 self._respond({"listening": False})
