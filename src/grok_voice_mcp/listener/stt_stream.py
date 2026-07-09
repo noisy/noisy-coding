@@ -51,10 +51,14 @@ class StreamingSession:
             raise GrokStreamError(f"Cannot open streaming STT session: {error}") from error
 
         self._on_partial = on_partial
-        self._final_text = ""
-        self._latest_text = ""
+        self._segments: list[str] = []
+        self._current_segment = ""
         self._done = threading.Event()
         threading.Thread(target=self._read_loop, daemon=True).start()
+
+    def _full_text(self) -> str:
+        parts = self._segments + ([self._current_segment] if self._current_segment else [])
+        return " ".join(parts)
 
     def send(self, pcm_bytes: bytes) -> None:
         try:
@@ -71,11 +75,21 @@ class StreamingSession:
                 kind = payload.get("type", "")
                 if kind == "transcript.partial":
                     text = _extract_text(payload)
+                    if payload.get("speech_final"):
+                        # Segment closed: bank its final text and start fresh.
+                        if text:
+                            self._segments.append(text)
+                        self._current_segment = ""
+                    elif text:
+                        self._current_segment = text
                     if text:
-                        self._latest_text = text
-                        self._on_partial(text)
+                        self._on_partial(self._full_text())
                 elif kind == "transcript.done":
-                    self._final_text = _extract_text(payload) or self._latest_text
+                    # done carries no text; the banked segments are the answer.
+                    done_text = _extract_text(payload)
+                    if done_text and len(done_text) > len(self._full_text()):
+                        self._segments = [done_text]
+                        self._current_segment = ""
                     self._done.set()
                     return
                 elif kind == "error":
@@ -96,7 +110,7 @@ class StreamingSession:
             self._ws.close()
         except Exception:
             pass
-        return (self._final_text or self._latest_text).strip()
+        return self._full_text().strip()
 
     def abort(self) -> None:
         try:
