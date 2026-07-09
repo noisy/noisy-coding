@@ -3,6 +3,10 @@
 import asyncio
 import os
 import re
+import socket
+import subprocess
+import sys
+import time
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -165,7 +169,45 @@ async def list_voices() -> list[dict]:
     return await tts.list_voices()
 
 
+def _daemon_running(port: int) -> bool:
+    """True if something is already listening on the daemon's port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(0.3)
+        return probe.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _ensure_daemon() -> None:
+    """Adopt a running listener daemon, or spawn one as a child process.
+
+    Daily use: the server spawns the daemon so voice "just works" with no
+    manual step. Development: start the daemon yourself first — the server
+    sees the port taken, adopts it, and you keep restarting the daemon in
+    place without touching the server. Set GROK_VOICE_NO_AUTOSPAWN=1 to opt
+    out (e.g. to always manage the daemon by hand).
+    """
+    if os.environ.get("GROK_VOICE_NO_AUTOSPAWN"):
+        return
+    port = int(os.environ.get(LISTENER_PORT_ENV_VAR, "8765"))
+    if _daemon_running(port):
+        return  # adopt the existing daemon
+    try:
+        # Child process: dies with the server (no orphaned daemons). A dev
+        # daemon started by hand is a separate process and outlives us.
+        subprocess.Popen(
+            [sys.executable, "-m", "grok_voice_mcp.listener.daemon"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        for _ in range(20):  # wait up to ~2s for it to come up
+            if _daemon_running(port):
+                break
+            time.sleep(0.1)
+    except OSError:
+        pass  # fail open: speak still works, just no listening
+
+
 def main() -> None:
+    _ensure_daemon()
     mcp.run()
 
 
