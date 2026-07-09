@@ -23,6 +23,9 @@ class VadConfig:
     pre_roll_ms: int = 700
     min_utterance_ms: int = 400
     max_utterance_ms: int = 180_000
+    # smart_turn may close early only after at least this much silence, so a
+    # sensitive setting can't cut through a user still talking with tiny gaps.
+    smart_turn_min_silence_ms: int = 400
 
     @property
     def frame_samples(self) -> int:
@@ -99,13 +102,17 @@ class UtteranceSegmenter:
         self._recording.append(frame)
         self._silence_run = 0 if loud else self._silence_run + 1
 
-        ended_by_silence = (
-            self._silence_run * self.config.frame_ms >= self._end_silence_ms
-        )
+        silence_ms = self._silence_run * self.config.frame_ms
+        ended_by_silence = silence_ms >= self._end_silence_ms
         too_long = (
             len(self._recording) * self.config.frame_ms >= self.config.max_utterance_ms
         )
-        if not (ended_by_silence or too_long or self._close_requested):
+        # smart_turn (close_requested) may end the utterance early — but only
+        # after a real pause, never while the user is still talking through
+        # micro-gaps. Without this gate a sensitive smart_turn cuts mid-flow
+        # and the pause-split setting becomes meaningless.
+        smart_close = self._close_requested and silence_ms >= self.config.smart_turn_min_silence_ms
+        if not (ended_by_silence or too_long or smart_close):
             return None
         self._close_requested = False
         return self._finish_utterance()
