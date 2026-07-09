@@ -44,8 +44,14 @@ async def _listener_post(path: str, body: dict | None = None) -> None:
         pass
 
 
-async def _dashboard_event(kind: str, detail: str, **extra: int) -> None:
-    await _listener_post("/event", {"kind": kind, "detail": detail, **extra})
+async def _dashboard_event(kind: str, detail: str, **extra: object) -> None:
+    # Tag the event with our agent so Claude's card lands in the right
+    # per-agent history even if another agent became active meanwhile.
+    agent = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    body = {"kind": kind, "detail": detail, **extra}
+    if agent:
+        body["agent"] = agent
+    await _listener_post("/event", body)
 
 
 async def _daemon_status() -> dict:

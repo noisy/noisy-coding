@@ -169,7 +169,9 @@ class ListenerState:
         with self._lock:
             return [e for e in self._events if e["seq"] > since_seq]
 
-    def create_utterance(self, role: str, status: str, text: str = "") -> int:
+    def create_utterance(
+        self, role: str, status: str, text: str = "", agent: str | None = None
+    ) -> int:
         with self._lock:
             self._utterance_seq += 1
             self._utterances.append(
@@ -180,9 +182,11 @@ class ListenerState:
                     "text": text,
                     "detail": "",
                     "cost_usd": 0.0,
-                    # Which agent this utterance belongs to — the active one at
-                    # creation. Lets the dashboard show a per-agent history.
-                    "agent": self._active_agent,
+                    # Which agent this utterance belongs to. Claude's speech
+                    # passes its own agent explicitly (it may no longer be the
+                    # active one by the time it speaks); user speech defaults
+                    # to the active agent it was delivered to.
+                    "agent": agent if agent is not None else self._active_agent,
                     "started_at": time.time(),
                     "updated_at": time.time(),
                 }
@@ -200,10 +204,12 @@ class ListenerState:
                 utterance["updated_at"] = time.time()
                 return
 
-    def latest_utterance_id(self, role: str) -> int:
+    def latest_utterance_id(self, role: str, agent: str | None = None) -> int:
         with self._lock:
             for utterance in reversed(self._utterances):
-                if utterance["role"] == role:
+                if utterance["role"] == role and (
+                    agent is None or utterance.get("agent") == agent
+                ):
                     return utterance["id"]
             return 0
 

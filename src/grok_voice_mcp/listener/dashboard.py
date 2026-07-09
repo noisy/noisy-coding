@@ -405,11 +405,16 @@ DASHBOARD_HTML = """<!doctype html>
       b.innerHTML = '<span class="live-dot"></span>' + name;
       if (name === viewedAgent) b.classList.add("viewing");
       if (name === active) b.classList.add("live");
-      b.addEventListener("click", async () => {
+      b.addEventListener("click", () => {
+        if (viewedAgent === name) return;
         viewedAgent = name;
-        // Clicking a tab both views it AND makes it the live (listening) agent.
-        await fetch("/active-agent", { method: "POST", body: JSON.stringify({ name }) });
+        // Respond instantly: clear the old agent's cards and repaint tabs now,
+        // don't wait for the round-trip (that's what felt laggy).
+        for (const [k, node] of seen) { node.remove(); seen.delete(k); }
+        renderTabs(agents, active);
         tick();
+        // Clicking a tab both views it AND makes it the live (listening) agent.
+        fetch("/active-agent", { method: "POST", body: JSON.stringify({ name }) });
       });
       tabs.appendChild(b);
     }

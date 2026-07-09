@@ -180,9 +180,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"error": "not found"}, status=404)
 
         def _track_speak_utterance(self, kind: str, detail: str, body: dict) -> None:
+            # The speaking agent tags its own utterance so it lands in that
+            # agent's history — even if a different agent is active by now.
+            agent = body.get("agent") or state.active_agent
             if kind == "speak":
                 utterance_id = state.create_utterance(
-                    "claude", "synthesizing (Grok TTS)…", text=detail
+                    "claude", "synthesizing (Grok TTS)…", text=detail, agent=agent
                 )
                 chars = int(body.get("chars", 0))
                 if chars:
@@ -191,13 +194,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     state.update_utterance(utterance_id, cost_usd=cost)
             elif kind == "speak_audio":
                 state.update_utterance(
-                    state.latest_utterance_id("claude"),
+                    state.latest_utterance_id("claude", agent),
                     status="playing through speakers…",
                     detail=detail,
                 )
             elif kind == "speak_done":
                 state.update_utterance(
-                    state.latest_utterance_id("claude"), status="played"
+                    state.latest_utterance_id("claude", agent), status="played"
                 )
 
         def _read_json_body(self) -> dict:
