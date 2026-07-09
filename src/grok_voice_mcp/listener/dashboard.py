@@ -204,8 +204,9 @@ DASHBOARD_HTML = """<!doctype html>
 
   function upsert(u) {
     // An utterance that never became text (cough, noise, silence) must not
-    // linger on the board — drop it whether or not a card was shown.
-    if (PHASE(u.status) === "dead") { dropCard(u.id); return; }
+    // linger — drop it. But keep it if STT actually captured words, even
+    // when the clip was flagged too-short/dropped: real speech is not noise.
+    if (PHASE(u.status) === "dead" && !u.text) { dropCard(u.id); return; }
     document.getElementById("empty")?.remove();
     let el = seen.get(u.id);
     if (!el) {
