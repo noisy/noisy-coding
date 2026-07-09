@@ -122,10 +122,17 @@ async def announce(text: str, voice_id: str = "", language: str = "", speed: flo
 async def _render_and_play(text: str, voice_id: str, language: str, speed: float) -> str:
     """Synthesize `text` and play it, serialized behind any current speech."""
     status = await _daemon_status()
-    resolved_voice = voice_id or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
-    # Hybrid language: an explicit request arg wins for this one utterance;
-    # else the dashboard's choice IF it has set one (including "" = auto,
-    # which is a real choice — pass it through as "auto"); else env fallback.
+    character = status.get("character") or {}
+    # Hybrid resolution for voice/speed/language: an explicit request arg wins
+    # for this one utterance; else the dashboard's Character/Settings value;
+    # else the env/fallback default. Keeps the dashboard the source of truth.
+    resolved_voice = (
+        voice_id
+        or character.get("voice")
+        or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
+    )
+    if speed == 1.0 and character.get("speed"):
+        speed = float(character["speed"])  # dashboard speed unless call overrode it
     if language:
         resolved_language = language
     elif "language" in status:

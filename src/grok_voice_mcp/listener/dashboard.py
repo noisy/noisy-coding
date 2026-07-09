@@ -393,8 +393,8 @@ DASHBOARD_HTML = """<!doctype html>
   function renderAgents(agents, active) {
     const names = Object.keys(agents);
     const bar = document.getElementById("agents-bar");
-    // Only show the switcher when more than one agent is registered.
-    bar.hidden = names.length < 2;
+    // Show as soon as any agent is registered, so you always see who's active.
+    bar.hidden = names.length < 1;
     if (bar.hidden) return;
     const list = document.getElementById("agents-list");
     list.innerHTML = "";
