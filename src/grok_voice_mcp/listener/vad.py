@@ -22,7 +22,7 @@ class VadConfig:
     end_silence_ms: int = 800
     pre_roll_ms: int = 300
     min_utterance_ms: int = 400
-    max_utterance_ms: int = 60_000
+    max_utterance_ms: int = 180_000
 
     @property
     def frame_samples(self) -> int:

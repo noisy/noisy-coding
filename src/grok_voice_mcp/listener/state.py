@@ -16,6 +16,7 @@ class ListenerState:
         self._lock = threading.Lock()
         self._transcripts: list[Transcript] = []
         self._paused = False
+        self._recording = False
         self._last_transcript_at = 0.0
 
     def add_transcript(self, text: str) -> None:
@@ -38,6 +39,15 @@ class ListenerState:
     def last_transcript_at(self) -> float:
         with self._lock:
             return self._last_transcript_at
+
+    @property
+    def recording(self) -> bool:
+        with self._lock:
+            return self._recording
+
+    def set_recording(self, recording: bool) -> None:
+        with self._lock:
+            self._recording = recording
 
     @property
     def paused(self) -> bool:

@@ -24,6 +24,10 @@ POLL_INTERVAL_SECONDS = 0.5
 # with the transcript on stderr to wake the model.
 MODE = os.environ.get("GROK_VOICE_STOP_MODE", "sync")
 REWAKE_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_WAIT_SECONDS", "300"))
+# After speech arrives, keep listening this long for a continuation before
+# waking the model, so a longer musing isn't answered mid-thought.
+GRACE_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_GRACE_SECONDS", "2.0"))
+GRACE_CAP_SECONDS = 20.0
 
 
 def _get(path: str) -> dict:
@@ -49,6 +53,25 @@ def _poll_for_speech(wait_seconds: float) -> str | None:
     return None
 
 
+def _collect_continuation(first: str) -> str:
+    """Keep draining while the user is still talking (pauses < GRACE_SECONDS)."""
+    parts = [first]
+    quiet_since = time.time()
+    started = time.time()
+    while (
+        time.time() - quiet_since < GRACE_SECONDS
+        and time.time() - started < GRACE_CAP_SECONDS
+    ):
+        time.sleep(POLL_INTERVAL_SECONDS)
+        transcripts = _get("/drain")["transcripts"]
+        if transcripts:
+            parts.extend(t["text"] for t in transcripts)
+            quiet_since = time.time()
+        elif _get("/status").get("recording"):
+            quiet_since = time.time()  # mid-sentence: VAD is still capturing
+    return " ".join(parts)
+
+
 VOICE_INSTRUCTION = (
     "Treat this as his next message. Answer it now — aloud via the "
     "grok-voice speak tool (briefly) and in text."
@@ -61,6 +84,7 @@ def main() -> None:
         if MODE == "rewake":
             spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
             if spoken:
+                spoken = _collect_continuation(spoken)
                 print(
                     f"[VOICE] Krzysztof said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
                     file=sys.stderr,

@@ -70,6 +70,7 @@ def run(config: VadConfig | None = None) -> None:
                 if state.paused:
                     continue
                 utterance = segmenter.feed(frame)
+                state.set_recording(segmenter.is_recording)
                 if utterance is not None:
                     stt_executor.submit(
                         _transcribe_and_enqueue,

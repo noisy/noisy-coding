@@ -20,6 +20,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond(
                     {
                         "listening": not state.paused,
+                        "recording": state.recording,
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
                     }
