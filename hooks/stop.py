@@ -87,7 +87,7 @@ def main() -> None:
                 spoken = _collect_continuation(spoken)
                 # Experiment: some harness versions surface stdout systemMessage
                 # from async hooks too; harmless if ignored.
-                print(json.dumps({"systemMessage": f"🎙️ Krzysztof: „{spoken}”"}))
+                print(json.dumps({"systemMessage": f"🎙️ Voice: „{spoken}”"}))
                 print(
                     f"[VOICE] Krzysztof said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
                     file=sys.stderr,

@@ -29,6 +29,26 @@ class ListenerState:
         self._event_seq = 0
         self._utterances: deque[dict] = deque(maxlen=UTTERANCE_LOG_SIZE)
         self._utterance_seq = 0
+        self._session_cost_usd = {"user": 0.0, "claude": 0.0}
+        self._credits_usd: float | None = None
+
+    def add_cost(self, role: str, usd: float) -> None:
+        with self._lock:
+            self._session_cost_usd[role] = self._session_cost_usd.get(role, 0.0) + usd
+
+    @property
+    def session_cost_usd(self) -> dict:
+        with self._lock:
+            return dict(self._session_cost_usd)
+
+    @property
+    def credits_usd(self) -> float | None:
+        with self._lock:
+            return self._credits_usd
+
+    def set_credits_usd(self, credits: float | None) -> None:
+        with self._lock:
+            self._credits_usd = credits
 
     def add_event(self, kind: str, detail: str = "") -> None:
         with self._lock:
@@ -54,6 +74,7 @@ class ListenerState:
                     "status": status,
                     "text": text,
                     "detail": "",
+                    "cost_usd": 0.0,
                     "started_at": time.time(),
                     "updated_at": time.time(),
                 }
@@ -91,7 +112,7 @@ class ListenerState:
             self._last_transcript_at = now
             self._add_event_locked("transcript", text)
             self._update_utterance_locked(
-                utterance_id, status="gotowa — czeka na odbiór", text=text
+                utterance_id, status="ready — awaiting pickup", text=text
             )
 
     def drain(self) -> list[Transcript]:
@@ -103,7 +124,7 @@ class ListenerState:
                 )
                 for transcript in transcripts:
                     self._update_utterance_locked(
-                        transcript.utterance_id, status="dostarczona do Claude’a"
+                        transcript.utterance_id, status="delivered to Claude"
                     )
             return transcripts
 

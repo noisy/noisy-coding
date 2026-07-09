@@ -1,11 +1,11 @@
 """Self-contained live dashboard served by the listener daemon at GET /."""
 
 DASHBOARD_HTML = """<!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>grok-voice — podgląd na żywo</title>
+<title>grok-voice — live view</title>
 <style>
   :root {
     --paper: #FBFAF6; --surface: #FFFFFF; --ink: #23262B; --muted: #6E6A61;
@@ -35,8 +35,10 @@ DASHBOARD_HTML = """<!doctype html>
   .chip {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--line); background: var(--surface);
-    border-radius: 999px; padding: 7px 15px; font-size: 0.9rem; font-weight: 600;
+    border-radius: 999px; padding: 7px 15px; font-size: 0.88rem; font-weight: 600;
   }
+  .chip .num { font-variant-numeric: tabular-nums; }
+  .chip small { color: var(--muted); font-weight: 500; }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
   .chip.listening .dot { background: var(--teal); animation: pulse 2s infinite; }
   .chip.recording .dot { background: var(--amber); animation: pulse 0.7s infinite; }
@@ -89,44 +91,49 @@ DASHBOARD_HTML = """<!doctype html>
   .card .t { font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem; color: var(--muted); margin-left: auto; }
   .card .text { font-size: 0.97rem; line-height: 1.45; overflow-wrap: anywhere; }
   .card .text.pending { color: var(--muted); font-style: italic; }
-  .card .detail { font-size: 0.76rem; color: var(--muted); margin-top: 5px; font-family: ui-monospace, Menlo, monospace; }
+  .card .foot { display: flex; gap: 12px; margin-top: 5px; font-size: 0.76rem;
+    color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .card .cost { margin-left: auto; font-variant-numeric: tabular-nums; }
   .empty { color: var(--muted); font-size: 0.9rem; padding: 24px 4px; }
 </style>
 </head>
 <body>
 <main>
-  <h1>grok-voice — podgląd na żywo</h1>
-  <p class="sub">Każda wypowiedź to karta, której status żyje: nagrywanie → transkrypcja → tekst → doręczenie.</p>
+  <h1>grok-voice — live view</h1>
+  <p class="sub">Every utterance is a card with a live status: recording → transcription → text → delivery.</p>
 
   <div class="statusbar">
-    <span class="chip" id="state"><span class="dot"></span><span id="state-label">łączenie…</span></span>
-    <span class="chip"><span id="queued">0</span>&nbsp;czeka na odbiór</span>
+    <span class="chip" id="state"><span class="dot"></span><span id="state-label">connecting…</span></span>
+    <span class="chip"><span class="num" id="queued">0</span>&nbsp;<small>queued</small></span>
+    <span class="chip"><small>session</small>&nbsp;<span class="num" id="cost">$0.0000</span></span>
+    <span class="chip" id="credits-chip" hidden><small>credits left</small>&nbsp;<span class="num" id="credits"></span></span>
   </div>
 
   <details class="rules">
-    <summary>Reguły czasowe</summary>
+    <summary>Timing rules</summary>
     <table>
-      <tr><td>&lt; 0,8 s</td><td>pauza w mówieniu — nic się nie dzieje, to wciąż jedna wypowiedź</td></tr>
-      <tr><td>0,8 s ciszy</td><td>VAD zamyka wypowiedź i wysyła ją do transkrypcji (~1 s)</td></tr>
-      <tr><td>2 s ciszy</td><td>po transkrypcie: koniec „grace period” — Claude budzi się z całością; wznowienie mówienia przedłuża czekanie (maks. 20 s)</td></tr>
-      <tr><td>5 min</td><td>tyle po zakończeniu tury hook czuwa w tle na twój głos</td></tr>
+      <tr><td>&lt; 0.8s</td><td>a pause while speaking — nothing happens, still one utterance</td></tr>
+      <tr><td>0.8s silence</td><td>VAD closes the utterance and sends it for transcription (~1s)</td></tr>
+      <tr><td>2s silence</td><td>after a transcript: the grace period ends and Claude wakes with everything; speaking again extends the wait (max 20s)</td></tr>
+      <tr><td>5 min</td><td>how long the background hook keeps listening after a turn ends</td></tr>
     </table>
   </details>
 
-  <div id="cards"><div class="empty" id="empty">Powiedz coś — pierwsza karta pojawi się tutaj.</div></div>
+  <div id="cards"><div class="empty" id="empty">Say something — the first card will appear here.</div></div>
 </main>
 <script>
   const PHASE = s =>
-    s.startsWith("nagrywana") ? "rec" :
-    s.startsWith("transkrypcja") || s.startsWith("synteza") ? "work" :
-    s.startsWith("gotowa") ? "ready" :
-    s.startsWith("dostarczona") ? "done" :
-    s.startsWith("odtwarzam") || s === "odtworzona" ? "spoken" : "bad";
+    s.startsWith("recording") ? "rec" :
+    s.startsWith("transcribing") || s.startsWith("synthesizing") ? "work" :
+    s.startsWith("ready") ? "ready" :
+    s.startsWith("delivered") ? "done" :
+    s.startsWith("playing") || s === "played" ? "spoken" : "bad";
 
   const cards = document.getElementById("cards");
   const seen = new Map();
 
-  function fmtTime(ts) { return new Date(ts * 1000).toLocaleTimeString("pl-PL"); }
+  const fmtTime = ts => new Date(ts * 1000).toLocaleTimeString();
+  const fmtCost = usd => usd >= 0.01 ? "$" + usd.toFixed(2) : "$" + usd.toFixed(4);
 
   function upsert(u) {
     document.getElementById("empty")?.remove();
@@ -135,8 +142,9 @@ DASHBOARD_HTML = """<!doctype html>
       el = document.createElement("div");
       el.innerHTML =
         '<div class="head"><span class="who"></span><span class="status"></span>' +
-        '<span class="t"></span></div><div class="text"></div><div class="detail"></div>';
-      el.querySelector(".who").textContent = u.role === "user" ? "TY" : "CLAUDE";
+        '<span class="t"></span></div><div class="text"></div>' +
+        '<div class="foot"><span class="detail"></span><span class="cost"></span></div>';
+      el.querySelector(".who").textContent = u.role === "user" ? "YOU" : "CLAUDE";
       el.querySelector(".t").textContent = fmtTime(u.started_at);
       cards.prepend(el);
       seen.set(u.id, el);
@@ -155,10 +163,11 @@ DASHBOARD_HTML = """<!doctype html>
     if (u.text) { txt.textContent = u.text; txt.className = "text"; }
     else {
       txt.className = "text pending";
-      txt.textContent = phase === "rec" ? "słucham, mów dalej…" :
-                        phase === "work" ? "za chwilę pojawi się tekst…" : "—";
+      txt.textContent = phase === "rec" ? "listening, keep talking…" :
+                        phase === "work" ? "text will appear in a moment…" : "—";
     }
     el.querySelector(".detail").textContent = u.detail || "";
+    el.querySelector(".cost").textContent = u.cost_usd ? fmtCost(u.cost_usd) : "";
   }
 
   function setState(cls, label) {
@@ -171,13 +180,23 @@ DASHBOARD_HTML = """<!doctype html>
     try {
       const s = await (await fetch("/status")).json();
       document.getElementById("queued").textContent = s.queued;
-      if (!s.listening) setState("muted", "wyciszony — Claude mówi");
-      else if (s.recording) setState("recording", "nagrywam twoją wypowiedź");
-      else setState("listening", "słucham");
+      const costs = s.session_cost_usd || {};
+      const total = (costs.user || 0) + (costs.claude || 0);
+      document.getElementById("cost").textContent = fmtCost(total);
+      document.getElementById("cost").title =
+        "you " + fmtCost(costs.user || 0) + " · Claude " + fmtCost(costs.claude || 0);
+      const creditsChip = document.getElementById("credits-chip");
+      if (s.credits_usd != null) {
+        creditsChip.hidden = false;
+        document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
+      }
+      if (!s.listening) setState("muted", "muted — Claude is speaking");
+      else if (s.recording) setState("recording", "recording your utterance");
+      else setState("listening", "listening");
       const data = await (await fetch("/utterances")).json();
       for (const u of data.utterances) upsert(u);
     } catch {
-      setState("offline", "demon nie odpowiada");
+      setState("offline", "daemon not responding");
     }
   }
   tick();

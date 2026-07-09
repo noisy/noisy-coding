@@ -28,8 +28,8 @@ async def _listener_post(path: str, body: dict | None = None) -> None:
         pass
 
 
-async def _dashboard_event(kind: str, detail: str) -> None:
-    await _listener_post("/event", {"kind": kind, "detail": detail})
+async def _dashboard_event(kind: str, detail: str, **extra: int) -> None:
+    await _listener_post("/event", {"kind": kind, "detail": detail, **extra})
 
 
 @mcp.tool()
@@ -50,9 +50,9 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
     resolved_voice = voice_id or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
     resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
-    await _dashboard_event("speak", f"[{resolved_voice}] „{text}”")
+    await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
     audio = await tts.synthesize(text, resolved_voice, resolved_language, speed)
-    await _dashboard_event("speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 z Grok TTS")
+    await _dashboard_event("speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS")
     # Mute the listener while we play, or the mic transcribes our own speech.
     await _listener_post("/pause")
     try:

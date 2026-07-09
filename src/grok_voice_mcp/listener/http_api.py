@@ -6,6 +6,7 @@ from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+from grok_voice_mcp.listener import pricing
 from grok_voice_mcp.listener.dashboard import DASHBOARD_HTML
 from grok_voice_mcp.listener.state import ListenerState
 
@@ -33,6 +34,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "recording": state.recording,
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
+                        "session_cost_usd": state.session_cost_usd,
+                        "credits_usd": state.credits_usd,
                     }
                 )
             else:
@@ -52,23 +55,30 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 kind = str(body.get("kind", "event"))
                 detail = str(body.get("detail", ""))
                 state.add_event(kind, detail)
-                self._track_speak_utterance(kind, detail)
+                self._track_speak_utterance(kind, detail, body)
                 self._respond({"ok": True})
             else:
                 self._respond({"error": "not found"}, status=404)
 
-        def _track_speak_utterance(self, kind: str, detail: str) -> None:
+        def _track_speak_utterance(self, kind: str, detail: str, body: dict) -> None:
             if kind == "speak":
-                state.create_utterance("claude", "synteza w Grok TTS…", text=detail)
+                utterance_id = state.create_utterance(
+                    "claude", "synthesizing (Grok TTS)…", text=detail
+                )
+                chars = int(body.get("chars", 0))
+                if chars:
+                    cost = pricing.tts_cost_usd(chars)
+                    state.add_cost("claude", cost)
+                    state.update_utterance(utterance_id, cost_usd=cost)
             elif kind == "speak_audio":
                 state.update_utterance(
                     state.latest_utterance_id("claude"),
-                    status="odtwarzam przez głośniki…",
+                    status="playing through speakers…",
                     detail=detail,
                 )
             elif kind == "speak_done":
                 state.update_utterance(
-                    state.latest_utterance_id("claude"), status="odtworzona"
+                    state.latest_utterance_id("claude"), status="played"
                 )
 
         def _read_json_body(self) -> dict:
