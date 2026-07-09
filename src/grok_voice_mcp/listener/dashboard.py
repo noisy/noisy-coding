@@ -234,15 +234,14 @@ DASHBOARD_HTML = """<!doctype html>
     st.textContent = u.status;
     st.className = "status phase-" + phase;
     const txt = el.querySelector(".text");
-    // iMessage-style: while Claude is composing/playing, show a pulsing "…"
-    // bubble; reveal the text only once playback finishes (phase spoken-done).
-    // The user's own utterances stream in live as before.
-    const claudeComposing = u.role === "claude" && (phase === "work" || phase === "spoken");
-    if (claudeComposing) {
+    // Show text the moment it exists — reading is faster than listening, so
+    // the user can scan ahead of the audio. The pulsing "…" only fills the
+    // brief gap before any text is available (e.g. Claude mid-synthesis).
+    if (u.text) {
+      txt.innerHTML = renderBold(u.text); txt.className = "text";
+    } else if (u.role === "claude" && (phase === "work" || phase === "spoken")) {
       txt.className = "text composing";
       txt.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
-    } else if (u.text) {
-      txt.innerHTML = renderBold(u.text); txt.className = "text";
     } else {
       txt.className = "text pending";
       txt.textContent = phase === "rec" ? "listening, keep talking…" : "—";
