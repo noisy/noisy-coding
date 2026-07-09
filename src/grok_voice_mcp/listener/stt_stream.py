@@ -51,14 +51,21 @@ class StreamingSession:
             raise GrokStreamError(f"Cannot open streaming STT session: {error}") from error
 
         self._on_partial = on_partial
-        self._segments: list[str] = []
-        self._current_segment = ""
+        # Segment texts keyed by their start time: the server revises segments
+        # in place (same start, new text) and sometimes merges neighbours.
+        self._segments: dict[float, str] = {}
         self._done = threading.Event()
         threading.Thread(target=self._read_loop, daemon=True).start()
 
     def _full_text(self) -> str:
-        parts = self._segments + ([self._current_segment] if self._current_segment else [])
-        return " ".join(parts)
+        return " ".join(self._segments[start] for start in sorted(self._segments))
+
+    def _store_segment(self, start: float, text: str) -> None:
+        # A revision may swallow later segments (merge); drop absorbed ones.
+        for other_start in list(self._segments):
+            if other_start > start and self._segments[other_start].lower() in text.lower():
+                del self._segments[other_start]
+        self._segments[start] = text
 
     def send(self, pcm_bytes: bytes) -> None:
         try:
@@ -75,21 +82,14 @@ class StreamingSession:
                 kind = payload.get("type", "")
                 if kind == "transcript.partial":
                     text = _extract_text(payload)
-                    if payload.get("speech_final"):
-                        # Segment closed: bank its final text and start fresh.
-                        if text:
-                            self._segments.append(text)
-                        self._current_segment = ""
-                    elif text:
-                        self._current_segment = text
                     if text:
+                        self._store_segment(float(payload.get("start", 0.0)), text)
                         self._on_partial(self._full_text())
                 elif kind == "transcript.done":
-                    # done carries no text; the banked segments are the answer.
+                    # done carries no text; the stored segments are the answer.
                     done_text = _extract_text(payload)
                     if done_text and len(done_text) > len(self._full_text()):
-                        self._segments = [done_text]
-                        self._current_segment = ""
+                        self._segments = {0.0: done_text}
                     self._done.set()
                     return
                 elif kind == "error":

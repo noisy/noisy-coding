@@ -91,7 +91,14 @@ def _transcribe_and_enqueue(
 def _start_stream(
     segmenter, config: VadConfig, language: str, state: ListenerState, utterance_id: int
 ) -> stt_stream.StreamingSession | None:
+    longest_shown = 0
+
     def on_partial(text: str) -> None:
+        # Server-side revisions can briefly shrink the text; never show that.
+        nonlocal longest_shown
+        if len(text) < longest_shown:
+            return
+        longest_shown = len(text)
         state.update_utterance(utterance_id, text=text, status="transcribing (live)…")
 
     try:

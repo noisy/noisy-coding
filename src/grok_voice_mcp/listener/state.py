@@ -8,6 +8,8 @@ from dataclasses import dataclass
 EVENT_LOG_SIZE = 300
 DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50, "chatty": 50}
 DEFAULT_VOICE = "carina"
+DEFAULT_SPEED = 1.0
+MIN_SPEED, MAX_SPEED = 0.7, 1.5
 
 
 @dataclass(frozen=True)
@@ -34,7 +36,10 @@ class ListenerState:
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
         self._credits_usd: float | None = None
         self._mode = "batch"
-        self._character = dict(DEFAULT_CHARACTER) | {"voice": DEFAULT_VOICE}
+        self._character = dict(DEFAULT_CHARACTER) | {
+            "voice": DEFAULT_VOICE,
+            "speed": DEFAULT_SPEED,
+        }
 
     @property
     def character(self) -> dict:
@@ -49,6 +54,12 @@ class ListenerState:
             voice = values.get("voice")
             if isinstance(voice, str) and voice.isalpha():
                 self._character["voice"] = voice.lower()
+            if "speed" in values:
+                try:
+                    speed = float(values["speed"])
+                    self._character["speed"] = max(MIN_SPEED, min(MAX_SPEED, speed))
+                except (TypeError, ValueError):
+                    pass
             return dict(self._character)
 
     @property

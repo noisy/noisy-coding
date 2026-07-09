@@ -144,6 +144,8 @@ DASHBOARD_HTML = """<!doctype html>
         <input type="range" id="ch-chatty" min="0" max="100" step="5"><span class="val" id="ch-chatty-val"></span></label>
       <label><span class="name">Voice <small>who speaks to you</small></span>
         <select id="ch-voice"></select><span class="val"></span></label>
+      <label><span class="name">Speed <small>0.7× ↔ 1.5×</small></span>
+        <input type="range" id="ch-speed" min="0.7" max="1.5" step="0.05"><span class="val" id="ch-speed-val"></span></label>
     </div>
   </details>
 
@@ -227,7 +229,10 @@ DASHBOARD_HTML = """<!doctype html>
     zenith:"male"
   };
   async function postCharacter() {
-    const body = { voice: document.getElementById("ch-voice").value };
+    const body = {
+      voice: document.getElementById("ch-voice").value,
+      speed: Number(document.getElementById("ch-speed").value),
+    };
     for (const t of TRAITS) body[t] = Number(document.getElementById("ch-" + t).value);
     await fetch("/character", { method: "POST", body: JSON.stringify(body) });
   }
@@ -238,6 +243,11 @@ DASHBOARD_HTML = """<!doctype html>
       input.addEventListener("input", () => { val.textContent = input.value; });
       input.addEventListener("change", postCharacter);
     }
+    const speed = document.getElementById("ch-speed");
+    speed.addEventListener("input", () => {
+      document.getElementById("ch-speed-val").textContent = Number(speed.value).toFixed(2) + "×";
+    });
+    speed.addEventListener("change", postCharacter);
     const select = document.getElementById("ch-voice");
     for (const [v, gender] of Object.entries(VOICES)) {
       const option = document.createElement("option");
@@ -256,6 +266,10 @@ DASHBOARD_HTML = """<!doctype html>
         document.getElementById("ch-" + trait + "-val").textContent = input.value;
       }
       document.getElementById("ch-voice").value = data.character.voice || "carina";
+      const speedInput = document.getElementById("ch-speed");
+      speedInput.value = data.character.speed || 1.0;
+      document.getElementById("ch-speed-val").textContent =
+        Number(speedInput.value).toFixed(2) + "×";
     } catch {}
   }
   bindSliders();
