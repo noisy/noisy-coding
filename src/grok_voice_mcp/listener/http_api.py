@@ -43,6 +43,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "credits_usd": state.credits_usd,
                         "mode": state.mode,
                         "end_silence_ms": state.end_silence_ms,
+                        "smart_turn": state.smart_turn,
                     }
                 )
             else:
@@ -82,9 +83,15 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"character": values})
             elif self.path == "/settings":
                 body = self._read_json_body()
+                result = {}
                 if "end_silence_ms" in body:
-                    value = state.set_end_silence_ms(body["end_silence_ms"])
-                    self._respond({"end_silence_ms": value})
+                    result["end_silence_ms"] = state.set_end_silence_ms(
+                        body["end_silence_ms"]
+                    )
+                if "smart_turn" in body:
+                    result["smart_turn"] = state.set_smart_turn(body["smart_turn"])
+                if result:
+                    self._respond(result)
                 else:
                     self._respond({"error": "no known setting in body"}, status=400)
             elif self.path == "/mute":

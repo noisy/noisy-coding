@@ -37,10 +37,16 @@ class StreamingSession:
         sample_rate: int,
         language: str,
         on_partial: Callable[[str], None],
+        smart_turn: float = 0.0,
+        on_turn_end: Callable[[], None] | None = None,
     ) -> None:
         query = f"sample_rate={sample_rate}&encoding=pcm&interim_results=true"
         if language:
             query += f"&language={language}"
+        # smart_turn > 0 asks the server for prosody/semantics-aware end-of-turn
+        # detection; it flags speech_final when it judges the thought complete.
+        if smart_turn > 0:
+            query += f"&smart_turn={smart_turn}"
         try:
             self._ws = connect(
                 f"{STREAM_URL_BASE}?{query}",
@@ -51,6 +57,7 @@ class StreamingSession:
             raise GrokStreamError(f"Cannot open streaming STT session: {error}") from error
 
         self._on_partial = on_partial
+        self._on_turn_end = on_turn_end
         # Segment texts keyed by their start time: the server revises segments
         # in place (same start, new text) and sometimes merges neighbours.
         self._segments: dict[float, str] = {}
@@ -85,6 +92,9 @@ class StreamingSession:
                     if text:
                         self._store_segment(float(payload.get("start", 0.0)), text)
                         self._on_partial(self._full_text())
+                    # smart_turn verdict: the model judged the thought complete.
+                    if payload.get("speech_final") and self._on_turn_end:
+                        self._on_turn_end()
                 elif kind == "transcript.done":
                     # done carries no text; the stored segments are the answer.
                     done_text = _extract_text(payload)

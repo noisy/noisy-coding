@@ -101,8 +101,21 @@ def _start_stream(
         longest_shown = len(text)
         state.update_utterance(utterance_id, text=text, status="transcribing (live)…")
 
+    smart_turn = state.smart_turn
+
+    def on_turn_end() -> None:
+        # smart_turn judged the thought complete: close the utterance now
+        # instead of waiting for the VAD silence timer.
+        segmenter.request_close()
+
     try:
-        session = stt_stream.StreamingSession(config.sample_rate, language, on_partial)
+        session = stt_stream.StreamingSession(
+            config.sample_rate,
+            language,
+            on_partial,
+            smart_turn=smart_turn,
+            on_turn_end=on_turn_end if smart_turn > 0 else None,
+        )
     except stt_stream.GrokStreamError as error:
         _log(f"[stream-error] {error} — falling back to batch for this utterance")
         return None

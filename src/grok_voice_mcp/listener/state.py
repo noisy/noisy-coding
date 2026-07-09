@@ -12,6 +12,7 @@ DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
 DEFAULT_END_SILENCE_MS = 800
 MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
+DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ class ListenerState:
         self._credits_usd: float | None = None
         self._mode = "batch"
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
+        self._smart_turn = DEFAULT_SMART_TURN
         self._character = dict(DEFAULT_CHARACTER) | {
             "voice": DEFAULT_VOICE,
             "speed": DEFAULT_SPEED,
@@ -86,6 +88,16 @@ class ListenerState:
                 MIN_END_SILENCE_MS, min(MAX_END_SILENCE_MS, int(value))
             )
             return self._end_silence_ms
+
+    @property
+    def smart_turn(self) -> float:
+        with self._lock:
+            return self._smart_turn
+
+    def set_smart_turn(self, value: float) -> float:
+        with self._lock:
+            self._smart_turn = max(0.0, min(1.0, float(value)))
+            return self._smart_turn
 
     def add_cost(self, role: str, usd: float) -> None:
         with self._lock:

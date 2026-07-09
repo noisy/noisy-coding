@@ -47,6 +47,12 @@ class UtteranceSegmenter:
         self._pre_roll_frames_included = 0
         # Live-adjustable from the dashboard; None = use the config default.
         self.end_silence_ms_override: int | None = None
+        # Set by an external end-of-turn signal (smart_turn) to close now.
+        self._close_requested = False
+
+    def request_close(self) -> None:
+        """Force the utterance in progress to close on the next frame."""
+        self._close_requested = True
 
     @property
     def _end_silence_ms(self) -> int:
@@ -99,8 +105,9 @@ class UtteranceSegmenter:
         too_long = (
             len(self._recording) * self.config.frame_ms >= self.config.max_utterance_ms
         )
-        if not (ended_by_silence or too_long):
+        if not (ended_by_silence or too_long or self._close_requested):
             return None
+        self._close_requested = False
         return self._finish_utterance()
 
     def _finish_utterance(self) -> np.ndarray | None:

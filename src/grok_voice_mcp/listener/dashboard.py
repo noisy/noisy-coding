@@ -151,6 +151,8 @@ DASHBOARD_HTML = """<!doctype html>
         <input type="range" id="ch-speed" min="0.7" max="1.5" step="0.05"><span class="val" id="ch-speed-val"></span></label>
       <label><span class="name">Pause split <small>silence that ends an utterance</small></span>
         <input type="range" id="ch-silence" min="500" max="4000" step="100"><span class="val" id="ch-silence-val"></span></label>
+      <label><span class="name">Smart turn <small>live only · 0 = off, higher = wait for a complete thought</small></span>
+        <input type="range" id="ch-smart" min="0" max="0.9" step="0.1"><span class="val" id="ch-smart-val"></span></label>
     </div>
   </details>
 
@@ -272,6 +274,15 @@ DASHBOARD_HTML = """<!doctype html>
       await fetch("/settings", { method: "POST",
         body: JSON.stringify({ end_silence_ms: Number(silence.value) }) });
     });
+    const smart = document.getElementById("ch-smart");
+    smart.addEventListener("input", () => {
+      const v = Number(smart.value);
+      document.getElementById("ch-smart-val").textContent = v === 0 ? "off" : v.toFixed(1);
+    });
+    smart.addEventListener("change", async () => {
+      await fetch("/settings", { method: "POST",
+        body: JSON.stringify({ smart_turn: Number(smart.value) }) });
+    });
     const select = document.getElementById("ch-voice");
     for (const [v, gender] of Object.entries(VOICES)) {
       const option = document.createElement("option");
@@ -343,6 +354,12 @@ DASHBOARD_HTML = """<!doctype html>
         silence.value = s.end_silence_ms;
         document.getElementById("ch-silence-val").textContent =
           (s.end_silence_ms / 1000).toFixed(1) + "s";
+      }
+      const smart = document.getElementById("ch-smart");
+      if (s.smart_turn != null && document.activeElement !== smart) {
+        smart.value = s.smart_turn;
+        document.getElementById("ch-smart-val").textContent =
+          s.smart_turn === 0 ? "off" : Number(s.smart_turn).toFixed(1);
       }
       if (s.muted) setState("offline", "muted by you — mic ignored");
       else if (!s.listening) setState("muted", "muted — Claude is speaking");
