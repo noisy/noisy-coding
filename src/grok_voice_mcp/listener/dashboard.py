@@ -218,9 +218,14 @@ DASHBOARD_HTML = """<!doctype html>
   }
 
   const TRAITS = ["humor", "honesty", "brevity", "chatty"];
-  const VOICES = ["altair","ara","atlas","carina","castor","celeste","cosmo","eve",
-    "helios","helix","iris","kepler","leo","lumen","luna","lux","naksh","orion",
-    "perseus","rex","rigel","sal","sirius","ursa","zagan","zenith"];
+  const VOICES = {
+    altair:"male", ara:"female", atlas:"male", carina:"female", castor:"male",
+    celeste:"female", cosmo:"male", eve:"female", helios:"male", helix:"male",
+    iris:"female", kepler:"male", leo:"male", lumen:"male", luna:"female",
+    lux:"male", naksh:"male", orion:"male", perseus:"male", rex:"male",
+    rigel:"male", sal:"male", sirius:"male", ursa:"female", zagan:"male",
+    zenith:"male"
+  };
   async function postCharacter() {
     const body = { voice: document.getElementById("ch-voice").value };
     for (const t of TRAITS) body[t] = Number(document.getElementById("ch-" + t).value);
@@ -234,10 +239,10 @@ DASHBOARD_HTML = """<!doctype html>
       input.addEventListener("change", postCharacter);
     }
     const select = document.getElementById("ch-voice");
-    for (const v of VOICES) {
+    for (const [v, gender] of Object.entries(VOICES)) {
       const option = document.createElement("option");
       option.value = v;
-      option.textContent = v[0].toUpperCase() + v.slice(1);
+      option.textContent = v[0].toUpperCase() + v.slice(1) + " (" + gender + ")";
       select.appendChild(option);
     }
     select.addEventListener("change", postCharacter);
