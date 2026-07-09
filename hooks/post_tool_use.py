@@ -11,7 +11,8 @@ import sys
 import urllib.request
 
 PORT = os.environ.get("GROK_VOICE_LISTENER_PORT", "8765")
-DRAIN_URL = f"http://127.0.0.1:{PORT}/drain"
+AGENT = os.environ.get("GROK_VOICE_AGENT_NAME", "")
+DRAIN_URL = f"http://127.0.0.1:{PORT}/drain" + (f"?agent={AGENT}" if AGENT else "")
 
 
 def main() -> None:
