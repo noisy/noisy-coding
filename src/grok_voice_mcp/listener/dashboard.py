@@ -31,6 +31,30 @@ DASHBOARD_HTML = """<!doctype html>
   h1 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 20px; }
 
+  .speaking-banner {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--violet-soft); color: var(--violet);
+    border: 1px solid var(--violet); border-radius: 12px;
+    padding: 10px 16px; margin-bottom: 14px; font-weight: 650; font-size: 0.95rem;
+  }
+  .speaking-banner .wave { display: inline-flex; align-items: center; gap: 3px; height: 20px; }
+  .speaking-banner .wave i {
+    width: 3px; height: 6px; background: var(--violet); border-radius: 2px;
+    animation: wave 1s ease-in-out infinite;
+  }
+  .speaking-banner .wave i:nth-child(2) { animation-delay: .15s; }
+  .speaking-banner .wave i:nth-child(3) { animation-delay: .3s; }
+  .speaking-banner .wave i:nth-child(4) { animation-delay: .45s; }
+  .speaking-banner .wave i:nth-child(5) { animation-delay: .6s; }
+  @keyframes wave { 0%,100% { height: 5px; } 50% { height: 18px; } }
+  .speaking-banner .dots i { animation: blink 1.4s infinite; }
+  .speaking-banner .dots i:nth-child(2) { animation-delay: .2s; }
+  .speaking-banner .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%,60%,100% { opacity: .25; } 30% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .speaking-banner .wave i, .speaking-banner .dots i { animation: none; }
+  }
+
   .statusbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
   .chip {
     display: inline-flex; align-items: center; gap: 8px;
@@ -120,6 +144,11 @@ DASHBOARD_HTML = """<!doctype html>
 <main>
   <h1>grok-voice — live view</h1>
   <p class="sub">Every utterance is a card with a live status: recording → transcription → text → delivery.</p>
+
+  <div class="speaking-banner" id="speaking-banner" hidden>
+    <span class="wave"><i></i><i></i><i></i><i></i><i></i></span>
+    Claude is speaking<span class="dots"><i>.</i><i>.</i><i>.</i></span>
+  </div>
 
   <div class="statusbar">
     <span class="chip" id="state"><span class="dot"></span><span id="state-label">connecting…</span></span>
@@ -347,6 +376,7 @@ DASHBOARD_HTML = """<!doctype html>
         creditsChip.hidden = false;
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
+      document.getElementById("speaking-banner").hidden = !s.claude_speaking;
       setMode(s.mode || "batch");
       setMuted(!!s.muted);
       const silence = document.getElementById("ch-silence");

@@ -66,10 +66,14 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
     await _dashboard_event("speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS")
     # Mute the listener while we play, or the mic transcribes our own speech.
     await _listener_post("/pause")
+    # Tell the dashboard Claude is speaking now, so the user sees a live
+    # "speaking…" indicator and knows not to talk over it.
+    await _listener_post("/speaking", {"speaking": True})
     try:
         await playback.play(audio.audio, audio.content_type)
         await asyncio.sleep(ECHO_TAIL_SECONDS)
     finally:
+        await _listener_post("/speaking", {"speaking": False})
         await _listener_post("/resume")
     await _dashboard_event("speak_done", f"głos '{resolved_voice}'")
     return f"Spoke the message aloud with voice '{resolved_voice}'."
