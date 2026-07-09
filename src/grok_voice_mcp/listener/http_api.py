@@ -24,6 +24,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/events":
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
+            elif url.path == "/utterances":
+                self._respond({"utterances": state.utterances()})
             elif url.path == "/status":
                 self._respond(
                     {
@@ -47,10 +49,27 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"listening": True})
             elif self.path == "/event":
                 body = self._read_json_body()
-                state.add_event(str(body.get("kind", "event")), str(body.get("detail", "")))
+                kind = str(body.get("kind", "event"))
+                detail = str(body.get("detail", ""))
+                state.add_event(kind, detail)
+                self._track_speak_utterance(kind, detail)
                 self._respond({"ok": True})
             else:
                 self._respond({"error": "not found"}, status=404)
+
+        def _track_speak_utterance(self, kind: str, detail: str) -> None:
+            if kind == "speak":
+                state.create_utterance("claude", "synteza w Grok TTS…", text=detail)
+            elif kind == "speak_audio":
+                state.update_utterance(
+                    state.latest_utterance_id("claude"),
+                    status="odtwarzam przez głośniki…",
+                    detail=detail,
+                )
+            elif kind == "speak_done":
+                state.update_utterance(
+                    state.latest_utterance_id("claude"), status="odtworzona"
+                )
 
         def _read_json_body(self) -> dict:
             length = int(self.headers.get("Content-Length", "0"))

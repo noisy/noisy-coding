@@ -25,21 +25,30 @@ def _log(message: str) -> None:
 
 
 def _transcribe_and_enqueue(
-    samples: np.ndarray, sample_rate: int, language: str, state: ListenerState
+    samples: np.ndarray,
+    sample_rate: int,
+    language: str,
+    state: ListenerState,
+    utterance_id: int,
 ) -> None:
     seconds = len(samples) / sample_rate
     state.add_event("transcribing", f"{seconds:.1f}s")
+    state.update_utterance(
+        utterance_id, status="transkrypcja w Grok STT…", detail=f"{seconds:.1f}s audio"
+    )
     try:
         text = stt.transcribe(stt.encode_wav(samples, sample_rate), language)
     except stt.GrokSTTError as error:
         _log(f"[stt-error] {error}")
         state.add_event("stt_error", str(error)[:200])
+        state.update_utterance(utterance_id, status="błąd transkrypcji")
         return
     if not text:
         _log(f"[dropped] {seconds:.1f}s of audio transcribed to nothing")
         state.add_event("dropped", f"{seconds:.1f}s audio bez treści")
+        state.update_utterance(utterance_id, status="pusta — bez treści")
         return
-    state.add_transcript(text)
+    state.add_transcript(text, utterance_id)
     _log(f"[queued] ({seconds:.1f}s) {text}")
 
 
@@ -68,6 +77,7 @@ def run(config: VadConfig | None = None) -> None:
         callback=on_audio,
     ):
         try:
+            current_utterance_id = 0
             while True:
                 frame = frames.get()
                 if state.paused:
@@ -77,8 +87,13 @@ def run(config: VadConfig | None = None) -> None:
                 state.set_recording(segmenter.is_recording)
                 if segmenter.is_recording and not was_recording:
                     state.add_event("recording")
+                    current_utterance_id = state.create_utterance("user", "nagrywana…")
                 elif was_recording and not segmenter.is_recording:
                     state.add_event("recording_done", "cisza 0,8 s — zamykam fragment")
+                    if utterance is None:
+                        state.update_utterance(
+                            current_utterance_id, status="odrzucona — za krótka"
+                        )
                 if utterance is not None:
                     stt_executor.submit(
                         _transcribe_and_enqueue,
@@ -86,6 +101,7 @@ def run(config: VadConfig | None = None) -> None:
                         config.sample_rate,
                         language,
                         state,
+                        current_utterance_id,
                     )
         except KeyboardInterrupt:
             _log("\ngrok-voice-listener: stopping")
