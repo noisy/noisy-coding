@@ -50,31 +50,47 @@ class ListenerState:
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
         self._language = ""  # "" = auto-detect
-        self._character = dict(DEFAULT_CHARACTER) | {
-            "voice": DEFAULT_VOICE,
-            "speed": DEFAULT_SPEED,
-        }
+        # Character is now PER AGENT: {agent_name: character_dict}. The special
+        # key "" holds the character used in single-agent mode (no agents
+        # registered) and as the template for a newly seen agent.
+        self._characters: dict[str, dict] = {"": self._default_character()}
 
-    @property
-    def character(self) -> dict:
-        with self._lock:
-            return dict(self._character)
+    @staticmethod
+    def _default_character() -> dict:
+        return dict(DEFAULT_CHARACTER) | {"voice": DEFAULT_VOICE, "speed": DEFAULT_SPEED}
 
-    def set_character(self, values: dict) -> dict:
+    def _character_bucket(self, agent: str | None) -> str:
+        # No agent given → use the active agent's bucket, else the shared one.
+        key = agent if agent is not None else (self._active_agent or "")
+        if key not in self._characters:
+            # Seed a new agent from the shared/default character.
+            self._characters[key] = dict(self._characters[""])
+        return key
+
+    def character(self, agent: str | None = None) -> dict:
         with self._lock:
+            return dict(self._characters[self._character_bucket(agent)])
+
+    def set_character(self, values: dict, agent: str | None = None) -> dict:
+        with self._lock:
+            key = self._character_bucket(agent)
+            char = self._characters[key]
             for trait in DEFAULT_CHARACTER:
                 if trait in values:
-                    self._character[trait] = max(0, min(100, int(values[trait])))
+                    char[trait] = max(0, min(100, int(values[trait])))
             voice = values.get("voice")
             if isinstance(voice, str) and voice.isalpha():
-                self._character["voice"] = voice.lower()
+                char["voice"] = voice.lower()
             if "speed" in values:
                 try:
-                    speed = float(values["speed"])
-                    self._character["speed"] = max(MIN_SPEED, min(MAX_SPEED, speed))
+                    char["speed"] = max(MIN_SPEED, min(MAX_SPEED, float(values["speed"])))
                 except (TypeError, ValueError):
                     pass
-            return dict(self._character)
+            return dict(char)
+
+    def all_characters(self) -> dict:
+        with self._lock:
+            return {k: dict(v) for k, v in self._characters.items()}
 
     @property
     def mode(self) -> str:

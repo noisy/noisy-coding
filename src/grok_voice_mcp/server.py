@@ -125,10 +125,23 @@ async def announce(text: str, voice_id: str = "", language: str = "", speed: flo
     return "Announcement queued; playing in the background."
 
 
+async def _fetch_character() -> dict:
+    """This agent's character from the daemon (voice/speed/traits)."""
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    agent = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    query = f"?agent={agent}" if agent else ""
+    try:
+        async with httpx.AsyncClient(timeout=0.5) as client:
+            resp = await client.get(f"http://127.0.0.1:{port}/character{query}")
+            return resp.json().get("character") or {}
+    except (httpx.HTTPError, ValueError):
+        return {}
+
+
 async def _render_and_play(text: str, voice_id: str, language: str, speed: float) -> str:
     """Synthesize `text` and play it, serialized behind any current speech."""
     status = await _daemon_status()
-    character = status.get("character") or {}
+    character = await _fetch_character()
     # Hybrid resolution for voice/speed/language: an explicit request arg wins
     # for this one utterance; else the dashboard's Character/Settings value;
     # else the env/fallback default. Keeps the dashboard the source of truth.

@@ -300,11 +300,13 @@ DASHBOARD_HTML = """<!doctype html>
     zenith:"male"
   };
   async function postCharacter() {
+    // Character (voice + traits) is per viewed agent; speed lives in Settings.
     const body = {
       voice: document.getElementById("ch-voice").value,
       speed: Number(document.getElementById("ch-speed").value),
     };
     for (const t of TRAITS) body[t] = Number(document.getElementById("ch-" + t).value);
+    if (viewedAgent) body.agent = viewedAgent;
     await fetch("/character", { method: "POST", body: JSON.stringify(body) });
   }
   function bindSliders() {
@@ -367,7 +369,12 @@ DASHBOARD_HTML = """<!doctype html>
   }
   async function loadCharacter() {
     try {
-      const data = await (await fetch("/character")).json();
+      // Load the VIEWED agent's character, so switching tabs shows its sliders.
+      if (document.activeElement &&
+          document.activeElement.closest &&
+          document.activeElement.closest("#character-box")) return;  // don't yank a slider mid-drag
+      const q = viewedAgent ? "?agent=" + encodeURIComponent(viewedAgent) : "";
+      const data = await (await fetch("/character" + q)).json();
       for (const trait of TRAITS) {
         const input = document.getElementById("ch-" + trait);
         input.value = data.character[trait];
@@ -412,6 +419,7 @@ DASHBOARD_HTML = """<!doctype html>
         // don't wait for the round-trip (that's what felt laggy).
         for (const [k, node] of seen) { node.remove(); seen.delete(k); }
         renderTabs(agents, active);
+        loadCharacter();  // show this agent's own sliders
         tick();
         // Clicking a tab both views it AND makes it the live (listening) agent.
         fetch("/active-agent", { method: "POST", body: JSON.stringify({ name }) });
