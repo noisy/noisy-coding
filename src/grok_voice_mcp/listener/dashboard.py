@@ -202,18 +202,23 @@ DASHBOARD_HTML = """<!doctype html>
     c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const renderBold = s => escapeHtml(s).replace(/\\*\\*(.+?)\\*\\*/g, "<b>$1</b>");
 
-  function dropCard(id) {
-    const el = seen.get(id);
-    if (el) { el.remove(); seen.delete(id); }
+  // Restart-safe key: utterance ids reset to 1 when the daemon restarts, so
+  // pair the id with the start time to keep old and new cards distinct.
+  const cardKey = (u) => u.started_at + ":" + u.id;
+
+  function dropCard(key) {
+    const el = seen.get(key);
+    if (el) { el.remove(); seen.delete(key); }
   }
 
   function upsert(u) {
+    const key = cardKey(u);
     // An utterance that never became text (cough, noise, silence) must not
     // linger — drop it. But keep it if STT actually captured words, even
     // when the clip was flagged too-short/dropped: real speech is not noise.
-    if (PHASE(u.status) === "dead" && !u.text) { dropCard(u.id); return; }
+    if (PHASE(u.status) === "dead" && !u.text) { dropCard(key); return; }
     document.getElementById("empty")?.remove();
-    let el = seen.get(u.id);
+    let el = seen.get(key);
     if (!el) {
       el = document.createElement("div");
       el.innerHTML =
@@ -222,11 +227,18 @@ DASHBOARD_HTML = """<!doctype html>
         '<div class="foot"><span class="detail"></span><span class="cost"></span></div>';
       el.querySelector(".who").textContent = u.role === "user" ? "YOU" : "CLAUDE";
       el.querySelector(".t").textContent = fmtTime(u.started_at);
-      cards.prepend(el);
-      seen.set(u.id, el);
-      while (cards.children.length > 60) {
+      el.dataset.ts = u.started_at;
+      // Insert newest-first by timestamp, not by arrival order — so a daemon
+      // restart (utterance ids reset to 1) doesn't push new cards to the
+      // bottom, and the whole history stays in true chronological order.
+      const after = [...cards.children].find(
+        (c) => Number(c.dataset.ts) < u.started_at
+      );
+      cards.insertBefore(el, after || null);
+      seen.set(key, el);
+      while (cards.children.length > 200) {
         const last = cards.lastChild;
-        for (const [id, node] of seen) if (node === last) seen.delete(id);
+        for (const [k, node] of seen) if (node === last) seen.delete(k);
         last.remove();
       }
     }
