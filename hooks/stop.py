@@ -7,11 +7,13 @@ when voice was used recently, so keyboard-only sessions end turns instantly.
 Fails open (silent exit) whenever the listener daemon is not running.
 """
 
+import fcntl
 import json
 import os
 import sys
 import time
 import urllib.request
+from pathlib import Path
 
 PORT = os.environ.get("GROK_VOICE_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
@@ -23,7 +25,8 @@ POLL_INTERVAL_SECONDS = 0.5
 # "rewake": run as an asyncRewake background hook — poll long, then exit(2)
 # with the transcript on stderr to wake the model.
 MODE = os.environ.get("GROK_VOICE_STOP_MODE", "sync")
-REWAKE_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_WAIT_SECONDS", "300"))
+REWAKE_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_WAIT_SECONDS", "3600"))
+REWAKE_LOCK_FILE = Path.home() / ".config" / "grok-voice" / "rewake.lock"
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
 GRACE_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_GRACE_SECONDS", "2.0"))
@@ -82,6 +85,14 @@ def main() -> None:
     sys.stdin.read()
     try:
         if MODE == "rewake":
+            # Only one background poller may watch the queue: a stale poller
+            # from an earlier turn would steal (and lose) transcripts.
+            REWAKE_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+            lock = open(REWAKE_LOCK_FILE, "w")
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                return  # another poller is already on duty
             spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
             if spoken:
                 spoken = _collect_continuation(spoken)
