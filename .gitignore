@@ -6,3 +6,5 @@ __pycache__/
 .env
 dist/
 .claude/worktrees/
+TODO.md
+FEEDBACK.md

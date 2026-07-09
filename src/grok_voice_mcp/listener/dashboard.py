@@ -50,7 +50,7 @@ DASHBOARD_HTML = """<!doctype html>
   button.chip:hover { border-color: var(--teal); }
   button.chip:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
   #mode-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-  #mode-label.live { color: var(--amber); }
+  #mode-label.live, #tts-label.live { color: var(--amber); }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
   .chip.listening .dot { background: var(--teal); animation: pulse 2s infinite; }
   .chip.recording .dot { background: var(--amber); animation: pulse 0.7s infinite; }
@@ -134,8 +134,11 @@ DASHBOARD_HTML = """<!doctype html>
     <span class="chip"><span class="num" id="queued">0</span>&nbsp;<small>queued</small></span>
     <span class="chip"><small>session</small>&nbsp;<span class="num" id="cost">$0.0000</span></span>
     <span class="chip" id="credits-chip" hidden><small>credits left</small>&nbsp;<span class="num" id="credits"></span></span>
-    <button class="chip" id="mode-toggle" type="button" title="Batch: transcribe after you stop talking ($0.10/h). Live: stream while you talk, text appears as you speak ($0.20/h).">
-      <small>mode</small>&nbsp;<span id="mode-label">…</span>
+    <button class="chip" id="mode-toggle" type="button" title="Speech-to-text. Batch: transcribe after you stop talking ($0.10/h). Live: stream while you talk ($0.20/h).">
+      <small>STT</small>&nbsp;<span id="mode-label">…</span>
+    </button>
+    <button class="chip" id="tts-toggle" type="button" title="Text-to-speech. Batch: wait for the whole clip, then play. Live: stream audio as Claude generates it, so playback starts sooner on long replies.">
+      <small>TTS</small>&nbsp;<span id="tts-label">…</span>
     </button>
     <button class="chip" id="mute-toggle" type="button" title="Stop transcribing the mic (e.g. while talking to someone else). Claude keeps working; nothing you say reaches him until you unmute.">
       🎤&nbsp;<span id="mute-label">…</span>
@@ -330,6 +333,18 @@ DASHBOARD_HTML = """<!doctype html>
     await fetch("/mode", { method: "POST", body: JSON.stringify({ mode: next }) });
   });
 
+  let currentTtsMode = null;
+  document.getElementById("tts-toggle").addEventListener("click", async () => {
+    const next = currentTtsMode === "live" ? "batch" : "live";
+    await fetch("/settings", { method: "POST", body: JSON.stringify({ tts_mode: next }) });
+  });
+  function setTtsMode(mode) {
+    currentTtsMode = mode;
+    const label = document.getElementById("tts-label");
+    label.textContent = mode;
+    label.className = mode === "live" ? "live" : "";
+  }
+
   let currentMuted = false;
   document.getElementById("mute-toggle").addEventListener("click", async () => {
     await fetch("/mute", { method: "POST", body: JSON.stringify({ muted: !currentMuted }) });
@@ -362,6 +377,7 @@ DASHBOARD_HTML = """<!doctype html>
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
       setMode(s.mode || "batch");
+      setTtsMode(s.tts_mode || "batch");
       setMuted(!!s.muted);
       const silence = document.getElementById("ch-silence");
       if (s.end_silence_ms && document.activeElement !== silence) {

@@ -39,6 +39,23 @@ async def _dashboard_event(kind: str, detail: str, **extra: int) -> None:
     await _listener_post("/event", {"kind": kind, "detail": detail, **extra})
 
 
+async def _tts_streaming_enabled() -> bool:
+    """Whether to stream TTS: env override, else the daemon's tts_mode.
+
+    Defaults to batch (False) — the proven path — when nothing says otherwise
+    or the daemon is unreachable.
+    """
+    if os.environ.get("GROK_VOICE_TTS_MODE", "").lower() == "live":
+        return True
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    try:
+        async with httpx.AsyncClient(timeout=0.5) as client:
+            response = await client.get(f"http://127.0.0.1:{port}/status")
+            return response.json().get("tts_mode") == "live"
+    except (httpx.HTTPError, ValueError):
+        return False
+
+
 @mcp.tool()
 async def speak(text: str, voice_id: str = "", language: str = "", speed: float = 1.0) -> str:
     """Speak a short message aloud to the user through their speakers.

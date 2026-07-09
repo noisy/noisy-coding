@@ -41,6 +41,7 @@ class ListenerState:
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
         self._credits_usd: float | None = None
         self._mode = "batch"
+        self._tts_mode = "batch"
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
         self._smart_turn = DEFAULT_SMART_TURN
         self._character = dict(DEFAULT_CHARACTER) | {
@@ -77,6 +78,15 @@ class ListenerState:
     def set_mode(self, mode: str) -> None:
         with self._lock:
             self._mode = mode
+
+    @property
+    def tts_mode(self) -> str:
+        with self._lock:
+            return self._tts_mode
+
+    def set_tts_mode(self, mode: str) -> None:
+        with self._lock:
+            self._tts_mode = mode
 
     @property
     def end_silence_ms(self) -> int:

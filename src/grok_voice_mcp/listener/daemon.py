@@ -166,6 +166,8 @@ def run(config: VadConfig | None = None) -> None:
             state.set_smart_turn(saved["smart_turn"])
         if saved.get("mode") in ("batch", "live"):
             state.set_mode(saved["mode"])
+        if saved.get("tts_mode") in ("batch", "live"):
+            state.set_tts_mode(saved["tts_mode"])
     except (OSError, ValueError):
         pass
     server = start_http_api(state, port)
