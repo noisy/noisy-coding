@@ -6,6 +6,7 @@ from collections import deque
 from dataclasses import dataclass
 
 EVENT_LOG_SIZE = 300
+DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50}
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,19 @@ class ListenerState:
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
         self._credits_usd: float | None = None
         self._mode = "batch"
+        self._character = dict(DEFAULT_CHARACTER)
+
+    @property
+    def character(self) -> dict:
+        with self._lock:
+            return dict(self._character)
+
+    def set_character(self, values: dict) -> dict:
+        with self._lock:
+            for trait in DEFAULT_CHARACTER:
+                if trait in values:
+                    self._character[trait] = max(0, min(100, int(values[trait])))
+            return dict(self._character)
 
     @property
     def mode(self) -> str:

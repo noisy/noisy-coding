@@ -4,6 +4,7 @@ import json
 import threading
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from grok_voice_mcp.listener import pricing
@@ -12,6 +13,7 @@ from grok_voice_mcp.listener.state import ListenerState
 
 DEFAULT_PORT = 8765
 PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
+CHARACTER_FILE = Path.home() / ".config" / "grok-voice" / "character.json"
 
 
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
@@ -27,6 +29,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"events": state.events_since(since)})
             elif url.path == "/utterances":
                 self._respond({"utterances": state.utterances()})
+            elif url.path == "/character":
+                self._respond({"character": state.character})
             elif url.path == "/status":
                 self._respond(
                     {
@@ -51,6 +55,21 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.set_paused(False)
                 state.add_event("unmuted")
                 self._respond({"listening": True})
+            elif self.path == "/character":
+                values = state.set_character(self._read_json_body())
+                summary = ", ".join(f"{k} {v}/100" for k, v in values.items())
+                state.add_event("character", summary)
+                state.add_transcript(
+                    f"[CHARACTER] Krzysztof moved your character sliders to: {summary}. "
+                    "Adjust the style of your spoken and written replies accordingly, "
+                    "and briefly acknowledge the new setting in character."
+                )
+                try:
+                    CHARACTER_FILE.parent.mkdir(parents=True, exist_ok=True)
+                    CHARACTER_FILE.write_text(json.dumps(values))
+                except OSError:
+                    pass
+                self._respond({"character": values})
             elif self.path == "/mode":
                 body = self._read_json_body()
                 mode = str(body.get("mode", ""))

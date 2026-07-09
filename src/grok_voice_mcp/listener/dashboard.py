@@ -66,6 +66,16 @@ DASHBOARD_HTML = """<!doctype html>
   }
   .rules td:last-child { color: var(--muted); }
 
+  .sliders { display: grid; gap: 10px; margin-top: 12px; }
+  .sliders label {
+    display: grid; grid-template-columns: 130px 1fr 42px; gap: 10px;
+    align-items: center; font-size: 0.85rem; font-weight: 600;
+  }
+  .sliders label small { display: block; color: var(--muted); font-weight: 400; font-size: 0.72rem; }
+  .sliders input[type="range"] { width: 100%; accent-color: var(--teal); }
+  .sliders .val { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem;
+    color: var(--teal); text-align: right; font-variant-numeric: tabular-nums; }
+
   #cards { display: flex; flex-direction: column; gap: 12px; }
   .card {
     background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
@@ -116,6 +126,18 @@ DASHBOARD_HTML = """<!doctype html>
       <small>mode</small>&nbsp;<span id="mode-label">…</span>
     </button>
   </div>
+
+  <details class="rules" open>
+    <summary>Character</summary>
+    <div class="sliders">
+      <label>Humor <small>dry ↔ playful</small>
+        <input type="range" id="ch-humor" min="0" max="100" step="5"><span class="val" id="ch-humor-val"></span></label>
+      <label>Honesty <small>diplomatic ↔ blunt</small>
+        <input type="range" id="ch-honesty" min="0" max="100" step="5"><span class="val" id="ch-honesty-val"></span></label>
+      <label>Brevity <small>detailed ↔ terse</small>
+        <input type="range" id="ch-brevity" min="0" max="100" step="5"><span class="val" id="ch-brevity-val"></span></label>
+    </div>
+  </details>
 
   <details class="rules">
     <summary>Timing rules</summary>
@@ -186,6 +208,32 @@ DASHBOARD_HTML = """<!doctype html>
     chip.className = "chip " + cls;
     document.getElementById("state-label").textContent = label;
   }
+
+  const TRAITS = ["humor", "honesty", "brevity"];
+  function bindSliders() {
+    for (const trait of TRAITS) {
+      const input = document.getElementById("ch-" + trait);
+      const val = document.getElementById("ch-" + trait + "-val");
+      input.addEventListener("input", () => { val.textContent = input.value; });
+      input.addEventListener("change", async () => {
+        const body = {};
+        for (const t of TRAITS) body[t] = Number(document.getElementById("ch-" + t).value);
+        await fetch("/character", { method: "POST", body: JSON.stringify(body) });
+      });
+    }
+  }
+  async function loadCharacter() {
+    try {
+      const data = await (await fetch("/character")).json();
+      for (const trait of TRAITS) {
+        const input = document.getElementById("ch-" + trait);
+        input.value = data.character[trait];
+        document.getElementById("ch-" + trait + "-val").textContent = input.value;
+      }
+    } catch {}
+  }
+  bindSliders();
+  loadCharacter();
 
   let currentMode = null;
   document.getElementById("mode-toggle").addEventListener("click", async () => {

@@ -15,7 +15,14 @@ import numpy as np
 import sounddevice as sd
 
 from grok_voice_mcp.listener import pricing, stt, stt_stream
-from grok_voice_mcp.listener.http_api import DEFAULT_PORT, PORT_ENV_VAR, start_http_api
+import json
+
+from grok_voice_mcp.listener.http_api import (
+    CHARACTER_FILE,
+    DEFAULT_PORT,
+    PORT_ENV_VAR,
+    start_http_api,
+)
 from grok_voice_mcp.listener.state import ListenerState
 from grok_voice_mcp.listener.vad import UtteranceSegmenter, VadConfig
 
@@ -124,6 +131,10 @@ def run(config: VadConfig | None = None) -> None:
 
     state = ListenerState()
     state.set_mode(os.environ.get(MODE_ENV_VAR, "batch"))
+    try:
+        state.set_character(json.loads(CHARACTER_FILE.read_text()))
+    except (OSError, ValueError):
+        pass
     server = start_http_api(state, port)
     if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
         threading.Thread(target=_poll_credits, args=(state,), daemon=True).start()
