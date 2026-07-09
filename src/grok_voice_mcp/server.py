@@ -34,7 +34,7 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
 
     audio = await tts.synthesize(text, resolved_voice, resolved_language, speed)
     await playback.play(audio.audio, audio.content_type)
-    return f"Spoke {audio.duration_seconds:.1f}s of audio with voice '{resolved_voice}'."
+    return f"Spoke the message aloud with voice '{resolved_voice}'."
 
 
 @mcp.tool()

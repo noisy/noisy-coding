@@ -62,11 +62,20 @@ async def synthesize(
             f"Grok TTS request failed with HTTP {response.status_code}: {response.text[:500]}"
         )
 
-    body = response.json()
+    # The API answers with raw audio bytes (content-type: audio/mpeg) by
+    # default, or JSON with base64 audio (e.g. when timestamps are requested).
+    content_type = response.headers.get("content-type", "").split(";")[0].strip()
+    if content_type == "application/json":
+        body = response.json()
+        return SynthesizedAudio(
+            audio=base64.b64decode(body["audio"]),
+            content_type=body.get("content_type", "audio/mpeg"),
+            duration_seconds=body.get("duration", 0.0),
+        )
     return SynthesizedAudio(
-        audio=base64.b64decode(body["audio"]),
-        content_type=body.get("content_type", "audio/mpeg"),
-        duration_seconds=body.get("duration", 0.0),
+        audio=response.content,
+        content_type=content_type or "audio/mpeg",
+        duration_seconds=0.0,
     )
 
 

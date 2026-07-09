@@ -16,6 +16,23 @@ def api_key(monkeypatch):
 
 
 @respx.mock
+async def test_synthesize_returns_raw_bytes_from_audio_response():
+    respx.post(f"{tts.XAI_API_BASE}/tts").mock(
+        return_value=Response(
+            200, content=FAKE_AUDIO, headers={"content-type": "audio/mpeg"}
+        )
+    )
+
+    result = await tts.synthesize("hello", voice_id="eve", language="en", speed=1.0)
+
+    assert result == tts.SynthesizedAudio(
+        audio=FAKE_AUDIO,
+        content_type="audio/mpeg",
+        duration_seconds=0.0,
+    )
+
+
+@respx.mock
 async def test_synthesize_decodes_base64_audio_from_json_response():
     respx.post(f"{tts.XAI_API_BASE}/tts").mock(
         return_value=Response(
