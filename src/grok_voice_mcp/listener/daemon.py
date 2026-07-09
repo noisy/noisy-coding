@@ -28,13 +28,16 @@ def _transcribe_and_enqueue(
     samples: np.ndarray, sample_rate: int, language: str, state: ListenerState
 ) -> None:
     seconds = len(samples) / sample_rate
+    state.add_event("transcribing", f"{seconds:.1f}s")
     try:
         text = stt.transcribe(stt.encode_wav(samples, sample_rate), language)
     except stt.GrokSTTError as error:
         _log(f"[stt-error] {error}")
+        state.add_event("stt_error", str(error)[:200])
         return
     if not text:
         _log(f"[dropped] {seconds:.1f}s of audio transcribed to nothing")
+        state.add_event("dropped", f"{seconds:.1f}s audio bez treści")
         return
     state.add_transcript(text)
     _log(f"[queued] ({seconds:.1f}s) {text}")
@@ -69,8 +72,13 @@ def run(config: VadConfig | None = None) -> None:
                 frame = frames.get()
                 if state.paused:
                     continue
+                was_recording = segmenter.is_recording
                 utterance = segmenter.feed(frame)
                 state.set_recording(segmenter.is_recording)
+                if segmenter.is_recording and not was_recording:
+                    state.add_event("recording")
+                elif was_recording and not segmenter.is_recording:
+                    state.add_event("recording_done", "cisza 0,8 s — zamykam fragment")
                 if utterance is not None:
                     stt_executor.submit(
                         _transcribe_and_enqueue,

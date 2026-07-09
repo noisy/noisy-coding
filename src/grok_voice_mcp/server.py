@@ -18,14 +18,18 @@ ECHO_TAIL_SECONDS = 0.5
 mcp = FastMCP("grok-voice")
 
 
-async def _listener_post(path: str) -> None:
+async def _listener_post(path: str, body: dict | None = None) -> None:
     """Best-effort call to the listener daemon; silent no-op when it's down."""
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
     try:
         async with httpx.AsyncClient(timeout=0.5) as client:
-            await client.post(f"http://127.0.0.1:{port}{path}")
+            await client.post(f"http://127.0.0.1:{port}{path}", json=body)
     except httpx.HTTPError:
         pass
+
+
+async def _dashboard_event(kind: str, detail: str) -> None:
+    await _listener_post("/event", {"kind": kind, "detail": detail})
 
 
 @mcp.tool()
@@ -46,7 +50,9 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
     resolved_voice = voice_id or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
     resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
+    await _dashboard_event("speak", f"[{resolved_voice}] „{text}”")
     audio = await tts.synthesize(text, resolved_voice, resolved_language, speed)
+    await _dashboard_event("speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 z Grok TTS")
     # Mute the listener while we play, or the mic transcribes our own speech.
     await _listener_post("/pause")
     try:
@@ -54,6 +60,7 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
         await asyncio.sleep(ECHO_TAIL_SECONDS)
     finally:
         await _listener_post("/resume")
+    await _dashboard_event("speak_done", f"głos '{resolved_voice}'")
     return f"Spoke the message aloud with voice '{resolved_voice}'."
 
 

@@ -2,7 +2,10 @@
 
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
+
+EVENT_LOG_SIZE = 300
 
 
 @dataclass(frozen=True)
@@ -18,16 +21,37 @@ class ListenerState:
         self._paused = False
         self._recording = False
         self._last_transcript_at = 0.0
+        self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
+        self._event_seq = 0
+
+    def add_event(self, kind: str, detail: str = "") -> None:
+        with self._lock:
+            self._add_event_locked(kind, detail)
+
+    def _add_event_locked(self, kind: str, detail: str) -> None:
+        self._event_seq += 1
+        self._events.append(
+            {"seq": self._event_seq, "ts": time.time(), "kind": kind, "detail": detail}
+        )
+
+    def events_since(self, since_seq: int) -> list[dict]:
+        with self._lock:
+            return [e for e in self._events if e["seq"] > since_seq]
 
     def add_transcript(self, text: str) -> None:
         with self._lock:
             now = time.time()
             self._transcripts.append(Transcript(text=text, timestamp=now))
             self._last_transcript_at = now
+            self._add_event_locked("transcript", text)
 
     def drain(self) -> list[Transcript]:
         with self._lock:
             transcripts, self._transcripts = self._transcripts, []
+            if transcripts:
+                self._add_event_locked(
+                    "delivered", " ".join(t.text for t in transcripts)
+                )
             return transcripts
 
     @property
