@@ -13,8 +13,33 @@ aloud through your speakers, synthesized by the [Grok (xAI) Voice API](https://d
 
 ## Roadmap
 
-- **v1 (this)** — voice output: Claude speaks short summaries to you.
-- **v2** — voice input: a `listen` tool using Grok STT so you can talk back.
+- **v1 (done)** — voice output: Claude speaks short summaries to you.
+- **v2 (done)** — voice input: an always-on listener daemon + Claude Code hooks,
+  so you can talk to Claude hands-free while it works.
+
+## v2: how voice input works
+
+MCP has no push mechanism, so the listener is a separate daemon and the
+"push" is done by Claude Code hooks:
+
+```
+mic -> VAD (energy, adaptive noise floor) -> Grok STT (POST /v1/stt)
+    -> transcript queue -> HTTP on 127.0.0.1:8765
+         ^ polled by hooks:
+           - PostToolUse: injects queued speech after every tool call
+           - Stop: waits up to 30s for you to speak before the turn ends
+             (only 2s when voice wasn't used in the last 5 minutes)
+```
+
+Start the daemon (first run triggers the macOS microphone permission prompt):
+
+```bash
+uv run grok-voice-listener
+```
+
+The hook scripts live in `hooks/` (stdlib-only, run on system python3) and are
+registered in `~/.claude/settings.json`. They fail open: with the daemon down
+they exit silently in under a second, so keyboard-only sessions are unaffected.
 
 ## Setup
 
@@ -33,6 +58,9 @@ Environment variables (set them in the MCP server config, not in the repo):
 | `XAI_API_KEY` | yes | — | xAI API key |
 | `GROK_VOICE_DEFAULT_VOICE` | no | `eve` | Voice used when the tool call doesn't specify one |
 | `GROK_VOICE_DEFAULT_LANGUAGE` | no | `en` | BCP-47 language code, or `auto` |
+| `GROK_VOICE_LISTENER_PORT` | no | `8765` | Port of the listener daemon's queue API |
+| `GROK_VOICE_STT_LANGUAGE` | no | auto | Language hint for transcription (e.g. `pl`) |
+| `GROK_VOICE_STOP_WAIT_SECONDS` | no | `30` | How long the Stop hook waits for speech |
 
 ## Registering in Claude Code
 
