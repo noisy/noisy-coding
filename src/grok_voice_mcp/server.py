@@ -17,6 +17,11 @@ FALLBACK_LANGUAGE = "en"
 ECHO_TAIL_SECONDS = 0.25
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
+# Serialize speech: only one utterance may play at a time. Without this two
+# speak calls (e.g. one straddling an MCP reconnect) start players in
+# parallel and talk over each other.
+_speak_lock = asyncio.Lock()
+
 
 def _emphasis_to_speech_tags(text: str) -> str:
     """Markdown **bold** becomes vocal emphasis for the TTS engine."""
@@ -57,12 +62,23 @@ async def _tts_streaming_enabled() -> bool:
 
 
 @mcp.tool()
-async def speak(text: str, voice_id: str = "", language: str = "", speed: float = 1.0) -> str:
+async def speak(
+    text: str,
+    voice_id: str = "",
+    language: str = "",
+    speed: float = 1.0,
+    interrupt: bool = False,
+) -> str:
     """Speak a short message aloud to the user through their speakers.
 
     Use this to deliver a spoken TL;DR alongside (not instead of) your written
     answer: 1-3 conversational sentences summarizing the outcome, a finding,
     or a question. Never read code, file paths, or long explanations aloud.
+
+    Concurrent speech is serialized: by default a new call WAITS for the
+    current utterance to finish (queued). Set interrupt=True to cut the
+    current utterance off and speak immediately — use it only when your
+    previous words are now stale (e.g. the user corrected you mid-answer).
 
     Args:
         text: What to say. Plain conversational prose. Mark the key words the
@@ -73,37 +89,42 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
         voice_id: Grok voice to use (see list_voices). Empty = server default.
         language: BCP-47 code such as "en" or "pl", or "auto". Empty = server default.
         speed: Speech rate multiplier, 0.7-1.5.
+        interrupt: Cut off any utterance currently playing and speak now.
     """
     resolved_voice = voice_id or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
     resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
-    await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
-    speech_text = _emphasis_to_speech_tags(text)
-    streaming = await _tts_streaming_enabled()
+    if interrupt:
+        playback.stop_all_players()  # cut the current utterance; lock releases
 
-    # Mute the listener while we play, or the mic transcribes our own speech.
-    await _listener_post("/pause")
-    await _listener_post("/speaking", {"speaking": True})
-    try:
-        if streaming:
-            await _dashboard_event("speak_audio", "streaming from Grok TTS")
-            await tts_stream.speak_streaming(
-                speech_text, resolved_voice, resolved_language, speed
-            )
-        else:
-            audio = await tts.synthesize(
-                speech_text, resolved_voice, resolved_language, speed
-            )
-            await _dashboard_event(
-                "speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS"
-            )
-            await playback.play(audio.audio, audio.content_type)
-        await asyncio.sleep(ECHO_TAIL_SECONDS)
-    finally:
-        await _listener_post("/speaking", {"speaking": False})
-        await _listener_post("/resume")
-    await _dashboard_event("speak_done", f"głos '{resolved_voice}'")
-    return f"Spoke the message aloud with voice '{resolved_voice}'."
+    async with _speak_lock:  # queue behind any utterance still playing
+        await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
+        speech_text = _emphasis_to_speech_tags(text)
+        streaming = await _tts_streaming_enabled()
+
+        # Mute the listener while we play, or the mic transcribes our own speech.
+        await _listener_post("/pause")
+        await _listener_post("/speaking", {"speaking": True})
+        try:
+            if streaming:
+                await _dashboard_event("speak_audio", "streaming from Grok TTS")
+                await tts_stream.speak_streaming(
+                    speech_text, resolved_voice, resolved_language, speed
+                )
+            else:
+                audio = await tts.synthesize(
+                    speech_text, resolved_voice, resolved_language, speed
+                )
+                await _dashboard_event(
+                    "speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS"
+                )
+                await playback.play(audio.audio, audio.content_type)
+            await asyncio.sleep(ECHO_TAIL_SECONDS)
+        finally:
+            await _listener_post("/speaking", {"speaking": False})
+            await _listener_post("/resume")
+        await _dashboard_event("speak_done", f"głos '{resolved_voice}'")
+        return f"Spoke the message aloud with voice '{resolved_voice}'."
 
 
 @mcp.tool()

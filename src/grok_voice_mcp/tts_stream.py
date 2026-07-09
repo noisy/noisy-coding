@@ -15,7 +15,7 @@ from pathlib import Path
 
 import websockets
 
-from grok_voice_mcp import tts
+from grok_voice_mcp import playback, tts
 
 STREAM_URL_BASE = "wss://api.x.ai/v1/tts"
 
@@ -49,14 +49,24 @@ async def _play_from_stream(chunks: asyncio.Queue[bytes | None]) -> None:
         stderr=asyncio.subprocess.DEVNULL,
     )
     assert process.stdin is not None
-    while True:
-        chunk = await chunks.get()
-        if chunk is None:
-            break
-        process.stdin.write(chunk)
-        await process.stdin.drain()
-    process.stdin.close()
-    await process.wait()
+    playback.register_player(process)
+    try:
+        while True:
+            chunk = await chunks.get()
+            if chunk is None:
+                break
+            if process.returncode is not None:
+                break  # player was killed by an interrupt
+            try:
+                process.stdin.write(chunk)
+                await process.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError):
+                break
+        if process.returncode is None:
+            process.stdin.close()
+            await process.wait()
+    finally:
+        playback.unregister_player(process)
 
 
 async def _play_buffered(chunks: asyncio.Queue[bytes | None]) -> None:
