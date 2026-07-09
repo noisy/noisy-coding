@@ -142,6 +142,9 @@ DASHBOARD_HTML = """<!doctype html>
 
   const fmtTime = ts => new Date(ts * 1000).toLocaleTimeString();
   const fmtCost = usd => usd >= 0.01 ? "$" + usd.toFixed(2) : "$" + usd.toFixed(4);
+  const escapeHtml = s => s.replace(/[&<>"']/g,
+    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const renderBold = s => escapeHtml(s).replace(/\\*\\*(.+?)\\*\\*/g, "<b>$1</b>");
 
   function upsert(u) {
     document.getElementById("empty")?.remove();
@@ -168,7 +171,7 @@ DASHBOARD_HTML = """<!doctype html>
     st.textContent = u.status;
     st.className = "status phase-" + phase;
     const txt = el.querySelector(".text");
-    if (u.text) { txt.textContent = u.text; txt.className = "text"; }
+    if (u.text) { txt.innerHTML = renderBold(u.text); txt.className = "text"; }
     else {
       txt.className = "text pending";
       txt.textContent = phase === "rec" ? "listening, keep talking…" :

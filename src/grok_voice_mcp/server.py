@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import re
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -14,6 +15,12 @@ LISTENER_PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
 FALLBACK_VOICE = "eve"
 FALLBACK_LANGUAGE = "en"
 ECHO_TAIL_SECONDS = 0.25
+EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
+
+
+def _emphasis_to_speech_tags(text: str) -> str:
+    """Markdown **bold** becomes vocal emphasis for the TTS engine."""
+    return EMPHASIS_PATTERN.sub(r"<loud>\1</loud>", text)
 
 mcp = FastMCP("grok-voice")
 
@@ -41,8 +48,11 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
     or a question. Never read code, file paths, or long explanations aloud.
 
     Args:
-        text: What to say. Plain conversational prose. Supports inline speech
-            tags like [pause] or [laugh] and wrapping tags like <soft>text</soft>.
+        text: What to say. Plain conversational prose. Mark the key words the
+            listener must catch with markdown bold (**like this**) — they get
+            vocal emphasis and show bold on the live dashboard. Also supports
+            inline speech tags like [pause] or [laugh] and wrapping tags like
+            <soft>text</soft>.
         voice_id: Grok voice to use (see list_voices). Empty = server default.
         language: BCP-47 code such as "en" or "pl", or "auto". Empty = server default.
         speed: Speech rate multiplier, 0.7-1.5.
@@ -51,7 +61,8 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
     resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
     await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
-    audio = await tts.synthesize(text, resolved_voice, resolved_language, speed)
+    speech_text = _emphasis_to_speech_tags(text)
+    audio = await tts.synthesize(speech_text, resolved_voice, resolved_language, speed)
     await _dashboard_event("speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS")
     # Mute the listener while we play, or the mic transcribes our own speech.
     await _listener_post("/pause")
