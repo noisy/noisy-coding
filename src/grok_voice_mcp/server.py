@@ -91,11 +91,34 @@ async def speak(
         speed: Speech rate multiplier, 0.7-1.5.
         interrupt: Cut off any utterance currently playing and speak now.
     """
-    resolved_voice = voice_id or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
-    resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
-
     if interrupt:
         playback.stop_all_players()  # cut the current utterance; lock releases
+    resolved_voice = await _render_and_play(text, voice_id, language, speed)
+    return f"Spoke the message aloud with voice '{resolved_voice}'."
+
+
+_announce_tasks: set[asyncio.Task] = set()
+
+
+@mcp.tool()
+async def announce(text: str, voice_id: str = "", language: str = "", speed: float = 1.0) -> str:
+    """Speak a quick spoken update WITHOUT waiting for it to finish.
+
+    Fire-and-forget: use this to tell the user what you just did and keep
+    working ("done with X, moving on") — it returns immediately and plays in
+    the background, queued behind any current speech. Use `speak` instead when
+    you are asking a question or otherwise waiting for the user's reply.
+    """
+    task = asyncio.create_task(_render_and_play(text, voice_id, language, speed))
+    _announce_tasks.add(task)  # keep a strong ref so it isn't GC'd mid-play
+    task.add_done_callback(_announce_tasks.discard)
+    return "Announcement queued; playing in the background."
+
+
+async def _render_and_play(text: str, voice_id: str, language: str, speed: float) -> str:
+    """Synthesize `text` and play it, serialized behind any current speech."""
+    resolved_voice = voice_id or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
+    resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
     async with _speak_lock:  # queue behind any utterance still playing
         await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
@@ -124,7 +147,7 @@ async def speak(
             await _listener_post("/speaking", {"speaking": False})
             await _listener_post("/resume")
         await _dashboard_event("speak_done", f"głos '{resolved_voice}'")
-        return f"Spoke the message aloud with voice '{resolved_voice}'."
+    return resolved_voice
 
 
 @mcp.tool()
