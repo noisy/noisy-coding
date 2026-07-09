@@ -18,9 +18,9 @@ class VadConfig:
     noise_floor_alpha: float = 0.05
     speech_multiplier: float = 3.0
     min_speech_rms: float = 300.0
-    start_frames: int = 3
+    start_frames: int = 2
     end_silence_ms: int = 800
-    pre_roll_ms: int = 300
+    pre_roll_ms: int = 700
     min_utterance_ms: int = 400
     max_utterance_ms: int = 180_000
 
@@ -44,6 +44,7 @@ class UtteranceSegmenter:
         self._speech_run = 0
         self._silence_run = 0
         self._recording: list[np.ndarray] = []
+        self._pre_roll_frames_included = 0
 
     @property
     def is_recording(self) -> bool:
@@ -69,6 +70,7 @@ class UtteranceSegmenter:
             self._speech_run += 1
             if self._speech_run >= self.config.start_frames:
                 self._recording = list(self._pre_roll)
+                self._pre_roll_frames_included = len(self._pre_roll) - self._speech_run
                 self._silence_run = 0
         else:
             self._speech_run = 0
@@ -96,11 +98,14 @@ class UtteranceSegmenter:
         self._speech_run = 0
         self._pre_roll.clear()
 
-        speech_ms = (
-            len(utterance) / self.config.sample_rate * 1000
-            - self._silence_run * self.config.frame_ms
+        speech_frames = (
+            len(utterance) // self.config.frame_samples
+            - self._pre_roll_frames_included
+            - self._silence_run
         )
+        speech_ms = speech_frames * self.config.frame_ms
         self._silence_run = 0
+        self._pre_roll_frames_included = 0
         if speech_ms < self.config.min_utterance_ms:
             return None
         return utterance
