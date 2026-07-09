@@ -39,16 +39,18 @@ DASHBOARD_HTML = """<!doctype html>
   @media (prefers-reduced-motion: reduce) { .card.speaking { animation: none; } }
 
   .statusbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
-  .agents-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -8px 0 20px; }
-  .agents-bar .agents-label { font-size: 0.72rem; text-transform: uppercase;
-    letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
-  .agents-bar button {
-    font: inherit; cursor: pointer; border: 1px solid var(--line);
-    background: var(--surface); color: var(--muted); border-radius: 999px;
-    padding: 5px 13px; font-size: 0.85rem; font-weight: 600;
+  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); margin: 8px 0 0; }
+  .tabs button {
+    font: inherit; cursor: pointer; border: none; background: none;
+    color: var(--muted); font-weight: 650; font-size: 0.92rem;
+    padding: 9px 16px 10px; border-bottom: 2px solid transparent; margin-bottom: -2px;
+    display: inline-flex; align-items: center; gap: 7px;
   }
-  .agents-bar button.active { border-color: var(--teal); color: var(--teal); background: var(--teal-soft); }
-  .agents-bar button:hover { border-color: var(--teal); }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.viewing { color: var(--ink); border-bottom-color: var(--ink); }
+  /* A dot shows which agent is LIVE (listening), independent of which tab you view. */
+  .tabs button .live-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; }
+  .tabs button.live .live-dot { background: var(--teal); animation: pulse 2s infinite; }
   .chip {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--line); background: var(--surface);
@@ -155,29 +157,8 @@ DASHBOARD_HTML = """<!doctype html>
     </button>
   </div>
 
-  <div id="agents-bar" class="agents-bar" hidden>
-    <span class="agents-label">Agents</span>
-    <span id="agents-list"></span>
-  </div>
-
-  <details class="rules" open>
-    <summary>Character</summary>
-    <div class="sliders">
-      <label><span class="name">Humor <small>dry ↔ playful</small></span>
-        <input type="range" id="ch-humor" min="0" max="100" step="5"><span class="val" id="ch-humor-val"></span></label>
-      <label><span class="name">Honesty <small>diplomatic ↔ blunt</small></span>
-        <input type="range" id="ch-honesty" min="0" max="100" step="5"><span class="val" id="ch-honesty-val"></span></label>
-      <label><span class="name">Brevity <small>detailed ↔ terse</small></span>
-        <input type="range" id="ch-brevity" min="0" max="100" step="5"><span class="val" id="ch-brevity-val"></span></label>
-      <label><span class="name">Chatty <small>milestones only ↔ frequent updates</small></span>
-        <input type="range" id="ch-chatty" min="0" max="100" step="5"><span class="val" id="ch-chatty-val"></span></label>
-      <label><span class="name">Voice <small>who speaks to you</small></span>
-        <select id="ch-voice"></select><span class="val"></span></label>
-    </div>
-  </details>
-
   <details class="rules">
-    <summary>Settings</summary>
+    <summary>Settings <small>(shared across agents)</small></summary>
     <div class="sliders">
       <label><span class="name">Speed <small>0.7× ↔ 1.5×</small></span>
         <input type="range" id="ch-speed" min="0.7" max="1.5" step="0.05"><span class="val" id="ch-speed-val"></span></label>
@@ -200,6 +181,24 @@ DASHBOARD_HTML = """<!doctype html>
       <tr><td>2s silence</td><td>after a transcript: the grace period ends and Claude wakes with everything; speaking again extends the wait (max 20s)</td></tr>
       <tr><td>5 min</td><td>how long the background hook keeps listening after a turn ends</td></tr>
     </table>
+  </details>
+
+  <div id="tabs" class="tabs" hidden></div>
+
+  <details class="rules" open id="character-box">
+    <summary>Character <small id="character-for"></small></summary>
+    <div class="sliders">
+      <label><span class="name">Humor <small>dry ↔ playful</small></span>
+        <input type="range" id="ch-humor" min="0" max="100" step="5"><span class="val" id="ch-humor-val"></span></label>
+      <label><span class="name">Honesty <small>diplomatic ↔ blunt</small></span>
+        <input type="range" id="ch-honesty" min="0" max="100" step="5"><span class="val" id="ch-honesty-val"></span></label>
+      <label><span class="name">Brevity <small>detailed ↔ terse</small></span>
+        <input type="range" id="ch-brevity" min="0" max="100" step="5"><span class="val" id="ch-brevity-val"></span></label>
+      <label><span class="name">Chatty <small>milestones only ↔ frequent updates</small></span>
+        <input type="range" id="ch-chatty" min="0" max="100" step="5"><span class="val" id="ch-chatty-val"></span></label>
+      <label><span class="name">Voice <small>who speaks to you</small></span>
+        <select id="ch-voice"></select><span class="val"></span></label>
+    </div>
   </details>
 
   <div id="cards"><div class="empty" id="empty">Say something — the first card will appear here.</div></div>
@@ -390,24 +389,32 @@ DASHBOARD_HTML = """<!doctype html>
     await fetch("/mode", { method: "POST", body: JSON.stringify({ mode: next }) });
   });
 
-  function renderAgents(agents, active) {
-    const names = Object.keys(agents);
-    const bar = document.getElementById("agents-bar");
-    // Show as soon as any agent is registered, so you always see who's active.
-    bar.hidden = names.length < 1;
-    if (bar.hidden) return;
-    const list = document.getElementById("agents-list");
-    list.innerHTML = "";
-    for (const name of names.sort()) {
+  // Which agent's tab you're VIEWING (history + character). May differ from
+  // the LIVE agent (the one currently listening). null = follow the live one.
+  let viewedAgent = null;
+
+  function renderTabs(agents, active) {
+    const names = Object.keys(agents).sort();
+    const tabs = document.getElementById("tabs");
+    tabs.hidden = names.length < 1;
+    if (tabs.hidden) { viewedAgent = null; return; }
+    if (viewedAgent === null || !names.includes(viewedAgent)) viewedAgent = active;
+    tabs.innerHTML = "";
+    for (const name of names) {
       const b = document.createElement("button");
-      b.textContent = name;
-      if (name === active) b.classList.add("active");
+      b.innerHTML = '<span class="live-dot"></span>' + name;
+      if (name === viewedAgent) b.classList.add("viewing");
+      if (name === active) b.classList.add("live");
       b.addEventListener("click", async () => {
-        await fetch("/active-agent", { method: "POST",
-          body: JSON.stringify({ name }) });
+        viewedAgent = name;
+        // Clicking a tab both views it AND makes it the live (listening) agent.
+        await fetch("/active-agent", { method: "POST", body: JSON.stringify({ name }) });
+        tick();
       });
-      list.appendChild(b);
+      tabs.appendChild(b);
     }
+    document.getElementById("character-for").textContent =
+      names.length > 1 ? "· " + viewedAgent : "";
   }
 
   let currentSmartMode = null;
@@ -460,7 +467,7 @@ DASHBOARD_HTML = """<!doctype html>
         creditsChip.hidden = false;
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
-      renderAgents(s.agents || {}, s.active_agent);
+      renderTabs(s.agents || {}, s.active_agent);
       setMode(s.mode || "batch");
       setTtsMode(s.tts_mode || "batch");
       setSmartMode(s.smart_turn_mode || "soft");
@@ -485,7 +492,14 @@ DASHBOARD_HTML = """<!doctype html>
       else if (!s.listening) setState("muted", "muted — Claude is speaking");
       else if (s.recording) setState("recording", "recording your utterance");
       else setState("listening", "listening");
-      const data = await (await fetch("/utterances")).json();
+      // Show only the viewed agent's history (or everything in single-agent mode).
+      const q = viewedAgent ? "?agent=" + encodeURIComponent(viewedAgent) : "";
+      const data = await (await fetch("/utterances" + q)).json();
+      const live = new Set(data.utterances.map((u) => cardKey(u)));
+      // Drop cards that don't belong to the viewed agent (e.g. after switching tabs).
+      for (const [key, node] of seen) {
+        if (!live.has(key)) { node.remove(); seen.delete(key); }
+      }
       for (const u of data.utterances) upsert(u);
     } catch {
       setState("offline", "daemon not responding");

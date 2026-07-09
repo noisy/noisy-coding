@@ -180,6 +180,9 @@ class ListenerState:
                     "text": text,
                     "detail": "",
                     "cost_usd": 0.0,
+                    # Which agent this utterance belongs to — the active one at
+                    # creation. Lets the dashboard show a per-agent history.
+                    "agent": self._active_agent,
                     "started_at": time.time(),
                     "updated_at": time.time(),
                 }
@@ -204,9 +207,12 @@ class ListenerState:
                     return utterance["id"]
             return 0
 
-    def utterances(self) -> list[dict]:
+    def utterances(self, agent: str | None = None) -> list[dict]:
         with self._lock:
-            return [dict(u) for u in self._utterances]
+            items = [dict(u) for u in self._utterances]
+        if agent is not None:
+            items = [u for u in items if u.get("agent") == agent]
+        return items
 
     def add_transcript(self, text: str, utterance_id: int = 0) -> None:
         with self._lock:

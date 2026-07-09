@@ -52,7 +52,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
             elif url.path == "/utterances":
-                self._respond({"utterances": state.utterances()})
+                agent = parse_qs(url.query).get("agent", [None])[0]
+                self._respond({"utterances": state.utterances(agent)})
             elif url.path == "/character":
                 self._respond({"character": state.character})
             elif url.path == "/status":
