@@ -26,7 +26,8 @@ class ListenerState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._transcripts: list[Transcript] = []
-        self._paused = False
+        self._paused = False  # transient echo-mute while Claude speaks
+        self._user_muted = False  # explicit mute from the dashboard
         self._recording = False
         self._last_transcript_at = 0.0
         self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
@@ -189,8 +190,17 @@ class ListenerState:
     @property
     def paused(self) -> bool:
         with self._lock:
-            return self._paused
+            return self._paused or self._user_muted
 
     def set_paused(self, paused: bool) -> None:
         with self._lock:
             self._paused = paused
+
+    @property
+    def user_muted(self) -> bool:
+        with self._lock:
+            return self._user_muted
+
+    def set_user_muted(self, muted: bool) -> None:
+        with self._lock:
+            self._user_muted = muted

@@ -35,6 +35,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond(
                     {
                         "listening": not state.paused,
+                        "muted": state.user_muted,
                         "recording": state.recording,
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
@@ -78,6 +79,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 except OSError:
                     pass
                 self._respond({"character": values})
+            elif self.path == "/mute":
+                muted = bool(self._read_json_body().get("muted", True))
+                state.set_user_muted(muted)
+                state.add_event("muted" if muted else "unmuted")
+                self._respond({"muted": muted})
             elif self.path == "/mode":
                 body = self._read_json_body()
                 mode = str(body.get("mode", ""))

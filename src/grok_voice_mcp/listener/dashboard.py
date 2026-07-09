@@ -129,6 +129,9 @@ DASHBOARD_HTML = """<!doctype html>
     <button class="chip" id="mode-toggle" type="button" title="Batch: transcribe after you stop talking ($0.10/h). Live: stream while you talk, text appears as you speak ($0.20/h).">
       <small>mode</small>&nbsp;<span id="mode-label">…</span>
     </button>
+    <button class="chip" id="mute-toggle" type="button" title="Stop transcribing the mic (e.g. while talking to someone else). Claude keeps working; nothing you say reaches him until you unmute.">
+      🎤&nbsp;<span id="mute-label">…</span>
+    </button>
   </div>
 
   <details class="rules" open>
@@ -280,6 +283,17 @@ DASHBOARD_HTML = """<!doctype html>
     const next = currentMode === "live" ? "batch" : "live";
     await fetch("/mode", { method: "POST", body: JSON.stringify({ mode: next }) });
   });
+
+  let currentMuted = false;
+  document.getElementById("mute-toggle").addEventListener("click", async () => {
+    await fetch("/mute", { method: "POST", body: JSON.stringify({ muted: !currentMuted }) });
+  });
+  function setMuted(muted) {
+    currentMuted = muted;
+    const label = document.getElementById("mute-label");
+    label.textContent = muted ? "muted" : "listening";
+    label.style.color = muted ? "var(--red)" : "";
+  }
   function setMode(mode) {
     currentMode = mode;
     const label = document.getElementById("mode-label");
@@ -302,7 +316,9 @@ DASHBOARD_HTML = """<!doctype html>
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
       setMode(s.mode || "batch");
-      if (!s.listening) setState("muted", "muted — Claude is speaking");
+      setMuted(!!s.muted);
+      if (s.muted) setState("offline", "muted by you — mic ignored");
+      else if (!s.listening) setState("muted", "muted — Claude is speaking");
       else if (s.recording) setState("recording", "recording your utterance");
       else setState("listening", "listening");
       const data = await (await fetch("/utterances")).json();
