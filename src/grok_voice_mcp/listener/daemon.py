@@ -168,6 +168,8 @@ def run(config: VadConfig | None = None) -> None:
             state.set_mode(saved["mode"])
         if saved.get("tts_mode") in ("batch", "live"):
             state.set_tts_mode(saved["tts_mode"])
+        if saved.get("smart_turn_mode") in ("soft", "hard"):
+            state.set_smart_turn_mode(saved["smart_turn_mode"])
     except (OSError, ValueError):
         pass
     server = start_http_api(state, port)
@@ -198,6 +200,7 @@ def run(config: VadConfig | None = None) -> None:
                 if state.paused:
                     continue
                 segmenter.end_silence_ms_override = state.end_silence_ms
+                segmenter.smart_turn_mode = state.smart_turn_mode
                 was_recording = segmenter.is_recording
                 utterance = segmenter.feed(frame)
                 state.set_recording(segmenter.is_recording)

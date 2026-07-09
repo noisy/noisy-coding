@@ -44,6 +44,7 @@ class ListenerState:
         self._tts_mode = "batch"
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
         self._smart_turn = DEFAULT_SMART_TURN
+        self._smart_turn_mode = "soft"
         self._character = dict(DEFAULT_CHARACTER) | {
             "voice": DEFAULT_VOICE,
             "speed": DEFAULT_SPEED,
@@ -109,6 +110,17 @@ class ListenerState:
         with self._lock:
             self._smart_turn = max(0.0, min(1.0, float(value)))
             return self._smart_turn
+
+    @property
+    def smart_turn_mode(self) -> str:
+        with self._lock:
+            return self._smart_turn_mode
+
+    def set_smart_turn_mode(self, mode: str) -> str:
+        with self._lock:
+            if mode in ("soft", "hard"):
+                self._smart_turn_mode = mode
+            return self._smart_turn_mode
 
     def add_cost(self, role: str, usd: float) -> None:
         with self._lock:

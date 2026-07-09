@@ -28,6 +28,7 @@ def save_settings(state: ListenerState) -> None:
                     "smart_turn": state.smart_turn,
                     "mode": state.mode,
                     "tts_mode": state.tts_mode,
+                    "smart_turn_mode": state.smart_turn_mode,
                 }
             )
         )
@@ -65,6 +66,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "tts_mode": state.tts_mode,
                         "end_silence_ms": state.end_silence_ms,
                         "smart_turn": state.smart_turn,
+                        "smart_turn_mode": state.smart_turn_mode,
                     }
                 )
             else:
@@ -114,6 +116,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if body.get("tts_mode") in ("batch", "live"):
                     state.set_tts_mode(body["tts_mode"])
                     result["tts_mode"] = body["tts_mode"]
+                if body.get("smart_turn_mode") in ("soft", "hard"):
+                    result["smart_turn_mode"] = state.set_smart_turn_mode(
+                        body["smart_turn_mode"]
+                    )
                 if result:
                     save_settings(state)
                     self._respond(result)

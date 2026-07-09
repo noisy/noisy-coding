@@ -164,6 +164,8 @@ DASHBOARD_HTML = """<!doctype html>
         <input type="range" id="ch-silence" min="500" max="4000" step="100"><span class="val" id="ch-silence-val"></span></label>
       <label><span class="name">Smart turn <small>live only · 0 = off, higher = wait for a complete thought</small></span>
         <input type="range" id="ch-smart" min="0" max="0.9" step="0.1"><span class="val" id="ch-smart-val"></span></label>
+      <label><span class="name">Turn mode <small>soft = smart turn may end early · hard = pause split rules</small></span>
+        <button class="chip" id="smart-mode-toggle" type="button"><span id="smart-mode-label">…</span></button><span class="val"></span></label>
     </div>
   </details>
 
@@ -300,6 +302,11 @@ DASHBOARD_HTML = """<!doctype html>
       await fetch("/settings", { method: "POST",
         body: JSON.stringify({ smart_turn: Number(smart.value) }) });
     });
+    document.getElementById("smart-mode-toggle").addEventListener("click", async () => {
+      const next = currentSmartMode === "hard" ? "soft" : "hard";
+      await fetch("/settings", { method: "POST",
+        body: JSON.stringify({ smart_turn_mode: next }) });
+    });
     const select = document.getElementById("ch-voice");
     for (const [v, gender] of Object.entries(VOICES)) {
       const option = document.createElement("option");
@@ -332,6 +339,13 @@ DASHBOARD_HTML = """<!doctype html>
     const next = currentMode === "live" ? "batch" : "live";
     await fetch("/mode", { method: "POST", body: JSON.stringify({ mode: next }) });
   });
+
+  let currentSmartMode = null;
+  function setSmartMode(mode) {
+    currentSmartMode = mode;
+    const label = document.getElementById("smart-mode-label");
+    label.textContent = mode === "hard" ? "hard (pause split)" : "soft (smart turn)";
+  }
 
   let currentTtsMode = null;
   document.getElementById("tts-toggle").addEventListener("click", async () => {
@@ -378,6 +392,7 @@ DASHBOARD_HTML = """<!doctype html>
       }
       setMode(s.mode || "batch");
       setTtsMode(s.tts_mode || "batch");
+      setSmartMode(s.smart_turn_mode || "soft");
       setMuted(!!s.muted);
       const silence = document.getElementById("ch-silence");
       if (s.end_silence_ms && document.activeElement !== silence) {

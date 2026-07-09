@@ -50,6 +50,9 @@ class UtteranceSegmenter:
         self._pre_roll_frames_included = 0
         # Live-adjustable from the dashboard; None = use the config default.
         self.end_silence_ms_override: int | None = None
+        # "soft": smart_turn may close after a short pause (fast, may over-split).
+        # "hard": smart_turn may not close before end_silence — pause-split rules.
+        self.smart_turn_mode = "soft"
         # Set by an external end-of-turn signal (smart_turn) to close now.
         self._close_requested = False
 
@@ -109,9 +112,14 @@ class UtteranceSegmenter:
         )
         # smart_turn (close_requested) may end the utterance early — but only
         # after a real pause, never while the user is still talking through
-        # micro-gaps. Without this gate a sensitive smart_turn cuts mid-flow
-        # and the pause-split setting becomes meaningless.
-        smart_close = self._close_requested and silence_ms >= self.config.smart_turn_min_silence_ms
+        # micro-gaps. In "hard" mode pause-split fully rules: smart_turn cannot
+        # close before end_silence_ms, so a high pause-split never over-splits.
+        gate_ms = (
+            self._end_silence_ms
+            if self.smart_turn_mode == "hard"
+            else self.config.smart_turn_min_silence_ms
+        )
+        smart_close = self._close_requested and silence_ms >= gate_ms
         if not (ended_by_silence or too_long or smart_close):
             return None
         self._close_requested = False
