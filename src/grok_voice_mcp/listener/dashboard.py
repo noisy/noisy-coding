@@ -158,6 +158,12 @@ DASHBOARD_HTML = """<!doctype html>
         <input type="range" id="ch-chatty" min="0" max="100" step="5"><span class="val" id="ch-chatty-val"></span></label>
       <label><span class="name">Voice <small>who speaks to you</small></span>
         <select id="ch-voice"></select><span class="val"></span></label>
+    </div>
+  </details>
+
+  <details class="rules">
+    <summary>Settings</summary>
+    <div class="sliders">
       <label><span class="name">Speed <small>0.7× ↔ 1.5×</small></span>
         <input type="range" id="ch-speed" min="0.7" max="1.5" step="0.05"><span class="val" id="ch-speed-val"></span></label>
       <label><span class="name">Pause split <small>silence that ends an utterance</small></span>
@@ -166,6 +172,8 @@ DASHBOARD_HTML = """<!doctype html>
         <input type="range" id="ch-smart" min="0" max="0.9" step="0.1"><span class="val" id="ch-smart-val"></span></label>
       <label><span class="name">Turn mode <small>soft = smart turn may end early · hard = pause split rules</small></span>
         <button class="chip" id="smart-mode-toggle" type="button"><span id="smart-mode-label">…</span></button><span class="val"></span></label>
+      <label><span class="name">Language <small>speech recognition &amp; voice</small></span>
+        <select id="ch-language"></select><span class="val"></span></label>
     </div>
   </details>
 
@@ -327,6 +335,21 @@ DASHBOARD_HTML = """<!doctype html>
       select.appendChild(option);
     }
     select.addEventListener("change", postCharacter);
+
+    const langSelect = document.getElementById("ch-language");
+    const LANGS = { "": "Auto-detect", en: "English", pl: "Polski", de: "Deutsch",
+      es: "Español", fr: "Français", "pt-BR": "Português (BR)", it: "Italiano",
+      ja: "日本語", zh: "中文" };
+    for (const [code, name] of Object.entries(LANGS)) {
+      const option = document.createElement("option");
+      option.value = code;
+      option.textContent = name;
+      langSelect.appendChild(option);
+    }
+    langSelect.addEventListener("change", async () => {
+      await fetch("/settings", { method: "POST",
+        body: JSON.stringify({ language: langSelect.value }) });
+    });
   }
   async function loadCharacter() {
     try {
@@ -417,6 +440,10 @@ DASHBOARD_HTML = """<!doctype html>
         smart.value = s.smart_turn;
         document.getElementById("ch-smart-val").textContent =
           s.smart_turn === 0 ? "off" : Number(s.smart_turn).toFixed(1);
+      }
+      const lang = document.getElementById("ch-language");
+      if (s.language != null && document.activeElement !== lang) {
+        lang.value = s.language;
       }
       if (s.muted) setState("offline", "muted by you — mic ignored");
       else if (!s.listening) setState("muted", "muted — Claude is speaking");

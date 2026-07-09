@@ -59,7 +59,6 @@ def _log(message: str) -> None:
 def _transcribe_and_enqueue(
     samples: np.ndarray,
     sample_rate: int,
-    language: str,
     state: ListenerState,
     utterance_id: int,
 ) -> None:
@@ -74,7 +73,7 @@ def _transcribe_and_enqueue(
         cost_usd=cost,
     )
     try:
-        text = stt.transcribe(stt.encode_wav(samples, sample_rate), language)
+        text = stt.transcribe(stt.encode_wav(samples, sample_rate), state.language)
     except stt.GrokSTTError as error:
         _log(f"[stt-error] {error}")
         state.add_event("stt_error", str(error)[:200])
@@ -90,9 +89,10 @@ def _transcribe_and_enqueue(
 
 
 def _start_stream(
-    segmenter, config: VadConfig, language: str, state: ListenerState, utterance_id: int
+    segmenter, config: VadConfig, state: ListenerState, utterance_id: int
 ) -> stt_stream.StreamingSession | None:
     longest_shown = 0
+    language = state.language
 
     def on_partial(text: str) -> None:
         # Server-side revisions can briefly shrink the text; never show that.
@@ -147,11 +147,11 @@ def _finalize_stream(
 
 def run(config: VadConfig | None = None) -> None:
     config = config or VadConfig()
-    language = os.environ.get(STT_LANGUAGE_ENV_VAR, "")
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
     state = ListenerState()
     state.set_mode(os.environ.get(MODE_ENV_VAR, "batch"))
+    state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
     try:
         state.set_character(json.loads(CHARACTER_FILE.read_text()))
     except (OSError, ValueError):
@@ -170,6 +170,8 @@ def run(config: VadConfig | None = None) -> None:
             state.set_tts_mode(saved["tts_mode"])
         if saved.get("smart_turn_mode") in ("soft", "hard"):
             state.set_smart_turn_mode(saved["smart_turn_mode"])
+        if "language" in saved:
+            state.set_language(saved["language"])
     except (OSError, ValueError):
         pass
     server = start_http_api(state, port)
@@ -209,7 +211,7 @@ def run(config: VadConfig | None = None) -> None:
                     current_utterance_id = state.create_utterance("user", "recording…")
                     if state.mode == "live":
                         stream = _start_stream(
-                            segmenter, config, language, state, current_utterance_id
+                            segmenter, config, state, current_utterance_id
                         )
                 elif segmenter.is_recording and stream is not None:
                     stream.send(frame.tobytes())
@@ -243,7 +245,6 @@ def run(config: VadConfig | None = None) -> None:
                             _transcribe_and_enqueue,
                             utterance,
                             config.sample_rate,
-                            language,
                             state,
                             current_utterance_id,
                         )

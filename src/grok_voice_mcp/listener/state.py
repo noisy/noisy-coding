@@ -45,6 +45,7 @@ class ListenerState:
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
+        self._language = ""  # "" = auto-detect
         self._character = dict(DEFAULT_CHARACTER) | {
             "voice": DEFAULT_VOICE,
             "speed": DEFAULT_SPEED,
@@ -110,6 +111,16 @@ class ListenerState:
         with self._lock:
             self._smart_turn = max(0.0, min(1.0, float(value)))
             return self._smart_turn
+
+    @property
+    def language(self) -> str:
+        with self._lock:
+            return self._language
+
+    def set_language(self, language: str) -> str:
+        with self._lock:
+            self._language = language
+            return self._language
 
     @property
     def smart_turn_mode(self) -> str:
