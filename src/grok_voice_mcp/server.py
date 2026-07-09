@@ -1,17 +1,31 @@
 """MCP server that lets the assistant speak to the user via Grok Voice."""
 
+import asyncio
 import os
 
+import httpx
 from mcp.server.fastmcp import FastMCP
 
 from grok_voice_mcp import playback, tts
 
 DEFAULT_VOICE_ENV_VAR = "GROK_VOICE_DEFAULT_VOICE"
 DEFAULT_LANGUAGE_ENV_VAR = "GROK_VOICE_DEFAULT_LANGUAGE"
+LISTENER_PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
 FALLBACK_VOICE = "eve"
 FALLBACK_LANGUAGE = "en"
+ECHO_TAIL_SECONDS = 0.5
 
 mcp = FastMCP("grok-voice")
+
+
+async def _listener_post(path: str) -> None:
+    """Best-effort call to the listener daemon; silent no-op when it's down."""
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    try:
+        async with httpx.AsyncClient(timeout=0.5) as client:
+            await client.post(f"http://127.0.0.1:{port}{path}")
+    except httpx.HTTPError:
+        pass
 
 
 @mcp.tool()
@@ -33,7 +47,13 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
     resolved_language = language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
     audio = await tts.synthesize(text, resolved_voice, resolved_language, speed)
-    await playback.play(audio.audio, audio.content_type)
+    # Mute the listener while we play, or the mic transcribes our own speech.
+    await _listener_post("/pause")
+    try:
+        await playback.play(audio.audio, audio.content_type)
+        await asyncio.sleep(ECHO_TAIL_SECONDS)
+    finally:
+        await _listener_post("/resume")
     return f"Spoke the message aloud with voice '{resolved_voice}'."
 
 
