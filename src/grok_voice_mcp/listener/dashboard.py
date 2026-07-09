@@ -39,17 +39,25 @@ DASHBOARD_HTML = """<!doctype html>
   @media (prefers-reduced-motion: reduce) { .card.speaking { animation: none; } }
 
   .statusbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
-  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); margin: 8px 0 0; }
+  .tabs { display: flex; gap: 8px; margin: 12px 0 0; flex-wrap: wrap; }
   .tabs button {
-    font: inherit; cursor: pointer; border: none; background: none;
-    color: var(--muted); font-weight: 650; font-size: 0.92rem;
-    padding: 9px 16px 10px; border-bottom: 2px solid transparent; margin-bottom: -2px;
-    display: inline-flex; align-items: center; gap: 7px;
+    font: inherit; cursor: pointer; color: var(--muted);
+    font-weight: 650; font-size: 0.95rem;
+    /* Whole pill is clickable — border + generous padding, not just the text. */
+    border: 1.5px solid var(--line); background: var(--surface);
+    border-radius: 12px; padding: 11px 20px;
+    display: inline-flex; align-items: center; gap: 9px;
+    transition: border-color .12s, color .12s, background .12s;
   }
-  .tabs button:hover { color: var(--ink); }
-  .tabs button.viewing { color: var(--ink); border-bottom-color: var(--ink); }
+  .tabs button:hover { color: var(--ink); border-color: var(--muted); }
+  .tabs button.viewing {
+    color: var(--ink); border-color: var(--teal);
+    background: var(--teal-soft); box-shadow: inset 0 0 0 1px var(--teal);
+  }
+  .tabs button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
   /* A dot shows which agent is LIVE (listening), independent of which tab you view. */
-  .tabs button .live-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; }
+  .tabs button .live-dot { width: 8px; height: 8px; border-radius: 50%;
+    background: var(--line); flex: none; }
   .tabs button.live .live-dot { background: var(--teal); animation: pulse 2s infinite; }
   .chip {
     display: inline-flex; align-items: center; gap: 8px;
