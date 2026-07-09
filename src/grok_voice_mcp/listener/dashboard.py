@@ -31,16 +31,12 @@ DASHBOARD_HTML = """<!doctype html>
   h1 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 20px; }
 
-  .text.composing .typing { display: inline-flex; gap: 5px; padding: 3px 0; }
-  .text.composing .typing i {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--violet);
-    opacity: .3; animation: typing 1.3s infinite;
+  .card.speaking { animation: speaking 1.1s ease-in-out infinite; }
+  @keyframes speaking {
+    0%,100% { border-color: var(--violet); box-shadow: 0 0 0 0 transparent; }
+    50% { border-color: var(--violet); box-shadow: 0 0 0 3px var(--violet-soft); }
   }
-  .text.composing .typing i:nth-child(2) { animation-delay: .2s; }
-  .text.composing .typing i:nth-child(3) { animation-delay: .4s; }
-  @keyframes typing { 0%,60%,100% { opacity: .3; transform: translateY(0); }
-                      30% { opacity: 1; transform: translateY(-3px); } }
-  @media (prefers-reduced-motion: reduce) { .text.composing .typing i { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .card.speaking { animation: none; } }
 
   .statusbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
   .chip {
@@ -186,7 +182,7 @@ DASHBOARD_HTML = """<!doctype html>
     s.startsWith("transcribing") || s.startsWith("synthesizing") ? "work" :
     s.startsWith("ready") ? "ready" :
     s.startsWith("delivered") ? "done" :
-    s.startsWith("playing") ? "spoken" :       // composing/playing → pulsing dots
+    s.startsWith("playing") ? "spoken" :       // playing → pulsing card frame
     s === "played" ? "spoken-done" :           // finished → reveal text
     // empty / dropped / error — an utterance that never became text
     (s.startsWith("empty") || s.startsWith("dropped") || s.indexOf("error") >= 0) ? "dead" :
@@ -233,18 +229,16 @@ DASHBOARD_HTML = """<!doctype html>
     const st = el.querySelector(".status");
     st.textContent = u.status;
     st.className = "status phase-" + phase;
+    // A Claude card that is still playing gets a pulsing frame so the user
+    // can see Claude has "the mic" — while the text is already readable.
+    if (u.role === "claude" && phase === "spoken") el.classList.add("speaking");
     const txt = el.querySelector(".text");
-    // Show text the moment it exists — reading is faster than listening, so
-    // the user can scan ahead of the audio. The pulsing "…" only fills the
-    // brief gap before any text is available (e.g. Claude mid-synthesis).
+    // Show text the moment it exists — reading is faster than listening.
     if (u.text) {
       txt.innerHTML = renderBold(u.text); txt.className = "text";
-    } else if (u.role === "claude" && (phase === "work" || phase === "spoken")) {
-      txt.className = "text composing";
-      txt.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
     } else {
       txt.className = "text pending";
-      txt.textContent = phase === "rec" ? "listening, keep talking…" : "—";
+      txt.textContent = phase === "rec" ? "listening, keep talking…" : "…";
     }
     el.querySelector(".detail").textContent = u.detail || "";
     el.querySelector(".cost").textContent = u.cost_usd ? fmtCost(u.cost_usd) : "";
