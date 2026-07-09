@@ -14,6 +14,24 @@ from grok_voice_mcp.listener.state import ListenerState
 DEFAULT_PORT = 8765
 PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
 CHARACTER_FILE = Path.home() / ".config" / "grok-voice" / "character.json"
+SETTINGS_FILE = Path.home() / ".config" / "grok-voice" / "settings.json"
+
+
+def save_settings(state: ListenerState) -> None:
+    """Persist tuning that must survive daemon restarts."""
+    try:
+        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SETTINGS_FILE.write_text(
+            json.dumps(
+                {
+                    "end_silence_ms": state.end_silence_ms,
+                    "smart_turn": state.smart_turn,
+                    "mode": state.mode,
+                }
+            )
+        )
+    except OSError:
+        pass
 
 
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
@@ -91,6 +109,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if "smart_turn" in body:
                     result["smart_turn"] = state.set_smart_turn(body["smart_turn"])
                 if result:
+                    save_settings(state)
                     self._respond(result)
                 else:
                     self._respond({"error": "no known setting in body"}, status=400)
@@ -105,6 +124,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if mode in ("batch", "live"):
                     state.set_mode(mode)
                     state.add_event("mode", f"transcription mode switched to {mode}")
+                    save_settings(state)
                     self._respond({"mode": mode})
                 else:
                     self._respond({"error": "mode must be 'batch' or 'live'"}, status=400)

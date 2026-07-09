@@ -21,6 +21,7 @@ from grok_voice_mcp.listener.http_api import (
     CHARACTER_FILE,
     DEFAULT_PORT,
     PORT_ENV_VAR,
+    SETTINGS_FILE,
     start_http_api,
 )
 from grok_voice_mcp.listener.state import ListenerState
@@ -153,6 +154,18 @@ def run(config: VadConfig | None = None) -> None:
     state.set_mode(os.environ.get(MODE_ENV_VAR, "batch"))
     try:
         state.set_character(json.loads(CHARACTER_FILE.read_text()))
+    except (OSError, ValueError):
+        pass
+    # Saved tuning (pause-split, smart_turn, mode) survives restarts and
+    # overrides the env default for mode, since it reflects newer intent.
+    try:
+        saved = json.loads(SETTINGS_FILE.read_text())
+        if "end_silence_ms" in saved:
+            state.set_end_silence_ms(saved["end_silence_ms"])
+        if "smart_turn" in saved:
+            state.set_smart_turn(saved["smart_turn"])
+        if saved.get("mode") in ("batch", "live"):
+            state.set_mode(saved["mode"])
     except (OSError, ValueError):
         pass
     server = start_http_api(state, port)
