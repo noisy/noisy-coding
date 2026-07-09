@@ -7,7 +7,7 @@ import re
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from grok_voice_mcp import playback, tts
+from grok_voice_mcp import playback, tts, tts_stream
 
 DEFAULT_VOICE_ENV_VAR = "GROK_VOICE_DEFAULT_VOICE"
 DEFAULT_LANGUAGE_ENV_VAR = "GROK_VOICE_DEFAULT_LANGUAGE"
@@ -62,15 +62,25 @@ async def speak(text: str, voice_id: str = "", language: str = "", speed: float 
 
     await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
     speech_text = _emphasis_to_speech_tags(text)
-    audio = await tts.synthesize(speech_text, resolved_voice, resolved_language, speed)
-    await _dashboard_event("speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS")
+    streaming = await _tts_streaming_enabled()
+
     # Mute the listener while we play, or the mic transcribes our own speech.
     await _listener_post("/pause")
-    # Tell the dashboard Claude is speaking now, so the user sees a live
-    # "speaking…" indicator and knows not to talk over it.
     await _listener_post("/speaking", {"speaking": True})
     try:
-        await playback.play(audio.audio, audio.content_type)
+        if streaming:
+            await _dashboard_event("speak_audio", "streaming from Grok TTS")
+            await tts_stream.speak_streaming(
+                speech_text, resolved_voice, resolved_language, speed
+            )
+        else:
+            audio = await tts.synthesize(
+                speech_text, resolved_voice, resolved_language, speed
+            )
+            await _dashboard_event(
+                "speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS"
+            )
+            await playback.play(audio.audio, audio.content_type)
         await asyncio.sleep(ECHO_TAIL_SECONDS)
     finally:
         await _listener_post("/speaking", {"speaking": False})

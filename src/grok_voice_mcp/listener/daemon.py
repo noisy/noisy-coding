@@ -211,12 +211,21 @@ def run(config: VadConfig | None = None) -> None:
                 elif was_recording and not segmenter.is_recording:
                     state.add_event("recording_done", "0.8s of silence — closing utterance")
                     if utterance is None:
-                        state.update_utterance(
-                            current_utterance_id, status="dropped — too short"
-                        )
                         if stream is not None:
-                            stream.abort()
+                            # A short clip may still hold real words — let the
+                            # stream finalize; only truly empty ones are dropped.
+                            stt_executor.submit(
+                                _finalize_stream,
+                                stream,
+                                config.min_utterance_ms / 1000,
+                                state,
+                                current_utterance_id,
+                            )
                             stream = None
+                        else:
+                            state.update_utterance(
+                                current_utterance_id, status="dropped — too short"
+                            )
                 if utterance is not None:
                     seconds = len(utterance) / config.sample_rate
                     if stream is not None:
