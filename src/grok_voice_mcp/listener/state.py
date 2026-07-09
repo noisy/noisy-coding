@@ -10,6 +10,8 @@ DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50, "chatty": 50}
 DEFAULT_VOICE = "carina"
 DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
+DEFAULT_END_SILENCE_MS = 800
+MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,7 @@ class ListenerState:
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
         self._credits_usd: float | None = None
         self._mode = "batch"
+        self._end_silence_ms = DEFAULT_END_SILENCE_MS
         self._character = dict(DEFAULT_CHARACTER) | {
             "voice": DEFAULT_VOICE,
             "speed": DEFAULT_SPEED,
@@ -71,6 +74,18 @@ class ListenerState:
     def set_mode(self, mode: str) -> None:
         with self._lock:
             self._mode = mode
+
+    @property
+    def end_silence_ms(self) -> int:
+        with self._lock:
+            return self._end_silence_ms
+
+    def set_end_silence_ms(self, value: int) -> int:
+        with self._lock:
+            self._end_silence_ms = max(
+                MIN_END_SILENCE_MS, min(MAX_END_SILENCE_MS, int(value))
+            )
+            return self._end_silence_ms
 
     def add_cost(self, role: str, usd: float) -> None:
         with self._lock:

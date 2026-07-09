@@ -42,6 +42,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "session_cost_usd": state.session_cost_usd,
                         "credits_usd": state.credits_usd,
                         "mode": state.mode,
+                        "end_silence_ms": state.end_silence_ms,
                     }
                 )
             else:
@@ -79,6 +80,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 except OSError:
                     pass
                 self._respond({"character": values})
+            elif self.path == "/settings":
+                body = self._read_json_body()
+                if "end_silence_ms" in body:
+                    value = state.set_end_silence_ms(body["end_silence_ms"])
+                    self._respond({"end_silence_ms": value})
+                else:
+                    self._respond({"error": "no known setting in body"}, status=400)
             elif self.path == "/mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_user_muted(muted)

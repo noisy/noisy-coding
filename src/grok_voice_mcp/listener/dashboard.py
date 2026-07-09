@@ -149,6 +149,8 @@ DASHBOARD_HTML = """<!doctype html>
         <select id="ch-voice"></select><span class="val"></span></label>
       <label><span class="name">Speed <small>0.7× ↔ 1.5×</small></span>
         <input type="range" id="ch-speed" min="0.7" max="1.5" step="0.05"><span class="val" id="ch-speed-val"></span></label>
+      <label><span class="name">Pause split <small>silence that ends an utterance</small></span>
+        <input type="range" id="ch-silence" min="500" max="4000" step="100"><span class="val" id="ch-silence-val"></span></label>
     </div>
   </details>
 
@@ -170,7 +172,10 @@ DASHBOARD_HTML = """<!doctype html>
     s.startsWith("transcribing") || s.startsWith("synthesizing") ? "work" :
     s.startsWith("ready") ? "ready" :
     s.startsWith("delivered") ? "done" :
-    s.startsWith("playing") || s === "played" ? "spoken" : "bad";
+    s.startsWith("playing") || s === "played" ? "spoken" :
+    // empty / dropped / error — an utterance that never became text
+    (s.startsWith("empty") || s.startsWith("dropped") || s.indexOf("error") >= 0) ? "dead" :
+    "bad";
 
   const cards = document.getElementById("cards");
   const seen = new Map();
@@ -181,7 +186,15 @@ DASHBOARD_HTML = """<!doctype html>
     c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const renderBold = s => escapeHtml(s).replace(/\\*\\*(.+?)\\*\\*/g, "<b>$1</b>");
 
+  function dropCard(id) {
+    const el = seen.get(id);
+    if (el) { el.remove(); seen.delete(id); }
+  }
+
   function upsert(u) {
+    // An utterance that never became text (cough, noise, silence) must not
+    // linger on the board — drop it whether or not a card was shown.
+    if (PHASE(u.status) === "dead") { dropCard(u.id); return; }
     document.getElementById("empty")?.remove();
     let el = seen.get(u.id);
     if (!el) {
@@ -251,6 +264,14 @@ DASHBOARD_HTML = """<!doctype html>
       document.getElementById("ch-speed-val").textContent = Number(speed.value).toFixed(2) + "×";
     });
     speed.addEventListener("change", postCharacter);
+    const silence = document.getElementById("ch-silence");
+    silence.addEventListener("input", () => {
+      document.getElementById("ch-silence-val").textContent = (silence.value / 1000).toFixed(1) + "s";
+    });
+    silence.addEventListener("change", async () => {
+      await fetch("/settings", { method: "POST",
+        body: JSON.stringify({ end_silence_ms: Number(silence.value) }) });
+    });
     const select = document.getElementById("ch-voice");
     for (const [v, gender] of Object.entries(VOICES)) {
       const option = document.createElement("option");
@@ -317,6 +338,12 @@ DASHBOARD_HTML = """<!doctype html>
       }
       setMode(s.mode || "batch");
       setMuted(!!s.muted);
+      const silence = document.getElementById("ch-silence");
+      if (s.end_silence_ms && document.activeElement !== silence) {
+        silence.value = s.end_silence_ms;
+        document.getElementById("ch-silence-val").textContent =
+          (s.end_silence_ms / 1000).toFixed(1) + "s";
+      }
       if (s.muted) setState("offline", "muted by you — mic ignored");
       else if (!s.listening) setState("muted", "muted — Claude is speaking");
       else if (s.recording) setState("recording", "recording your utterance");

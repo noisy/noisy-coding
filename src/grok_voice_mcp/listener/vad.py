@@ -45,6 +45,12 @@ class UtteranceSegmenter:
         self._silence_run = 0
         self._recording: list[np.ndarray] = []
         self._pre_roll_frames_included = 0
+        # Live-adjustable from the dashboard; None = use the config default.
+        self.end_silence_ms_override: int | None = None
+
+    @property
+    def _end_silence_ms(self) -> int:
+        return self.end_silence_ms_override or self.config.end_silence_ms
 
     @property
     def is_recording(self) -> bool:
@@ -88,7 +94,7 @@ class UtteranceSegmenter:
         self._silence_run = 0 if loud else self._silence_run + 1
 
         ended_by_silence = (
-            self._silence_run * self.config.frame_ms >= self.config.end_silence_ms
+            self._silence_run * self.config.frame_ms >= self._end_silence_ms
         )
         too_long = (
             len(self._recording) * self.config.frame_ms >= self.config.max_utterance_ms

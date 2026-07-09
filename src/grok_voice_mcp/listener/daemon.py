@@ -169,6 +169,7 @@ def run(config: VadConfig | None = None) -> None:
                 frame = frames.get()
                 if state.paused:
                     continue
+                segmenter.end_silence_ms_override = state.end_silence_ms
                 was_recording = segmenter.is_recording
                 utterance = segmenter.feed(frame)
                 state.set_recording(segmenter.is_recording)
