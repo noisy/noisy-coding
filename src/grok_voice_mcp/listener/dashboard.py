@@ -31,29 +31,16 @@ DASHBOARD_HTML = """<!doctype html>
   h1 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 4px; }
   .sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 20px; }
 
-  .speaking-banner {
-    display: flex; align-items: center; gap: 12px;
-    background: var(--violet-soft); color: var(--violet);
-    border: 1px solid var(--violet); border-radius: 12px;
-    padding: 10px 16px; margin-bottom: 14px; font-weight: 650; font-size: 0.95rem;
+  .text.composing .typing { display: inline-flex; gap: 5px; padding: 3px 0; }
+  .text.composing .typing i {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--violet);
+    opacity: .3; animation: typing 1.3s infinite;
   }
-  .speaking-banner .wave { display: inline-flex; align-items: center; gap: 3px; height: 20px; }
-  .speaking-banner .wave i {
-    width: 3px; height: 6px; background: var(--violet); border-radius: 2px;
-    animation: wave 1s ease-in-out infinite;
-  }
-  .speaking-banner .wave i:nth-child(2) { animation-delay: .15s; }
-  .speaking-banner .wave i:nth-child(3) { animation-delay: .3s; }
-  .speaking-banner .wave i:nth-child(4) { animation-delay: .45s; }
-  .speaking-banner .wave i:nth-child(5) { animation-delay: .6s; }
-  @keyframes wave { 0%,100% { height: 5px; } 50% { height: 18px; } }
-  .speaking-banner .dots i { animation: blink 1.4s infinite; }
-  .speaking-banner .dots i:nth-child(2) { animation-delay: .2s; }
-  .speaking-banner .dots i:nth-child(3) { animation-delay: .4s; }
-  @keyframes blink { 0%,60%,100% { opacity: .25; } 30% { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) {
-    .speaking-banner .wave i, .speaking-banner .dots i { animation: none; }
-  }
+  .text.composing .typing i:nth-child(2) { animation-delay: .2s; }
+  .text.composing .typing i:nth-child(3) { animation-delay: .4s; }
+  @keyframes typing { 0%,60%,100% { opacity: .3; transform: translateY(0); }
+                      30% { opacity: 1; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .text.composing .typing i { animation: none; } }
 
   .statusbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
   .chip {
@@ -130,6 +117,7 @@ DASHBOARD_HTML = """<!doctype html>
   .card .status.phase-ready { background: var(--amber-soft); color: var(--amber); }
   .card .status.phase-done { background: var(--teal-soft); color: var(--teal); }
   .card .status.phase-spoken { background: var(--violet-soft); color: var(--violet); }
+  .card .status.phase-spoken-done { background: var(--violet-soft); color: var(--violet); }
   .card .status.phase-bad { background: var(--red-soft); color: var(--red); }
   .card .t { font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem; color: var(--muted); margin-left: auto; }
   .card .text { font-size: 0.97rem; line-height: 1.45; overflow-wrap: anywhere; }
@@ -144,11 +132,6 @@ DASHBOARD_HTML = """<!doctype html>
 <main>
   <h1>grok-voice — live view</h1>
   <p class="sub">Every utterance is a card with a live status: recording → transcription → text → delivery.</p>
-
-  <div class="speaking-banner" id="speaking-banner" hidden>
-    <span class="wave"><i></i><i></i><i></i><i></i><i></i></span>
-    Claude is speaking<span class="dots"><i>.</i><i>.</i><i>.</i></span>
-  </div>
 
   <div class="statusbar">
     <span class="chip" id="state"><span class="dot"></span><span id="state-label">connecting…</span></span>
@@ -203,7 +186,8 @@ DASHBOARD_HTML = """<!doctype html>
     s.startsWith("transcribing") || s.startsWith("synthesizing") ? "work" :
     s.startsWith("ready") ? "ready" :
     s.startsWith("delivered") ? "done" :
-    s.startsWith("playing") || s === "played" ? "spoken" :
+    s.startsWith("playing") ? "spoken" :       // composing/playing → pulsing dots
+    s === "played" ? "spoken-done" :           // finished → reveal text
     // empty / dropped / error — an utterance that never became text
     (s.startsWith("empty") || s.startsWith("dropped") || s.indexOf("error") >= 0) ? "dead" :
     "bad";
@@ -250,11 +234,18 @@ DASHBOARD_HTML = """<!doctype html>
     st.textContent = u.status;
     st.className = "status phase-" + phase;
     const txt = el.querySelector(".text");
-    if (u.text) { txt.innerHTML = renderBold(u.text); txt.className = "text"; }
-    else {
+    // iMessage-style: while Claude is composing/playing, show a pulsing "…"
+    // bubble; reveal the text only once playback finishes (phase spoken-done).
+    // The user's own utterances stream in live as before.
+    const claudeComposing = u.role === "claude" && (phase === "work" || phase === "spoken");
+    if (claudeComposing) {
+      txt.className = "text composing";
+      txt.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+    } else if (u.text) {
+      txt.innerHTML = renderBold(u.text); txt.className = "text";
+    } else {
       txt.className = "text pending";
-      txt.textContent = phase === "rec" ? "listening, keep talking…" :
-                        phase === "work" ? "text will appear in a moment…" : "—";
+      txt.textContent = phase === "rec" ? "listening, keep talking…" : "—";
     }
     el.querySelector(".detail").textContent = u.detail || "";
     el.querySelector(".cost").textContent = u.cost_usd ? fmtCost(u.cost_usd) : "";
@@ -376,7 +367,6 @@ DASHBOARD_HTML = """<!doctype html>
         creditsChip.hidden = false;
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
-      document.getElementById("speaking-banner").hidden = !s.claude_speaking;
       setMode(s.mode || "batch");
       setMuted(!!s.muted);
       const silence = document.getElementById("ch-silence");
