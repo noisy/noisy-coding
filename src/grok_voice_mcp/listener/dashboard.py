@@ -411,6 +411,10 @@ DASHBOARD_HTML = """<!doctype html>
   // Which agent's tab you're VIEWING (history + character). May differ from
   // the LIVE agent (the one currently listening). null = follow the live one.
   let viewedAgent = null;
+  // Once you click a tab it's PINNED: the view stops auto-following the active
+  // agent. Without this, two live sessions flipping active make the view jump
+  // and briefly show both agents' cards at once.
+  let pinnedView = false;
   let speakingSet = [];  // agents currently playing audio (may be a background tab)
   let agentLabels = {};  // agent id -> human label (session /rename title)
 
@@ -418,8 +422,10 @@ DASHBOARD_HTML = """<!doctype html>
     const names = Object.keys(agents).sort();
     const tabs = document.getElementById("tabs");
     tabs.hidden = names.length < 1;
-    if (tabs.hidden) { viewedAgent = null; return; }
-    if (viewedAgent === null || !names.includes(viewedAgent)) viewedAgent = active;
+    if (tabs.hidden) { viewedAgent = null; pinnedView = false; return; }
+    // Follow the active agent only until the user pins a tab by clicking.
+    if (!pinnedView) viewedAgent = active;
+    if (!names.includes(viewedAgent)) { viewedAgent = active; pinnedView = false; }
     tabs.innerHTML = "";
     for (const name of names) {
       const b = document.createElement("button");
@@ -435,6 +441,7 @@ DASHBOARD_HTML = """<!doctype html>
       b.addEventListener("click", () => {
         if (viewedAgent === name) return;
         viewedAgent = name;
+        pinnedView = true;  // stop auto-following active from now on
         // Respond instantly: clear the old agent's cards and repaint tabs now,
         // don't wait for the round-trip (that's what felt laggy).
         for (const [k, node] of seen) { node.remove(); seen.delete(k); }
