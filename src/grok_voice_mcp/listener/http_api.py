@@ -76,6 +76,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "smart_turn_mode": state.smart_turn_mode,
                         "language": state.language,
                         "agents": state.agents,
+                        "agent_labels": state.agent_labels,
                         "active_agent": state.active_agent,
                     }
                 )
@@ -84,10 +85,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self) -> None:
             if self.path == "/register":
-                name = str(self._read_json_body().get("name", "")).strip()
+                body = self._read_json_body()
+                name = str(body.get("name", "")).strip()
+                label = str(body.get("label", "")).strip()
                 if name:
-                    state.register_agent(name)
-                    state.add_event("agent", f"'{name}' registered")
+                    already = name in state.agents
+                    state.register_agent(name, label)
+                    if not already:  # avoid spamming the event log every hook fire
+                        state.add_event("agent", f"'{label or name}' registered")
                     self._respond(
                         {"registered": name, "active_agent": state.active_agent}
                     )
