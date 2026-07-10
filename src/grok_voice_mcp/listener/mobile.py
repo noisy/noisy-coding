@@ -85,10 +85,12 @@ MOBILE_HTML = """<!doctype html>
     const key = names.join(",");
     if (box.dataset.key !== key) {
       box.dataset.key = key; box.innerHTML = "";
+      const labels = s.agent_labels || {};
       for (const name of names) {
         const b = document.createElement("button");
         b.className = "agent"; b.dataset.name = name;
-        b.innerHTML = name + '<span class="sub"></span><span class="speaking"></span>';
+        b.innerHTML = (labels[name] || name) +
+          '<span class="sub"></span><span class="speaking"></span>';
         b.addEventListener("click", () => switchTo(name));
         box.appendChild(b);
       }

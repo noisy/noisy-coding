@@ -412,6 +412,7 @@ DASHBOARD_HTML = """<!doctype html>
   // the LIVE agent (the one currently listening). null = follow the live one.
   let viewedAgent = null;
   let speakingSet = [];  // agents currently playing audio (may be a background tab)
+  let agentLabels = {};  // agent id -> human label (session /rename title)
 
   function renderTabs(agents, active) {
     const names = Object.keys(agents).sort();
@@ -423,9 +424,10 @@ DASHBOARD_HTML = """<!doctype html>
     for (const name of names) {
       const b = document.createElement("button");
       const speaking = speakingSet.includes(name);
+      const label = agentLabels[name] || name;
       // Speaker icon (flashing) when THIS agent is talking — even if you're on
       // another tab, so you see e.g. personal replying while viewing work.
-      b.innerHTML = '<span class="live-dot"></span>' + name +
+      b.innerHTML = '<span class="live-dot"></span>' + label +
         (speaking ? '<span class="tab-speaking">🔊</span>' : "");
       if (name === viewedAgent) b.classList.add("viewing");
       if (name === active) b.classList.add("live");
@@ -499,6 +501,7 @@ DASHBOARD_HTML = """<!doctype html>
         document.getElementById("credits").textContent = "$" + s.credits_usd.toFixed(2);
       }
       speakingSet = s.speaking_agents || [];
+      agentLabels = s.agent_labels || {};
       renderTabs(s.agents || {}, s.active_agent);
       setMode(s.mode || "batch");
       setTtsMode(s.tts_mode || "batch");

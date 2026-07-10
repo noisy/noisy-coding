@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>grok-voice · Mission Control</title>
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --space-0: #05070F;
+    --space-1: #0B1026;
+    --space-2: #141A3D;
+    --nebula-violet: rgba(124, 92, 214, 0.22);
+    --nebula-cyan:   rgba(58, 170, 210, 0.14);
+    --nebula-rose:   rgba(214, 92, 140, 0.10);
+
+    --glass:        rgba(255, 255, 255, 0.05);
+    --glass-hi:     rgba(255, 255, 255, 0.09);
+    --glass-edge:   rgba(255, 255, 255, 0.10);
+    --glass-inner:  rgba(255, 255, 255, 0.07);
+
+    --ink:    #EAEEFB;
+    --muted:  #8A93BC;
+    --faint:  #5A628B;
+
+    --cyan:   #67E3F5;   /* system / listening */
+    --amber:  #F2B764;   /* you */
+    --violet: #A78BFA;   /* claude */
+    --coral:  #FB7185;   /* recording */
+    --mint:   #5EEAD4;   /* delivered / ok */
+
+    --display: "Helvetica Neue", "Segoe UI", -apple-system, system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+
+    --r-lg: 22px;
+    --r-md: 16px;
+    --r-sm: 10px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--display);
+    font-weight: 300;
+    background:
+      radial-gradient(1100px 700px at 78% -10%, var(--nebula-violet), transparent 62%),
+      radial-gradient(900px 620px at -8% 32%, var(--nebula-cyan), transparent 60%),
+      radial-gradient(760px 560px at 62% 108%, var(--nebula-rose), transparent 62%),
+      linear-gradient(168deg, var(--space-1) 0%, var(--space-0) 55%, #070A1A 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  #stars {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    width: 100%; height: 100%;
+  }
+
+  ::selection { background: rgba(103, 227, 245, 0.28); }
+
+  /* ---------- shared glass ---------- */
+  .glass {
+    position: relative;
+    background: linear-gradient(160deg, var(--glass-hi), var(--glass) 46%, rgba(255,255,255,0.025));
+    -webkit-backdrop-filter: blur(26px) saturate(150%);
+    backdrop-filter: blur(26px) saturate(150%);
+    border: 1px solid var(--glass-edge);
+    border-radius: var(--r-lg);
+    box-shadow:
+      0 24px 70px rgba(2, 4, 16, 0.55),
+      inset 0 1px 0 var(--glass-inner);
+  }
+
+  .eyebrow {
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------- shell ---------- */
+  .shell {
+    position: relative; z-index: 1;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 26px 30px 70px;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+
+  /* ---------- topbar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 22px;
+    padding: 15px 26px;
+    border-radius: 999px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 30%, rgba(255,255,255,0.85), transparent 32%),
+      radial-gradient(circle at 50% 55%, var(--cyan), #3557C9 68%, #1B2A6B);
+    box-shadow: 0 0 22px rgba(103, 227, 245, 0.45), inset 0 0 8px rgba(255,255,255,0.25);
+    flex: none;
+  }
+  .brand h1 {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 200;
+    letter-spacing: 0.30em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .brand h1 b { font-weight: 500; color: var(--cyan); }
+  .brand .tagline {
+    display: block; margin-top: 3px;
+    font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--faint); font-weight: 400;
+  }
+
+  .top-spacer { flex: 1; }
+
+  .session-clock { text-align: right; }
+  .session-clock .num { font-size: 1.05rem; font-weight: 300; color: var(--ink); }
+  .session-clock .eyebrow { display: block; margin-bottom: 3px; }
+
+  .top-chip {
+    display: flex; flex-direction: column; gap: 3px; align-items: flex-end;
+    padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.08);
+  }
+  .top-chip .num { font-size: 1.05rem; font-weight: 300; }
+  .top-chip .num.credits { color: var(--mint); text-shadow: 0 0 14px rgba(94,234,212,0.35); }
+
+  .mode-toggle {
+    display: flex; gap: 4px; padding: 4px;
+    border-radius: 999px;
+    background: rgba(5, 8, 22, 0.55);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .mode-toggle button {
+    font-family: var(--display);
+    font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--muted);
+    background: transparent; border: 0; border-radius: 999px;
+    padding: 8px 18px; cursor: pointer;
+  }
+  .mode-toggle button.active {
+    color: #06121B;
+    background: linear-gradient(150deg, #9BEFFA, var(--cyan));
+    box-shadow: 0 0 18px rgba(103,227,245,0.55), 0 2px 10px rgba(0,0,0,0.4);
+  }
+  .mode-toggle button:focus-visible,
+  .voice-sat:focus-visible, .preview-btn:focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+  .mode-rate { font-size: 0.62rem; color: var(--faint); letter-spacing: 0.1em; margin-top: 4px; text-align: center; }
+
+  /* ---------- console grid ---------- */
+  .console {
+    display: grid;
+    grid-template-columns: 292px minmax(0, 1fr) 324px;
+    gap: 22px;
+    align-items: start;
+  }
+  .rail { display: flex; flex-direction: column; gap: 22px; }
+
+  .panel { padding: 22px 22px 24px; }
+  .panel > .eyebrow { display: block; margin-bottom: 16px; }
+
+  /* ---------- state panel ---------- */
+  .state-word {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 1.5rem; font-weight: 200; letter-spacing: 0.20em; text-transform: uppercase;
+    color: var(--cyan);
+    text-shadow: 0 0 26px rgba(103,227,245,0.45);
+  }
+  .state-dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 0 5px rgba(103,227,245,0.14), 0 0 16px rgba(103,227,245,0.8);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  .state-sub { margin-top: 9px; font-size: 0.74rem; color: var(--muted); letter-spacing: 0.05em; }
+
+  .state-legend { display: flex; gap: 14px; margin-top: 18px; }
+  .state-legend span {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint);
+  }
+  .state-legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .lg-listen i { background: var(--cyan); }
+  .lg-rec i    { background: var(--coral); }
+  .lg-mute i   { background: var(--violet); }
+
+  /* ---------- telemetry ---------- */
+  .tele-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .tele-row:last-of-type { border-bottom: 0; padding-bottom: 4px; }
+  .tele-row .label { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  .tele-row .num { font-size: 0.98rem; }
+  .tele-row .num small { font-size: 0.66rem; color: var(--faint); margin-left: 5px; letter-spacing: 0.06em; }
+
+  .cost-split { margin-top: 14px; }
+  .cost-split .bar {
+    height: 6px; border-radius: 999px; overflow: hidden; display: flex;
+    background: rgba(255,255,255,0.06);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .cost-split .you    { background: linear-gradient(90deg, #C98B33, var(--amber)); width: 14%; box-shadow: 0 0 10px rgba(242,183,100,0.5); }
+  .cost-split .claude { background: linear-gradient(90deg, #6D4FD6, var(--violet)); width: 86%; }
+  .cost-split .keys { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.62rem; color: var(--faint); letter-spacing: 0.1em; }
+  .cost-split .keys .num { font-size: 0.66rem; }
+  .cost-split .keys .k-you { color: var(--amber); }
+  .cost-split .keys .k-claude { color: var(--violet); }
+
+  .credits-bar { margin-top: 16px; }
+  .credits-bar .bar {
+    height: 6px; border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .credits-bar .fill {
+    width: 46%; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #2FA98F, var(--mint));
+    box-shadow: 0 0 12px rgba(94,234,212,0.55);
+  }
+  .credits-bar .keys { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.62rem; color: var(--faint); letter-spacing: 0.1em; }
+
+  /* ---------- latency constellation ---------- */
+  .constellation svg { display: block; width: 100%; height: auto; }
+  .constellation .cap {
+    margin-top: 12px; font-size: 0.64rem; color: var(--faint); letter-spacing: 0.08em; line-height: 1.5;
+  }
+  .constellation .cap .num { color: var(--mint); }
+
+  /* ---------- orb hero ---------- */
+  .hero { padding: 34px 26px 28px; overflow: hidden; }
+  .hero-inner { display: flex; flex-direction: column; align-items: center; }
+
+  .orbit-field { position: relative; width: 384px; height: 384px; flex: none; }
+
+  .orbit-ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,0.13);
+  }
+  .orbit-ring::before {
+    content: ""; position: absolute; inset: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .orbit-dot {
+    position: absolute; top: 50%; left: 50%;
+    width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+  }
+  .orbit-dot.u { background: var(--amber);  box-shadow: 0 0 9px rgba(242,183,100,0.85); }
+  .orbit-dot.c { background: var(--violet); box-shadow: 0 0 9px rgba(167,139,250,0.85); }
+  .orbit-dot.now {
+    background: var(--coral); box-shadow: 0 0 14px rgba(251,113,133,0.95);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  .orbit-cap {
+    position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+    font-size: 0.6rem; letter-spacing: 0.26em; text-transform: uppercase;
+    color: var(--faint); white-space: nowrap;
+  }
+
+  .orb {
+    position: absolute; top: 50%; left: 50%;
+    width: 196px; height: 196px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+  }
+  .orb .halo {
+    position: absolute; inset: -46px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(103,227,245,0.22), rgba(103,227,245,0.05) 48%, transparent 70%);
+    animation: breathe 4.5s ease-in-out infinite;
+    filter: blur(2px);
+  }
+  .orb .ring-a, .orb .ring-b {
+    position: absolute; border-radius: 50%;
+  }
+  .orb .ring-a {
+    inset: -14px;
+    border: 1px solid transparent;
+    border-top-color: rgba(103,227,245,0.55);
+    border-right-color: rgba(103,227,245,0.12);
+    animation: spin 9s linear infinite;
+  }
+  .orb .ring-b {
+    inset: -28px;
+    border: 1px solid transparent;
+    border-bottom-color: rgba(167,139,250,0.4);
+    border-left-color: rgba(167,139,250,0.1);
+    animation: spin 16s linear infinite reverse;
+  }
+  .orb .core {
+    position: absolute; inset: 0; border-radius: 50%;
+    background:
+      radial-gradient(circle at 33% 28%, rgba(255,255,255,0.75), transparent 30%),
+      radial-gradient(circle at 50% 60%, rgba(155,239,250,0.95) 0%, #45B7DE 34%, #2D53C4 66%, #17204F 100%);
+    box-shadow:
+      0 0 60px rgba(103,227,245,0.35),
+      0 26px 60px rgba(2,4,16,0.6),
+      inset 0 -18px 40px rgba(10,16,48,0.65),
+      inset 0 6px 18px rgba(255,255,255,0.35);
+    animation: breathe 4.5s ease-in-out infinite;
+  }
+  .orb .eq {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; gap: 4px; align-items: center; height: 44px;
+  }
+  .orb .eq i {
+    width: 3px; border-radius: 2px;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 8px rgba(255,255,255,0.7);
+    animation: eq 1.15s ease-in-out infinite;
+  }
+  .orb .eq i:nth-child(1) { height: 12px; animation-delay: 0s;    }
+  .orb .eq i:nth-child(2) { height: 26px; animation-delay: 0.12s; }
+  .orb .eq i:nth-child(3) { height: 38px; animation-delay: 0.24s; }
+  .orb .eq i:nth-child(4) { height: 20px; animation-delay: 0.06s; }
+  .orb .eq i:nth-child(5) { height: 32px; animation-delay: 0.30s; }
+  .orb .eq i:nth-child(6) { height: 16px; animation-delay: 0.18s; }
+  .orb .eq i:nth-child(7) { height: 10px; animation-delay: 0.36s; }
+  @keyframes eq { 50% { transform: scaleY(0.32); opacity: 0.55; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 50% { transform: scale(1.045); } }
+  .orb .core { animation-name: breathe-core; }
+  @keyframes breathe-core { 50% { box-shadow: 0 0 84px rgba(103,227,245,0.5), 0 26px 60px rgba(2,4,16,0.6), inset 0 -18px 40px rgba(10,16,48,0.65), inset 0 6px 18px rgba(255,255,255,0.35); } }
+
+  .orb-caption { margin-top: 20px; text-align: center; }
+  .orb-caption .word {
+    font-size: 0.94rem; font-weight: 200; letter-spacing: 0.5em; text-transform: uppercase;
+    color: var(--ink); padding-left: 0.5em; /* optical centering for tracking */
+  }
+  .orb-caption .sub { margin-top: 6px; font-size: 0.68rem; color: var(--faint); letter-spacing: 0.12em; }
+
+  /* ---------- utterance stream ---------- */
+  .stream { display: flex; flex-direction: column; gap: 14px; }
+  .stream-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
+  .stream-head .eyebrow { letter-spacing: 0.34em; }
+  .stream-head .count { font-size: 0.66rem; color: var(--faint); letter-spacing: 0.08em; }
+
+  .utt {
+    padding: 15px 19px 13px;
+    max-width: 86%;
+    border-radius: var(--r-md);
+  }
+  .utt.user   { align-self: flex-end; }
+  .utt.claude { align-self: flex-start; }
+  .utt.user::before, .utt.claude::before {
+    content: ""; position: absolute; top: 14px; bottom: 14px; width: 2px; border-radius: 2px;
+  }
+  .utt.user::before   { right: -1px; background: linear-gradient(var(--amber), transparent); box-shadow: 0 0 10px rgba(242,183,100,0.6); }
+  .utt.claude::before { left: -1px;  background: linear-gradient(var(--violet), transparent); box-shadow: 0 0 10px rgba(167,139,250,0.6); }
+
+  .utt.rec {
+    border-color: rgba(251,113,133,0.4);
+    animation: rec-breathe 1.4s ease-in-out infinite;
+  }
+  @keyframes rec-breathe { 50% { border-color: rgba(251,113,133,0.85); box-shadow: 0 24px 70px rgba(2,4,16,0.55), 0 0 26px rgba(251,113,133,0.18), inset 0 1px 0 var(--glass-inner); } }
+
+  .utt .head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; flex-wrap: wrap; }
+  .utt .who { font-family: var(--mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.22em; }
+  .utt.user .who   { color: var(--amber); }
+  .utt.claude .who { color: var(--violet); }
+  .utt .phase {
+    font-size: 0.58rem; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 3px 11px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: var(--muted);
+  }
+  .utt .phase.p-rec    { color: var(--coral);  border-color: rgba(251,113,133,0.45); background: rgba(251,113,133,0.1);  box-shadow: 0 0 12px rgba(251,113,133,0.25); }
+  .utt .phase.p-play   { color: var(--cyan);   border-color: rgba(103,227,245,0.4);  background: rgba(103,227,245,0.08); }
+  .utt .phase.p-done   { color: var(--mint);   border-color: rgba(94,234,212,0.35);  background: rgba(94,234,212,0.07); }
+  .utt .phase.p-spoken { color: var(--violet); border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.08); }
+  .utt .t { margin-left: auto; font-family: var(--mono); font-size: 0.62rem; color: var(--faint); }
+
+  .utt .text { font-size: 0.92rem; font-weight: 300; line-height: 1.55; letter-spacing: 0.01em; overflow-wrap: anywhere; }
+  .utt .text .caret {
+    display: inline-block; width: 8px; height: 1.05em; vertical-align: text-bottom;
+    background: rgba(251,113,133,0.8); margin-left: 3px; border-radius: 1px;
+    animation: pulse 0.9s step-end infinite;
+  }
+  .utt .foot {
+    display: flex; gap: 14px; margin-top: 8px;
+    font-family: var(--mono); font-size: 0.62rem; color: var(--faint);
+  }
+  .utt .foot .cost { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  /* ---------- character rail ---------- */
+  .persona-field { position: relative; width: 236px; height: 236px; margin: 4px auto 10px; }
+  .persona-field .p-ring {
+    position: absolute; inset: 10px; border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,0.13);
+  }
+  .persona-core {
+    position: absolute; top: 50%; left: 50%;
+    width: 104px; height: 104px; transform: translate(-50%, -50%);
+    border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    background:
+      radial-gradient(circle at 32% 28%, rgba(255,255,255,0.5), transparent 36%),
+      radial-gradient(circle at 50% 60%, #C9A6FF 0%, #8D66E8 55%, #4A2F96 100%);
+    box-shadow: 0 0 34px rgba(167,139,250,0.5), inset 0 -10px 24px rgba(30,14,70,0.6), inset 0 4px 12px rgba(255,255,255,0.3);
+  }
+  .persona-core .initial { font-size: 1.9rem; font-weight: 200; color: #FBF9FF; line-height: 1; }
+  .persona-core .name { font-size: 0.58rem; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(251,249,255,0.85); font-weight: 500; }
+
+  .voice-sat {
+    position: absolute; top: 50%; left: 50%;
+    width: 40px; height: 40px; margin: -20px 0 0 -20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--display); font-size: 0.72rem; font-weight: 400;
+    color: var(--muted);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+  }
+  .voice-sat:hover { color: var(--ink); border-color: rgba(167,139,250,0.6); box-shadow: 0 0 14px rgba(167,139,250,0.35); }
+  .persona-cap { text-align: center; font-size: 0.64rem; color: var(--faint); letter-spacing: 0.1em; margin-bottom: 20px; }
+  .persona-cap .num { color: var(--violet); }
+
+  .trait { margin-bottom: 17px; }
+  .trait .row1 {
+    display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 7px;
+  }
+  .trait .t-name { font-size: 0.74rem; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+  .trait .t-val { font-family: var(--mono); font-size: 0.72rem; color: var(--cyan); font-variant-numeric: tabular-nums; }
+  .trait .t-axis { display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.58rem; color: var(--faint); letter-spacing: 0.08em; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 22px; margin: 0;
+    background: transparent; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 5px; border-radius: 999px;
+    background:
+      linear-gradient(90deg, rgba(103,227,245,0.85) var(--fill, 50%), rgba(255,255,255,0.08) var(--fill, 50%));
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; margin-top: -5.5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #fff, var(--cyan) 62%, #2E8FA8);
+    box-shadow: 0 0 14px rgba(103,227,245,0.75), 0 2px 6px rgba(0,0,0,0.5);
+    border: 0;
+  }
+  input[type="range"]::-moz-range-track {
+    height: 5px; border-radius: 999px; background: rgba(255,255,255,0.08);
+  }
+  input[type="range"]::-moz-range-progress {
+    height: 5px; border-radius: 999px; background: rgba(103,227,245,0.85);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border: 0; border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #fff, var(--cyan) 62%, #2E8FA8);
+    box-shadow: 0 0 14px rgba(103,227,245,0.75);
+  }
+
+  .speed .ticks { display: flex; justify-content: space-between; margin-top: 5px; font-family: var(--mono); font-size: 0.58rem; color: var(--faint); }
+  .speed .t-val { color: var(--amber); }
+  .speed input[type="range"]::-webkit-slider-thumb {
+    background: radial-gradient(circle at 34% 30%, #fff, var(--amber) 62%, #B4772A);
+    box-shadow: 0 0 14px rgba(242,183,100,0.75), 0 2px 6px rgba(0,0,0,0.5);
+  }
+  .speed input[type="range"]::-webkit-slider-runnable-track {
+    background: linear-gradient(90deg, rgba(242,183,100,0.8) var(--fill, 43%), rgba(255,255,255,0.08) var(--fill, 43%));
+  }
+
+  .preview-btn {
+    width: 100%; margin-top: 20px;
+    font-family: var(--display); font-size: 0.68rem; font-weight: 500;
+    letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--ink);
+    padding: 12px 0;
+    border-radius: 999px;
+    border: 1px solid rgba(167,139,250,0.4);
+    background: linear-gradient(160deg, rgba(167,139,250,0.2), rgba(167,139,250,0.06));
+    cursor: pointer;
+  }
+  .preview-btn:hover { border-color: rgba(167,139,250,0.8); box-shadow: 0 0 20px rgba(167,139,250,0.3); }
+
+  /* ---------- footer strip ---------- */
+  .footstrip {
+    display: flex; justify-content: center; gap: 34px; flex-wrap: wrap;
+    padding: 13px 26px;
+    border-radius: 999px;
+    font-family: var(--mono); font-size: 0.62rem; color: var(--faint);
+  }
+  .footstrip b { font-weight: 400; color: var(--muted); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1180px) {
+    .console { grid-template-columns: minmax(0, 1fr) 324px; }
+    .rail-left { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+    .rail-left .panel { flex: 1 1 260px; }
+  }
+  @media (max-width: 820px) {
+    .console { grid-template-columns: 1fr; }
+    .topbar { flex-wrap: wrap; row-gap: 14px; }
+    .top-spacer { display: none; }
+  }
+  @media (max-width: 460px) {
+    .orbit-field { transform: scale(0.8); margin: -38px 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<div class="shell">
+
+  <!-- ======= topbar ======= -->
+  <header class="topbar glass">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1>grok <b>voice</b><span class="tagline">Mission Control</span></h1>
+    </div>
+    <div class="top-spacer"></div>
+    <div class="session-clock">
+      <span class="eyebrow">Session</span>
+      <span class="num">00:42:17</span>
+    </div>
+    <div class="top-chip">
+      <span class="eyebrow">Spent</span>
+      <span class="num">$0.0842</span>
+    </div>
+    <div class="top-chip">
+      <span class="eyebrow">Credits</span>
+      <span class="num credits">$23.17</span>
+    </div>
+    <div class="top-chip" style="border-left:1px solid rgba(255,255,255,0.08);">
+      <div class="mode-toggle" role="group" aria-label="Transcription mode">
+        <button type="button">Batch</button>
+        <button type="button" class="active">Live</button>
+      </div>
+      <span class="mode-rate">streaming · $0.20/h</span>
+    </div>
+  </header>
+
+  <!-- ======= console ======= -->
+  <div class="console">
+
+    <!-- ---- left rail: telemetry ---- -->
+    <aside class="rail rail-left">
+
+      <section class="panel glass">
+        <span class="eyebrow">Link State</span>
+        <div class="state-word"><span class="state-dot"></span>Listening</div>
+        <p class="state-sub">VAD armed · 0.8 s silence gate · mic 48 kHz</p>
+        <div class="state-legend">
+          <span class="lg-listen"><i></i>Listen</span>
+          <span class="lg-rec"><i></i>Record</span>
+          <span class="lg-mute"><i></i>Muted</span>
+        </div>
+      </section>
+
+      <section class="panel glass">
+        <span class="eyebrow">Telemetry</span>
+        <div class="tele-row"><span class="label">Queued</span><span class="num">2<small>utterances</small></span></div>
+        <div class="tele-row"><span class="label">Turns</span><span class="num">14<small>this session</small></span></div>
+        <div class="tele-row"><span class="label">Grace window</span><span class="num">2.0<small>s</small></span></div>
+        <div class="cost-split">
+          <div class="bar"><span class="you"></span><span class="claude"></span></div>
+          <div class="keys">
+            <span class="k-you">YOU <span class="num">$0.0011</span></span>
+            <span class="k-claude">CLAUDE <span class="num">$0.0831</span></span>
+          </div>
+        </div>
+        <div class="credits-bar">
+          <div class="bar"><div class="fill"></div></div>
+          <div class="keys"><span>credits remaining</span><span class="num">$23.17 / $50.00</span></div>
+        </div>
+      </section>
+
+      <section class="panel glass constellation">
+        <span class="eyebrow">Latency Constellation</span>
+        <svg viewBox="0 0 248 128" role="img" aria-label="Pipeline latency: mic to voice, five stages">
+          <defs>
+            <filter id="star-glow" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="2.6" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- connective lines -->
+          <polyline points="22,86 70,44 122,70 172,34 226,58"
+            fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="3 4"/>
+          <!-- stars -->
+          <circle cx="22"  cy="86" r="3.2" fill="#67E3F5" filter="url(#star-glow)"/>
+          <circle cx="70"  cy="44" r="3.2" fill="#67E3F5" filter="url(#star-glow)"/>
+          <circle cx="122" cy="70" r="3.2" fill="#F2B764" filter="url(#star-glow)"/>
+          <circle cx="172" cy="34" r="3.2" fill="#A78BFA" filter="url(#star-glow)"/>
+          <circle cx="226" cy="58" r="3.2" fill="#5EEAD4" filter="url(#star-glow)"/>
+          <!-- labels -->
+          <g fill="#8A93BC" font-family="ui-monospace, Menlo, monospace" font-size="7.5" text-anchor="middle">
+            <text x="22"  y="103">VAD</text>
+            <text x="70"  y="61">STT</text>
+            <text x="122" y="87">HOOK</text>
+            <text x="172" y="51">CLAUDE</text>
+            <text x="226" y="75">TTS</text>
+          </g>
+          <g fill="#EAEEFB" font-family="ui-monospace, Menlo, monospace" font-size="8" text-anchor="middle" opacity="0.9">
+            <text x="22"  y="114">0.8s</text>
+            <text x="70"  y="72">412ms</text>
+            <text x="122" y="98">96ms</text>
+            <text x="172" y="62">3.8s</text>
+            <text x="226" y="86">388ms</text>
+          </g>
+        </svg>
+        <p class="cap">Median hop times, last 10 turns.<br>Round trip voice → voice <span class="num">5.4 s</span> — nominal.</p>
+      </section>
+
+    </aside>
+
+    <!-- ---- center: orb + stream ---- -->
+    <main class="rail">
+
+      <section class="hero glass">
+        <div class="hero-inner">
+          <div class="orbit-field">
+            <div class="orbit-ring" aria-hidden="true"></div>
+            <div id="orbit-dots" aria-hidden="true"></div>
+            <div class="orb" role="img" aria-label="Voice orb, currently listening">
+              <div class="halo"></div>
+              <div class="ring-b"></div>
+              <div class="ring-a"></div>
+              <div class="core"></div>
+              <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+            <span class="orbit-cap">Orbital timeline · last 12 utterances · 42 min</span>
+          </div>
+          <div class="orb-caption">
+            <div class="word">Listening</div>
+            <p class="sub">say something — the orb tightens while you speak, glows violet when Claude answers</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="stream" aria-label="Utterance stream">
+        <div class="stream-head">
+          <span class="eyebrow">Utterance Stream</span>
+          <span class="count">14 cards · newest first</span>
+        </div>
+
+        <article class="utt user glass rec">
+          <div class="head">
+            <span class="who">YOU</span>
+            <span class="phase p-rec">recording · 00:04</span>
+            <span class="t">10:23:41</span>
+          </div>
+          <p class="text">Okay, and once the suite is green, bump the version and draft the release notes<span class="caret"></span></p>
+          <div class="foot"><span>live stream · partial transcript</span><span class="cost"></span></div>
+        </article>
+
+        <article class="utt claude glass">
+          <div class="head">
+            <span class="who">CLAUDE</span>
+            <span class="phase p-play">playing · carina</span>
+            <span class="t">10:23:12</span>
+          </div>
+          <p class="text">Test suite passed — 84 tests in 12.4 seconds. Two warnings about a deprecated audio API, nothing blocking. Want the details?</p>
+          <div class="foot"><span>tts 388 ms · 9.1 s audio</span><span class="cost">$0.0031</span></div>
+        </article>
+
+        <article class="utt user glass">
+          <div class="head">
+            <span class="who">YOU</span>
+            <span class="phase p-done">delivered</span>
+            <span class="t">10:22:47</span>
+          </div>
+          <p class="text">Run the listener test suite and read me the summary.</p>
+          <div class="foot"><span>2.1 s speech · stt 412 ms</span><span class="cost">$0.0004</span></div>
+        </article>
+
+        <article class="utt claude glass">
+          <div class="head">
+            <span class="who">CLAUDE</span>
+            <span class="phase p-spoken">played</span>
+            <span class="t">10:19:05</span>
+          </div>
+          <p class="text">Daemon restarted in live mode. VAD is armed with a 0.8 second gate — streaming transcription is on, so your words will land as you speak.</p>
+          <div class="foot"><span>tts 402 ms · 11.6 s audio</span><span class="cost">$0.0028</span></div>
+        </article>
+
+        <article class="utt user glass">
+          <div class="head">
+            <span class="who">YOU</span>
+            <span class="phase p-done">delivered</span>
+            <span class="t">10:18:52</span>
+          </div>
+          <p class="text">Restart the daemon in live mode, please.</p>
+          <div class="foot"><span>1.6 s speech · stt 365 ms</span><span class="cost">$0.0003</span></div>
+        </article>
+
+        <article class="utt claude glass">
+          <div class="head">
+            <span class="who">CLAUDE</span>
+            <span class="phase p-spoken">played</span>
+            <span class="t">09:41:33</span>
+          </div>
+          <p class="text">Morning. Session resumed — two utterances were still queued from last night; I have replayed them into context.</p>
+          <div class="foot"><span>tts 371 ms · 8.4 s audio</span><span class="cost">$0.0026</span></div>
+        </article>
+      </section>
+
+    </main>
+
+    <!-- ---- right rail: character ---- -->
+    <aside class="rail">
+
+      <section class="panel glass">
+        <span class="eyebrow">Voice Persona</span>
+        <div class="persona-field">
+          <div class="p-ring" aria-hidden="true"></div>
+          <div class="persona-core">
+            <span class="initial">C</span>
+            <span class="name">Carina</span>
+          </div>
+          <button class="voice-sat" style="--a: -90deg"  type="button" title="Ara — female">Ar</button>
+          <button class="voice-sat" style="--a: -45deg"  type="button" title="Atlas — male">At</button>
+          <button class="voice-sat" style="--a: 0deg"    type="button" title="Eve — female">Ev</button>
+          <button class="voice-sat" style="--a: 45deg"   type="button" title="Helios — male">He</button>
+          <button class="voice-sat" style="--a: 90deg"   type="button" title="Iris — female">Ir</button>
+          <button class="voice-sat" style="--a: 135deg"  type="button" title="Luna — female">Lu</button>
+          <button class="voice-sat" style="--a: 180deg"  type="button" title="Orion — male">Or</button>
+          <button class="voice-sat" style="--a: 225deg"  type="button" title="Zenith — male">Ze</button>
+        </div>
+        <p class="persona-cap">active voice <span class="num">carina · female</span> · 26 in constellation</p>
+
+        <div class="trait">
+          <div class="row1"><span class="t-name">Humor</span><span class="t-val">65</span></div>
+          <input type="range" min="0" max="100" value="65" style="--fill: 65%" aria-label="Humor">
+          <div class="t-axis"><span>dry</span><span>playful</span></div>
+        </div>
+        <div class="trait">
+          <div class="row1"><span class="t-name">Honesty</span><span class="t-val">80</span></div>
+          <input type="range" min="0" max="100" value="80" style="--fill: 80%" aria-label="Honesty">
+          <div class="t-axis"><span>diplomatic</span><span>blunt</span></div>
+        </div>
+        <div class="trait">
+          <div class="row1"><span class="t-name">Brevity</span><span class="t-val">45</span></div>
+          <input type="range" min="0" max="100" value="45" style="--fill: 45%" aria-label="Brevity">
+          <div class="t-axis"><span>detailed</span><span>terse</span></div>
+        </div>
+        <div class="trait">
+          <div class="row1"><span class="t-name">Chatty</span><span class="t-val">30</span></div>
+          <input type="range" min="0" max="100" value="30" style="--fill: 30%" aria-label="Chatty">
+          <div class="t-axis"><span>milestones only</span><span>frequent updates</span></div>
+        </div>
+
+        <div class="trait speed">
+          <div class="row1"><span class="t-name">Speech Speed</span><span class="t-val num">1.15×</span></div>
+          <input type="range" min="50" max="200" value="115" style="--fill: 43%" aria-label="Speech speed">
+          <div class="ticks"><span>0.5×</span><span>1.0×</span><span>1.5×</span><span>2.0×</span></div>
+        </div>
+
+        <button class="preview-btn" type="button">Preview Voice</button>
+      </section>
+
+      <section class="panel glass">
+        <span class="eyebrow">Timing Rules</span>
+        <div class="tele-row"><span class="label">Pause &lt; 0.8 s</span><span class="num" style="font-size:0.72rem; color:var(--muted)">same utterance</span></div>
+        <div class="tele-row"><span class="label">0.8 s silence</span><span class="num" style="font-size:0.72rem; color:var(--muted)">close &amp; transcribe</span></div>
+        <div class="tele-row"><span class="label">2 s after text</span><span class="num" style="font-size:0.72rem; color:var(--muted)">wake Claude</span></div>
+        <div class="tele-row"><span class="label">5 min idle</span><span class="num" style="font-size:0.72rem; color:var(--muted)">hook stands down</span></div>
+      </section>
+
+    </aside>
+  </div>
+
+  <!-- ======= footer strip ======= -->
+  <footer class="footstrip glass">
+    <span>daemon <b>pid 48231</b></span>
+    <span>uplink <b>ws://127.0.0.1:8765</b></span>
+    <span>model <b>grok-4-voice</b></span>
+    <span>build <b>0.7.2 · concept mockup</b></span>
+  </footer>
+
+</div>
+
+<script>
+  /* ---- starfield (canvas, static with faint parallax layers) ---- */
+  (function () {
+    const cv = document.getElementById("stars");
+    const cx = cv.getContext("2d");
+    function draw() {
+      const w = cv.width = innerWidth * devicePixelRatio;
+      const h = cv.height = innerHeight * devicePixelRatio;
+      cx.clearRect(0, 0, w, h);
+      const rng = mulberry(20260709);
+      for (let i = 0; i < 240; i++) {
+        const x = rng() * w, y = rng() * h;
+        const r = (rng() * 1.1 + 0.25) * devicePixelRatio;
+        const a = rng() * 0.55 + 0.12;
+        cx.beginPath();
+        cx.arc(x, y, r, 0, Math.PI * 2);
+        cx.fillStyle = rng() > 0.86
+          ? "rgba(155, 226, 245," + a + ")"
+          : "rgba(224, 230, 255," + a + ")";
+        cx.fill();
+      }
+    }
+    function mulberry(seed) {
+      return function () {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    draw();
+    addEventListener("resize", draw);
+  })();
+
+  /* ---- orbital conversation timeline: fake last-12 utterances ---- */
+  (function () {
+    const field = document.getElementById("orbit-dots");
+    // angle in degrees clockwise from 12 o'clock; role u = you, c = claude
+    const dots = [
+      { a: 8,   r: "c" }, { a: 34,  r: "u" }, { a: 57,  r: "c" },
+      { a: 96,  r: "u" }, { a: 121, r: "c" }, { a: 148, r: "u" },
+      { a: 176, r: "c" }, { a: 214, r: "u" }, { a: 238, r: "c" },
+      { a: 271, r: "u" }, { a: 305, r: "c" }, { a: 336, r: "u", now: true },
+    ];
+    const R = 192; // px radius of the outer dashed ring
+    for (const d of dots) {
+      const el = document.createElement("span");
+      el.className = "orbit-dot " + d.r + (d.now ? " now" : "");
+      el.style.transform =
+        "rotate(" + (d.a - 90) + "deg) translate(" + R + "px) rotate(" + (90 - d.a) + "deg)";
+      field.appendChild(el);
+    }
+  })();
+
+  /* ---- voice persona satellites: position on ring ---- */
+  (function () {
+    const R = 108;
+    document.querySelectorAll(".voice-sat").forEach(el => {
+      const a = parseFloat(el.style.getPropertyValue("--a"));
+      el.style.transform =
+        "translate(" +
+        (Math.cos(a * Math.PI / 180) * R).toFixed(1) + "px," +
+        (Math.sin(a * Math.PI / 180) * R).toFixed(1) + "px)";
+    });
+  })();
+
+  /* ---- sliders: keep glow fill in sync while dragging (mockup nicety) ---- */
+  document.querySelectorAll('input[type="range"]').forEach(input => {
+    input.addEventListener("input", () => {
+      const pct = (input.value - input.min) / (input.max - input.min) * 100;
+      input.style.setProperty("--fill", pct + "%");
+      const val = input.closest(".trait")?.querySelector(".t-val");
+      if (val) val.textContent = input.closest(".speed")
+        ? (input.value / 100).toFixed(2).replace(/0$/, "") + "×"
+        : input.value;
+    });
+  });
+</script>
+</body>
+</html>

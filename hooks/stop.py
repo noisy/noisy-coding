@@ -19,6 +19,9 @@ import time
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _agent_identity import identity  # noqa: E402
+
 PORT = os.environ.get("GROK_VOICE_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
 VOICE_ACTIVE_WINDOW_SECONDS = 300
@@ -30,15 +33,16 @@ POLL_INTERVAL_SECONDS = 0.5
 # with the transcript on stderr to wake the model.
 MODE = os.environ.get("GROK_VOICE_STOP_MODE", "sync")
 REWAKE_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_WAIT_SECONDS", "3600"))
-REWAKE_LOCK_FILE = Path.home() / ".config" / "grok-voice" / (
-    "rewake-" + (os.environ.get("GROK_VOICE_AGENT_NAME") or "default") + ".lock"
-)
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
 GRACE_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_GRACE_SECONDS", "2.0"))
 GRACE_CAP_SECONDS = 20.0
-AGENT = os.environ.get("GROK_VOICE_AGENT_NAME", "")
-DRAIN_PATH = "/drain" + (f"?agent={AGENT}" if AGENT else "")
+
+# Per-session identity is resolved from stdin in main() and stored here so the
+# module-level polling helpers can reach it.
+AGENT = ""
+DRAIN_PATH = "/drain"
+REWAKE_LOCK_FILE = Path.home() / ".config" / "grok-voice" / "rewake-default.lock"
 
 
 def _get(path: str) -> dict:
@@ -90,7 +94,18 @@ VOICE_INSTRUCTION = (
 
 
 def main() -> None:
-    sys.stdin.read()
+    global AGENT, DRAIN_PATH, REWAKE_LOCK_FILE
+    raw = sys.stdin.read()
+    try:
+        hook_input = json.loads(raw) if raw.strip() else {}
+    except ValueError:
+        hook_input = {}
+    AGENT, _label = identity(hook_input)
+    DRAIN_PATH = f"/drain?agent={AGENT}"
+    # Per-agent rewake lock so one session's poller can't block another's.
+    REWAKE_LOCK_FILE = (
+        Path.home() / ".config" / "grok-voice" / f"rewake-{AGENT}.lock"
+    )
     try:
         if MODE == "rewake":
             # Only one background poller may watch the queue: a stale poller

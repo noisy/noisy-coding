@@ -32,6 +32,7 @@ class ListenerState:
         # Multi-agent: registered agents by name, and which one is active.
         # Transcripts are only delivered to the active agent (see drain).
         self._agents: dict[str, float] = {}  # name -> last-seen time
+        self._agent_labels: dict[str, str] = {}  # name -> human label (rename title)
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._user_muted = False  # explicit mute from the dashboard
@@ -277,13 +278,21 @@ class ListenerState:
             return dict(self._agents)
 
     @property
+    def agent_labels(self) -> dict:
+        # name -> label; falls back to the name itself when no label was given.
+        with self._lock:
+            return {n: self._agent_labels.get(n, n) for n in self._agents}
+
+    @property
     def active_agent(self) -> str | None:
         with self._lock:
             return self._active_agent
 
-    def register_agent(self, name: str) -> None:
+    def register_agent(self, name: str, label: str = "") -> None:
         with self._lock:
             self._agents[name] = time.time()
+            if label:
+                self._agent_labels[name] = label
             if self._active_agent is None:
                 self._active_agent = name
 

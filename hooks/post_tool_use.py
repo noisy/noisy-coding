@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
 """PostToolUse hook: deliver queued voice transcripts to the model mid-work.
 
-Stdlib only — runs on system python3 with no venv so it adds ~30ms per tool
-call. Fails open (silent exit) whenever the listener daemon is not running.
+Fails open (silent exit) whenever the listener daemon is not running.
 """
+
+from __future__ import annotations
 
 import json
 import os
 import sys
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _agent_identity import identity  # noqa: E402
+
 PORT = os.environ.get("GROK_VOICE_LISTENER_PORT", "8765")
-AGENT = os.environ.get("GROK_VOICE_AGENT_NAME", "")
-DRAIN_URL = f"http://127.0.0.1:{PORT}/drain" + (f"?agent={AGENT}" if AGENT else "")
 
 
 def main() -> None:
-    sys.stdin.read()
+    raw = sys.stdin.read()
     try:
-        with urllib.request.urlopen(DRAIN_URL, timeout=0.5) as response:
+        hook_input = json.loads(raw) if raw.strip() else {}
+    except ValueError:
+        hook_input = {}
+    agent, _label = identity(hook_input)
+    drain_url = f"http://127.0.0.1:{PORT}/drain?agent={agent}"
+    try:
+        with urllib.request.urlopen(drain_url, timeout=0.5) as response:
             transcripts = json.load(response)["transcripts"]
     except Exception:
         return

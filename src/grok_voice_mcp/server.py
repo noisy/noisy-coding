@@ -1,12 +1,14 @@
 """MCP server that lets the assistant speak to the user via Grok Voice."""
 
 import asyncio
+import json
 import os
 import re
 import socket
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -30,6 +32,27 @@ _speak_lock = asyncio.Lock()
 def _emphasis_to_speech_tags(text: str) -> str:
     """Markdown **bold** becomes vocal emphasis for the TTS engine."""
     return EMPHASIS_PATTERN.sub(r"<loud>\1</loud>", text)
+
+
+_SESSIONS_MAP = Path.home() / ".config" / "grok-voice" / "sessions.json"
+
+
+def _agent_name() -> str:
+    """This server's agent id.
+
+    The MCP server can't see the Claude session_id, so: use an explicit
+    GROK_VOICE_AGENT_NAME if set (per-config mode); otherwise look up the
+    per-session id the hooks recorded for this working directory.
+    """
+    env_name = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    if env_name:
+        return env_name
+    try:
+        data = json.loads(_SESSIONS_MAP.read_text())
+        return str(data.get(os.getcwd(), {}).get("agent", ""))
+    except (OSError, ValueError):
+        return ""
+
 
 mcp = FastMCP("grok-voice")
 
@@ -68,7 +91,7 @@ async def _acquire_floor(agent: str, timeout_s: float = 30.0) -> None:
 async def _dashboard_event(kind: str, detail: str, **extra: object) -> None:
     # Tag the event with our agent so Claude's card lands in the right
     # per-agent history even if another agent became active meanwhile.
-    agent = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    agent = _agent_name()
     body = {"kind": kind, "detail": detail, **extra}
     if agent:
         body["agent"] = agent
@@ -149,7 +172,7 @@ async def announce(text: str, voice_id: str = "", language: str = "", speed: flo
 async def _fetch_character() -> dict:
     """This agent's character from the daemon (voice/speed/traits)."""
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
-    agent = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    agent = _agent_name()
     query = f"?agent={agent}" if agent else ""
     try:
         async with httpx.AsyncClient(timeout=0.5) as client:
@@ -185,7 +208,7 @@ async def _render_and_play(text: str, voice_id: str, language: str, speed: float
         speech_text = _emphasis_to_speech_tags(text)
         streaming = _tts_streaming_from(status)
 
-        agent_name = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip() or None
+        agent_name = _agent_name() or None
         # Global floor: with multiple agents (separate MCP servers) the per-
         # process lock can't stop two voices overlapping. Wait for the daemon's
         # cross-agent floor before playing; time out so we never deadlock.
@@ -262,7 +285,11 @@ def _ensure_daemon() -> None:
 
 
 def _register_agent() -> None:
-    """Announce this agent to the daemon so it appears in the switcher."""
+    """Announce this agent to the daemon so it appears in the switcher.
+
+    In per-session mode the hook registers the agent (it knows session_id);
+    this only fires for explicit GROK_VOICE_AGENT_NAME (per-config mode).
+    """
     name = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
     if not name:
         return
