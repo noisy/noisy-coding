@@ -12,6 +12,9 @@ DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
 DEFAULT_END_SILENCE_MS = 800
 MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
+# An agent that hasn't drained the queue in this long is treated as gone.
+# Live agents poll far more often than this (PostToolUse + Stop rewake).
+AGENT_TTL_SECONDS = 90
 DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
 
 
@@ -272,15 +275,30 @@ class ListenerState:
                     )
             return transcripts
 
+    def _prune_stale_agents_locked(self) -> None:
+        # Agents drain the queue constantly (PostToolUse/Stop), refreshing their
+        # last-seen time. One that hasn't polled in AGENT_TTL_SECONDS is gone
+        # (reconnected under a new id, closed, crashed) — drop it so dead tabs
+        # like a renamed "work" don't linger.
+        now = time.time()
+        stale = [n for n, seen in self._agents.items() if now - seen > AGENT_TTL_SECONDS]
+        for name in stale:
+            del self._agents[name]
+            self._agent_labels.pop(name, None)
+            if self._active_agent == name:
+                self._active_agent = next(iter(self._agents), None)
+
     @property
     def agents(self) -> dict:
         with self._lock:
+            self._prune_stale_agents_locked()
             return dict(self._agents)
 
     @property
     def agent_labels(self) -> dict:
         # name -> label; falls back to the name itself when no label was given.
         with self._lock:
+            self._prune_stale_agents_locked()
             return {n: self._agent_labels.get(n, n) for n in self._agents}
 
     @property
