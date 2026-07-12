@@ -42,3 +42,17 @@ def test_trait_change_sends_one_character_instruction(character_server):
     assert len(transcripts) == 1
     assert transcripts[0].text.startswith("[CHARACTER]")
     assert "Never comment on the voice" in transcripts[0].text
+
+
+def test_gender_flip_sends_a_silent_persona_instruction(character_server):
+    state, port = character_server
+
+    _post_character(port, {"voice": "ara"})  # default carina (f) → ara (f)
+    assert state.drain() == []  # same gender — nothing to apply
+
+    _post_character(port, {"voice": "rex"})  # female → male
+    transcripts = state.drain()
+    assert len(transcripts) == 1
+    assert transcripts[0].text.startswith("[PERSONA]")
+    assert "male" in transcripts[0].text
+    assert "silently" in transcripts[0].text

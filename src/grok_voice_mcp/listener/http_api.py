@@ -39,6 +39,37 @@ CHARACTER_FILE = Path.home() / ".config" / "grok-voice" / "character.json"
 SETTINGS_FILE = Path.home() / ".config" / "grok-voice" / "settings.json"
 
 
+# Grok voice genders (matches the dashboard's voice list). The agent's
+# Polish grammar must agree with the voice it speaks with.
+FEMALE_VOICES = {"ara", "carina", "celeste", "eve", "iris", "luna", "ursa"}
+
+
+def _voice_gender(voice: str) -> str:
+    return "female" if voice in FEMALE_VOICES else "male"
+
+
+def notify_gender_change(
+    state: ListenerState, agent: str | None, old_voice: str, new_voice: str
+) -> None:
+    """Tell the agent to switch grammatical gender — silently.
+
+    Sent only when the voice's gender actually flips, and phrased so the
+    agent applies it without ever commenting on it.
+    """
+    if _voice_gender(old_voice) == _voice_gender(new_voice):
+        return
+    if agent not in (None, state.active_agent):
+        return
+    gender = _voice_gender(new_voice)
+    forms = "feminine (e.g. „zrobiłam”)" if gender == "female" else "masculine (e.g. „zrobiłem”)"
+    state.add_transcript(
+        f"[PERSONA] Your voice is now {gender}. From this point on, speak and write "
+        f"in the first person using {forms} grammatical forms in Polish. Apply this "
+        "silently: never mention, comment on, or acknowledge the voice change or "
+        "this note — just continue whatever is pending as if it did not exist."
+    )
+
+
 def save_characters(state: ListenerState) -> None:
     """Persist per-agent characters so voice choices survive restarts."""
     try:
@@ -187,6 +218,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "itself — and briefly acknowledge the new setting in character. "
                         "Never comment on the voice or speed."
                     )
+                notify_gender_change(state, agent, before["voice"], values["voice"])
                 save_characters(state)
                 self._respond({"character": values})
             elif self.path == "/voice":
@@ -200,8 +232,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond({"error": "voice_id must be a voice name"}, status=400)
                 else:
                     agent = str(body["agent"]) if body.get("agent") else None
+                    before_voice = state.character(agent)["voice"]
                     values = state.set_character({"voice": voice}, agent)
                     state.add_event("voice", f"Claude switched voice to '{values['voice']}'")
+                    notify_gender_change(state, agent, before_voice, values["voice"])
                     save_characters(state)
                     self._respond({"voice": values["voice"]})
             elif self.path == "/settings":
