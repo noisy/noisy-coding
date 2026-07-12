@@ -1,6 +1,9 @@
 /* GROK-VOICE HUD — design tokens and global chrome.
    Style source of truth: design-concepts/scifi-hud.html */
 :root {
+  /* Global UI scale (like browser zoom, but baked in): the whole HUD
+     shrinks uniformly while still using the full screen width. */
+  --ui-scale: 0.8;
   --bg0: #02060c;
   --bg1: #050d18;
   --panel: rgba(7, 19, 32, 0.78);
@@ -58,10 +61,12 @@ body::before {
 .hud {
   position: relative;
   z-index: 1;
-  max-width: 1560px;
   margin: 0 auto;
   padding: 14px 22px 12px;
-  height: 100dvh;
+  zoom: var(--ui-scale);
+  /* zoom shrinks rendered lengths, so compensate to keep exactly one
+     viewport of height — header and footer stay pinned on screen. */
+  height: calc(100dvh / var(--ui-scale));
   display: flex;
   flex-direction: column;
 }
