@@ -1,4 +1,5 @@
 import threading
+import time
 
 from grok_voice_mcp.listener.state import ListenerState
 
@@ -85,3 +86,31 @@ def test_wait_for_user_silence_wakes_when_mic_gets_muted_mid_wait():
     assert not done.wait(0.15)
     state.set_user_muted(True)
     assert done.wait(1.0)
+
+
+def test_wait_for_user_silence_grace_lets_the_user_add_a_thought():
+    state = ListenerState()
+    state.set_recording(True)
+    state.set_recording(False)
+    done = threading.Event()
+    threading.Thread(
+        target=lambda: (state.wait_for_user_silence(grace_s=0.3), done.set()),
+        daemon=True,
+    ).start()
+
+    assert not done.wait(0.1)  # utterance just ended — still inside the grace
+    state.set_recording(True)  # the user adds a follow-up thought
+    assert not done.wait(0.35)  # held again, even though grace has elapsed
+    state.set_recording(False)
+    assert done.wait(1.0)
+
+
+def test_wait_for_user_silence_skips_grace_when_user_finished_long_ago():
+    state = ListenerState()
+    state.set_recording(True)
+    state.set_recording(False)
+    time.sleep(0.35)
+
+    assert _finishes_within(
+        lambda: state.wait_for_user_silence(grace_s=0.3), seconds=0.2
+    )

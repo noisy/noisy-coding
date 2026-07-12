@@ -23,6 +23,11 @@ FALLBACK_VOICE = "eve"
 # Physical echo guard, not turn-taking: the room's sound tail after the
 # player exits would land in the just-unmuted mic and get transcribed.
 ECHO_TAIL_SECONDS = 0.25
+# Conversational courtesy (Krzysztof's spec: "~2s max"): when his utterance
+# has JUST ended, give him a beat to tack on a follow-up thought before we
+# take the speaker. Counts from the actual end of recording, so speech long
+# after silence starts instantly.
+POST_TURN_GRACE_SECONDS = 1.5
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
 # One worker = one utterance at a time; every speak in the whole system
@@ -98,7 +103,7 @@ def _hold_for_user_turn(state: ListenerState) -> None:
         state.add_event("speak_wait", detail)
         _log(f"[speak] {detail}")
     held_since = time.monotonic()
-    state.wait_for_user_silence()
+    state.wait_for_user_silence(grace_s=POST_TURN_GRACE_SECONDS)
     if user_was_speaking:
         _log(f"[speak] user finished — held playback {time.monotonic() - held_since:.1f}s")
 

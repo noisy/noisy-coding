@@ -45,6 +45,7 @@ class ListenerState:
         self._claude_speaking = False  # any agent playing audio right now
         self._speaking_agents: set[str] = set()  # which agents are speaking now
         self._recording = False
+        self._last_recording_end = float("-inf")  # monotonic time of last utterance end
         self._last_transcript_at = 0.0
         self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
         self._event_seq = 0
@@ -339,22 +340,39 @@ class ListenerState:
 
     def set_recording(self, recording: bool) -> None:
         with self._lock:
+            if self._recording and not recording:
+                self._last_recording_end = time.monotonic()
             self._recording = recording
             self._turn_cond.notify_all()
 
-    def wait_for_user_silence(self) -> None:
+    def wait_for_user_silence(self, grace_s: float = 0.0) -> None:
         """Block until the user isn't mid-utterance.
 
-        No debounce and no timeout: the VAD's end-of-utterance silence
-        window (end_silence_ms / smart_turn) is the single definition of
-        "their turn is over", and `recording` flips only when the audio
-        loop says so. A paused or muted mic cannot be recording, so a
-        stale flag under pause/mute counts as silence — that structural
-        rule, not a timer, is what makes this wait deadlock-free.
+        The VAD's end-of-utterance silence window (end_silence_ms /
+        smart_turn) is the single definition of "their turn is over", and
+        `recording` flips only when the audio loop says so. A paused or
+        muted mic cannot be recording, so a stale flag under pause/mute
+        counts as silence — that structural rule, not a timer, is what
+        makes this wait deadlock-free.
+
+        `grace_s` is conversational courtesy, not a failsafe: for that many
+        seconds after an utterance ends the wait keeps holding, so the user
+        can tack on a follow-up thought and be waited for again. It counts
+        from when the recording actually ended — a wait started long after
+        silence returns immediately.
         """
         with self._turn_cond:
-            while self._recording and not (self._paused or self._user_muted):
-                self._turn_cond.wait()
+            while True:
+                while self._recording and not (self._paused or self._user_muted):
+                    self._turn_cond.wait()
+                if self._paused or self._user_muted:
+                    return
+                remaining = grace_s - (time.monotonic() - self._last_recording_end)
+                if remaining <= 0:
+                    return
+                # Wakes early if the user resumes speaking (outer loop holds
+                # again) or a flag changes; otherwise re-checks the grace.
+                self._turn_cond.wait(timeout=remaining)
 
     @property
     def paused(self) -> bool:
