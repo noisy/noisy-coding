@@ -418,8 +418,30 @@ footer { flex: none; }
 .voicemute.muted .vm-label { animation: blink 1.6s step-end infinite; }
 .voicemute.muted .vm-sub { color: rgba(255, 95, 107, 0.7); }
 
-.catchup { width: 100%; margin-bottom: 12px; color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); }
-.catchup:hover { color: var(--amber); text-shadow: var(--glow-amber); border-color: var(--amber); }
+/* Must be unmissable when you come back to the desk: green (nothing else
+   in the HUD is a green button), tall, glowing and gently pulsing. */
+.catchup {
+  width: 100%;
+  margin-bottom: 12px;
+  min-height: 44px;
+  font-size: 12px;
+  letter-spacing: 0.26em;
+  color: var(--green);
+  border-color: rgba(77, 255, 180, 0.7);
+  background: rgba(77, 255, 180, 0.12);
+  text-shadow: 0 0 8px rgba(77, 255, 180, 0.6);
+  box-shadow: 0 0 14px rgba(77, 255, 180, 0.25), inset 0 0 18px rgba(77, 255, 180, 0.12);
+  animation: catchup-pulse 1.6s ease-in-out infinite;
+}
+.catchup:hover {
+  color: #b3ffe0;
+  border-color: var(--green);
+  background: rgba(77, 255, 180, 0.2);
+  animation: none;
+}
+@keyframes catchup-pulse {
+  50% { box-shadow: 0 0 26px rgba(77, 255, 180, 0.5), inset 0 0 26px rgba(77, 255, 180, 0.2); }
+}
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }
