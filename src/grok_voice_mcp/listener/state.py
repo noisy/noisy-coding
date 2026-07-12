@@ -31,6 +31,9 @@ UTTERANCE_LOG_SIZE = 100
 class ListenerState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        # Signals every change to the recording/paused/muted flags, so
+        # waiters (the playback gate) block on a condition instead of polling.
+        self._turn_cond = threading.Condition(self._lock)
         self._transcripts: list[Transcript] = []
         # Multi-agent: registered agents by name, and which one is active.
         # Transcripts are only delivered to the active agent (see drain).
@@ -337,6 +340,21 @@ class ListenerState:
     def set_recording(self, recording: bool) -> None:
         with self._lock:
             self._recording = recording
+            self._turn_cond.notify_all()
+
+    def wait_for_user_silence(self) -> None:
+        """Block until the user isn't mid-utterance.
+
+        No debounce and no timeout: the VAD's end-of-utterance silence
+        window (end_silence_ms / smart_turn) is the single definition of
+        "their turn is over", and `recording` flips only when the audio
+        loop says so. A paused or muted mic cannot be recording, so a
+        stale flag under pause/mute counts as silence — that structural
+        rule, not a timer, is what makes this wait deadlock-free.
+        """
+        with self._turn_cond:
+            while self._recording and not (self._paused or self._user_muted):
+                self._turn_cond.wait()
 
     @property
     def paused(self) -> bool:
@@ -346,6 +364,7 @@ class ListenerState:
     def set_paused(self, paused: bool) -> None:
         with self._lock:
             self._paused = paused
+            self._turn_cond.notify_all()
 
     @property
     def claude_speaking(self) -> bool:
@@ -374,3 +393,4 @@ class ListenerState:
     def set_user_muted(self, muted: bool) -> None:
         with self._lock:
             self._user_muted = muted
+            self._turn_cond.notify_all()

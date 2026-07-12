@@ -1,4 +1,17 @@
+import threading
+
 from grok_voice_mcp.listener.state import ListenerState
+
+
+def _finishes_within(fn, seconds: float) -> bool:
+    done = threading.Event()
+
+    def run() -> None:
+        fn()
+        done.set()
+
+    threading.Thread(target=run, daemon=True).start()
+    return done.wait(seconds)
 
 
 def test_drain_returns_transcripts_in_order_and_empties_queue():
@@ -32,3 +45,43 @@ def test_last_transcript_at_tracks_newest_transcript():
     state.add_transcript("hello")
 
     assert state.last_transcript_at > 0.0
+
+
+def test_wait_for_user_silence_returns_immediately_when_user_is_quiet():
+    state = ListenerState()
+
+    assert _finishes_within(state.wait_for_user_silence, seconds=1.0)
+
+
+def test_wait_for_user_silence_blocks_until_recording_ends():
+    state = ListenerState()
+    state.set_recording(True)
+    done = threading.Event()
+    threading.Thread(
+        target=lambda: (state.wait_for_user_silence(), done.set()), daemon=True
+    ).start()
+
+    assert not done.wait(0.15)
+    state.set_recording(False)
+    assert done.wait(1.0)
+
+
+def test_wait_for_user_silence_treats_muted_mic_as_silence():
+    state = ListenerState()
+    state.set_recording(True)
+    state.set_user_muted(True)
+
+    assert _finishes_within(state.wait_for_user_silence, seconds=1.0)
+
+
+def test_wait_for_user_silence_wakes_when_mic_gets_muted_mid_wait():
+    state = ListenerState()
+    state.set_recording(True)
+    done = threading.Event()
+    threading.Thread(
+        target=lambda: (state.wait_for_user_silence(), done.set()), daemon=True
+    ).start()
+
+    assert not done.wait(0.15)
+    state.set_user_muted(True)
+    assert done.wait(1.0)

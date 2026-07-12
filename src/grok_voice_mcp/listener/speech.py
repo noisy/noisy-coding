@@ -20,19 +20,9 @@ DEFAULT_VOICE_ENV_VAR = "GROK_VOICE_DEFAULT_VOICE"
 DEFAULT_LANGUAGE_ENV_VAR = "GROK_VOICE_DEFAULT_LANGUAGE"
 TTS_MODE_ENV_VAR = "GROK_VOICE_TTS_MODE"
 FALLBACK_VOICE = "eve"
+# Physical echo guard, not turn-taking: the room's sound tail after the
+# player exits would land in the just-unmuted mic and get transcribed.
 ECHO_TAIL_SECONDS = 0.25
-# Don't start speaking while the user is mid-utterance: it talks over them
-# and, worse, the mic is muted while we play so their words are lost
-# entirely. Watch the recording flag and hold until they finish. The cap
-# only guards against a stuck recording flag (wedged VAD) — it must be far
-# longer than any real monologue, or it fires mid-speech and we barge in
-# exactly the way this gate exists to prevent. It still fits within the MCP
-# server's 180s HTTP timeout for /speak.
-WAIT_FOR_USER_POLL_SECONDS = 0.05
-WAIT_FOR_USER_TIMEOUT_SECONDS = 120.0
-# After the user's speech ends, wait for a brief lull before speaking — a
-# short pause mid-thought (breath) shouldn't be read as "your turn now".
-USER_DONE_SETTLE_SECONDS = 0.6
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
 # One worker = one utterance at a time; every speak in the whole system
@@ -90,23 +80,27 @@ def resolve_options(
     return resolved_voice, resolved_language, speed
 
 
-def _wait_until_user_done(
-    state: ListenerState,
-    timeout_s: float = WAIT_FOR_USER_TIMEOUT_SECONDS,
-    settle_s: float = USER_DONE_SETTLE_SECONDS,
-) -> None:
-    """Hold until the user isn't speaking, so we never talk over them."""
-    deadline = time.monotonic() + timeout_s
-    quiet_since: float | None = None
-    while time.monotonic() < deadline:
-        if state.recording:
-            quiet_since = None
-        else:
-            if quiet_since is None:
-                quiet_since = time.monotonic()
-            if time.monotonic() - quiet_since >= settle_s:
-                return  # quiet long enough — the user's turn is over
-        time.sleep(WAIT_FOR_USER_POLL_SECONDS)
+def _log(message: str) -> None:
+    print(message, flush=True)
+
+
+def _hold_for_user_turn(state: ListenerState) -> None:
+    """Wait out an in-progress user utterance before taking the speaker.
+
+    Speaking now would talk over the user AND lose their words (the mic is
+    muted during playback). The daemon's VAD alone decides when their turn
+    is over — no debounce, no timeout, no polling; see
+    ListenerState.wait_for_user_silence for why this can't deadlock.
+    """
+    user_was_speaking = state.recording
+    if user_was_speaking:
+        detail = "user is speaking — holding playback"
+        state.add_event("speak_wait", detail)
+        _log(f"[speak] {detail}")
+    held_since = time.monotonic()
+    state.wait_for_user_silence()
+    if user_was_speaking:
+        _log(f"[speak] user finished — held playback {time.monotonic() - held_since:.1f}s")
 
 
 def _tts_streaming(state: ListenerState) -> bool:
@@ -128,9 +122,7 @@ def _render_and_play(
     resolved_voice, resolved_language, resolved_speed = resolve_options(
         state, voice_id, language, speed, agent
     )
-    # Wait out any in-progress user utterance before we mute the mic to
-    # play — otherwise we talk over them and their words are lost.
-    _wait_until_user_done(state)
+    _hold_for_user_turn(state)
 
     detail = f"[{resolved_voice}] „{text}”"
     state.add_event("speak", detail)
@@ -142,6 +134,8 @@ def _render_and_play(
     state.update_utterance(utterance_id, cost_usd=cost)
 
     speech_text = _emphasis_to_speech_tags(text)
+    _log(f"[speak] playing [{resolved_voice}] ({len(text)} chars) „{text[:60]}”")
+    playing_since = time.monotonic()
     # Mute the listener while we play, or the mic transcribes our own speech.
     state.set_paused(True)
     state.set_claude_speaking(True, agent)
@@ -154,12 +148,14 @@ def _render_and_play(
         )
         time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
     except Exception as error:
+        _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
         state.update_utterance(utterance_id, status="error")
         raise
     finally:
         state.set_claude_speaking(False, agent)
         state.set_paused(False)
+    _log(f"[speak] done in {time.monotonic() - playing_since:.1f}s")
     state.add_event("speak_done", f"głos '{resolved_voice}'")
     state.update_utterance(utterance_id, status="played")
     return resolved_voice

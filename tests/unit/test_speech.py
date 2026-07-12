@@ -1,5 +1,4 @@
 import asyncio
-import threading
 import time
 
 from grok_voice_mcp.listener import speech
@@ -16,7 +15,6 @@ def test_playback_queue_serializes_concurrent_speaks(monkeypatch):
         intervals.append((start, time.monotonic()))
 
     monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
-    monkeypatch.setattr(speech, "_wait_until_user_done", lambda *_a, **_k: None)
     monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
 
     futures = [speech.submit(state, f"utterance {i}") for i in range(2)]
@@ -28,42 +26,25 @@ def test_playback_queue_serializes_concurrent_speaks(monkeypatch):
     assert last_start >= first_end
 
 
-def test_wait_until_user_done_holds_while_the_user_is_speaking():
+def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch):
     state = ListenerState()
     state.set_recording(True)
-    recording_stop_delay = 0.15
+    play_started_at = []
 
-    def stop_recording_soon():
-        time.sleep(recording_stop_delay)
-        state.set_recording(False)
+    async def fake_synthesize_and_play(*_args):
+        play_started_at.append(time.monotonic())
 
-    threading.Thread(target=stop_recording_soon).start()
-    start = time.monotonic()
-    speech._wait_until_user_done(state, timeout_s=5.0, settle_s=0.05)
-    elapsed = time.monotonic() - start
+    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
+    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
 
-    assert elapsed >= recording_stop_delay
+    future = speech.submit(state, "hold me")
+    time.sleep(0.15)
+    assert not play_started_at
+    user_finished_at = time.monotonic()
+    state.set_recording(False)
+    future.result(timeout=5)
 
-
-def test_wait_until_user_done_returns_after_settle_when_quiet():
-    state = ListenerState()
-
-    start = time.monotonic()
-    speech._wait_until_user_done(state, timeout_s=5.0, settle_s=0.05)
-    elapsed = time.monotonic() - start
-
-    assert 0.05 <= elapsed < 1.0
-
-
-def test_wait_until_user_done_gives_up_at_timeout_when_recording_never_stops():
-    state = ListenerState()
-    state.set_recording(True)
-
-    start = time.monotonic()
-    speech._wait_until_user_done(state, timeout_s=0.2, settle_s=0.05)
-    elapsed = time.monotonic() - start
-
-    assert elapsed < 1.0
+    assert play_started_at[0] >= user_finished_at
 
 
 def test_resolve_options_prefers_explicit_args_over_character():
