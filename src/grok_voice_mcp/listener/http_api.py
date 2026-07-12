@@ -316,6 +316,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state,
                 text,
                 agent=str(body["agent"]) if body.get("agent") else None,
+                card=bool(body.get("card", True)),
             )
             if not body.get("wait", True):
                 self._respond({"queued": True})

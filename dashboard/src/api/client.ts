@@ -58,7 +58,14 @@ export function setPtt(held: boolean): Promise<void> {
   return post("/ptt", { held });
 }
 
-/** Queue text for playback through the daemon (used by bubble replay). */
+/** Replay a spoken message: no new card in the log, and the user's click
+ * outranks whatever is playing (they can always replay that one too). */
 export function speakText(text: string, agent?: string): Promise<void> {
-  return post("/speak", { text, wait: false, ...(agent ? { agent } : {}) });
+  return post("/speak", {
+    text,
+    wait: false,
+    card: false,
+    interrupt: true,
+    ...(agent ? { agent } : {}),
+  });
 }

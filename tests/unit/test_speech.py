@@ -43,6 +43,21 @@ def test_utterance_cards_appear_at_enqueue_in_creation_order(monkeypatch):
         future.result(timeout=5)
 
 
+def test_submit_without_card_plays_but_leaves_no_utterance(monkeypatch):
+    state = ListenerState()
+
+    async def fake_synthesize_and_play(*_args):
+        pass
+
+    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
+    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+
+    voice = speech.submit(state, "replayed message", card=False).result(timeout=5)
+
+    assert voice  # played end to end
+    assert state.utterances() == []  # replay must not duplicate the bubble
+
+
 def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch):
     state = ListenerState()
     state.set_recording(True)

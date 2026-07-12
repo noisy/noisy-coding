@@ -35,7 +35,9 @@ EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 _playback_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="playback")
 
 
-def submit(state: ListenerState, text: str, agent: str | None = None) -> Future:
+def submit(
+    state: ListenerState, text: str, agent: str | None = None, card: bool = True
+) -> Future:
     """Queue an utterance for playback; resolves to the voice actually used.
 
     Requests carry only text — voice, speed and language are the daemon's
@@ -46,8 +48,14 @@ def submit(state: ListenerState, text: str, agent: str | None = None) -> Future:
     Claude decided to speak (creation order) — a reply composed before the
     user's last words shouldn't display as if it answered them. Delivery
     order lives in the card's status (queued → waiting → playing → played).
+    card=False plays without a card — replaying an old bubble shouldn't
+    duplicate it in the log (utterance_id 0 makes every update a no-op).
     """
-    utterance_id = state.create_utterance("claude", "queued", text=f"„{text}”", agent=agent)
+    utterance_id = (
+        state.create_utterance("claude", "queued", text=f"„{text}”", agent=agent)
+        if card
+        else 0
+    )
     return _playback_executor.submit(_render_and_play, state, text, agent, utterance_id)
 
 

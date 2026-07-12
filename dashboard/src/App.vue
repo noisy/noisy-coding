@@ -112,17 +112,6 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
           <span class="bm-label">{{ status?.muted ? "◉ MIC MUTED" : "MUTE MIC" }}</span>
           <span class="bm-sub">{{ status?.muted ? "TAP TO UNMUTE" : "ONE TAP TO GO SILENT" }}</span>
         </button>
-        <button
-          v-if="status?.detection_mode === 'ptt'"
-          class="bigmute talk"
-          :class="{ held: status?.ptt_held }"
-          @pointerdown="pttPress"
-          @pointerup="pttRelease"
-          @pointercancel="pttRelease"
-        >
-          <span class="bm-label">{{ status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}</span>
-          <span class="bm-sub">{{ status?.ptt_held ? "RELEASE TO SEND" : "RECORDS WHILE HELD" }}</span>
-        </button>
         <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE">
           <Oscilloscope :level="level" />
           <div class="dbrow">
@@ -148,10 +137,12 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
               <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">BATCH</button>
               <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">LIVE</button>
             </div>
-            <div class="ctlrow" title="How your turn ends: auto = the VAD detects silence; push to talk = you hold the big button">
-              <span class="lbl">DETECTION</span>
-              <button class="ctl small" :class="{ on: status?.detection_mode === 'auto' }" @click="setDetection('auto')">AUTO</button>
-              <button class="ctl small" :class="{ on: status?.detection_mode === 'ptt' }" @click="setDetection('ptt')">PUSH-TO-TALK</button>
+            <div class="ctlcol" title="How your turn ends: auto = the VAD detects silence; push to talk = you hold the big button">
+              <span class="lbl">TURN DETECTION</span>
+              <div class="ctlbtns">
+                <button class="ctl small" :class="{ on: status?.detection_mode === 'auto' }" @click="setDetection('auto')">AUTO</button>
+                <button class="ctl small" :class="{ on: status?.detection_mode === 'ptt' }" @click="setDetection('ptt')">PUSH TO TALK</button>
+              </div>
             </div>
             <div class="ctlrow">
               <span class="lbl">SILENCE</span>
@@ -183,6 +174,17 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
       </div>
 
       <div class="col-right">
+        <button
+          v-if="status?.detection_mode === 'ptt'"
+          class="bigmute talk"
+          :class="{ held: status?.ptt_held }"
+          @pointerdown="pttPress"
+          @pointerup="pttRelease"
+          @pointercancel="pttRelease"
+        >
+          <span class="bm-label">{{ status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}</span>
+          <span class="bm-sub">{{ status?.ptt_held ? "RELEASE TO SEND" : "RECORDS WHILE HELD" }}</span>
+        </button>
         <HudPanel index="05" title="CHARACTER MATRIX">
           <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
           <p v-else class="todo">NO CHARACTER DATA</p>
@@ -318,6 +320,11 @@ footer { flex: none; }
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }
+/* Label above full-width buttons — for choices whose names deserve to
+   stay unabbreviated ("PUSH TO TALK" won't fit next to a label). */
+.ctlcol { display: grid; gap: 6px; }
+.ctlcol .lbl { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
+.ctlbtns { display: flex; gap: 8px; }
 .ctlrow .lbl { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); width: 104px; flex: none; }
 .ctl {
   font-family: var(--mono);
