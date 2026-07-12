@@ -32,6 +32,9 @@ MODE_ENV_VAR = "GROK_VOICE_MODE"
 MANAGEMENT_KEY_ENV_VAR = "GROK_VOICE_MANAGEMENT_KEY"
 TEAM_ID_ENV_VAR = "GROK_VOICE_TEAM_ID"
 CREDITS_POLL_SECONDS = 60.0
+# Display gain for the dashboard mic level: int16 speech RMS is small
+# (~0.02-0.08 full-scale), this maps it into a readable 0..1 range.
+MIC_LEVEL_GAIN = 12.0
 
 
 def _poll_credits(state: ListenerState) -> None:
@@ -207,7 +210,14 @@ def run(config: VadConfig | None = None) -> None:
             while True:
                 frame = frames.get()
                 if state.paused:
+                    # A muted mic isn't listening — the oscilloscope must
+                    # flatline instead of showing our own playback echo.
+                    state.set_mic_level(0.0)
                     continue
+                # Live level for the dashboard oscilloscope: frame RMS in
+                # 0..1, scaled so normal speech lands around 0.2-0.8.
+                rms = float(np.sqrt(np.mean((frame / 32768.0) ** 2)))
+                state.set_mic_level(min(1.0, rms * MIC_LEVEL_GAIN))
                 segmenter.end_silence_ms_override = state.end_silence_ms
                 segmenter.smart_turn_mode = state.smart_turn_mode
                 was_recording = segmenter.is_recording

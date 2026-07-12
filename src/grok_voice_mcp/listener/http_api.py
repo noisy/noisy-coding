@@ -2,6 +2,7 @@
 
 import json
 import threading
+import time
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -13,6 +14,9 @@ from grok_voice_mcp.listener.dashboard import DASHBOARD_HTML
 from grok_voice_mcp.listener.state import ListenerState
 
 DEFAULT_PORT = 8765
+# Mic-level frame cadence for the dashboard oscilloscope (~20 fps). A data
+# rate for smooth rendering, not coordination logic.
+MIC_STREAM_INTERVAL_SECONDS = 0.05
 PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
 CHARACTER_FILE = Path.home() / ".config" / "grok-voice" / "character.json"
 SETTINGS_FILE = Path.home() / ".config" / "grok-voice" / "settings.json"
@@ -67,6 +71,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/character":
                 agent = parse_qs(url.query).get("agent", [None])[0]
                 self._respond({"character": state.character(agent)})
+            elif url.path == "/stream/mic":
+                self._stream_mic_levels()
             elif url.path == "/status":
                 self._respond(
                     {
@@ -214,6 +220,26 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"ok": True})
             else:
                 self._respond({"error": "not found"}, status=404)
+
+        def _stream_mic_levels(self) -> None:
+            # Server-sent events: ONE long-lived connection per dashboard
+            # tab instead of high-frequency polling. ThreadingHTTPServer
+            # gives the stream its own (daemon) thread; the browser's
+            # EventSource reconnects on its own after daemon restarts.
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            try:
+                while True:
+                    payload = json.dumps(
+                        {"level": state.mic_level, "recording": state.recording}
+                    )
+                    self.wfile.write(f"data: {payload}\n\n".encode())
+                    self.wfile.flush()
+                    time.sleep(MIC_STREAM_INTERVAL_SECONDS)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass  # client went away — just end the stream
 
         def _handle_speak(self) -> None:
             # Body: {text, voice_id?, language?, speed?, interrupt?, agent?,

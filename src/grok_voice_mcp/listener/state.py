@@ -45,6 +45,7 @@ class ListenerState:
         self._claude_speaking = False  # any agent playing audio right now
         self._speaking_agents: set[str] = set()  # which agents are speaking now
         self._recording = False
+        self._mic_level = 0.0  # live mic RMS 0..1, for the dashboard oscilloscope
         self._last_recording_end = float("-inf")  # monotonic time of last utterance end
         self._last_transcript_at = 0.0
         self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
@@ -332,6 +333,15 @@ class ListenerState:
     def last_transcript_at(self) -> float:
         with self._lock:
             return self._last_transcript_at
+
+    @property
+    def mic_level(self) -> float:
+        with self._lock:
+            return self._mic_level
+
+    def set_mic_level(self, level: float) -> None:
+        with self._lock:
+            self._mic_level = max(0.0, min(1.0, float(level)))
 
     @property
     def recording(self) -> bool:
