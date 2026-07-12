@@ -73,10 +73,6 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
       </div>
 
       <div class="sysstate">
-        <div class="modetoggle" title="Batch: transcribe after silence ($0.10/h) · Live: stream while speaking ($0.20/h)">
-          <span :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">BATCH<span class="rate">$0.10/h</span></span>
-          <span :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">LIVE<span class="rate">$0.20/h</span></span>
-        </div>
         <div class="clockbox">
           <div class="clock">{{ clock }}</div>
           <div class="date">{{ today }}</div>
@@ -102,10 +98,17 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
             <button class="ctl" :class="{ danger: status?.muted }" @click="toggleMute">
               {{ status?.muted ? "UNMUTE MIC" : "MUTE MIC" }}
             </button>
-            <div class="ctlrow">
-              <span class="lbl">TTS</span>
+            <!-- The two mode toggles sit together: same choice, two
+                 directions (Claude's voice out vs your voice in). -->
+            <div class="ctlrow" title="Claude's speech: batch renders the whole clip first, live streams as it synthesizes">
+              <span class="lbl">TEXT TO SPEECH</span>
               <button class="ctl small" :class="{ on: status?.tts_mode === 'batch' }" @click="setTtsMode('batch')">BATCH</button>
               <button class="ctl small" :class="{ on: status?.tts_mode === 'live' }" @click="setTtsMode('live')">LIVE</button>
+            </div>
+            <div class="ctlrow" title="Your speech: batch transcribes after silence ($0.10/h), live streams while you talk ($0.20/h)">
+              <span class="lbl">SPEECH TO TEXT</span>
+              <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">BATCH</button>
+              <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">LIVE</button>
             </div>
             <div class="ctlrow">
               <span class="lbl">SILENCE</span>
@@ -182,21 +185,6 @@ header::after {
 .logo .title { font-size: 19px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); font-weight: 700; }
 .logo .sub { font-size: 10px; letter-spacing: 0.34em; color: var(--muted); margin-top: 3px; }
 .sysstate { margin-left: auto; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
-.modetoggle {
-  display: flex;
-  border: 1px solid var(--line-strong);
-  overflow: hidden;
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-  background: rgba(4, 12, 20, 0.9);
-}
-.modetoggle span { padding: 8px 18px; font-size: 11px; letter-spacing: 0.24em; color: var(--muted); cursor: pointer; }
-.modetoggle span.on {
-  background: linear-gradient(180deg, rgba(255, 180, 84, 0.22), rgba(255, 180, 84, 0.08));
-  color: var(--amber);
-  text-shadow: var(--glow-amber);
-  box-shadow: inset 0 0 12px rgba(255, 180, 84, 0.25);
-}
-.modetoggle .rate { font-size: 9px; display: block; letter-spacing: 0.1em; margin-top: 2px; opacity: 0.75; }
 .clockbox { text-align: right; }
 .clockbox .clock { font-size: 17px; letter-spacing: 0.14em; color: var(--ink); }
 .clockbox .date { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); margin-top: 3px; }
@@ -227,7 +215,7 @@ header::after {
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }
-.ctlrow .lbl { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); width: 84px; flex: none; }
+.ctlrow .lbl { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); width: 104px; flex: none; }
 .ctl {
   font-family: var(--mono);
   font-size: 10px;

@@ -43,6 +43,25 @@ describe("ConversationLog", () => {
     expect(wrapper.find(".empty").exists()).toBe(true);
   });
 
+  it("renders the in-progress utterance in the reserved live slot", () => {
+    const recording = { ...utterance(3, "user"), status: "recording…" };
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [utterance(1, "user"), utterance(2, "claude"), recording] },
+    });
+
+    expect(wrapper.find(".liveslot .msg").exists()).toBe(true);
+    expect(wrapper.findAll(".feed .msg")).toHaveLength(2);
+  });
+
+  it("keeps the live slot reserved (present) when nothing is in progress", () => {
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [utterance(1, "user")] },
+    });
+
+    expect(wrapper.find(".liveslot").exists()).toBe(true);
+    expect(wrapper.find(".liveslot .msg").exists()).toBe(false);
+  });
+
   it("hides never-became-speech noise but keeps STT errors", () => {
     const noise = { ...utterance(1, "user"), status: "empty — no speech" };
     const tooShort = { ...utterance(2, "user"), status: "dropped — too short" };

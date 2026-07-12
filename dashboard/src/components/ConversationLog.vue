@@ -20,6 +20,25 @@ const ordered = computed(() =>
   props.utterances.filter((u) => !isNoise(u.status)).sort((a, b) => a.id - b.id),
 );
 
+// The in-progress user utterance renders in a RESERVED slot below the
+// feed: it may still vanish (noise) or grow (live partials), and without
+// its own space every appearance/disappearance shoves the whole log
+// around. Once it settles into a real message it moves into the feed —
+// visually the same spot.
+function isLiveUser(u: Utterance): boolean {
+  const s = u.status.toLowerCase();
+  return u.role === "user" && (s.includes("recording") || s.includes("transcribing"));
+}
+
+const liveTail = computed(() => {
+  const last = ordered.value[ordered.value.length - 1];
+  return last && isLiveUser(last) ? last : null;
+});
+
+const settled = computed(() =>
+  liveTail.value ? ordered.value.slice(0, -1) : ordered.value,
+);
+
 const feed = ref<HTMLElement | null>(null);
 
 function scrollToBottom() {
@@ -41,12 +60,17 @@ watch(
 </script>
 
 <template>
-  <div ref="feed" class="feed">
-    <template v-for="utterance in ordered" :key="utterance.id">
-      <UserBubble v-if="utterance.role === 'user'" :utterance="utterance" />
-      <ClaudeBubble v-else :utterance="utterance" />
-    </template>
-    <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
+  <div>
+    <div ref="feed" class="feed">
+      <template v-for="utterance in settled" :key="utterance.id">
+        <UserBubble v-if="utterance.role === 'user'" :utterance="utterance" />
+        <ClaudeBubble v-else :utterance="utterance" />
+      </template>
+      <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
+    </div>
+    <div class="liveslot">
+      <UserBubble v-if="liveTail" :utterance="liveTail" />
+    </div>
   </div>
 </template>
 
@@ -67,5 +91,13 @@ watch(
   letter-spacing: 0.22em;
   text-align: center;
   padding: 28px 0;
+}
+.liveslot {
+  /* Reserved landing pad for the in-progress utterance: one compact
+     bubble tall, so it can appear and vanish without reflowing the feed. */
+  min-height: 76px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
 }
 </style>
