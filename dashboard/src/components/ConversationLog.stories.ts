@@ -1,0 +1,27 @@
+import type { Meta, StoryObj } from "@storybook/vue3";
+import type { Utterance } from "../types";
+import ConversationLog from "./ConversationLog.vue";
+
+const meta: Meta<typeof ConversationLog> = {
+  component: ConversationLog,
+  title: "HUD/ConversationLog",
+};
+export default meta;
+
+const now = Date.now() / 1000;
+const feed: Utterance[] = [
+  { id: 1, role: "user", status: "delivered to Claude", text: "Sprawdź czy pipeline na branchu feature/auth przeszedł.", detail: "STT 1.1 s · 7.8 s AUDIO", cost_usd: 0.0005, agent: null, started_at: now - 260, updated_at: now - 250 },
+  { id: 2, role: "claude", status: "played", text: "[altair] „Pipeline #48210 passed — 214 tests green.”", detail: "TTS 1.4 s · 11.2 s AUDIO", cost_usd: 0.0038, agent: null, started_at: now - 240, updated_at: now - 230 },
+  { id: 3, role: "user", status: "delivered to Claude", text: "Okej, odpal deploy na staging i daj znać jak skończy.", detail: "STT 0.9 s · 6.4 s AUDIO", cost_usd: 0.0004, agent: null, started_at: now - 120, updated_at: now - 110 },
+  { id: 4, role: "claude", status: "synthesizing (Grok TTS)…", text: "", detail: "QUEUE POS 1", cost_usd: 0, agent: null, started_at: now - 20, updated_at: now - 20 },
+  { id: 5, role: "user", status: "recording…", text: "No dobra, to teraz przejdźmy do refaktoru modułu billing i", detail: "VAD OPEN · 3.2 s", cost_usd: 0, agent: null, started_at: now - 4, updated_at: now },
+];
+
+export const Feed: StoryObj<typeof ConversationLog> = {
+  args: { utterances: feed },
+  render: (args) => ({
+    components: { ConversationLog },
+    setup: () => ({ args }),
+    template: `<div style="max-width:760px"><ConversationLog v-bind="args" /></div>`,
+  }),
+};
