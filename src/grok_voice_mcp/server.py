@@ -87,23 +87,22 @@ def _speak_result_message(result: dict | None) -> str | None:
 
 
 @mcp.tool()
-async def speak(
-    text: str,
-    voice_id: str = "",
-    language: str = "",
-    speed: float = 1.0,
-    interrupt: bool = False,
-) -> str:
+async def speak(text: str, interrupt: bool = False) -> str:
     """Speak a short message aloud to the user through their speakers.
 
     Use this to deliver a spoken TL;DR alongside (not instead of) your written
     answer: 1-3 conversational sentences summarizing the outcome, a finding,
     or a question. Never read code, file paths, or long explanations aloud.
 
+    You send only the text: voice, speed and language belong to the daemon
+    (the user controls them on the dashboard). To deliberately switch your
+    voice, call change_voice.
+
     Concurrent speech is serialized: by default a new call WAITS for the
-    current utterance to finish (queued). Set interrupt=True to cut the
-    current utterance off and speak immediately — use it only when your
-    previous words are now stale (e.g. the user corrected you mid-answer).
+    current utterance to finish (queued), and for the user to finish
+    speaking. Set interrupt=True to cut the current utterance off and speak
+    immediately — use it only when your previous words are now stale (e.g.
+    the user corrected you mid-answer).
 
     Args:
         text: What to say. Plain conversational prose. Mark the key words the
@@ -111,21 +110,9 @@ async def speak(
             vocal emphasis and show bold on the live dashboard. Also supports
             inline speech tags like [pause] or [laugh] and wrapping tags like
             <soft>text</soft>.
-        voice_id: Grok voice to use (see list_voices). Empty = server default.
-        language: BCP-47 code such as "en" or "pl", or "auto". Empty = server default.
-        speed: Speech rate multiplier, 0.7-1.5.
         interrupt: Cut off any utterance currently playing and speak now.
     """
-    result = await _daemon_speak(
-        {
-            "text": text,
-            "voice_id": voice_id,
-            "language": language,
-            "speed": speed,
-            "interrupt": interrupt,
-            "wait": True,
-        }
-    )
+    result = await _daemon_speak({"text": text, "interrupt": interrupt, "wait": True})
     failure = _speak_result_message(result)
     if failure:
         return failure
@@ -133,27 +120,46 @@ async def speak(
 
 
 @mcp.tool()
-async def announce(text: str, voice_id: str = "", language: str = "", speed: float = 1.0) -> str:
+async def announce(text: str) -> str:
     """Speak a quick spoken update WITHOUT waiting for it to finish.
 
     Fire-and-forget: use this to tell the user what you just did and keep
     working ("done with X, moving on") — it returns immediately and plays in
     the background, queued behind any current speech. Use `speak` instead when
     you are asking a question or otherwise waiting for the user's reply.
+    Like speak, it carries only text — voice/speed/language live in the daemon.
     """
-    result = await _daemon_speak(
-        {
-            "text": text,
-            "voice_id": voice_id,
-            "language": language,
-            "speed": speed,
-            "wait": False,
-        }
-    )
+    result = await _daemon_speak({"text": text, "wait": False})
     failure = _speak_result_message(result)
     if failure:
         return failure
     return "Announcement queued; playing in the background."
+
+
+@mcp.tool()
+async def change_voice(voice_id: str) -> str:
+    """Deliberately switch this agent's speaking voice from now on.
+
+    Updates your character in the listener daemon: the dashboard shows the
+    new voice and every later speak/announce uses it (it also persists
+    across restarts). Use list_voices to see the options. Speak itself
+    carries no voice information — this call is the only way to change how
+    you sound, so use it consciously (e.g. when the user asks for it).
+    """
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    body: dict = {"voice_id": voice_id}
+    agent = _agent_name()
+    if agent:
+        body["agent"] = agent
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(f"http://127.0.0.1:{port}/voice", json=body)
+            data = response.json()
+    except (httpx.HTTPError, ValueError):
+        return "The voice daemon is not reachable; your voice is unchanged."
+    if "error" in data:
+        return f"Voice change failed: {data['error']}"
+    return f"Voice changed to '{data['voice']}' for all your future speech."
 
 
 @mcp.tool()

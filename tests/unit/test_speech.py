@@ -64,22 +64,12 @@ def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch):
     assert play_started_at[0] >= user_finished_at
 
 
-def test_resolve_options_prefers_explicit_args_over_character():
-    state = ListenerState()
-    state.set_character({"voice": "rex", "speed": 1.3})
-    state.set_language("pl")
-
-    resolved = speech.resolve_options(state, "ara", "en", 0.9)
-
-    assert resolved == ("ara", "en", 0.9)
-
-
-def test_resolve_options_falls_back_to_character_and_daemon_language():
+def test_resolve_options_reads_voice_and_speed_from_character_and_daemon_language():
     state = ListenerState()
     state.set_character({"voice": "rex", "speed": 1.2})
     state.set_language("pl")
 
-    resolved = speech.resolve_options(state, "", "", 1.0)
+    resolved = speech.resolve_options(state)
 
     assert resolved == ("rex", "pl", 1.2)
 
@@ -88,7 +78,7 @@ def test_resolve_options_uses_auto_language_when_nothing_configured(monkeypatch)
     monkeypatch.delenv(speech.DEFAULT_LANGUAGE_ENV_VAR, raising=False)
     state = ListenerState()
 
-    resolved = speech.resolve_options(state, "", "", 1.0)
+    resolved = speech.resolve_options(state)
 
     assert resolved == ("carina", "auto", 1.0)
 
@@ -98,6 +88,6 @@ def test_resolve_options_uses_the_speaking_agents_character():
     state.set_character({"voice": "rex"}, "agent-a")
     state.set_character({"voice": "ara"}, "agent-b")
 
-    resolved = speech.resolve_options(state, "", "", 1.0, agent="agent-b")
+    resolved = speech.resolve_options(state, agent="agent-b")
 
     assert resolved[0] == "ara"

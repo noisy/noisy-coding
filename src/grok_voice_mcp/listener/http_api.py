@@ -18,6 +18,15 @@ CHARACTER_FILE = Path.home() / ".config" / "grok-voice" / "character.json"
 SETTINGS_FILE = Path.home() / ".config" / "grok-voice" / "settings.json"
 
 
+def save_characters(state: ListenerState) -> None:
+    """Persist per-agent characters so voice choices survive restarts."""
+    try:
+        CHARACTER_FILE.parent.mkdir(parents=True, exist_ok=True)
+        CHARACTER_FILE.write_text(json.dumps(state.all_characters()))
+    except OSError:
+        pass
+
+
 def save_settings(state: ListenerState) -> None:
     """Persist tuning that must survive daemon restarts."""
     try:
@@ -131,15 +140,26 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     state.add_transcript(
                         f"[CHARACTER] The user moved your character sliders to: {summary}. "
                         "Adjust the style of your spoken and written replies accordingly "
-                        f"(pass voice_id='{values['voice']}' and speed={values['speed']} "
-                        "to speak), and briefly acknowledge the new setting in character."
+                        "— the daemon applies the voice and speed to your speech by "
+                        "itself — and briefly acknowledge the new setting in character."
                     )
-                try:
-                    CHARACTER_FILE.parent.mkdir(parents=True, exist_ok=True)
-                    CHARACTER_FILE.write_text(json.dumps(state.all_characters()))
-                except OSError:
-                    pass
+                save_characters(state)
                 self._respond({"character": values})
+            elif self.path == "/voice":
+                # Claude's deliberate voice switch (the change_voice tool):
+                # updates this agent's character, so the dashboard shows it
+                # and every later speak uses it. Speak itself carries no
+                # voice information.
+                body = self._read_json_body()
+                voice = str(body.get("voice_id", "")).strip().lower()
+                if not voice.isalpha():
+                    self._respond({"error": "voice_id must be a voice name"}, status=400)
+                else:
+                    agent = str(body["agent"]) if body.get("agent") else None
+                    values = state.set_character({"voice": voice}, agent)
+                    state.add_event("voice", f"Claude switched voice to '{values['voice']}'")
+                    save_characters(state)
+                    self._respond({"voice": values["voice"]})
             elif self.path == "/settings":
                 body = self._read_json_body()
                 result = {}
@@ -210,9 +230,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             future = speech.submit(
                 state,
                 text,
-                voice_id=str(body.get("voice_id") or ""),
-                language=str(body.get("language") or ""),
-                speed=float(body.get("speed") or 1.0),
                 agent=str(body["agent"]) if body.get("agent") else None,
             )
             if not body.get("wait", True):

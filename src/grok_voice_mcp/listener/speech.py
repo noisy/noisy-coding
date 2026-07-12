@@ -35,15 +35,12 @@ EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 _playback_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="playback")
 
 
-def submit(
-    state: ListenerState,
-    text: str,
-    voice_id: str = "",
-    language: str = "",
-    speed: float = 1.0,
-    agent: str | None = None,
-) -> Future:
+def submit(state: ListenerState, text: str, agent: str | None = None) -> Future:
     """Queue an utterance for playback; resolves to the voice actually used.
+
+    Requests carry only text — voice, speed and language are the daemon's
+    business (see resolve_options), so a stale caller can't override what
+    the user configured on the dashboard.
 
     The dashboard card is created HERE, at enqueue: the timeline shows when
     Claude decided to speak (creation order) — a reply composed before the
@@ -51,9 +48,7 @@ def submit(
     order lives in the card's status (queued → waiting → playing → played).
     """
     utterance_id = state.create_utterance("claude", "queued", text=f"„{text}”", agent=agent)
-    return _playback_executor.submit(
-        _render_and_play, state, text, voice_id, language, speed, agent, utterance_id
-    )
+    return _playback_executor.submit(_render_and_play, state, text, agent, utterance_id)
 
 
 def shutdown() -> None:
@@ -66,30 +61,21 @@ def _emphasis_to_speech_tags(text: str) -> str:
 
 
 def resolve_options(
-    state: ListenerState,
-    voice_id: str,
-    language: str,
-    speed: float,
-    agent: str | None = None,
+    state: ListenerState, agent: str | None = None
 ) -> tuple[str, str, float]:
-    """Hybrid resolution for voice/language/speed.
+    """Voice/language/speed for an utterance — decided by the daemon alone.
 
-    An explicit request arg wins for this one utterance; else the
-    dashboard's Character/Settings value; else the env default. Keeps the
-    dashboard the source of truth.
+    The dashboard's per-agent character supplies voice and speed, the
+    daemon's language setting supplies language, env vars are the fallback.
+    Speak requests carry none of this by design; an agent that wants a
+    different voice must change its character (the `change_voice` tool /
+    POST /voice), which the user then sees on the dashboard.
     """
     character = state.character(agent)
-    resolved_voice = (
-        voice_id
-        or character.get("voice")
-        or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
-    )
-    resolved_language = (
-        language or state.language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR) or "auto"
-    )
-    if speed == 1.0 and character.get("speed"):
-        speed = float(character["speed"])  # dashboard speed unless call overrode it
-    return resolved_voice, resolved_language, speed
+    voice = character.get("voice") or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
+    language = state.language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR) or "auto"
+    speed = float(character.get("speed") or 1.0)
+    return voice, language, speed
 
 
 def _log(message: str) -> None:
@@ -126,16 +112,11 @@ def _tts_streaming(state: ListenerState) -> bool:
 def _render_and_play(
     state: ListenerState,
     text: str,
-    voice_id: str,
-    language: str,
-    speed: float,
     agent: str | None,
     utterance_id: int,
 ) -> str:
     """Synthesize `text` and play it. Runs on the single playback worker."""
-    resolved_voice, resolved_language, resolved_speed = resolve_options(
-        state, voice_id, language, speed, agent
-    )
+    resolved_voice, resolved_language, resolved_speed = resolve_options(state, agent)
     _hold_for_user_turn(state, utterance_id)
 
     detail = f"[{resolved_voice}] „{text}”"
