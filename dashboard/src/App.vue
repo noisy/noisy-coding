@@ -80,8 +80,24 @@ function pttRelease() {
 }
 onUnmounted(() => clearInterval(pttTimer));
 
+const setLanguage = (event: Event) =>
+  setSettings({ language: (event.target as HTMLSelectElement).value }).catch(swallow);
+
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
 const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
+// Languages supported by the Grok voice API (same set as the legacy UI).
+const LANGUAGES: Record<string, string> = {
+  "": "AUTO-DETECT",
+  en: "ENGLISH",
+  pl: "POLSKI",
+  de: "DEUTSCH",
+  es: "ESPAÑOL",
+  fr: "FRANÇAIS",
+  "pt-BR": "PORTUGUÊS (BR)",
+  it: "ITALIANO",
+  ja: "日本語",
+  zh: "中文",
+};
 </script>
 
 <template>
@@ -164,6 +180,12 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
               <span class="lbl">SMART TURN</span>
               <select class="ctl small" :value="status?.smart_turn" @change="setSmartTurn">
                 <option v-for="v in SMART_TURN_OPTIONS" :key="v" :value="v">{{ v === 0 ? "OFF" : v.toFixed(1) }}</option>
+              </select>
+            </div>
+            <div class="ctlrow" title="Language for speech recognition and synthesis; auto-detect handles mixed Polish/English">
+              <span class="lbl">LANGUAGE</span>
+              <select class="ctl small" :value="status?.language ?? ''" @change="setLanguage">
+                <option v-for="(name, code) in LANGUAGES" :key="code" :value="code">{{ name }}</option>
               </select>
             </div>
           </div>
