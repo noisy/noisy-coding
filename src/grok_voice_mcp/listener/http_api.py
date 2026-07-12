@@ -157,6 +157,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/character":
                 body = self._read_json_body()
                 agent = body.get("agent")  # which tab's character (None=active)
+                before = state.character(agent)
                 values = state.set_character(body, agent)
                 traits = ", ".join(
                     f"{k} {v}/100"
@@ -167,14 +168,24 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     f"{traits}, voice '{values['voice']}', speed {values['speed']}x"
                 )
                 state.add_event("character", summary)
+                # The agent is told ONLY about trait changes (they shape its
+                # style, a brief in-character ack is welcome). Voice and
+                # speed are the daemon's business — switching them must
+                # never provoke a comment from Claude.
+                traits_changed = any(
+                    before.get(k) != values.get(k)
+                    for k in values
+                    if k not in ("voice", "speed")
+                )
                 # The instruction reaches the agent via its queue only if it's
                 # the active one; editing a background tab just stores the values.
-                if agent in (None, state.active_agent):
+                if traits_changed and agent in (None, state.active_agent):
                     state.add_transcript(
                         f"[CHARACTER] The user moved your character sliders to: {summary}. "
                         "Adjust the style of your spoken and written replies accordingly "
                         "— the daemon applies the voice and speed to your speech by "
-                        "itself — and briefly acknowledge the new setting in character."
+                        "itself — and briefly acknowledge the new setting in character. "
+                        "Never comment on the voice or speed."
                     )
                 save_characters(state)
                 self._respond({"character": values})

@@ -69,8 +69,9 @@ def submit(
             if source_id in _pending_replays:
                 return None
             _pending_replays.add(source_id)
+    # Plain text on the card — no decorative quotes, no voice tag.
     utterance_id = (
-        state.create_utterance("claude", "queued", text=f"„{text}”", agent=agent)
+        state.create_utterance("claude", "queued", text=text, agent=agent)
         if card
         else 0
     )

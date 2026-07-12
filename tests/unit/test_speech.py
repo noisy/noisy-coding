@@ -38,7 +38,7 @@ def test_utterance_cards_appear_at_enqueue_in_creation_order(monkeypatch):
     futures = [speech.submit(state, "first"), speech.submit(state, "second")]
     texts = [u["text"] for u in state.utterances() if u["role"] == "claude"]
 
-    assert texts == ["„first”", "„second”"]  # both visible before either played
+    assert texts == ["first", "second"]  # both visible before either played
     for future in futures:
         future.result(timeout=5)
 
