@@ -25,10 +25,10 @@ def _post_character(port: int, body: dict) -> None:
     connection.close()
 
 
-def test_voice_only_change_never_reaches_the_agent(character_server):
+def test_same_gender_voice_change_never_reaches_the_agent(character_server):
     state, port = character_server
 
-    _post_character(port, {"voice": "rex"})
+    _post_character(port, {"voice": "luna"})  # default carina (f) → luna (f)
 
     assert state.drain() == []
 
