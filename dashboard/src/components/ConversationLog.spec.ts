@@ -33,8 +33,8 @@ describe("ConversationLog", () => {
     });
 
     const bubbles = wrapper.findAll(".msg");
-    expect(bubbles[0].classes()).toContain("claude");
-    expect(bubbles[1].classes()).toContain("you");
+    expect(bubbles[0].classes()).toContain("accent-violet");
+    expect(bubbles[1].classes()).toContain("accent-amber");
   });
 
   it("shows an empty-state line without utterances", () => {

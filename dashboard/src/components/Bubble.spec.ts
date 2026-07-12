@@ -66,10 +66,10 @@ describe("UserBubble", () => {
     updated_at: 1_783_890_003,
   };
 
-  it("maps a recording utterance to a live amber bubble on the right", () => {
+  it("maps a recording utterance to a live amber bubble on the left", () => {
     const wrapper = mount(UserBubble, { props: { utterance } });
 
-    expect(wrapper.find(".msg").classes()).toContain("you");
+    expect(wrapper.find(".msg").classes()).toContain("side-left");
     expect(wrapper.find(".msg").classes()).toContain("accent-amber");
     expect(wrapper.find(".st").classes()).toContain("rec");
     expect(wrapper.find(".livebars").exists()).toBe(true);

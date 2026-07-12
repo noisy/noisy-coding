@@ -12,7 +12,7 @@ const pending = computed(() => !props.utterance.text);
 
 <template>
   <Bubble
-    side="left"
+    side="right"
     accent="violet"
     who="CLAUDE"
     :text="utterance.text || 'rendering voice response…'"

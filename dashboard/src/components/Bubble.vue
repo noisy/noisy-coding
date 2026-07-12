@@ -20,7 +20,7 @@ withDefaults(
 </script>
 
 <template>
-  <div class="msg" :class="[side === 'right' ? 'you' : 'claude', `accent-${accent}`]">
+  <div class="msg" :class="[`side-${side}`, `accent-${accent}`]">
     <div class="mhead">
       <span class="who">{{ who }}</span>
       <span class="st" :class="statusKind">{{ statusLabel }}</span>
@@ -43,21 +43,22 @@ withDefaults(
   padding: 10px 14px 9px;
   max-width: 88%;
 }
-.msg.you {
-  align-self: flex-end;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px));
-}
-.msg.claude {
+.msg.accent-amber { --accent: var(--amber); --accent-tint: rgba(255, 180, 84, 0.07); }
+.msg.accent-violet { --accent: var(--violet); --accent-tint: rgba(185, 140, 255, 0.07); }
+/* A left-anchored bubble grows rightward as live transcription appends
+   text — the natural reading direction. The accent edge sits on the
+   outer side either way. */
+.msg.side-left {
   align-self: flex-start;
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  border-left: 2px solid var(--accent);
+  background: linear-gradient(90deg, var(--accent-tint), rgba(5, 14, 24, 0.85) 40%);
 }
-.msg.accent-amber {
-  border-right: 2px solid var(--amber);
-  background: linear-gradient(270deg, rgba(255, 180, 84, 0.07), rgba(5, 14, 24, 0.85) 40%);
-}
-.msg.accent-violet {
-  border-left: 2px solid var(--violet);
-  background: linear-gradient(90deg, rgba(185, 140, 255, 0.07), rgba(5, 14, 24, 0.85) 40%);
+.msg.side-right {
+  align-self: flex-end;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  border-right: 2px solid var(--accent);
+  background: linear-gradient(270deg, var(--accent-tint), rgba(5, 14, 24, 0.85) 40%);
 }
 .mhead { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
 .who { font-size: 10px; letter-spacing: 0.26em; font-weight: 700; }
