@@ -23,11 +23,13 @@ FALLBACK_VOICE = "eve"
 ECHO_TAIL_SECONDS = 0.25
 # Don't start speaking while the user is mid-utterance: it talks over them
 # and, worse, the mic is muted while we play so their words are lost
-# entirely. Watch the recording flag and hold until they finish (or we hit
-# the cap, so a user who never stops — or a stuck flag — can't deadlock
-# our reply).
+# entirely. Watch the recording flag and hold until they finish. The cap
+# only guards against a stuck recording flag (wedged VAD) — it must be far
+# longer than any real monologue, or it fires mid-speech and we barge in
+# exactly the way this gate exists to prevent. It still fits within the MCP
+# server's 180s HTTP timeout for /speak.
 WAIT_FOR_USER_POLL_SECONDS = 0.05
-WAIT_FOR_USER_TIMEOUT_SECONDS = 20.0
+WAIT_FOR_USER_TIMEOUT_SECONDS = 120.0
 # After the user's speech ends, wait for a brief lull before speaking — a
 # short pause mid-thought (breath) shouldn't be read as "your turn now".
 USER_DONE_SETTLE_SECONDS = 0.6
