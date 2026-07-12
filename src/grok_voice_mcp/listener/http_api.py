@@ -104,6 +104,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "muted": state.user_muted,
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
+                        "playing_utterance_id": state.playing_utterance_id,
                         "speaking_agents": state.speaking_agents,
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
@@ -228,6 +229,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"speaking": speaking})
             elif self.path == "/speak":
                 self._handle_speak()
+            elif self.path == "/interrupt":
+                # Stop whatever is on the speakers; queued speech continues.
+                playback.stop_all_players()
+                self._respond({"stopped": True})
             elif self.path == "/cancel":
                 utterance_id = int(self._read_json_body().get("utterance_id", 0))
                 self._respond({"cancelled": state.cancel_transcript(utterance_id)})
@@ -320,6 +325,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 text,
                 agent=str(body["agent"]) if body.get("agent") else None,
                 card=bool(body.get("card", True)),
+                source_id=int(body.get("source_id", 0)),
             )
             if not body.get("wait", True):
                 self._respond({"queued": True})

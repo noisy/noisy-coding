@@ -4,7 +4,10 @@ import type { Utterance } from "../types";
 import Bubble from "./Bubble.vue";
 import { formatCost, formatTime, statusChip } from "./bubbleStatus";
 
-const props = defineProps<{ utterance: Utterance }>();
+const props = withDefaults(
+  defineProps<{ utterance: Utterance; playing?: boolean }>(),
+  { playing: false },
+);
 defineEmits<{ replay: [utterance: Utterance] }>();
 
 const chip = computed(() => statusChip(props.utterance.status));
@@ -27,6 +30,7 @@ const replayable = computed(() => chip.value.kind === "done" && !!props.utteranc
     :detail="utterance.detail"
     :pending="pending"
     :replayable="replayable"
+    :playing="playing"
     @replay="$emit('replay', utterance)"
   />
 </template>

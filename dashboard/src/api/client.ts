@@ -63,14 +63,21 @@ export function cancelTranscript(utteranceId: number): Promise<void> {
   return post("/cancel", { utterance_id: utteranceId });
 }
 
-/** Replay a spoken message: no new card in the log, and the user's click
- * outranks whatever is playing (they can always replay that one too). */
-export function speakText(text: string, agent?: string): Promise<void> {
+/** Replay a spoken message: no new card in the log, the user's click
+ * outranks whatever is playing, and source_id ties the playback back to
+ * the original bubble (so it can offer STOP while playing). */
+export function speakText(text: string, sourceId: number, agent?: string): Promise<void> {
   return post("/speak", {
     text,
     wait: false,
     card: false,
     interrupt: true,
+    source_id: sourceId,
     ...(agent ? { agent } : {}),
   });
+}
+
+/** Stop whatever is on the speakers; queued speech continues on its own. */
+export function stopPlayback(): Promise<void> {
+  return post("/interrupt", {});
 }

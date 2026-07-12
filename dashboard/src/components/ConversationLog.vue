@@ -4,7 +4,10 @@ import type { Utterance } from "../types";
 import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
-const props = defineProps<{ utterances: Utterance[] }>();
+const props = withDefaults(
+  defineProps<{ utterances: Utterance[]; playingId?: number }>(),
+  { playingId: 0 },
+);
 defineEmits<{ replay: [utterance: Utterance]; cancel: [utterance: Utterance] }>();
 
 // Noise guard: utterances that never became real speech ("empty — no
@@ -13,7 +16,7 @@ defineEmits<{ replay: [utterance: Utterance]; cancel: [utterance: Utterance] }>(
 // visible: that's real speech that got lost.
 function isNoise(status: string): boolean {
   const s = status.toLowerCase();
-  return s.includes("empty") || s.includes("dropped");
+  return s.includes("empty") || s.includes("dropped") || s.includes("cancelled");
 }
 
 // Oldest first — the newest message lands at the BOTTOM, like a chat.
@@ -69,7 +72,12 @@ watch(
           :utterance="utterance"
           @cancel="$emit('cancel', $event)"
         />
-        <ClaudeBubble v-else :utterance="utterance" @replay="$emit('replay', $event)" />
+        <ClaudeBubble
+          v-else
+          :utterance="utterance"
+          :playing="utterance.id === playingId"
+          @replay="$emit('replay', $event)"
+        />
       </template>
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
     </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { cancelTranscript, setCharacter, setMode, setMuted, setPtt, setSettings, speakText } from "./api/client";
+import { cancelTranscript, setCharacter, setMode, setMuted, setPtt, setSettings, speakText, stopPlayback } from "./api/client";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import AgentTabs from "./components/AgentTabs.vue";
@@ -52,8 +52,17 @@ const changeCharacter = (patch: Partial<Character>) =>
   setCharacter({ ...patch, agent: viewedAgent.value ?? undefined }).catch(swallow);
 const setDetection = (mode: "auto" | "ptt") =>
   setSettings({ detection_mode: mode }).catch(swallow);
-const replay = (utterance: Utterance) =>
-  speakText(replaySpeechText(utterance.text), viewedAgent.value ?? undefined).catch(swallow);
+// The button toggles: playing this very bubble → stop it (the queue moves
+// on by itself); otherwise queue a replay that outranks current playback.
+const replay = (utterance: Utterance) => {
+  if (status.value?.playing_utterance_id === utterance.id) {
+    stopPlayback().catch(swallow);
+    return;
+  }
+  speakText(
+    replaySpeechText(utterance.text), utterance.id, viewedAgent.value ?? undefined,
+  ).catch(swallow);
+};
 const cancel = (utterance: Utterance) => cancelTranscript(utterance.id).catch(swallow);
 
 // Push-to-talk: while the button is physically held we renew the daemon's
@@ -170,7 +179,12 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
             :speaking="status?.speaking_agents ?? []"
             @select="selectAgent"
           />
-          <ConversationLog :utterances="utterances" @replay="replay" @cancel="cancel" />
+          <ConversationLog
+            :utterances="utterances"
+            :playing-id="status?.playing_utterance_id ?? 0"
+            @replay="replay"
+            @cancel="cancel"
+          />
         </HudPanel>
       </div>
 

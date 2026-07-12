@@ -36,7 +36,11 @@ _playback_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="playb
 
 
 def submit(
-    state: ListenerState, text: str, agent: str | None = None, card: bool = True
+    state: ListenerState,
+    text: str,
+    agent: str | None = None,
+    card: bool = True,
+    source_id: int = 0,
 ) -> Future:
     """Queue an utterance for playback; resolves to the voice actually used.
 
@@ -56,7 +60,12 @@ def submit(
         if card
         else 0
     )
-    return _playback_executor.submit(_render_and_play, state, text, agent, utterance_id)
+    # Which card the playback "belongs to" on the dashboard: a replay
+    # (card=False) points back at the original bubble via source_id, so the
+    # UI can offer STOP on it while it plays.
+    return _playback_executor.submit(
+        _render_and_play, state, text, agent, utterance_id, source_id or utterance_id
+    )
 
 
 def shutdown() -> None:
@@ -122,6 +131,7 @@ def _render_and_play(
     text: str,
     agent: str | None,
     utterance_id: int,
+    source_id: int,
 ) -> str:
     """Synthesize `text` and play it. Runs on the single playback worker."""
     resolved_voice, resolved_language, resolved_speed = resolve_options(state, agent)
@@ -141,6 +151,7 @@ def _render_and_play(
     # Mute the listener while we play, or the mic transcribes our own speech.
     state.set_paused(True)
     state.set_claude_speaking(True, agent)
+    state.set_playing_utterance_id(source_id)
     try:
         asyncio.run(
             _synthesize_and_play(
@@ -155,6 +166,7 @@ def _render_and_play(
         state.update_utterance(utterance_id, status="error")
         raise
     finally:
+        state.set_playing_utterance_id(0)
         state.set_claude_speaking(False, agent)
         state.set_paused(False)
     _log(f"[speak] done in {time.monotonic() - playing_since:.1f}s")

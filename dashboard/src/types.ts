@@ -5,6 +5,7 @@ export interface DaemonStatus {
   muted: boolean;
   recording: boolean;
   claude_speaking: boolean;
+  playing_utterance_id: number;
   speaking_agents: string[];
   queued: number;
   session_cost_usd: { user: number; claude: number };

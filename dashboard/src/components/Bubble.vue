@@ -16,8 +16,17 @@ withDefaults(
     pending?: boolean;
     replayable?: boolean;
     cancelable?: boolean;
+    playing?: boolean;
   }>(),
-  { cost: "—", detail: "", live: false, pending: false, replayable: false, cancelable: false },
+  {
+    cost: "—",
+    detail: "",
+    live: false,
+    pending: false,
+    replayable: false,
+    cancelable: false,
+    playing: false,
+  },
 );
 
 defineEmits<{ replay: []; cancel: [] }>();
@@ -29,11 +38,12 @@ defineEmits<{ replay: []; cancel: [] }>();
       <span class="who">{{ who }}</span>
       <span class="st" :class="statusKind">{{ statusLabel }}</span>
       <button
-        v-if="replayable"
+        v-if="replayable || playing"
         class="replay"
-        title="Play this message again"
+        :class="{ playing }"
+        :title="playing ? 'Stop playback' : 'Play this message again'"
         @click="$emit('replay')"
-      >↻ ▶</button>
+      >{{ playing ? "⏹" : "↻ ▶" }}</button>
       <button
         v-if="cancelable"
         class="cancel"
@@ -105,6 +115,7 @@ defineEmits<{ replay: []; cancel: [] }>();
   cursor: pointer;
 }
 .replay:hover { color: var(--cyan-hi); border-color: var(--cyan); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.replay.playing { color: var(--amber); border-color: var(--amber-dim); text-shadow: var(--glow-amber); }
 .cancel {
   font-family: var(--mono);
   font-size: 9px;

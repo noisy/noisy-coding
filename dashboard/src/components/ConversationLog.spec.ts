@@ -62,16 +62,28 @@ describe("ConversationLog", () => {
     expect(wrapper.find(".liveslot .msg").exists()).toBe(false);
   });
 
-  it("hides never-became-speech noise but keeps STT errors", () => {
+  it("hides never-became-speech noise and cancellations, keeps STT errors", () => {
     const noise = { ...utterance(1, "user"), status: "empty — no speech" };
     const tooShort = { ...utterance(2, "user"), status: "dropped — too short" };
     const sttError = { ...utterance(3, "user"), status: "transcription error" };
+    const cancelled = { ...utterance(5, "user"), status: "cancelled by you" };
 
     const wrapper = mount(ConversationLog, {
-      props: { utterances: [noise, tooShort, sttError, utterance(4, "claude")] },
+      props: { utterances: [noise, tooShort, sttError, cancelled, utterance(4, "claude")] },
     });
 
     expect(wrapper.findAll(".msg")).toHaveLength(2);
     expect(wrapper.text()).toContain("utterance 3");
+  });
+
+  it("marks the bubble whose playback is on the speakers", () => {
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [utterance(1, "claude"), utterance(2, "claude")], playingId: 2 },
+    });
+
+    const buttons = wrapper.findAll(".replay");
+    expect(buttons).toHaveLength(2);
+    expect(buttons[1].text()).toBe("⏹");
+    expect(buttons[0].text()).not.toBe("⏹");
   });
 });
