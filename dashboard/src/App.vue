@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { setMode, setMuted, setSettings } from "./api/client";
+import { setCharacter, setMode, setMuted, setSettings } from "./api/client";
+import type { Character } from "./types";
 import AgentTabs from "./components/AgentTabs.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
@@ -45,6 +46,9 @@ const setSilence = (event: Event) =>
   setSettings({ end_silence_ms: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
 const setSmartTurn = (event: Event) =>
   setSettings({ smart_turn: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
+
+const changeCharacter = (patch: Partial<Character>) =>
+  setCharacter({ ...patch, agent: viewedAgent.value ?? undefined }).catch(swallow);
 
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
 const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
@@ -141,7 +145,7 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
 
       <div class="col-right">
         <HudPanel index="05" title="CHARACTER MATRIX">
-          <CharacterReadout v-if="character" :character="character" />
+          <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
           <p v-else class="todo">NO CHARACTER DATA</p>
         </HudPanel>
         <HudPanel index="06" title="SYSTEM STATE · COST">

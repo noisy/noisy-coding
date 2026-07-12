@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import type { Character, DaemonStatus } from "../types";
+import { speedFromAngle, traitValueFromAngle } from "./characterMath";
 import CharacterReadout from "./CharacterReadout.vue";
 import StatusStrip from "./StatusStrip.vue";
 import { stateLabel } from "./systemState";
@@ -32,6 +33,38 @@ describe("CharacterReadout", () => {
     const brevityArc = arcOf(gauges[2]); // 100/100
 
     expect(brevityArc).toBeCloseTo(humorArc * 2, 3);
+  });
+});
+
+describe("characterMath", () => {
+  it("maps gauge angles across the 280° sweep to 0-100", () => {
+    expect(traitValueFromAngle(130)).toBe(0); // arc start
+    expect(traitValueFromAngle(270)).toBe(50); // halfway
+    expect(traitValueFromAngle(50)).toBe(100); // arc end (130+280 mod 360)
+  });
+
+  it("snaps dead-zone angles to the nearest arc end", () => {
+    expect(traitValueFromAngle(60)).toBe(100);
+    expect(traitValueFromAngle(120)).toBe(0);
+  });
+
+  it("maps speed dial angles into the 0.7-1.5 range in 0.05 steps", () => {
+    expect(speedFromAngle(145)).toBe(0.7);
+    expect(speedFromAngle(270)).toBe(1.1);
+    expect(speedFromAngle(35)).toBe(1.5);
+  });
+});
+
+describe("CharacterReadout editing", () => {
+  it("picking a voice from the grid emits a change patch", async () => {
+    const wrapper = mount(CharacterReadout, { props: { character } });
+
+    await wrapper.find(".voicecur").trigger("click");
+    const rex = wrapper.findAll(".voicegrid b").find((b) => b.text() === "REX")!;
+    await rex.trigger("click");
+
+    expect(wrapper.emitted("change")).toEqual([[{ voice: "rex" }]]);
+    expect(wrapper.find(".voicegrid").exists()).toBe(false); // grid closes
   });
 });
 
