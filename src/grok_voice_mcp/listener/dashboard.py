@@ -534,6 +534,10 @@ DASHBOARD_HTML = """<!doctype html>
       else if (!s.listening) setState("muted", "muted — Claude is speaking");
       else if (s.recording) setState("recording", "recording your utterance");
       else setState("listening", "listening");
+      // The daemon owns the character (Claude can change_voice at any time)
+      // — keep the panel mirroring it. loadCharacter skips itself while a
+      // slider is mid-drag, so this never fights the user's hand.
+      await loadCharacter();
       // Show only the viewed agent's history (or everything in single-agent mode).
       const q = viewedAgent ? "?agent=" + encodeURIComponent(viewedAgent) : "";
       const data = await (await fetch("/utterances" + q)).json();
