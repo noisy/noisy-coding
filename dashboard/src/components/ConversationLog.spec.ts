@@ -14,6 +14,7 @@ function utterance(id: number, role: "user" | "claude"): Utterance {
     agent: null,
     started_at: 0,
     updated_at: 0,
+    committed_at: 0,
   };
 }
 
@@ -41,6 +42,18 @@ describe("ConversationLog", () => {
     const wrapper = mount(ConversationLog, { props: { utterances: [] } });
 
     expect(wrapper.find(".empty").exists()).toBe(true);
+  });
+
+  it("orders by commit time — a reply that arrived mid-composition sits above", () => {
+    // User started composing at t=10 (lower id would win an id-sort),
+    // Claude's reply arrived at t=20, the user finished at t=30.
+    const users = { ...utterance(1, "user"), started_at: 10, committed_at: 30 };
+    const claudes = { ...utterance(2, "claude"), started_at: 20, committed_at: 20 };
+
+    const wrapper = mount(ConversationLog, { props: { utterances: [users, claudes] } });
+
+    const texts = wrapper.findAll(".txt").map((n) => n.text());
+    expect(texts).toEqual(["utterance 2", "utterance 1"]);
   });
 
   it("renders the in-progress utterance in the reserved live slot", () => {

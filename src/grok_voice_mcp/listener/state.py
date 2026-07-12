@@ -247,6 +247,12 @@ class ListenerState:
                     "agent": agent if agent is not None else self._active_agent,
                     "started_at": time.time(),
                     "updated_at": time.time(),
+                    # When the message ENTERED the conversation, iMessage
+                    # style: Claude's counts on arrival (queued — the user
+                    # may consciously ignore it while composing); the
+                    # user's counts when their utterance is finished (0
+                    # until then — still in the composer).
+                    "committed_at": time.time() if role == "claude" else 0.0,
                 }
             )
             return self._utterance_seq
@@ -287,7 +293,10 @@ class ListenerState:
             self._last_transcript_at = now
             self._add_event_locked("transcript", text)
             self._update_utterance_locked(
-                utterance_id, status="ready — awaiting pickup", text=text
+                utterance_id,
+                status="ready — awaiting pickup",
+                text=text,
+                committed_at=now,
             )
 
     def cancel_transcript(self, utterance_id: int) -> bool:

@@ -33,6 +33,8 @@ export interface Utterance {
   agent: string | null;
   started_at: number;
   updated_at: number;
+  /** When the message entered the conversation (0 = still composing). */
+  committed_at: number;
 }
 
 export interface Character {

@@ -17,6 +17,7 @@ function utterance(overrides: Partial<Utterance>): Utterance {
     agent: null,
     started_at: Date.now() / 1000,
     updated_at: Date.now() / 1000,
+    committed_at: Date.now() / 1000,
     ...overrides,
   };
 }

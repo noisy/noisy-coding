@@ -106,6 +106,23 @@ def test_wait_for_user_silence_grace_lets_the_user_add_a_thought():
     assert done.wait(1.0)
 
 
+def test_user_utterance_commits_when_the_transcript_is_ready():
+    state = ListenerState()
+    utterance_id = state.create_utterance("user", "recording…")
+    assert state.utterances()[0]["committed_at"] == 0.0  # still composing
+
+    state.add_transcript("finished thought", utterance_id)
+
+    assert state.utterances()[0]["committed_at"] > 0.0
+
+
+def test_claude_utterance_commits_on_creation():
+    state = ListenerState()
+    state.create_utterance("claude", "queued")
+
+    assert state.utterances()[0]["committed_at"] > 0.0
+
+
 def test_cancel_transcript_recalls_a_queued_message():
     state = ListenerState()
     utterance_id = state.create_utterance("user", "recording…")

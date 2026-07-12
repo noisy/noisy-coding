@@ -74,6 +74,7 @@ describe("ClaudeBubble replay", () => {
     agent: null,
     started_at: 0,
     updated_at: 0,
+    committed_at: 0,
   };
 
   it("shows the replay icon on played speech and emits the utterance", async () => {
@@ -104,6 +105,7 @@ describe("UserBubble", () => {
     agent: null,
     started_at: 1_783_890_000,
     updated_at: 1_783_890_003,
+    committed_at: 0,
   };
 
   it("offers cancel only while awaiting Claude and emits the utterance", async () => {

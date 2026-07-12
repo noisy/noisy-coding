@@ -20,8 +20,17 @@ function isNoise(status: string): boolean {
 }
 
 // Oldest first — the newest message lands at the BOTTOM, like a chat.
+// Order = when a message ENTERED the conversation (committed_at): a Claude
+// reply that arrived while the user was still composing sits ABOVE their
+// finished message, iMessage style.
+function commitTime(u: Utterance): number {
+  return u.committed_at || u.started_at;
+}
+
 const ordered = computed(() =>
-  props.utterances.filter((u) => !isNoise(u.status)).sort((a, b) => a.id - b.id),
+  props.utterances
+    .filter((u) => !isNoise(u.status))
+    .sort((a, b) => commitTime(a) - commitTime(b) || a.id - b.id),
 );
 
 // The in-progress user utterance renders in a RESERVED slot below the
