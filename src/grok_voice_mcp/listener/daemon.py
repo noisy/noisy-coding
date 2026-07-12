@@ -14,7 +14,7 @@ import httpx
 import numpy as np
 import sounddevice as sd
 
-from grok_voice_mcp.listener import pricing, stt, stt_stream
+from grok_voice_mcp.listener import pricing, speech, stt, stt_stream
 import json
 
 from grok_voice_mcp.listener.http_api import (
@@ -65,6 +65,7 @@ def _transcribe_and_enqueue(
     seconds = len(samples) / sample_rate
     cost = pricing.stt_cost_usd(seconds)
     state.add_cost("user", cost)
+    _log(f"[transcribing] {seconds:.1f}s of audio (batch)")
     state.add_event("transcribing", f"{seconds:.1f}s")
     state.update_utterance(
         utterance_id,
@@ -191,7 +192,7 @@ def run(config: VadConfig | None = None) -> None:
         frames.put(indata[:, 0].copy())
 
     _log(f"grok-voice-listener: mic on, API at http://127.0.0.1:{port}")
-    _log("Endpoints: GET /drain /status, POST /pause /resume. Ctrl+C to stop.")
+    _log("Endpoints: GET /drain /status, POST /speak /pause /resume. Ctrl+C to stop.")
 
     with sd.InputStream(
         samplerate=config.sample_rate,
@@ -213,6 +214,7 @@ def run(config: VadConfig | None = None) -> None:
                 utterance = segmenter.feed(frame)
                 state.set_recording(segmenter.is_recording)
                 if segmenter.is_recording and not was_recording:
+                    _log("[recording] user started speaking")
                     state.add_event("recording")
                     current_utterance_id = state.create_utterance("user", "recording…")
                     if state.mode == "live":
@@ -222,7 +224,11 @@ def run(config: VadConfig | None = None) -> None:
                 elif segmenter.is_recording and stream is not None:
                     stream.send(frame.tobytes())
                 elif was_recording and not segmenter.is_recording:
-                    state.add_event("recording_done", "0.8s of silence — closing utterance")
+                    silence_note = (
+                        f"{state.end_silence_ms / 1000:.1f}s of silence — closing utterance"
+                    )
+                    _log(f"[recording] done — {silence_note}")
+                    state.add_event("recording_done", silence_note)
                     if utterance is None:
                         if stream is not None:
                             # A short clip may still hold real words — let the
@@ -259,6 +265,7 @@ def run(config: VadConfig | None = None) -> None:
         finally:
             server.shutdown()
             stt_executor.shutdown(wait=False)
+            speech.shutdown()
 
 
 def main() -> None:

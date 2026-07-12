@@ -1,9 +1,14 @@
-"""MCP server that lets the assistant speak to the user via Grok Voice."""
+"""MCP server that lets the assistant speak to the user via Grok Voice.
+
+Thin messenger: all rendering, playback, queueing and turn-taking live in
+the listener daemon (the single owner of mic and speakers). This server
+just forwards speak/announce requests over localhost HTTP — so a stale
+server process left behind by an MCP reconnect can't talk over anyone.
+"""
 
 import asyncio
 import json
 import os
-import re
 import socket
 import subprocess
 import sys
@@ -13,35 +18,16 @@ from pathlib import Path
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from grok_voice_mcp import playback, tts, tts_stream
+from grok_voice_mcp import tts
 
-DEFAULT_VOICE_ENV_VAR = "GROK_VOICE_DEFAULT_VOICE"
-DEFAULT_LANGUAGE_ENV_VAR = "GROK_VOICE_DEFAULT_LANGUAGE"
 LISTENER_PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
-FALLBACK_VOICE = "eve"
-FALLBACK_LANGUAGE = "en"
-ECHO_TAIL_SECONDS = 0.25
-# Don't start speaking while the user is mid-utterance: it talks over them and,
-# worse, the mic is muted while we play so their words are lost entirely. Poll
-# the daemon's `recording` flag and hold until they finish (or we hit the cap,
-# so a user who never stops — or a stuck flag — can't deadlock our reply).
-WAIT_FOR_USER_POLL_SECONDS = 0.2
-WAIT_FOR_USER_TIMEOUT_SECONDS = 20.0
-# After the user's speech ends, wait for a brief lull before speaking — a short
-# pause mid-thought (breath) shouldn't be read as "your turn now".
-USER_DONE_SETTLE_SECONDS = 0.6
-EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
-
-# Serialize speech: only one utterance may play at a time. Without this two
-# speak calls (e.g. one straddling an MCP reconnect) start players in
-# parallel and talk over each other.
-_speak_lock = asyncio.Lock()
-
-
-def _emphasis_to_speech_tags(text: str) -> str:
-    """Markdown **bold** becomes vocal emphasis for the TTS engine."""
-    return EMPHASIS_PATTERN.sub(r"<loud>\1</loud>", text)
-
+# speak blocks until the daemon has waited out the user's turn, rendered
+# AND played the utterance — allow for a long queue ahead of us.
+SPEAK_TIMEOUT_SECONDS = 180.0
+DAEMON_DOWN_MESSAGE = (
+    "The voice daemon is not reachable, so nothing was spoken. "
+    "Deliver the message in writing instead."
+)
 
 _SESSIONS_MAP = Path.home() / ".config" / "grok-voice" / "sessions.json"
 
@@ -66,62 +52,38 @@ def _agent_name() -> str:
 mcp = FastMCP("grok-voice")
 
 
-async def _listener_post(path: str, body: dict | None = None) -> None:
-    """Best-effort call to the listener daemon; silent no-op when it's down."""
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
-    try:
-        async with httpx.AsyncClient(timeout=0.5) as client:
-            await client.post(f"http://127.0.0.1:{port}{path}", json=body)
-    except httpx.HTTPError:
-        pass
+async def _daemon_speak(body: dict) -> dict | None:
+    """POST /speak to the daemon; None when it's unreachable (fail open).
 
-
-async def _acquire_floor(agent: str, timeout_s: float = 30.0) -> None:
-    """Poll the daemon's cross-agent speaking floor until granted or timeout.
-
-    Timing out and speaking anyway is better than never speaking; the worst
-    case is a brief overlap, which the floor makes rare, not impossible.
+    A daemon that is merely starting up must not turn speak into an
+    exception — on the first failure we (re)spawn it and retry once.
     """
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
-    deadline = asyncio.get_event_loop().time() + timeout_s
-    while asyncio.get_event_loop().time() < deadline:
-        try:
-            async with httpx.AsyncClient(timeout=0.5) as client:
-                r = await client.post(
-                    f"http://127.0.0.1:{port}/floor/acquire", json={"agent": agent}
-                )
-                if r.json().get("granted"):
-                    return
-        except (httpx.HTTPError, ValueError):
-            return  # daemon down → don't block speech
-        await asyncio.sleep(0.25)
-
-
-async def _dashboard_event(kind: str, detail: str, **extra: object) -> None:
-    # Tag the event with our agent so Claude's card lands in the right
-    # per-agent history even if another agent became active meanwhile.
+    body = dict(body)
     agent = _agent_name()
-    body = {"kind": kind, "detail": detail, **extra}
     if agent:
         body["agent"] = agent
-    await _listener_post("/event", body)
+    timeout = httpx.Timeout(SPEAK_TIMEOUT_SECONDS, connect=2.0)
+    for attempt in (0, 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(
+                    f"http://127.0.0.1:{port}/speak", json=body
+                )
+                return response.json()
+        except (httpx.HTTPError, ValueError):
+            if attempt == 0:
+                await asyncio.to_thread(_ensure_daemon)
+    return None
 
 
-async def _daemon_status() -> dict:
-    """Best-effort snapshot of the listener daemon's settings ({} if down)."""
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
-    try:
-        async with httpx.AsyncClient(timeout=0.5) as client:
-            return (await client.get(f"http://127.0.0.1:{port}/status")).json()
-    except (httpx.HTTPError, ValueError):
-        return {}
-
-
-def _tts_streaming_from(status: dict) -> bool:
-    """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
-    if os.environ.get("GROK_VOICE_TTS_MODE", "").lower() == "live":
-        return True
-    return status.get("tts_mode") == "live"
+def _speak_result_message(result: dict | None) -> str | None:
+    """Shared failure reporting for speak/announce; None means success."""
+    if result is None:
+        return DAEMON_DOWN_MESSAGE
+    if "error" in result:
+        return f"Speech failed: {result['error']}"
+    return None
 
 
 @mcp.tool()
@@ -154,13 +116,20 @@ async def speak(
         speed: Speech rate multiplier, 0.7-1.5.
         interrupt: Cut off any utterance currently playing and speak now.
     """
-    if interrupt:
-        playback.stop_all_players()  # cut the current utterance; lock releases
-    resolved_voice = await _render_and_play(text, voice_id, language, speed)
-    return f"Spoke the message aloud with voice '{resolved_voice}'."
-
-
-_announce_tasks: set[asyncio.Task] = set()
+    result = await _daemon_speak(
+        {
+            "text": text,
+            "voice_id": voice_id,
+            "language": language,
+            "speed": speed,
+            "interrupt": interrupt,
+            "wait": True,
+        }
+    )
+    failure = _speak_result_message(result)
+    if failure:
+        return failure
+    return f"Spoke the message aloud with voice '{result.get('voice', '?')}'."
 
 
 @mcp.tool()
@@ -172,116 +141,19 @@ async def announce(text: str, voice_id: str = "", language: str = "", speed: flo
     the background, queued behind any current speech. Use `speak` instead when
     you are asking a question or otherwise waiting for the user's reply.
     """
-    task = asyncio.create_task(_render_and_play(text, voice_id, language, speed))
-    _announce_tasks.add(task)  # keep a strong ref so it isn't GC'd mid-play
-    task.add_done_callback(_announce_tasks.discard)
-    return "Announcement queued; playing in the background."
-
-
-async def _fetch_character() -> dict:
-    """This agent's character from the daemon (voice/speed/traits)."""
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
-    agent = _agent_name()
-    query = f"?agent={agent}" if agent else ""
-    try:
-        async with httpx.AsyncClient(timeout=0.5) as client:
-            resp = await client.get(f"http://127.0.0.1:{port}/character{query}")
-            return resp.json().get("character") or {}
-    except (httpx.HTTPError, ValueError):
-        return {}
-
-
-async def _wait_until_user_done() -> None:
-    """Hold until the user isn't speaking, so we never talk over them.
-
-    While the user records, the listener mutes the mic during playback — so if
-    we spoke now, our words would collide with theirs AND their utterance would
-    be dropped. Poll the daemon's `recording` flag until it clears and stays
-    clear through a short settle window (a breath mid-sentence isn't the end of
-    their turn). Bounded by a timeout so a never-ending utterance, or a daemon
-    that's down / stuck, can't wedge our reply forever.
-    """
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
-    deadline = time.monotonic() + WAIT_FOR_USER_TIMEOUT_SECONDS
-    quiet_since: float | None = None
-    async with httpx.AsyncClient(timeout=0.5) as client:
-        while time.monotonic() < deadline:
-            try:
-                recording = (
-                    await client.get(f"http://127.0.0.1:{port}/status")
-                ).json().get("recording", False)
-            except (httpx.HTTPError, ValueError):
-                return  # daemon down/unreadable: fail open, just speak
-            if recording:
-                quiet_since = None
-            else:
-                if quiet_since is None:
-                    quiet_since = time.monotonic()
-                if time.monotonic() - quiet_since >= USER_DONE_SETTLE_SECONDS:
-                    return  # quiet long enough — the user's turn is over
-            await asyncio.sleep(WAIT_FOR_USER_POLL_SECONDS)
-
-
-async def _render_and_play(text: str, voice_id: str, language: str, speed: float) -> str:
-    """Synthesize `text` and play it, serialized behind any current speech."""
-    status = await _daemon_status()
-    character = await _fetch_character()
-    # Hybrid resolution for voice/speed/language: an explicit request arg wins
-    # for this one utterance; else the dashboard's Character/Settings value;
-    # else the env/fallback default. Keeps the dashboard the source of truth.
-    resolved_voice = (
-        voice_id
-        or character.get("voice")
-        or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
+    result = await _daemon_speak(
+        {
+            "text": text,
+            "voice_id": voice_id,
+            "language": language,
+            "speed": speed,
+            "wait": False,
+        }
     )
-    if speed == 1.0 and character.get("speed"):
-        speed = float(character["speed"])  # dashboard speed unless call overrode it
-    if language:
-        resolved_language = language
-    elif "language" in status:
-        resolved_language = status["language"] or "auto"
-    else:
-        resolved_language = os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
-
-    async with _speak_lock:  # queue behind any utterance still playing
-        # Wait out any in-progress user utterance before we mute the mic to
-        # play — otherwise we talk over them and their words are lost.
-        await _wait_until_user_done()
-        await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
-        speech_text = _emphasis_to_speech_tags(text)
-        streaming = _tts_streaming_from(status)
-
-        agent_name = _agent_name() or None
-        # Global floor: with multiple agents (separate MCP servers) the per-
-        # process lock can't stop two voices overlapping. Wait for the daemon's
-        # cross-agent floor before playing; time out so we never deadlock.
-        if agent_name:
-            await _acquire_floor(agent_name)
-        # Mute the listener while we play, or the mic transcribes our own speech.
-        await _listener_post("/pause")
-        await _listener_post("/speaking", {"speaking": True, "agent": agent_name})
-        try:
-            if streaming:
-                await _dashboard_event("speak_audio", "streaming from Grok TTS")
-                await tts_stream.speak_streaming(
-                    speech_text, resolved_voice, resolved_language, speed
-                )
-            else:
-                audio = await tts.synthesize(
-                    speech_text, resolved_voice, resolved_language, speed
-                )
-                await _dashboard_event(
-                    "speak_audio", f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS"
-                )
-                await playback.play(audio.audio, audio.content_type)
-            await asyncio.sleep(ECHO_TAIL_SECONDS)
-        finally:
-            await _listener_post("/speaking", {"speaking": False, "agent": agent_name})
-            await _listener_post("/resume")
-            if agent_name:
-                await _listener_post("/floor/release", {"agent": agent_name})
-        await _dashboard_event("speak_done", f"głos '{resolved_voice}'")
-    return resolved_voice
+    failure = _speak_result_message(result)
+    if failure:
+        return failure
+    return "Announcement queued; playing in the background."
 
 
 @mcp.tool()
