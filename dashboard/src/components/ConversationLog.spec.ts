@@ -42,4 +42,17 @@ describe("ConversationLog", () => {
 
     expect(wrapper.find(".empty").exists()).toBe(true);
   });
+
+  it("hides never-became-speech noise but keeps STT errors", () => {
+    const noise = { ...utterance(1, "user"), status: "empty — no speech" };
+    const tooShort = { ...utterance(2, "user"), status: "dropped — too short" };
+    const sttError = { ...utterance(3, "user"), status: "transcription error" };
+
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [noise, tooShort, sttError, utterance(4, "claude")] },
+    });
+
+    expect(wrapper.findAll(".msg")).toHaveLength(2);
+    expect(wrapper.text()).toContain("utterance 3");
+  });
 });

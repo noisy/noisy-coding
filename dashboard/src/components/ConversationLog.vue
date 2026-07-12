@@ -6,8 +6,19 @@ import UserBubble from "./UserBubble.vue";
 
 const props = defineProps<{ utterances: Utterance[] }>();
 
+// Noise guard: utterances that never became real speech ("empty — no
+// speech", "dropped — too short") would flood the log in a loud room and
+// bury the actual conversation — hide them entirely. STT errors stay
+// visible: that's real speech that got lost.
+function isNoise(status: string): boolean {
+  const s = status.toLowerCase();
+  return s.includes("empty") || s.includes("dropped");
+}
+
 // Oldest first — the newest message lands at the BOTTOM, like a chat.
-const ordered = computed(() => [...props.utterances].sort((a, b) => a.id - b.id));
+const ordered = computed(() =>
+  props.utterances.filter((u) => !isNoise(u.status)).sort((a, b) => a.id - b.id),
+);
 
 const feed = ref<HTMLElement | null>(null);
 
