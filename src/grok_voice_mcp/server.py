@@ -21,6 +21,15 @@ LISTENER_PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
 FALLBACK_VOICE = "eve"
 FALLBACK_LANGUAGE = "en"
 ECHO_TAIL_SECONDS = 0.25
+# Don't start speaking while the user is mid-utterance: it talks over them and,
+# worse, the mic is muted while we play so their words are lost entirely. Poll
+# the daemon's `recording` flag and hold until they finish (or we hit the cap,
+# so a user who never stops — or a stuck flag — can't deadlock our reply).
+WAIT_FOR_USER_POLL_SECONDS = 0.2
+WAIT_FOR_USER_TIMEOUT_SECONDS = 20.0
+# After the user's speech ends, wait for a brief lull before speaking — a short
+# pause mid-thought (breath) shouldn't be read as "your turn now".
+USER_DONE_SETTLE_SECONDS = 0.6
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
 # Serialize speech: only one utterance may play at a time. Without this two
@@ -182,6 +191,37 @@ async def _fetch_character() -> dict:
         return {}
 
 
+async def _wait_until_user_done() -> None:
+    """Hold until the user isn't speaking, so we never talk over them.
+
+    While the user records, the listener mutes the mic during playback — so if
+    we spoke now, our words would collide with theirs AND their utterance would
+    be dropped. Poll the daemon's `recording` flag until it clears and stays
+    clear through a short settle window (a breath mid-sentence isn't the end of
+    their turn). Bounded by a timeout so a never-ending utterance, or a daemon
+    that's down / stuck, can't wedge our reply forever.
+    """
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    deadline = time.monotonic() + WAIT_FOR_USER_TIMEOUT_SECONDS
+    quiet_since: float | None = None
+    async with httpx.AsyncClient(timeout=0.5) as client:
+        while time.monotonic() < deadline:
+            try:
+                recording = (
+                    await client.get(f"http://127.0.0.1:{port}/status")
+                ).json().get("recording", False)
+            except (httpx.HTTPError, ValueError):
+                return  # daemon down/unreadable: fail open, just speak
+            if recording:
+                quiet_since = None
+            else:
+                if quiet_since is None:
+                    quiet_since = time.monotonic()
+                if time.monotonic() - quiet_since >= USER_DONE_SETTLE_SECONDS:
+                    return  # quiet long enough — the user's turn is over
+            await asyncio.sleep(WAIT_FOR_USER_POLL_SECONDS)
+
+
 async def _render_and_play(text: str, voice_id: str, language: str, speed: float) -> str:
     """Synthesize `text` and play it, serialized behind any current speech."""
     status = await _daemon_status()
@@ -204,6 +244,9 @@ async def _render_and_play(text: str, voice_id: str, language: str, speed: float
         resolved_language = os.environ.get(DEFAULT_LANGUAGE_ENV_VAR, FALLBACK_LANGUAGE)
 
     async with _speak_lock:  # queue behind any utterance still playing
+        # Wait out any in-progress user utterance before we mute the mic to
+        # play — otherwise we talk over them and their words are lost.
+        await _wait_until_user_done()
         await _dashboard_event("speak", f"[{resolved_voice}] „{text}”", chars=len(text))
         speech_text = _emphasis_to_speech_tags(text)
         streaming = _tts_streaming_from(status)

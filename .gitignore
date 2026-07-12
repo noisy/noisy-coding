@@ -9,3 +9,5 @@ dist/
 TODO.md
 FEEDBACK.md
 .claude/settings.local.json
+
+.DS_Store
