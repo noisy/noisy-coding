@@ -70,10 +70,13 @@ def submit(
                 return None
             _pending_replays.add(source_id)
     # Plain text on the card — no decorative quotes, no voice tag.
+    # A replay (card=False) adopts the ORIGINAL card via source_id: its
+    # status walks the normal chain (synthesizing → playing → played), so
+    # an UNHEARD card becomes played once caught up on.
     utterance_id = (
         state.create_utterance("claude", "queued", text=text, agent=agent)
         if card
-        else 0
+        else source_id
     )
     # Which card the playback "belongs to" on the dashboard: a replay
     # (card=False) points back at the original bubble via source_id, so the
@@ -158,6 +161,14 @@ def _render_and_play(
 ) -> str:
     """Synthesize `text` and play it. Runs on the single playback worker."""
     resolved_voice, resolved_language, resolved_speed = resolve_options(state, agent)
+    if state.voice_muted:
+        # Speaker muted (user away / wants quiet): park the message as
+        # UNHEARD — no synthesis (deferred = costs nothing until played),
+        # and return at once so agents' blocking speak never hangs on it.
+        _log(f"[speak] unheard (voice muted): „{text[:60]}”")
+        state.add_event("speak_unheard", f"„{text}”")
+        state.update_utterance(utterance_id, status="unheard — voice muted")
+        return resolved_voice
     _hold_for_user_turn(state, utterance_id)
 
     # The event log keeps the voice (diagnostics); the card does NOT — a

@@ -3,6 +3,7 @@
 export interface DaemonStatus {
   listening: boolean;
   muted: boolean;
+  voice_muted: boolean;
   recording: boolean;
   claude_speaking: boolean;
   playing_utterance_id: number;

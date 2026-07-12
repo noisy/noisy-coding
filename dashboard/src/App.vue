@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { cancelTranscript, setCharacter, setMode, setMuted, setPtt, setSettings, speakText, stopPlayback } from "./api/client";
+import { cancelTranscript, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback } from "./api/client";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import AgentTabs from "./components/AgentTabs.vue";
@@ -64,6 +64,20 @@ const replay = (utterance: Utterance) => {
   ).catch(swallow);
 };
 const cancel = (utterance: Utterance) => cancelTranscript(utterance.id).catch(swallow);
+
+const unheard = computed(() =>
+  utterances.value.filter((u) => u.role === "claude" && u.status.includes("unheard")),
+);
+const toggleVoiceMute = () => setVoiceMuted(!status.value?.voice_muted).catch(swallow);
+// Catch up: unmute FIRST (or the replays would park as unheard again),
+// then queue every parked message in arrival order — the playback queue
+// serializes them, each stoppable with its ⏹.
+async function catchUp() {
+  await setVoiceMuted(false).catch(swallow);
+  [...unheard.value]
+    .sort((a, b) => (a.committed_at || a.started_at) - (b.committed_at || b.started_at))
+    .forEach((u) => speakText(replaySpeechText(u.text), u.id).catch(swallow));
+}
 
 // Push-to-talk: while the button is physically held we renew the daemon's
 // hold lease (it expires by itself if we die mid-hold — see the daemon).
@@ -138,6 +152,12 @@ const LANGUAGES: Record<string, string> = {
           <span class="bm-label">{{ status?.muted ? "◉ MIC MUTED" : "MUTE MIC" }}</span>
           <span class="bm-sub">{{ status?.muted ? "TAP TO UNMUTE" : "ONE TAP TO GO SILENT" }}</span>
         </button>
+        <button class="voicemute" :class="{ muted: status?.voice_muted }" @click="toggleVoiceMute">
+          <span class="vm-label">{{ status?.voice_muted ? "◉ CLAUDE MUTED" : "MUTE CLAUDE" }}</span>
+          <span class="vm-sub">
+            {{ status?.voice_muted ? `${unheard.length} UNHEARD — PARKING SILENTLY` : "PARK SPEECH WHILE AWAY" }}
+          </span>
+        </button>
         <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE">
           <Oscilloscope :level="level" />
           <div class="dbrow">
@@ -194,6 +214,9 @@ const LANGUAGES: Record<string, string> = {
 
       <div class="col-mid">
         <HudPanel index="04" title="COMM LOG · UTTERANCE STREAM">
+          <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
+            ▶ CATCH UP ({{ unheard.length }} UNHEARD)
+          </button>
           <AgentTabs
             :agents="status?.agent_labels ?? {}"
             :active="status?.active_agent ?? null"
@@ -368,6 +391,35 @@ footer { flex: none; }
 }
 .bigmute.talk.held .bm-label { text-shadow: var(--glow-amber); }
 .bigmute.talk.held .bm-sub { color: rgba(255, 180, 84, 0.75); }
+
+.voicemute {
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 18px;
+  font-family: var(--mono);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  color: var(--violet);
+  background: rgba(185, 140, 255, 0.06);
+  border: 1px solid rgba(185, 140, 255, 0.4);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.voicemute .vm-label { font-size: 12px; letter-spacing: 0.26em; }
+.voicemute .vm-sub { font-size: 8px; letter-spacing: 0.2em; color: var(--muted); }
+.voicemute:hover { border-color: var(--violet); background: rgba(185, 140, 255, 0.12); }
+.voicemute.muted {
+  color: var(--red);
+  border-color: rgba(255, 95, 107, 0.6);
+  background: rgba(255, 95, 107, 0.08);
+}
+.voicemute.muted .vm-label { animation: blink 1.6s step-end infinite; }
+.voicemute.muted .vm-sub { color: rgba(255, 95, 107, 0.7); }
+
+.catchup { width: 100%; margin-bottom: 12px; color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); }
+.catchup:hover { color: var(--amber); text-shadow: var(--glow-amber); border-color: var(--amber); }
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }

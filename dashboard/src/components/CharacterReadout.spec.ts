@@ -70,8 +70,8 @@ describe("CharacterReadout editing", () => {
 
 function status(overrides: Partial<DaemonStatus>): DaemonStatus {
   return {
-    listening: true, muted: false, recording: false, claude_speaking: false,
-    playing_utterance_id: 0,
+    listening: true, muted: false, voice_muted: false, recording: false,
+    claude_speaking: false, playing_utterance_id: 0,
     speaking_agents: [], queued: 0, session_cost_usd: { user: 0.01, claude: 0.02 },
     credits_usd: 4.5, mode: "live", tts_mode: "live", end_silence_ms: 800,
     smart_turn: 0, smart_turn_mode: "soft", detection_mode: "auto", ptt_held: false,

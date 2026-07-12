@@ -37,6 +37,11 @@ export function setMuted(muted: boolean): Promise<void> {
   return post("/mute", { muted });
 }
 
+/** Speaker-side mute: Claude's speech parks silently as UNHEARD cards. */
+export function setVoiceMuted(muted: boolean): Promise<void> {
+  return post("/voice-mute", { muted });
+}
+
 export function setMode(mode: "batch" | "live"): Promise<void> {
   return post("/mode", { mode });
 }

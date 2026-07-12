@@ -12,9 +12,11 @@ defineEmits<{ replay: [utterance: Utterance] }>();
 
 const chip = computed(() => statusChip(props.utterance.status));
 const pending = computed(() => !props.utterance.text);
-// Replay only settled speech: a card mid-synthesis/playback re-queues on
-// its own, and an errored one has nothing worth repeating verbatim.
-const replayable = computed(() => chip.value.kind === "done" && !!props.utterance.text);
+// Replay settled speech (played or parked UNHEARD) — a card mid-synthesis
+// re-queues on its own, and an errored one has nothing worth repeating.
+const replayable = computed(
+  () => (chip.value.kind === "done" || chip.value.kind === "off") && !!props.utterance.text,
+);
 </script>
 
 <template>

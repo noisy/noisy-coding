@@ -47,6 +47,7 @@ class ListenerState:
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._user_muted = False  # explicit mute from the dashboard
+        self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
         self._claude_speaking = False  # any agent playing audio right now
         self._speaking_agents: set[str] = set()  # which agents are speaking now
         self._recording = False
@@ -477,6 +478,15 @@ class ListenerState:
                     self._speaking_agents.add(agent)
                 else:
                     self._speaking_agents.discard(agent)
+
+    @property
+    def voice_muted(self) -> bool:
+        with self._lock:
+            return self._voice_muted
+
+    def set_voice_muted(self, muted: bool) -> None:
+        with self._lock:
+            self._voice_muted = muted
 
     @property
     def user_muted(self) -> bool:

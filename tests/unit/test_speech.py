@@ -58,6 +58,39 @@ def test_submit_without_card_plays_but_leaves_no_utterance(monkeypatch):
     assert state.utterances() == []  # replay must not duplicate the bubble
 
 
+def test_voice_muted_parks_speech_as_unheard(monkeypatch):
+    state = ListenerState()
+    state.set_voice_muted(True)
+    played = []
+
+    async def fake_synthesize_and_play(*_args):
+        played.append(1)
+
+    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
+
+    voice = speech.submit(state, "hello there").result(timeout=5)
+
+    assert voice  # resolves immediately — blocking speak must not hang
+    assert played == []  # nothing synthesized, nothing played
+    assert state.utterances()[0]["status"] == "unheard — voice muted"
+
+
+def test_replay_with_source_walks_the_original_card_to_played(monkeypatch):
+    state = ListenerState()
+
+    async def fake_synthesize_and_play(*_args):
+        pass
+
+    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
+    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+    card_id = state.create_utterance("claude", "unheard — voice muted", text="parked")
+
+    speech.submit(state, "parked", card=False, source_id=card_id).result(timeout=5)
+
+    assert len(state.utterances()) == 1  # no duplicate card
+    assert state.utterances()[0]["status"] == "played"
+
+
 def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch):
     state = ListenerState()
     state.set_recording(True)

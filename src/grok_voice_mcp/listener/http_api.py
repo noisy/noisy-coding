@@ -133,6 +133,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     {
                         "listening": not state.paused,
                         "muted": state.user_muted,
+                        "voice_muted": state.voice_muted,
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
                         "playing_utterance_id": state.playing_utterance_id,
@@ -295,6 +296,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 else:
                     state.release_ptt()
                 self._respond({"held": state.ptt_held})
+            elif self.path == "/voice-mute":
+                muted = bool(self._read_json_body().get("muted", True))
+                state.set_voice_muted(muted)
+                state.add_event("voice_muted" if muted else "voice_unmuted")
+                self._respond({"voice_muted": muted})
             elif self.path == "/mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_user_muted(muted)
