@@ -3,7 +3,7 @@
 :root {
   /* Global UI scale (like browser zoom, but baked in): the whole HUD
      shrinks uniformly while still using the full screen width. */
-  --ui-scale: 0.8;
+  --ui-scale: 0.9;
   --bg0: #02060c;
   --bg1: #050d18;
   --panel: rgba(7, 19, 32, 0.78);
