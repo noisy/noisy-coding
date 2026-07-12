@@ -15,7 +15,7 @@ describe("statusChip", () => {
     ["transcribing (live)…", "work", "◌ TRANSCRIBING"],
     ["delivered to Claude", "done", "✓ DELIVERED"],
     ["played", "done", "✓ PLAYED"],
-    ["ready — awaiting pickup", "done", "✓ READY"],
+    ["ready — awaiting pickup", "work", "◌ TRANSMITTING"],
     ["transcription error", "fail", "✕ ERROR"],
     ["dropped — too short", "fail", "✕ DROPPED"],
   ])("maps %s → %s", (status, kind, label) => {
