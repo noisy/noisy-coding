@@ -420,7 +420,7 @@ footer { flex: none; }
 
 /* Must be unmissable when you come back to the desk: green (nothing else
    in the HUD is a green button), tall, glowing and gently pulsing. */
-.catchup {
+.ctl.catchup {
   width: 100%;
   margin-bottom: 12px;
   min-height: 44px;
@@ -433,7 +433,7 @@ footer { flex: none; }
   box-shadow: 0 0 14px rgba(77, 255, 180, 0.25), inset 0 0 18px rgba(77, 255, 180, 0.12);
   animation: catchup-pulse 1.6s ease-in-out infinite;
 }
-.catchup:hover {
+.ctl.catchup:hover {
   color: #b3ffe0;
   border-color: var(--green);
   background: rgba(77, 255, 180, 0.2);
