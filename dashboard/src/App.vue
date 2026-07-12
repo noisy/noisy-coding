@@ -1,30 +1,53 @@
 <script setup lang="ts">
-// Provisional assembly: components land here with mock data as they are
-// built; live daemon data replaces the mocks in the wiring task.
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { setMode, setMuted, setSettings } from "./api/client";
 import AgentTabs from "./components/AgentTabs.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
 import HudPanel from "./components/HudPanel.vue";
+import Oscilloscope from "./components/Oscilloscope.vue";
+import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
-import type { Character, DaemonStatus, Utterance } from "./types";
+import { useDaemonState } from "./composables/useDaemonState";
+import { useMicStream } from "./composables/useMicStream";
 
-const mockCharacter: Character = { humor: 50, honesty: 50, brevity: 100, chatty: 100, voice: "altair", speed: 1.1 };
-const mockStatus: DaemonStatus = {
-  listening: true, muted: false, recording: false, claude_speaking: false,
-  speaking_agents: [], queued: 0, session_cost_usd: { user: 0.0021, claude: 0.0226 },
-  credits_usd: 4.53, mode: "live", tts_mode: "live", end_silence_ms: 4000,
-  smart_turn: 0, smart_turn_mode: "soft", language: "pl",
-  agents: { demo: 0 }, agent_labels: { demo: "grok-voice-stabilization" }, active_agent: "demo",
-};
+const { status, utterances, character, offline, viewedAgent, selectAgent } = useDaemonState();
+const { level } = useMicStream();
 
-const now = Date.now() / 1000;
-const mockFeed: Utterance[] = [
-  { id: 1, role: "user", status: "delivered to Claude", text: "Sprawdź czy pipeline na branchu feature/auth przeszedł.", detail: "STT 1.1 s · 7.8 s AUDIO", cost_usd: 0.0005, agent: null, started_at: now - 260, updated_at: now - 250 },
-  { id: 2, role: "claude", status: "played", text: "[altair] „Pipeline #48210 passed — 214 tests green.”", detail: "TTS 1.4 s · 11.2 s AUDIO", cost_usd: 0.0038, agent: null, started_at: now - 240, updated_at: now - 230 },
-  { id: 3, role: "user", status: "delivered to Claude", text: "Okej, odpal deploy na staging i daj znać jak skończy.", detail: "STT 0.9 s · 6.4 s AUDIO", cost_usd: 0.0004, agent: null, started_at: now - 120, updated_at: now - 110 },
-  { id: 4, role: "claude", status: "synthesizing (Grok TTS)…", text: "", detail: "QUEUE POS 1", cost_usd: 0, agent: null, started_at: now - 20, updated_at: now - 20 },
-  { id: 5, role: "user", status: "recording…", text: "No dobra, to teraz przejdźmy do refaktoru modułu billing i", detail: "VAD OPEN · 3.2 s", cost_usd: 0, agent: null, started_at: now - 4, updated_at: now },
-];
+const levelPercent = computed(() => `${Math.round(level.value * 100)}%`);
+const levelDb = computed(() =>
+  level.value > 0 ? `${(20 * Math.log10(level.value)).toFixed(1)} dB` : "−∞ dB",
+);
+
+const clock = ref("");
+function tickClock() {
+  const d = new Date();
+  clock.value = [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map((n) => String(n).padStart(2, "0"))
+    .join(":");
+}
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  tickClock();
+  clockTimer = setInterval(tickClock, 1000);
+});
+onUnmounted(() => clearInterval(clockTimer));
+
+const today = new Date().toISOString().slice(0, 10);
+
+// Controls: fire the POST, then let the next 400 ms poll reflect reality —
+// no optimistic local state to get out of sync.
+const swallow = () => {};
+const toggleMute = () => setMuted(!status.value?.muted).catch(swallow);
+const setSttMode = (mode: "batch" | "live") => setMode(mode).catch(swallow);
+const setTtsMode = (mode: "batch" | "live") => setSettings({ tts_mode: mode }).catch(swallow);
+const setSilence = (event: Event) =>
+  setSettings({ end_silence_ms: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
+const setSmartTurn = (event: Event) =>
+  setSettings({ smart_turn: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
+
+const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
+const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
 </script>
 
 <template>
@@ -45,7 +68,18 @@ const mockFeed: Utterance[] = [
         </svg>
         <div>
           <div class="title">GROK-VOICE</div>
-          <div class="sub">TACTICAL VOICE INTERFACE · WORK IN PROGRESS</div>
+          <div class="sub">TACTICAL VOICE INTERFACE</div>
+        </div>
+      </div>
+
+      <div class="sysstate">
+        <div class="modetoggle" title="Batch: transcribe after silence ($0.10/h) · Live: stream while speaking ($0.20/h)">
+          <span :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">BATCH<span class="rate">$0.10/h</span></span>
+          <span :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">LIVE<span class="rate">$0.20/h</span></span>
+        </div>
+        <div class="clockbox">
+          <div class="clock">{{ clock }}</div>
+          <div class="date">{{ today }}</div>
         </div>
       </div>
     </header>
@@ -53,32 +87,73 @@ const mockFeed: Utterance[] = [
     <div class="cols">
       <div class="col-left">
         <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE">
-          <p class="todo">oscilloscope lands here</p>
+          <Oscilloscope :level="level" />
+          <div class="dbrow">
+            <span class="lbl">LEVEL</span>
+            <span class="dbbar"><i :style="{ width: levelPercent }" /></span>
+            <span class="val">{{ levelDb }}</span>
+          </div>
         </HudPanel>
         <HudPanel index="02" title="AUDIO SPECTRUM">
-          <p class="todo">spectrum lands here</p>
+          <SpectrumBars :level="level" />
+        </HudPanel>
+        <HudPanel index="03" title="CONTROLS">
+          <div class="controls">
+            <button class="ctl" :class="{ danger: status?.muted }" @click="toggleMute">
+              {{ status?.muted ? "UNMUTE MIC" : "MUTE MIC" }}
+            </button>
+            <div class="ctlrow">
+              <span class="lbl">TTS</span>
+              <button class="ctl small" :class="{ on: status?.tts_mode === 'batch' }" @click="setTtsMode('batch')">BATCH</button>
+              <button class="ctl small" :class="{ on: status?.tts_mode === 'live' }" @click="setTtsMode('live')">LIVE</button>
+            </div>
+            <div class="ctlrow">
+              <span class="lbl">SILENCE</span>
+              <select class="ctl small" :value="status?.end_silence_ms" @change="setSilence">
+                <option v-for="ms in SILENCE_OPTIONS" :key="ms" :value="ms">{{ (ms / 1000).toFixed(1) }}s</option>
+              </select>
+            </div>
+            <div class="ctlrow">
+              <span class="lbl">SMART TURN</span>
+              <select class="ctl small" :value="status?.smart_turn" @change="setSmartTurn">
+                <option v-for="v in SMART_TURN_OPTIONS" :key="v" :value="v">{{ v === 0 ? "OFF" : v.toFixed(1) }}</option>
+              </select>
+            </div>
+          </div>
         </HudPanel>
       </div>
+
       <div class="col-mid">
         <HudPanel index="04" title="COMM LOG · UTTERANCE STREAM">
           <AgentTabs
-            :agents="mockStatus.agent_labels"
-            :active="mockStatus.active_agent"
-            :viewed="mockStatus.active_agent"
-            :speaking="mockStatus.speaking_agents"
+            :agents="status?.agent_labels ?? {}"
+            :active="status?.active_agent ?? null"
+            :viewed="viewedAgent"
+            :speaking="status?.speaking_agents ?? []"
+            @select="selectAgent"
           />
-          <ConversationLog :utterances="mockFeed" />
+          <ConversationLog :utterances="utterances" />
         </HudPanel>
       </div>
+
       <div class="col-right">
         <HudPanel index="05" title="CHARACTER MATRIX">
-          <CharacterReadout :character="mockCharacter" />
+          <CharacterReadout v-if="character" :character="character" />
+          <p v-else class="todo">NO CHARACTER DATA</p>
         </HudPanel>
         <HudPanel index="06" title="SYSTEM STATE · COST">
-          <StatusStrip :status="mockStatus" :offline="false" />
+          <StatusStrip :status="status" :offline="offline" />
         </HudPanel>
       </div>
     </div>
+
+    <footer>
+      <span>DAEMON <b :class="offline ? 'bad' : 'ok'">{{ offline ? "OFFLINE" : "ONLINE" }}</b></span>
+      <span>STT MODE <b>{{ status?.mode?.toUpperCase() ?? "—" }}</b></span>
+      <span>LANGUAGE <b>{{ status?.language || "AUTO" }}</b></span>
+      <span>QUEUE <b>{{ status?.queued ?? "—" }}</b></span>
+      <span style="margin-left: auto">{{ offline ? "◈ LINK DOWN" : "◈ ALL SYSTEMS NOMINAL" }}</span>
+    </footer>
   </div>
 </template>
 
@@ -106,6 +181,26 @@ header::after {
 .logo svg { display: block; }
 .logo .title { font-size: 19px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); font-weight: 700; }
 .logo .sub { font-size: 10px; letter-spacing: 0.34em; color: var(--muted); margin-top: 3px; }
+.sysstate { margin-left: auto; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+.modetoggle {
+  display: flex;
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  background: rgba(4, 12, 20, 0.9);
+}
+.modetoggle span { padding: 8px 18px; font-size: 11px; letter-spacing: 0.24em; color: var(--muted); cursor: pointer; }
+.modetoggle span.on {
+  background: linear-gradient(180deg, rgba(255, 180, 84, 0.22), rgba(255, 180, 84, 0.08));
+  color: var(--amber);
+  text-shadow: var(--glow-amber);
+  box-shadow: inset 0 0 12px rgba(255, 180, 84, 0.25);
+}
+.modetoggle .rate { font-size: 9px; display: block; letter-spacing: 0.1em; margin-top: 2px; opacity: 0.75; }
+.clockbox { text-align: right; }
+.clockbox .clock { font-size: 17px; letter-spacing: 0.14em; color: var(--ink); }
+.clockbox .date { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); margin-top: 3px; }
+
 .cols {
   display: grid;
   grid-template-columns: 300px minmax(420px, 1fr) 330px;
@@ -116,4 +211,52 @@ header::after {
 @media (max-width: 1180px) { .cols { grid-template-columns: 1fr 1fr; } .col-mid { order: -1; grid-column: 1 / -1; } }
 @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
 .todo { color: var(--muted); font-size: 10px; letter-spacing: 0.2em; padding: 22px 0; text-align: center; }
+
+.dbrow { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.dbrow .lbl { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); width: 52px; }
+.dbbar { flex: 1; height: 6px; background: rgba(63, 216, 255, 0.08); position: relative; overflow: hidden; }
+.dbbar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  background: linear-gradient(90deg, rgba(63, 216, 255, 0.35), var(--cyan) 70%, var(--amber));
+  box-shadow: 0 0 8px rgba(63, 216, 255, 0.5);
+  transition: width 80ms linear;
+}
+.dbrow .val { font-size: 10px; color: var(--cyan); width: 64px; text-align: right; }
+
+.controls { display: grid; gap: 10px; }
+.ctlrow { display: flex; align-items: center; gap: 8px; }
+.ctlrow .lbl { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); width: 84px; flex: none; }
+.ctl {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--cyan);
+  background: rgba(63, 216, 255, 0.06);
+  border: 1px solid var(--line-strong);
+  padding: 8px 12px;
+  cursor: pointer;
+  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+}
+.ctl:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.ctl.small { padding: 5px 10px; flex: 1; }
+.ctl.on { color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); text-shadow: var(--glow-amber); }
+.ctl.danger { color: var(--red); border-color: rgba(255, 95, 107, 0.5); background: rgba(255, 95, 107, 0.08); }
+select.ctl { appearance: none; }
+
+footer {
+  margin-top: 6px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+footer b { color: var(--cyan-dim); font-weight: 400; }
+footer .ok { color: var(--green); }
+footer .bad { color: var(--red); }
 </style>
