@@ -86,6 +86,12 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
 
     <div class="cols">
       <div class="col-left">
+        <!-- Panic-sized mute: quick muting must not require aiming at a
+             tiny control, so it gets widget-scale real estate up top. -->
+        <button class="bigmute" :class="{ muted: status?.muted }" @click="toggleMute">
+          <span class="bm-label">{{ status?.muted ? "◉ MIC MUTED" : "MUTE MIC" }}</span>
+          <span class="bm-sub">{{ status?.muted ? "TAP TO UNMUTE" : "ONE TAP TO GO SILENT" }}</span>
+        </button>
         <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE">
           <Oscilloscope :level="level" />
           <div class="dbrow">
@@ -99,9 +105,6 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
         </HudPanel>
         <HudPanel index="03" title="CONTROLS">
           <div class="controls">
-            <button class="ctl" :class="{ danger: status?.muted }" @click="toggleMute">
-              {{ status?.muted ? "UNMUTE MIC" : "MUTE MIC" }}
-            </button>
             <!-- The two mode toggles sit together: same choice, two
                  directions (Claude's voice out vs your voice in). -->
             <div class="ctlrow" title="Claude's speech: batch renders the whole clip first, live streams as it synthesizes">
@@ -239,6 +242,34 @@ footer { flex: none; }
   transition: width 80ms linear;
 }
 .dbrow .val { font-size: 10px; color: var(--cyan); width: 64px; text-align: right; }
+
+.bigmute {
+  width: 100%;
+  min-height: 96px;
+  margin-bottom: 18px;
+  font-family: var(--mono);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  color: var(--cyan);
+  background: rgba(63, 216, 255, 0.06);
+  border: 1px solid var(--line-strong);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+.bigmute .bm-label { font-size: 19px; letter-spacing: 0.3em; text-shadow: 0 0 8px rgba(63, 216, 255, 0.5); }
+.bigmute .bm-sub { font-size: 9px; letter-spacing: 0.24em; color: var(--muted); }
+.bigmute:hover { color: var(--cyan-hi); border-color: var(--cyan); background: rgba(63, 216, 255, 0.1); }
+.bigmute.muted {
+  color: var(--red);
+  border-color: rgba(255, 95, 107, 0.65);
+  background: rgba(255, 95, 107, 0.1);
+  box-shadow: inset 0 0 26px rgba(255, 95, 107, 0.18);
+}
+.bigmute.muted .bm-label { text-shadow: 0 0 10px rgba(255, 95, 107, 0.7); animation: blink 1.6s step-end infinite; }
+.bigmute.muted .bm-sub { color: rgba(255, 95, 107, 0.7); }
+@keyframes blink { 50% { opacity: 0.45; } }
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }
