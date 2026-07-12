@@ -159,13 +159,13 @@ def _render_and_play(
     resolved_voice, resolved_language, resolved_speed = resolve_options(state, agent)
     _hold_for_user_turn(state, utterance_id)
 
-    detail = f"[{resolved_voice}] „{text}”"
-    state.add_event("speak", detail)
+    # The event log keeps the voice (diagnostics); the card does NOT — a
+    # replay speaks with the CURRENT voice, so a voice tag on the bubble
+    # would go stale the moment the user picks another one.
+    state.add_event("speak", f"[{resolved_voice}] „{text}”")
     cost = pricing.tts_cost_usd(len(text))
     state.add_cost("claude", cost)
-    state.update_utterance(
-        utterance_id, status="synthesizing (Grok TTS)…", text=detail, cost_usd=cost
-    )
+    state.update_utterance(utterance_id, status="synthesizing (Grok TTS)…", cost_usd=cost)
 
     speech_text = _emphasis_to_speech_tags(text)
     _log(f"[speak] playing [{resolved_voice}] ({len(text)} chars) „{text[:60]}”")

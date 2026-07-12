@@ -32,9 +32,10 @@ export function formatCost(costUsd: number): string {
   return costUsd > 0 ? `$${costUsd.toFixed(4)}` : "—";
 }
 
-/** Recover speakable text from a Claude card ("[voice] „text”" → "text"). */
+/** Recover speakable text from a Claude card („text” — or the legacy
+ * "[voice] „text”" format from before voice tags were dropped). */
 export function replaySpeechText(cardText: string): string {
-  const match = cardText.match(/^\[[^\]]+\]\s*[„"]?([\s\S]*?)[”"]?$/);
+  const match = cardText.match(/^(?:\[[^\]]+\]\s*)?[„"]?([\s\S]*?)[”"]?$/);
   return (match ? match[1] : cardText).trim();
 }
 

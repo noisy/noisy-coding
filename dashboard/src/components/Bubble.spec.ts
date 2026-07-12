@@ -57,7 +57,8 @@ describe("Bubble", () => {
 
 describe("replaySpeechText", () => {
   it("recovers plain speech text from a claude card", () => {
-    expect(replaySpeechText("[altair] „Cześć, **świecie**!”")).toBe("Cześć, **świecie**!");
+    expect(replaySpeechText("„Cześć, **świecie**!”")).toBe("Cześć, **świecie**!");
+    expect(replaySpeechText("[altair] „Cześć!”")).toBe("Cześć!"); // legacy cards
     expect(replaySpeechText("plain text without wrapper")).toBe("plain text without wrapper");
   });
 });
