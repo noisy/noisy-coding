@@ -1,0 +1,1 @@
+{"root":["./src/env.d.ts","./src/main.ts","./src/__tests__/smoke.spec.ts","./src/app.vue","./vite.config.ts"],"version":"5.7.3"}

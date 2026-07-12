@@ -1,0 +1,63 @@
+/* GROK-VOICE HUD — design tokens and global chrome.
+   Style source of truth: design-concepts/scifi-hud.html */
+:root {
+  --bg0: #02060c;
+  --bg1: #050d18;
+  --panel: rgba(7, 19, 32, 0.78);
+  --panel-solid: #071626;
+  --line: rgba(64, 200, 255, 0.22);
+  --line-strong: rgba(64, 200, 255, 0.55);
+  --cyan: #3fd8ff;
+  --cyan-hi: #9aeeff;
+  --cyan-dim: rgba(63, 216, 255, 0.45);
+  --amber: #ffb454;
+  --amber-dim: rgba(255, 180, 84, 0.45);
+  --violet: #b98cff;
+  --violet-dim: rgba(185, 140, 255, 0.45);
+  --green: #4dffb4;
+  --red: #ff5f6b;
+  --muted: #5d7f96;
+  --ink: #cfeaf6;
+  --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --glow-cyan: 0 0 6px rgba(63, 216, 255, 0.9), 0 0 18px rgba(63, 216, 255, 0.35);
+  --glow-amber: 0 0 6px rgba(255, 180, 84, 0.9), 0 0 18px rgba(255, 180, 84, 0.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background:
+    radial-gradient(1200px 700px at 50% -10%, rgba(21, 60, 92, 0.35), transparent 60%),
+    radial-gradient(900px 600px at 85% 110%, rgba(90, 40, 140, 0.18), transparent 60%),
+    var(--bg0);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+/* faint blueprint grid */
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(63, 216, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(63, 216, 255, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+/* scanlines + vignette */
+.scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 50;
+  background: repeating-linear-gradient(
+    0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 2px, rgba(0, 8, 14, 0.14) 3px, rgba(0, 0, 0, 0) 4px);
+  mix-blend-mode: multiply;
+}
+.vignette {
+  position: fixed; inset: 0; pointer-events: none; z-index: 49;
+  box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.75);
+}
+.hud { position: relative; z-index: 1; max-width: 1560px; margin: 0 auto; padding: 18px 22px 30px; }
+
+canvas { display: block; width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
