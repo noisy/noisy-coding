@@ -9,6 +9,7 @@ async TTS/playback modules via asyncio.run.
 import asyncio
 import os
 import re
+import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
@@ -34,6 +35,13 @@ EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 # queues here, so two voices can never overlap.
 _playback_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="playback")
 
+# An old message either plays or it doesn't — replays of the same bubble
+# must not stack up in the queue when the user clicks repeatedly. New
+# speech (fresh cards) may queue freely; a replay source may be in flight
+# only once.
+_pending_replays: set[int] = set()
+_pending_lock = threading.Lock()
+
 
 def submit(
     state: ListenerState,
@@ -41,7 +49,7 @@ def submit(
     agent: str | None = None,
     card: bool = True,
     source_id: int = 0,
-) -> Future:
+) -> Future | None:
     """Queue an utterance for playback; resolves to the voice actually used.
 
     Requests carry only text — voice, speed and language are the daemon's
@@ -54,7 +62,13 @@ def submit(
     order lives in the card's status (queued → waiting → playing → played).
     card=False plays without a card — replaying an old bubble shouldn't
     duplicate it in the log (utterance_id 0 makes every update a no-op).
+    Returns None when this source is already queued/playing (deduped).
     """
+    if source_id:
+        with _pending_lock:
+            if source_id in _pending_replays:
+                return None
+            _pending_replays.add(source_id)
     utterance_id = (
         state.create_utterance("claude", "queued", text=f"„{text}”", agent=agent)
         if card
@@ -63,9 +77,17 @@ def submit(
     # Which card the playback "belongs to" on the dashboard: a replay
     # (card=False) points back at the original bubble via source_id, so the
     # UI can offer STOP on it while it plays.
-    return _playback_executor.submit(
+    future = _playback_executor.submit(
         _render_and_play, state, text, agent, utterance_id, source_id or utterance_id
     )
+    if source_id:
+        future.add_done_callback(lambda _f: _discard_pending_replay(source_id))
+    return future
+
+
+def _discard_pending_replay(source_id: int) -> None:
+    with _pending_lock:
+        _pending_replays.discard(source_id)
 
 
 def shutdown() -> None:
@@ -148,10 +170,12 @@ def _render_and_play(
     speech_text = _emphasis_to_speech_tags(text)
     _log(f"[speak] playing [{resolved_voice}] ({len(text)} chars) „{text[:60]}”")
     playing_since = time.monotonic()
+    # Claim the card BEFORE synthesis: the UI's button must flip to STOP as
+    # soon as this playback is committed, not seconds later when audio starts.
+    state.set_playing_utterance_id(source_id)
     # Mute the listener while we play, or the mic transcribes our own speech.
     state.set_paused(True)
     state.set_claude_speaking(True, agent)
-    state.set_playing_utterance_id(source_id)
     try:
         asyncio.run(
             _synthesize_and_play(

@@ -18,6 +18,36 @@ def test_set_mic_level_clamps_to_unit_range():
     assert state.mic_level == 0.0
 
 
+def test_ptt_hold_barges_in_on_playback_only_in_ptt_mode(monkeypatch):
+    import json as json_module
+
+    from grok_voice_mcp.listener import http_api as http_api_module
+
+    stops = []
+    monkeypatch.setattr(http_api_module.playback, "stop_all_players", lambda: stops.append(1))
+    state = ListenerState()
+    server = start_http_api(state, 0)
+    port = server.server_address[1]
+
+    def post_ptt_held():
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        connection.request("POST", "/ptt", body=json_module.dumps({"held": True}),
+                           headers={"Content-Length": "14"})
+        connection.getresponse().read()
+        connection.close()
+
+    try:
+        state.set_detection_mode("auto")
+        post_ptt_held()
+        assert stops == []  # auto: noise must not cancel Claude's speech
+
+        state.set_detection_mode("ptt")
+        post_ptt_held()
+        assert stops == [1]  # ptt: the held button outranks playback
+    finally:
+        server.shutdown()
+
+
 def test_stream_mic_serves_sse_frames_with_level_and_recording():
     state = ListenerState()
     state.set_mic_level(0.5)

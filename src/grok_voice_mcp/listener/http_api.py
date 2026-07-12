@@ -241,6 +241,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # while the button is held (see PTT_LEASE_SECONDS).
                 if bool(self._read_json_body().get("held", False)):
                     state.refresh_ptt_hold()
+                    # The held button IS the user's turn: it overrides any
+                    # playback, and each renewal re-silences anything that
+                    # dared to start. AUTO mode deliberately has no such
+                    # barge-in — room noise must not cancel Claude's speech.
+                    if state.detection_mode == "ptt":
+                        playback.stop_all_players()
                 else:
                     state.release_ptt()
                 self._respond({"held": state.ptt_held})
@@ -318,8 +324,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             if not text:
                 self._respond({"error": "text required"}, status=400)
                 return
-            if body.get("interrupt"):
-                playback.stop_all_players()  # cut the current utterance short
             future = speech.submit(
                 state,
                 text,
@@ -327,6 +331,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 card=bool(body.get("card", True)),
                 source_id=int(body.get("source_id", 0)),
             )
+            if future is None:
+                # This bubble is already queued/playing — repeated clicks
+                # must not stack replays (nor interrupt the one in flight).
+                self._respond({"skipped": True})
+                return
+            if body.get("interrupt"):
+                playback.stop_all_players()  # cut the current utterance short
             if not body.get("wait", True):
                 self._respond({"queued": True})
                 return
