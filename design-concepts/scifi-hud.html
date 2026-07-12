@@ -703,12 +703,17 @@
   /* ---------- oscilloscope waveform ---------- */
   const wave = document.getElementById("wave");
   function sizeCanvas(c) {
+    // Reset the backing store ONLY when the layout width actually changed:
+    // assigning canvas.width every frame blanks the canvas and the browser
+    // may composite that empty state before the redraw lands → flicker.
     const dpr = window.devicePixelRatio || 1;
     const w = c.clientWidth;
-    c.width = w * dpr; c.height = c.getAttribute("height") * dpr;
-    const ctx = c.getContext("2d");
-    ctx.scale(dpr, dpr);
-    return [ctx, w, +c.getAttribute("height")];
+    if (c.width !== Math.round(w * dpr)) {
+      c.width = Math.round(w * dpr);
+      c.height = c.getAttribute("height") * dpr;
+      c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    return [c.getContext("2d"), w, +c.getAttribute("height")];
   }
   function drawWave(t) {
     const [ctx, W, H] = sizeCanvas(wave);
