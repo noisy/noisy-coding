@@ -7,7 +7,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from grok_voice_mcp.listener import pricing
+from grok_voice_mcp import playback
+from grok_voice_mcp.listener import pricing, speech
 from grok_voice_mcp.listener.dashboard import DASHBOARD_HTML
 from grok_voice_mcp.listener.state import ListenerState
 
@@ -167,12 +168,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 speaking = bool(body.get("speaking", False))
                 state.set_claude_speaking(speaking, body.get("agent"))
                 self._respond({"speaking": speaking})
-            elif self.path == "/floor/acquire":
-                agent = str(self._read_json_body().get("agent", "?"))
-                self._respond({"granted": state.try_acquire_floor(agent)})
-            elif self.path == "/floor/release":
-                state.release_floor(str(self._read_json_body().get("agent", "?")))
-                self._respond({"released": True})
+            elif self.path == "/speak":
+                self._handle_speak()
             elif self.path == "/mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_user_muted(muted)
@@ -197,6 +194,36 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"ok": True})
             else:
                 self._respond({"error": "not found"}, status=404)
+
+        def _handle_speak(self) -> None:
+            # Body: {text, voice_id?, language?, speed?, interrupt?, agent?,
+            # wait?}. wait=true (default) blocks until the utterance has
+            # played — that's the `speak` tool's "wait until it's said"
+            # semantics; wait=false is `announce` (fire-and-forget).
+            body = self._read_json_body()
+            text = str(body.get("text", "")).strip()
+            if not text:
+                self._respond({"error": "text required"}, status=400)
+                return
+            if body.get("interrupt"):
+                playback.stop_all_players()  # cut the current utterance short
+            future = speech.submit(
+                state,
+                text,
+                voice_id=str(body.get("voice_id") or ""),
+                language=str(body.get("language") or ""),
+                speed=float(body.get("speed") or 1.0),
+                agent=str(body["agent"]) if body.get("agent") else None,
+            )
+            if not body.get("wait", True):
+                self._respond({"queued": True})
+                return
+            try:
+                voice = future.result()
+            except Exception as error:  # surface synth/playback failure to caller
+                self._respond({"error": str(error)[:300]}, status=500)
+                return
+            self._respond({"voice": voice})
 
         def _track_speak_utterance(self, kind: str, detail: str, body: dict) -> None:
             # The speaking agent tags its own utterance so it lands in that

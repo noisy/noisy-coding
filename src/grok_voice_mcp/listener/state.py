@@ -41,7 +41,6 @@ class ListenerState:
         self._user_muted = False  # explicit mute from the dashboard
         self._claude_speaking = False  # any agent playing audio right now
         self._speaking_agents: set[str] = set()  # which agents are speaking now
-        self._floor_holder: str | None = None  # global speaking floor (one at a time)
         self._recording = False
         self._last_transcript_at = 0.0
         self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
@@ -366,25 +365,6 @@ class ListenerState:
                     self._speaking_agents.add(agent)
                 else:
                     self._speaking_agents.discard(agent)
-
-    def try_acquire_floor(self, agent: str) -> bool:
-        """Global speaking floor across agents: grant only if nobody else holds
-        it. Returns True if `agent` may speak now (or already holds it)."""
-        with self._lock:
-            if self._floor_holder in (None, agent):
-                self._floor_holder = agent
-                return True
-            return False
-
-    def release_floor(self, agent: str) -> None:
-        with self._lock:
-            if self._floor_holder == agent:
-                self._floor_holder = None
-
-    @property
-    def floor_holder(self) -> str | None:
-        with self._lock:
-            return self._floor_holder
 
     @property
     def user_muted(self) -> bool:

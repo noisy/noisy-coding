@@ -14,7 +14,7 @@ import httpx
 import numpy as np
 import sounddevice as sd
 
-from grok_voice_mcp.listener import pricing, stt, stt_stream
+from grok_voice_mcp.listener import pricing, speech, stt, stt_stream
 import json
 
 from grok_voice_mcp.listener.http_api import (
@@ -191,7 +191,7 @@ def run(config: VadConfig | None = None) -> None:
         frames.put(indata[:, 0].copy())
 
     _log(f"grok-voice-listener: mic on, API at http://127.0.0.1:{port}")
-    _log("Endpoints: GET /drain /status, POST /pause /resume. Ctrl+C to stop.")
+    _log("Endpoints: GET /drain /status, POST /speak /pause /resume. Ctrl+C to stop.")
 
     with sd.InputStream(
         samplerate=config.sample_rate,
@@ -259,6 +259,7 @@ def run(config: VadConfig | None = None) -> None:
         finally:
             server.shutdown()
             stt_executor.shutdown(wait=False)
+            speech.shutdown()
 
 
 def main() -> None:
