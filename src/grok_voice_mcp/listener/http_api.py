@@ -60,6 +60,7 @@ def save_settings(state: ListenerState) -> None:
                     "mode": state.mode,
                     "tts_mode": state.tts_mode,
                     "smart_turn_mode": state.smart_turn_mode,
+                    "detection_mode": state.detection_mode,
                     "language": state.language,
                 }
             )
@@ -113,6 +114,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "end_silence_ms": state.end_silence_ms,
                         "smart_turn": state.smart_turn,
                         "smart_turn_mode": state.smart_turn_mode,
+                        "detection_mode": state.detection_mode,
+                        "ptt_held": state.ptt_held,
                         "language": state.language,
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
@@ -205,6 +208,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     result["smart_turn_mode"] = state.set_smart_turn_mode(
                         body["smart_turn_mode"]
                     )
+                if body.get("detection_mode") in ("auto", "ptt"):
+                    result["detection_mode"] = state.set_detection_mode(
+                        body["detection_mode"]
+                    )
+                    if result["detection_mode"] == "auto":
+                        state.release_ptt()  # leaving PTT never leaves a stale hold
                 if "language" in body:
                     result["language"] = state.set_language(str(body["language"]))
                 if result:
@@ -219,6 +228,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"speaking": speaking})
             elif self.path == "/speak":
                 self._handle_speak()
+            elif self.path == "/ptt":
+                # Lease renewal/release for push-to-talk; the UI renews
+                # while the button is held (see PTT_LEASE_SECONDS).
+                if bool(self._read_json_body().get("held", False)):
+                    state.refresh_ptt_hold()
+                else:
+                    state.release_ptt()
+                self._respond({"held": state.ptt_held})
             elif self.path == "/mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_user_muted(muted)

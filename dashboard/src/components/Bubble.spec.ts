@@ -2,7 +2,8 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import type { Utterance } from "../types";
 import Bubble from "./Bubble.vue";
-import { formatCost, statusChip } from "./bubbleStatus";
+import { formatCost, replaySpeechText, statusChip } from "./bubbleStatus";
+import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
 describe("statusChip", () => {
@@ -50,6 +51,43 @@ describe("Bubble", () => {
     expect(wrapper.find(".st").text()).toBe("✓ PLAYED");
     expect(wrapper.find(".cost").text()).toBe("$0.0041");
     expect(wrapper.find(".livebars").exists()).toBe(false);
+  });
+});
+
+describe("replaySpeechText", () => {
+  it("recovers plain speech text from a claude card", () => {
+    expect(replaySpeechText("[altair] „Cześć, **świecie**!”")).toBe("Cześć, **świecie**!");
+    expect(replaySpeechText("plain text without wrapper")).toBe("plain text without wrapper");
+  });
+});
+
+describe("ClaudeBubble replay", () => {
+  const played: Utterance = {
+    id: 9,
+    role: "claude",
+    status: "played",
+    text: "[altair] „Gotowe, wszystko zielone.”",
+    detail: "",
+    cost_usd: 0.001,
+    agent: null,
+    started_at: 0,
+    updated_at: 0,
+  };
+
+  it("shows the replay icon on played speech and emits the utterance", async () => {
+    const wrapper = mount(ClaudeBubble, { props: { utterance: played } });
+
+    await wrapper.find(".replay").trigger("click");
+
+    expect(wrapper.emitted("replay")).toEqual([[played]]);
+  });
+
+  it("offers no replay while still synthesizing", () => {
+    const wrapper = mount(ClaudeBubble, {
+      props: { utterance: { ...played, status: "synthesizing (Grok TTS)…", text: "" } },
+    });
+
+    expect(wrapper.find(".replay").exists()).toBe(false);
   });
 });
 

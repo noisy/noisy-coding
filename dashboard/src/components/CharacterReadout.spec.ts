@@ -73,8 +73,8 @@ function status(overrides: Partial<DaemonStatus>): DaemonStatus {
     listening: true, muted: false, recording: false, claude_speaking: false,
     speaking_agents: [], queued: 0, session_cost_usd: { user: 0.01, claude: 0.02 },
     credits_usd: 4.5, mode: "live", tts_mode: "live", end_silence_ms: 800,
-    smart_turn: 0, smart_turn_mode: "soft", language: "pl", agents: {},
-    agent_labels: {}, active_agent: null,
+    smart_turn: 0, smart_turn_mode: "soft", detection_mode: "auto", ptt_held: false,
+    language: "pl", agents: {}, agent_labels: {}, active_agent: null,
     ...overrides,
   };
 }

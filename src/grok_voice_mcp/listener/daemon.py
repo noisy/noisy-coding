@@ -35,6 +35,9 @@ CREDITS_POLL_SECONDS = 60.0
 # Display gain for the dashboard mic level: int16 speech RMS is small
 # (~0.02-0.08 full-scale), this maps it into a readable 0..1 range.
 MIC_LEVEL_GAIN = 12.0
+# While the push-to-talk lease is held, silence must never close the
+# utterance — the button release is the only end-of-turn signal.
+PTT_NEVER_CLOSE_MS = 10**9
 
 
 def _poll_credits(state: ListenerState) -> None:
@@ -180,6 +183,8 @@ def run(config: VadConfig | None = None) -> None:
             state.set_tts_mode(saved["tts_mode"])
         if saved.get("smart_turn_mode") in ("soft", "hard"):
             state.set_smart_turn_mode(saved["smart_turn_mode"])
+        if saved.get("detection_mode") in ("auto", "ptt"):
+            state.set_detection_mode(saved["detection_mode"])
         if "language" in saved:
             state.set_language(saved["language"])
     except (OSError, ValueError):
@@ -218,7 +223,20 @@ def run(config: VadConfig | None = None) -> None:
                 # 0..1, scaled so normal speech lands around 0.2-0.8.
                 rms = float(np.sqrt(np.mean((frame / 32768.0) ** 2)))
                 state.set_mic_level(min(1.0, rms * MIC_LEVEL_GAIN))
-                segmenter.end_silence_ms_override = state.end_silence_ms
+                # Push-to-talk: the held button IS the turn signal. Idle =
+                # cold mic (nothing captured); held = the utterance never
+                # closes on silence; release = close it right now.
+                ptt = state.detection_mode == "ptt"
+                ptt_held = ptt and state.ptt_held
+                if ptt and not ptt_held and not segmenter.is_recording:
+                    state.set_recording(False)
+                    continue
+                if ptt_held:
+                    segmenter.end_silence_ms_override = PTT_NEVER_CLOSE_MS
+                else:
+                    segmenter.end_silence_ms_override = state.end_silence_ms
+                    if ptt and segmenter.is_recording:
+                        segmenter.request_close()
                 segmenter.smart_turn_mode = state.smart_turn_mode
                 was_recording = segmenter.is_recording
                 utterance = segmenter.feed(frame)

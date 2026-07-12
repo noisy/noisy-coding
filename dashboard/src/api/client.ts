@@ -52,3 +52,13 @@ export function setActiveAgent(name: string): Promise<void> {
 export function setCharacter(patch: Partial<Character> & { agent?: string }): Promise<void> {
   return post("/character", patch);
 }
+
+/** Renew (held=true) or release (held=false) the push-to-talk lease. */
+export function setPtt(held: boolean): Promise<void> {
+  return post("/ptt", { held });
+}
+
+/** Queue text for playback through the daemon (used by bubble replay). */
+export function speakText(text: string, agent?: string): Promise<void> {
+  return post("/speak", { text, wait: false, ...(agent ? { agent } : {}) });
+}

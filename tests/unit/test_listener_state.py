@@ -1,6 +1,7 @@
 import threading
 import time
 
+from grok_voice_mcp.listener import state as state_module
 from grok_voice_mcp.listener.state import ListenerState
 
 
@@ -103,6 +104,34 @@ def test_wait_for_user_silence_grace_lets_the_user_add_a_thought():
     assert not done.wait(0.35)  # held again, even though grace has elapsed
     state.set_recording(False)
     assert done.wait(1.0)
+
+
+def test_ptt_hold_is_a_lease_renewed_and_released():
+    state = ListenerState()
+    assert state.ptt_held is False
+
+    state.refresh_ptt_hold()
+    assert state.ptt_held is True
+
+    state.release_ptt()
+    assert state.ptt_held is False
+
+
+def test_ptt_lease_expires_without_renewal(monkeypatch):
+    monkeypatch.setattr(state_module, "PTT_LEASE_SECONDS", 0.05)
+    state = ListenerState()
+    state.refresh_ptt_hold()
+
+    time.sleep(0.1)
+
+    assert state.ptt_held is False
+
+
+def test_detection_mode_accepts_only_known_values():
+    state = ListenerState()
+    assert state.set_detection_mode("ptt") == "ptt"
+    assert state.set_detection_mode("nonsense") == "ptt"
+    assert state.set_detection_mode("auto") == "auto"
 
 
 def test_wait_for_user_silence_skips_grace_when_user_finished_long_ago():

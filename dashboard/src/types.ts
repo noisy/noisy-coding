@@ -14,6 +14,8 @@ export interface DaemonStatus {
   end_silence_ms: number;
   smart_turn: number;
   smart_turn_mode: "soft" | "hard";
+  detection_mode: "auto" | "ptt";
+  ptt_held: boolean;
   language: string;
   agents: Record<string, number>;
   agent_labels: Record<string, string>;
@@ -46,5 +48,6 @@ export interface SettingsPatch {
   end_silence_ms?: number;
   smart_turn?: number;
   smart_turn_mode?: "soft" | "hard";
+  detection_mode?: "auto" | "ptt";
   language?: string;
 }

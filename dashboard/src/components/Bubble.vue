@@ -14,9 +14,12 @@ withDefaults(
     detail?: string;
     live?: boolean;
     pending?: boolean;
+    replayable?: boolean;
   }>(),
-  { cost: "—", detail: "", live: false, pending: false },
+  { cost: "—", detail: "", live: false, pending: false, replayable: false },
 );
+
+defineEmits<{ replay: [] }>();
 </script>
 
 <template>
@@ -24,6 +27,12 @@ withDefaults(
     <div class="mhead">
       <span class="who">{{ who }}</span>
       <span class="st" :class="statusKind">{{ statusLabel }}</span>
+      <button
+        v-if="replayable"
+        class="replay"
+        title="Play this message again"
+        @click="$emit('replay')"
+      >↻ ▶</button>
       <span v-if="live" class="livebars"><i /><i /><i /><i /><i /></span>
       <span class="tm">{{ time }}</span>
     </div>
@@ -77,6 +86,17 @@ withDefaults(
 .st.spoken { color: var(--violet); border-color: rgba(185, 140, 255, 0.45); }
 .st.fail { color: var(--red); border-color: rgba(255, 95, 107, 0.45); }
 @keyframes blink { 50% { opacity: 0.35; } }
+.replay {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--cyan-dim);
+  background: none;
+  border: 1px solid rgba(63, 216, 255, 0.25);
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.replay:hover { color: var(--cyan-hi); border-color: var(--cyan); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .tm { margin-left: auto; font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
 .txt { font-size: 13px; line-height: 1.55; color: var(--ink); }
 .txt.pending { color: var(--muted); font-style: italic; }

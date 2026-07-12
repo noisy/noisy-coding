@@ -5,6 +5,7 @@ import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
 const props = defineProps<{ utterances: Utterance[] }>();
+defineEmits<{ replay: [utterance: Utterance] }>();
 
 // Noise guard: utterances that never became real speech ("empty — no
 // speech", "dropped — too short") would flood the log in a loud room and
@@ -64,7 +65,7 @@ watch(
     <div ref="feed" class="feed">
       <template v-for="utterance in settled" :key="utterance.id">
         <UserBubble v-if="utterance.role === 'user'" :utterance="utterance" />
-        <ClaudeBubble v-else :utterance="utterance" />
+        <ClaudeBubble v-else :utterance="utterance" @replay="$emit('replay', $event)" />
       </template>
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
     </div>
@@ -100,9 +101,10 @@ watch(
   padding: 28px 0;
 }
 .liveslot {
-  /* Reserved landing pad for the in-progress utterance: one compact
-     bubble tall, so it can appear and vanish without reflowing the feed. */
-  min-height: 76px;
+  /* Reserved landing pad for the in-progress utterance: one full
+     single-line bubble tall (head + text + foot ≈ 84px), so even a cough
+     that appears and vanishes doesn't nudge the feed above. */
+  min-height: 96px;
   margin-top: 12px;
   display: flex;
   flex-direction: column;

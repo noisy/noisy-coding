@@ -16,6 +16,11 @@ MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
 # Live agents poll far more often than this (PostToolUse + Stop rewake).
 AGENT_TTL_SECONDS = 90
 DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
+# Push-to-talk hold is a LEASE, not a latch: the UI renews it (~2×/s) while
+# the button is physically held, so a crashed page or lost connection can
+# never leave the daemon stuck recording. Structural safety, not a timer
+# guessing at human behavior.
+PTT_LEASE_SECONDS = 2.0
 
 
 @dataclass(frozen=True)
@@ -59,6 +64,8 @@ class ListenerState:
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
+        self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
+        self._ptt_last_hold = float("-inf")  # monotonic time of last lease renewal
         self._language = ""  # "" = auto-detect
         # Character is now PER AGENT: {agent_name: character_dict}. The special
         # key "" holds the character used in single-agent mode (no agents
@@ -151,6 +158,30 @@ class ListenerState:
         with self._lock:
             self._language = language
             return self._language
+
+    @property
+    def detection_mode(self) -> str:
+        with self._lock:
+            return self._detection_mode
+
+    def set_detection_mode(self, mode: str) -> str:
+        with self._lock:
+            if mode in ("auto", "ptt"):
+                self._detection_mode = mode
+            return self._detection_mode
+
+    def refresh_ptt_hold(self) -> None:
+        with self._lock:
+            self._ptt_last_hold = time.monotonic()
+
+    def release_ptt(self) -> None:
+        with self._lock:
+            self._ptt_last_hold = float("-inf")
+
+    @property
+    def ptt_held(self) -> bool:
+        with self._lock:
+            return time.monotonic() - self._ptt_last_hold < PTT_LEASE_SECONDS
 
     @property
     def smart_turn_mode(self) -> str:

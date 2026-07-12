@@ -31,6 +31,12 @@ export function formatCost(costUsd: number): string {
   return costUsd > 0 ? `$${costUsd.toFixed(4)}` : "—";
 }
 
+/** Recover speakable text from a Claude card ("[voice] „text”" → "text"). */
+export function replaySpeechText(cardText: string): string {
+  const match = cardText.match(/^\[[^\]]+\]\s*[„"]?([\s\S]*?)[”"]?$/);
+  return (match ? match[1] : cardText).trim();
+}
+
 export function formatTime(epochSeconds: number): string {
   const d = new Date(epochSeconds * 1000);
   return [d.getHours(), d.getMinutes(), d.getSeconds()]

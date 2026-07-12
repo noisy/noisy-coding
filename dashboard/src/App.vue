@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { setCharacter, setMode, setMuted, setSettings } from "./api/client";
-import type { Character } from "./types";
+import { setCharacter, setMode, setMuted, setPtt, setSettings, speakText } from "./api/client";
+import { replaySpeechText } from "./components/bubbleStatus";
+import type { Character, Utterance } from "./types";
 import AgentTabs from "./components/AgentTabs.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
@@ -49,6 +50,25 @@ const setSmartTurn = (event: Event) =>
 
 const changeCharacter = (patch: Partial<Character>) =>
   setCharacter({ ...patch, agent: viewedAgent.value ?? undefined }).catch(swallow);
+const setDetection = (mode: "auto" | "ptt") =>
+  setSettings({ detection_mode: mode }).catch(swallow);
+const replay = (utterance: Utterance) =>
+  speakText(replaySpeechText(utterance.text), viewedAgent.value ?? undefined).catch(swallow);
+
+// Push-to-talk: while the button is physically held we renew the daemon's
+// hold lease (it expires by itself if we die mid-hold — see the daemon).
+let pttTimer: ReturnType<typeof setInterval> | undefined;
+function pttPress(event: PointerEvent) {
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  setPtt(true).catch(swallow);
+  pttTimer = setInterval(() => setPtt(true).catch(swallow), 500);
+}
+function pttRelease() {
+  clearInterval(pttTimer);
+  pttTimer = undefined;
+  setPtt(false).catch(swallow);
+}
+onUnmounted(() => clearInterval(pttTimer));
 
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
 const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
@@ -92,6 +112,17 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
           <span class="bm-label">{{ status?.muted ? "◉ MIC MUTED" : "MUTE MIC" }}</span>
           <span class="bm-sub">{{ status?.muted ? "TAP TO UNMUTE" : "ONE TAP TO GO SILENT" }}</span>
         </button>
+        <button
+          v-if="status?.detection_mode === 'ptt'"
+          class="bigmute talk"
+          :class="{ held: status?.ptt_held }"
+          @pointerdown="pttPress"
+          @pointerup="pttRelease"
+          @pointercancel="pttRelease"
+        >
+          <span class="bm-label">{{ status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}</span>
+          <span class="bm-sub">{{ status?.ptt_held ? "RELEASE TO SEND" : "RECORDS WHILE HELD" }}</span>
+        </button>
         <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE">
           <Oscilloscope :level="level" />
           <div class="dbrow">
@@ -116,6 +147,11 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
               <span class="lbl">SPEECH TO TEXT</span>
               <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">BATCH</button>
               <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">LIVE</button>
+            </div>
+            <div class="ctlrow" title="How your turn ends: auto = the VAD detects silence; push to talk = you hold the big button">
+              <span class="lbl">DETECTION</span>
+              <button class="ctl small" :class="{ on: status?.detection_mode === 'auto' }" @click="setDetection('auto')">AUTO</button>
+              <button class="ctl small" :class="{ on: status?.detection_mode === 'ptt' }" @click="setDetection('ptt')">PUSH-TO-TALK</button>
             </div>
             <div class="ctlrow">
               <span class="lbl">SILENCE</span>
@@ -142,7 +178,7 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
             :speaking="status?.speaking_agents ?? []"
             @select="selectAgent"
           />
-          <ConversationLog :utterances="utterances" />
+          <ConversationLog :utterances="utterances" @replay="replay" />
         </HudPanel>
       </div>
 
@@ -270,6 +306,15 @@ footer { flex: none; }
 .bigmute.muted .bm-label { text-shadow: 0 0 10px rgba(255, 95, 107, 0.7); animation: blink 1.6s step-end infinite; }
 .bigmute.muted .bm-sub { color: rgba(255, 95, 107, 0.7); }
 @keyframes blink { 50% { opacity: 0.45; } }
+.bigmute.talk { touch-action: none; user-select: none; }
+.bigmute.talk.held {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: rgba(255, 180, 84, 0.12);
+  box-shadow: inset 0 0 26px rgba(255, 180, 84, 0.2);
+}
+.bigmute.talk.held .bm-label { text-shadow: var(--glow-amber); }
+.bigmute.talk.held .bm-sub { color: rgba(255, 180, 84, 0.75); }
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }
