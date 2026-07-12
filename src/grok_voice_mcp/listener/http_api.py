@@ -17,6 +17,23 @@ DEFAULT_PORT = 8765
 # Mic-level frame cadence for the dashboard oscilloscope (~20 fps). A data
 # rate for smooth rendering, not coordination logic.
 MIC_STREAM_INTERVAL_SECONDS = 0.05
+# The built Vue HUD (dashboard/dist) served at /next; legacy stays at /.
+DIST_DIR = Path(__file__).resolve().parents[3] / "dashboard" / "dist"
+STATIC_CONTENT_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+    ".map": "application/json",
+}
+BUILD_HINT_HTML = """<!doctype html><meta charset="utf-8">
+<body style="font-family:monospace;background:#02060c;color:#cfeaf6;padding:40px">
+<h2>HUD not built yet</h2>
+<p>Run: <code>cd dashboard &amp;&amp; npm install &amp;&amp; npm run build</code>, then reload.</p>
+</body>"""
 PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
 CHARACTER_FILE = Path.home() / ".config" / "grok-voice" / "character.json"
 SETTINGS_FILE = Path.home() / ".config" / "grok-voice" / "settings.json"
@@ -73,6 +90,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"character": state.character(agent)})
             elif url.path == "/stream/mic":
                 self._stream_mic_levels()
+            elif url.path == "/next":
+                self.send_response(301)
+                self.send_header("Location", "/next/")
+                self.end_headers()
+            elif url.path.startswith("/next/"):
+                self._serve_hud_file(url.path[len("/next/"):] or "index.html")
             elif url.path == "/status":
                 self._respond(
                     {
@@ -220,6 +243,25 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"ok": True})
             else:
                 self._respond({"error": "not found"}, status=404)
+
+        def _serve_hud_file(self, relative: str) -> None:
+            if not DIST_DIR.is_dir():
+                self._respond_html(BUILD_HINT_HTML)
+                return
+            target = (DIST_DIR / relative).resolve()
+            # Never serve anything outside dist (path traversal guard).
+            if not target.is_relative_to(DIST_DIR.resolve()) or not target.is_file():
+                self._respond({"error": "not found"}, status=404)
+                return
+            payload = target.read_bytes()
+            self.send_response(200)
+            self.send_header(
+                "Content-Type",
+                STATIC_CONTENT_TYPES.get(target.suffix, "application/octet-stream"),
+            )
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
 
         def _stream_mic_levels(self) -> None:
             # Server-sent events: ONE long-lived connection per dashboard
