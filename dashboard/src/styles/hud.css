@@ -32,7 +32,8 @@ body {
   color: var(--ink);
   font-family: var(--mono);
   font-size: 13px;
-  overflow-x: hidden;
+  /* The page itself never scrolls — only the conversation feed does. */
+  overflow: hidden;
   min-height: 100vh;
 }
 /* faint blueprint grid */
@@ -54,7 +55,16 @@ body::before {
   position: fixed; inset: 0; pointer-events: none; z-index: 49;
   box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.75);
 }
-.hud { position: relative; z-index: 1; max-width: 1560px; margin: 0 auto; padding: 18px 22px 30px; }
+.hud {
+  position: relative;
+  z-index: 1;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 14px 22px 12px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
 
 canvas { display: block; width: 100%; }
 

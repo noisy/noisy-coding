@@ -60,7 +60,7 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="logroot">
     <div ref="feed" class="feed">
       <template v-for="utterance in settled" :key="utterance.id">
         <UserBubble v-if="utterance.role === 'user'" :utterance="utterance" />
@@ -75,11 +75,18 @@ watch(
 </template>
 
 <style scoped>
+.logroot {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* fills the panel; ONLY .feed inside scrolls */
+}
 .feed {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 62vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;

@@ -189,15 +189,38 @@ header::after {
 .clockbox .clock { font-size: 17px; letter-spacing: 0.14em; color: var(--ink); }
 .clockbox .date { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); margin-top: 3px; }
 
+header { flex: none; }
+footer { flex: none; }
 .cols {
   display: grid;
   grid-template-columns: 300px minmax(420px, 1fr) 330px;
   gap: 18px;
-  margin-top: 18px;
-  align-items: start;
+  margin-top: 14px;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0; /* let the grid shrink so only the feed scrolls */
 }
 @media (max-width: 1180px) { .cols { grid-template-columns: 1fr 1fr; } .col-mid { order: -1; grid-column: 1 / -1; } }
 @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+.col-left,
+.col-right {
+  min-height: 0;
+  overflow-y: auto; /* safety valve on short windows; invisible otherwise */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.col-mid {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.col-mid :deep(.panel) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
 .todo { color: var(--muted); font-size: 10px; letter-spacing: 0.2em; padding: 22px 0; text-align: center; }
 
 .dbrow { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
