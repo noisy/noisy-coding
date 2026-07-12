@@ -26,6 +26,23 @@ def test_playback_queue_serializes_concurrent_speaks(monkeypatch):
     assert last_start >= first_end
 
 
+def test_utterance_cards_appear_at_enqueue_in_creation_order(monkeypatch):
+    state = ListenerState()
+
+    async def slow_play(*_args):
+        await asyncio.sleep(0.2)
+
+    monkeypatch.setattr(speech, "_synthesize_and_play", slow_play)
+    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+
+    futures = [speech.submit(state, "first"), speech.submit(state, "second")]
+    texts = [u["text"] for u in state.utterances() if u["role"] == "claude"]
+
+    assert texts == ["„first”", "„second”"]  # both visible before either played
+    for future in futures:
+        future.result(timeout=5)
+
+
 def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch):
     state = ListenerState()
     state.set_recording(True)

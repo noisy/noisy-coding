@@ -43,9 +43,16 @@ def submit(
     speed: float = 1.0,
     agent: str | None = None,
 ) -> Future:
-    """Queue an utterance for playback; resolves to the voice actually used."""
+    """Queue an utterance for playback; resolves to the voice actually used.
+
+    The dashboard card is created HERE, at enqueue: the timeline shows when
+    Claude decided to speak (creation order) — a reply composed before the
+    user's last words shouldn't display as if it answered them. Delivery
+    order lives in the card's status (queued → waiting → playing → played).
+    """
+    utterance_id = state.create_utterance("claude", "queued", text=f"„{text}”", agent=agent)
     return _playback_executor.submit(
-        _render_and_play, state, text, voice_id, language, speed, agent
+        _render_and_play, state, text, voice_id, language, speed, agent, utterance_id
     )
 
 
@@ -89,7 +96,7 @@ def _log(message: str) -> None:
     print(message, flush=True)
 
 
-def _hold_for_user_turn(state: ListenerState) -> None:
+def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
     """Wait out an in-progress user utterance before taking the speaker.
 
     Speaking now would talk over the user AND lose their words (the mic is
@@ -101,6 +108,7 @@ def _hold_for_user_turn(state: ListenerState) -> None:
     if user_was_speaking:
         detail = "user is speaking — holding playback"
         state.add_event("speak_wait", detail)
+        state.update_utterance(utterance_id, status="queued — waiting for you to finish")
         _log(f"[speak] {detail}")
     held_since = time.monotonic()
     state.wait_for_user_silence(grace_s=POST_TURN_GRACE_SECONDS)
@@ -122,21 +130,21 @@ def _render_and_play(
     language: str,
     speed: float,
     agent: str | None,
+    utterance_id: int,
 ) -> str:
     """Synthesize `text` and play it. Runs on the single playback worker."""
     resolved_voice, resolved_language, resolved_speed = resolve_options(
         state, voice_id, language, speed, agent
     )
-    _hold_for_user_turn(state)
+    _hold_for_user_turn(state, utterance_id)
 
     detail = f"[{resolved_voice}] „{text}”"
     state.add_event("speak", detail)
-    utterance_id = state.create_utterance(
-        "claude", "synthesizing (Grok TTS)…", text=detail, agent=agent
-    )
     cost = pricing.tts_cost_usd(len(text))
     state.add_cost("claude", cost)
-    state.update_utterance(utterance_id, cost_usd=cost)
+    state.update_utterance(
+        utterance_id, status="synthesizing (Grok TTS)…", text=detail, cost_usd=cost
+    )
 
     speech_text = _emphasis_to_speech_tags(text)
     _log(f"[speak] playing [{resolved_voice}] ({len(text)} chars) „{text[:60]}”")
