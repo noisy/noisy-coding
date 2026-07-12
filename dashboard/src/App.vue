@@ -1,9 +1,21 @@
 <script setup lang="ts">
 // Provisional assembly: components land here with mock data as they are
 // built; live daemon data replaces the mocks in the wiring task.
+import AgentTabs from "./components/AgentTabs.vue";
+import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
 import HudPanel from "./components/HudPanel.vue";
-import type { Utterance } from "./types";
+import StatusStrip from "./components/StatusStrip.vue";
+import type { Character, DaemonStatus, Utterance } from "./types";
+
+const mockCharacter: Character = { humor: 50, honesty: 50, brevity: 100, chatty: 100, voice: "altair", speed: 1.1 };
+const mockStatus: DaemonStatus = {
+  listening: true, muted: false, recording: false, claude_speaking: false,
+  speaking_agents: [], queued: 0, session_cost_usd: { user: 0.0021, claude: 0.0226 },
+  credits_usd: 4.53, mode: "live", tts_mode: "live", end_silence_ms: 4000,
+  smart_turn: 0, smart_turn_mode: "soft", language: "pl",
+  agents: { demo: 0 }, agent_labels: { demo: "grok-voice-stabilization" }, active_agent: "demo",
+};
 
 const now = Date.now() / 1000;
 const mockFeed: Utterance[] = [
@@ -49,12 +61,21 @@ const mockFeed: Utterance[] = [
       </div>
       <div class="col-mid">
         <HudPanel index="04" title="COMM LOG · UTTERANCE STREAM">
+          <AgentTabs
+            :agents="mockStatus.agent_labels"
+            :active="mockStatus.active_agent"
+            :viewed="mockStatus.active_agent"
+            :speaking="mockStatus.speaking_agents"
+          />
           <ConversationLog :utterances="mockFeed" />
         </HudPanel>
       </div>
       <div class="col-right">
         <HudPanel index="05" title="CHARACTER MATRIX">
-          <p class="todo">character readout lands here</p>
+          <CharacterReadout :character="mockCharacter" />
+        </HudPanel>
+        <HudPanel index="06" title="SYSTEM STATE · COST">
+          <StatusStrip :status="mockStatus" :offline="false" />
         </HudPanel>
       </div>
     </div>

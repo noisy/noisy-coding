@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { Utterance } from "../types";
 import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
@@ -11,6 +11,12 @@ const ordered = computed(() => [...props.utterances].sort((a, b) => a.id - b.id)
 
 const feed = ref<HTMLElement | null>(null);
 
+function scrollToBottom() {
+  if (feed.value) feed.value.scrollTop = feed.value.scrollHeight;
+}
+
+// Scrolled to the newest message by default, and kept there as new ones land.
+onMounted(scrollToBottom);
 watch(
   () => {
     const last = ordered.value[ordered.value.length - 1];
@@ -18,7 +24,7 @@ watch(
   },
   async () => {
     await nextTick();
-    if (feed.value) feed.value.scrollTop = feed.value.scrollHeight;
+    scrollToBottom();
   },
 );
 </script>
