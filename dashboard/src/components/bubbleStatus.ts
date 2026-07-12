@@ -1,6 +1,6 @@
 /** Map raw daemon utterance statuses onto HUD status chips. */
 
-export type StatusKind = "done" | "work" | "rec" | "spoken" | "fail";
+export type StatusKind = "done" | "work" | "rec" | "spoken" | "fail" | "off";
 
 export interface StatusChip {
   kind: StatusKind;
@@ -9,6 +9,7 @@ export interface StatusChip {
 
 export function statusChip(status: string): StatusChip {
   const s = status.toLowerCase();
+  if (s.includes("cancelled")) return { kind: "off", label: "✕ CANCELLED" };
   if (s.includes("recording")) return { kind: "rec", label: "● RECORDING" };
   if (s.includes("playing")) return { kind: "spoken", label: "▶ PLAYING" };
   if (s.includes("error")) return { kind: "fail", label: "✕ ERROR" };

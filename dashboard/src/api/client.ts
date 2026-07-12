@@ -58,6 +58,11 @@ export function setPtt(held: boolean): Promise<void> {
   return post("/ptt", { held });
 }
 
+/** Recall a transcript that still waits in the queue (AWAITING CLAUDE). */
+export function cancelTranscript(utteranceId: number): Promise<void> {
+  return post("/cancel", { utterance_id: utteranceId });
+}
+
 /** Replay a spoken message: no new card in the log, and the user's click
  * outranks whatever is playing (they can always replay that one too). */
 export function speakText(text: string, agent?: string): Promise<void> {

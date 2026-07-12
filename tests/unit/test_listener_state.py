@@ -106,6 +106,26 @@ def test_wait_for_user_silence_grace_lets_the_user_add_a_thought():
     assert done.wait(1.0)
 
 
+def test_cancel_transcript_recalls_a_queued_message():
+    state = ListenerState()
+    utterance_id = state.create_utterance("user", "recording…")
+    state.add_transcript("take this back", utterance_id)
+
+    assert state.cancel_transcript(utterance_id) is True
+    assert state.drain() == []
+    statuses = {u["id"]: u["status"] for u in state.utterances()}
+    assert statuses[utterance_id] == "cancelled by you"
+
+
+def test_cancel_transcript_is_too_late_after_drain():
+    state = ListenerState()
+    utterance_id = state.create_utterance("user", "recording…")
+    state.add_transcript("already delivered", utterance_id)
+    state.drain()
+
+    assert state.cancel_transcript(utterance_id) is False
+
+
 def test_ptt_hold_is_a_lease_renewed_and_released():
     state = ListenerState()
     assert state.ptt_held is False

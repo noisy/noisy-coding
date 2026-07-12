@@ -15,11 +15,12 @@ withDefaults(
     live?: boolean;
     pending?: boolean;
     replayable?: boolean;
+    cancelable?: boolean;
   }>(),
-  { cost: "—", detail: "", live: false, pending: false, replayable: false },
+  { cost: "—", detail: "", live: false, pending: false, replayable: false, cancelable: false },
 );
 
-defineEmits<{ replay: [] }>();
+defineEmits<{ replay: []; cancel: [] }>();
 </script>
 
 <template>
@@ -33,6 +34,12 @@ defineEmits<{ replay: [] }>();
         title="Play this message again"
         @click="$emit('replay')"
       >↻ ▶</button>
+      <button
+        v-if="cancelable"
+        class="cancel"
+        title="Recall this message before Claude reads it"
+        @click="$emit('cancel')"
+      >✕</button>
       <span v-if="live" class="livebars"><i /><i /><i /><i /><i /></span>
       <span class="tm">{{ time }}</span>
     </div>
@@ -85,6 +92,7 @@ defineEmits<{ replay: [] }>();
 .st.rec { color: var(--amber); border-color: rgba(255, 180, 84, 0.5); animation: blink 0.9s step-end infinite; }
 .st.spoken { color: var(--violet); border-color: rgba(185, 140, 255, 0.45); }
 .st.fail { color: var(--red); border-color: rgba(255, 95, 107, 0.45); }
+.st.off { color: var(--muted); border-color: rgba(93, 127, 150, 0.4); }
 @keyframes blink { 50% { opacity: 0.35; } }
 .replay {
   font-family: var(--mono);
@@ -97,6 +105,16 @@ defineEmits<{ replay: [] }>();
   cursor: pointer;
 }
 .replay:hover { color: var(--cyan-hi); border-color: var(--cyan); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.cancel {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid rgba(93, 127, 150, 0.4);
+  padding: 2px 7px;
+  cursor: pointer;
+}
+.cancel:hover { color: var(--red); border-color: rgba(255, 95, 107, 0.6); text-shadow: 0 0 6px rgba(255, 95, 107, 0.5); }
 .tm { margin-left: auto; font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
 .txt { font-size: 13px; line-height: 1.55; color: var(--ink); }
 .txt.pending { color: var(--muted); font-style: italic; }

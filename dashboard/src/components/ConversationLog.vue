@@ -5,7 +5,7 @@ import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
 const props = defineProps<{ utterances: Utterance[] }>();
-defineEmits<{ replay: [utterance: Utterance] }>();
+defineEmits<{ replay: [utterance: Utterance]; cancel: [utterance: Utterance] }>();
 
 // Noise guard: utterances that never became real speech ("empty — no
 // speech", "dropped — too short") would flood the log in a loud room and
@@ -64,7 +64,11 @@ watch(
   <div class="logroot">
     <div ref="feed" class="feed">
       <template v-for="utterance in settled" :key="utterance.id">
-        <UserBubble v-if="utterance.role === 'user'" :utterance="utterance" />
+        <UserBubble
+          v-if="utterance.role === 'user'"
+          :utterance="utterance"
+          @cancel="$emit('cancel', $event)"
+        />
         <ClaudeBubble v-else :utterance="utterance" @replay="$emit('replay', $event)" />
       </template>
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>

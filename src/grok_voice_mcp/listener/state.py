@@ -289,6 +289,21 @@ class ListenerState:
                 utterance_id, status="ready — awaiting pickup", text=text
             )
 
+    def cancel_transcript(self, utterance_id: int) -> bool:
+        """Drop a queued transcript before it reaches Claude.
+
+        Only possible while it still sits in the queue — once drained it's
+        Claude's; we return False and the card keeps its delivered status.
+        """
+        with self._lock:
+            kept = [t for t in self._transcripts if t.utterance_id != utterance_id]
+            cancelled = len(kept) < len(self._transcripts)
+            if cancelled:
+                self._transcripts = kept
+                self._add_event_locked("cancelled", f"utterance {utterance_id} recalled")
+                self._update_utterance_locked(utterance_id, status="cancelled by you")
+            return cancelled
+
     def drain(self, agent: str | None = None) -> list[Transcript]:
         with self._lock:
             # Register/refresh the caller and gate delivery on active agent.

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { setCharacter, setMode, setMuted, setPtt, setSettings, speakText } from "./api/client";
+import { cancelTranscript, setCharacter, setMode, setMuted, setPtt, setSettings, speakText } from "./api/client";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import AgentTabs from "./components/AgentTabs.vue";
@@ -54,6 +54,7 @@ const setDetection = (mode: "auto" | "ptt") =>
   setSettings({ detection_mode: mode }).catch(swallow);
 const replay = (utterance: Utterance) =>
   speakText(replaySpeechText(utterance.text), viewedAgent.value ?? undefined).catch(swallow);
+const cancel = (utterance: Utterance) => cancelTranscript(utterance.id).catch(swallow);
 
 // Push-to-talk: while the button is physically held we renew the daemon's
 // hold lease (it expires by itself if we die mid-hold — see the daemon).
@@ -169,21 +170,28 @@ const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
             :speaking="status?.speaking_agents ?? []"
             @select="selectAgent"
           />
-          <ConversationLog :utterances="utterances" @replay="replay" />
+          <ConversationLog :utterances="utterances" @replay="replay" @cancel="cancel" />
         </HudPanel>
       </div>
 
       <div class="col-right">
+        <!-- Holding while muted records nothing — lock the button and say
+             why instead of silently eating the press. -->
         <button
           v-if="status?.detection_mode === 'ptt'"
           class="bigmute talk"
           :class="{ held: status?.ptt_held }"
+          :disabled="status?.muted"
           @pointerdown="pttPress"
           @pointerup="pttRelease"
           @pointercancel="pttRelease"
         >
-          <span class="bm-label">{{ status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}</span>
-          <span class="bm-sub">{{ status?.ptt_held ? "RELEASE TO SEND" : "RECORDS WHILE HELD" }}</span>
+          <span class="bm-label">
+            {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}
+          </span>
+          <span class="bm-sub">
+            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "RECORDS WHILE HELD" }}
+          </span>
         </button>
         <HudPanel index="05" title="CHARACTER MATRIX">
           <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
@@ -309,6 +317,13 @@ footer { flex: none; }
 .bigmute.muted .bm-sub { color: rgba(255, 95, 107, 0.7); }
 @keyframes blink { 50% { opacity: 0.45; } }
 .bigmute.talk { touch-action: none; user-select: none; }
+.bigmute.talk:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  border-color: rgba(93, 127, 150, 0.35);
+  background: rgba(93, 127, 150, 0.05);
+}
+.bigmute.talk:disabled .bm-label { text-shadow: none; }
 .bigmute.talk.held {
   color: var(--amber);
   border-color: var(--amber);

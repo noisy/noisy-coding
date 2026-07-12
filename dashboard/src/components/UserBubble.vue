@@ -5,9 +5,12 @@ import Bubble from "./Bubble.vue";
 import { formatCost, formatTime, statusChip } from "./bubbleStatus";
 
 const props = defineProps<{ utterance: Utterance }>();
+defineEmits<{ cancel: [utterance: Utterance] }>();
 
 const chip = computed(() => statusChip(props.utterance.status));
 const pending = computed(() => !props.utterance.text);
+// Recall is possible only while the transcript still waits in the queue.
+const cancelable = computed(() => props.utterance.status.includes("ready"));
 </script>
 
 <template>
@@ -23,5 +26,7 @@ const pending = computed(() => !props.utterance.text);
     :detail="utterance.detail"
     :live="chip.kind === 'rec'"
     :pending="pending"
+    :cancelable="cancelable"
+    @cancel="$emit('cancel', utterance)"
   />
 </template>

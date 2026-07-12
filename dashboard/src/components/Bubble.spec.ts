@@ -17,6 +17,7 @@ describe("statusChip", () => {
     ["delivered to Claude", "done", "✓ DELIVERED"],
     ["played", "done", "✓ PLAYED"],
     ["ready — awaiting pickup", "work", "◌ AWAITING CLAUDE"],
+    ["cancelled by you", "off", "✕ CANCELLED"],
     ["transcription error", "fail", "✕ ERROR"],
     ["dropped — too short", "fail", "✕ DROPPED"],
   ])("maps %s → %s", (status, kind, label) => {
@@ -103,6 +104,18 @@ describe("UserBubble", () => {
     started_at: 1_783_890_000,
     updated_at: 1_783_890_003,
   };
+
+  it("offers cancel only while awaiting Claude and emits the utterance", async () => {
+    const awaiting = { ...utterance, status: "ready — awaiting pickup" };
+    const wrapper = mount(UserBubble, { props: { utterance: awaiting } });
+
+    await wrapper.find(".cancel").trigger("click");
+
+    expect(wrapper.emitted("cancel")).toEqual([[awaiting]]);
+    expect(
+      mount(UserBubble, { props: { utterance } }).find(".cancel").exists(),
+    ).toBe(false);
+  });
 
   it("maps a recording utterance to a live amber bubble on the left", () => {
     const wrapper = mount(UserBubble, { props: { utterance } });
