@@ -20,10 +20,10 @@ export function statusChip(status: string): StatusChip {
   if (s.includes("transcribing")) return { kind: "work", label: "◌ TRANSCRIBING" };
   if (s.includes("delivered")) return { kind: "done", label: "✓ DELIVERED" };
   if (s.includes("played")) return { kind: "done", label: "✓ PLAYED" };
-  // Transcribed, sitting in the queue until Claude's hook picks it up:
-  // mid-pipeline, so a cyan "work" chip, and a label that says where it's
-  // headed instead of an ambiguous READY.
-  if (s.includes("ready")) return { kind: "work", label: "◌ TRANSMITTING" };
+  // Transcribed, sitting in the queue until Claude is free to pick it up.
+  // Name WHO we're waiting for: "transmitting" reads like a transfer in
+  // trouble when Claude is just busy, and "ready" begs ready-for-what.
+  if (s.includes("ready")) return { kind: "work", label: "◌ AWAITING CLAUDE" };
   return { kind: "work", label: status.toUpperCase() };
 }
 
