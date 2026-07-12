@@ -14,7 +14,7 @@ export function statusChip(status: string): StatusChip {
   if (s.includes("error")) return { kind: "fail", label: "✕ ERROR" };
   if (s.includes("dropped")) return { kind: "fail", label: "✕ DROPPED" };
   if (s.includes("empty")) return { kind: "fail", label: "✕ NO SPEECH" };
-  if (s.includes("waiting")) return { kind: "work", label: "◌ HOLDING" };
+  if (s.includes("waiting for you")) return { kind: "work", label: "◌ HOLDING" };
   if (s.includes("queued")) return { kind: "work", label: "◌ QUEUED" };
   if (s.includes("synthesizing")) return { kind: "work", label: "◌ SYNTHESIZING" };
   if (s.includes("transcribing")) return { kind: "work", label: "◌ TRANSCRIBING" };
