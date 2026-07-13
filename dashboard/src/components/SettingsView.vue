@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { InputDevice } from "../types";
+import { CUE_LABELS, type CuePrefs } from "../composables/useAudioCues";
+import type { CueName } from "../composables/cueEvents";
+import { playCue } from "../composables/cueSounds";
 
 withDefaults(
   defineProps<{
     apiKeyHint: string;
     devices?: InputDevice[];
     selectedDevice?: string;
+    cuePrefs?: CuePrefs | null;
   }>(),
-  { devices: () => [], selectedDevice: "" },
+  { devices: () => [], selectedDevice: "", cuePrefs: null },
 );
 const emit = defineEmits<{
   save: [key: string];
   pickDevice: [name: string];
   refreshDevices: [];
+  toggleCue: [name: CueName, value: boolean];
 }>();
+
+const cueNames = Object.keys(CUE_LABELS) as CueName[];
 
 const keyInput = ref("");
 const editing = ref(false);
@@ -108,6 +115,30 @@ function submit() {
         </details>
       </div>
     </section>
+
+    <section v-if="cuePrefs" class="sec">
+      <div class="keyrow">
+        <span class="lbl">AUDIO CUES</span>
+        <span class="cue-hint">{{ cuePrefs.enabled ? "ENABLED" : "DISABLED — TURN ON IN CONTROLS" }}</span>
+      </div>
+      <div class="cuegrid">
+        <div v-for="name in cueNames" :key="name" class="cuerow">
+          <button class="btn preview" title="Preview" @click="playCue(name)">▶</button>
+          <span class="cue-label">{{ CUE_LABELS[name] }}</span>
+          <button
+            class="btn"
+            :class="{ dim: !cuePrefs.cues[name] }"
+            @click="emit('toggleCue', name, !cuePrefs.cues[name])"
+          >{{ cuePrefs.cues[name] ? "ON" : "OFF" }}</button>
+        </div>
+      </div>
+      <div class="text">
+        <p>
+          Whisper-quiet blips for conversation events, so you know what's
+          happening without watching the screen. Stored per browser.
+        </p>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -139,6 +170,12 @@ function submit() {
 }
 .btn:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .btn.dim { color: var(--muted); border-color: var(--line); }
+
+.cue-hint { flex: 1; font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
+.cuegrid { display: grid; gap: 8px; margin: 4px 0 14px 102px; max-width: 420px; }
+.cuerow { display: flex; align-items: center; gap: 10px; }
+.cuerow .preview { padding: 4px 9px; }
+.cue-label { flex: 1; font-size: 10px; letter-spacing: 0.14em; color: var(--ink); }
 
 /* The form is the star of this screen; the guidance stays muted and is
    indented to align with the input box. */

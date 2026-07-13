@@ -13,6 +13,8 @@ import SessionRing from "./components/SessionRing.vue";
 import SettingsView from "./components/SettingsView.vue";
 import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
+import type { CueName } from "./composables/cueEvents";
+import { useAudioCues } from "./composables/useAudioCues";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
@@ -48,6 +50,10 @@ const unreadAgents = computed(() => {
 });
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
+const errorCount = computed(() => errors.value.length);
+
+const { prefs: cuePrefs, enabled: cuesEnabled } = useAudioCues(utterances, status, errorCount);
+const setCue = (name: CueName, value: boolean) => (cuePrefs.value.cues[name] = value);
 
 // Latency traffic lights, calibrated on observed healthy values
 // (STT ≈ 250-450 ms, TTS first-audio/render ≈ 1-1.5 s).
@@ -323,6 +329,11 @@ const LANGUAGES: Record<string, string> = {
               <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">BATCH</button>
               <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">LIVE</button>
             </div>
+            <div class="ctlrow" title="Subtle blips on conversation events; pick which in SETTINGS">
+              <span class="lbl">AUDIO CUES</span>
+              <button class="ctl small" :class="{ on: cuesEnabled }" @click="cuesEnabled = true">ON</button>
+              <button class="ctl small" :class="{ on: !cuesEnabled }" @click="cuesEnabled = false">OFF</button>
+            </div>
             <div class="ctlcol" title="How your turn ends: auto = the VAD detects silence; push to talk = you hold the big button">
               <span class="lbl">TURN DETECTION</span>
               <div class="ctlbtns">
@@ -359,9 +370,11 @@ const LANGUAGES: Record<string, string> = {
             :api-key-hint="status?.api_key_hint ?? ''"
             :devices="devices"
             :selected-device="status?.input_device ?? ''"
+            :cue-prefs="cuePrefs"
             @save="saveKey"
             @pick-device="pickMic"
             @refresh-devices="loadDevices"
+            @toggle-cue="setCue"
           />
         </HudPanel>
         <HudPanel v-else index="04" title="COMM LOG · UTTERANCE STREAM">
