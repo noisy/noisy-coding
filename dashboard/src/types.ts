@@ -24,6 +24,8 @@ export interface DaemonStatus {
   detection_mode: "auto" | "ptt";
   ptt_held: boolean;
   input_device: string;
+  /** A browser tab currently holds the audio lease (WS bridge). */
+  tab_audio: boolean;
   activity: Record<string, { text: string; at: number }>;
   language: string;
   agents: Record<string, number>;
@@ -69,4 +71,7 @@ export interface SettingsPatch {
 export interface InputDevice {
   name: string;
   default: boolean;
+  /** Wire value when it differs from the display name (virtual devices:
+   * "THIS BROWSER TAB" → "browser"). */
+  value?: string;
 }

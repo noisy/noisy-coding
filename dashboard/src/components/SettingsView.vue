@@ -48,7 +48,7 @@ function submit() {
           @change="emit('pickDevice', ($event.target as HTMLSelectElement).value)"
         >
           <option value="">SYSTEM DEFAULT</option>
-          <option v-for="d in devices" :key="d.name" :value="d.name">
+          <option v-for="d in devices" :key="d.name" :value="d.value ?? d.name">
             {{ d.name.toUpperCase() }}{{ d.default ? " ◆" : "" }}
           </option>
         </select>
@@ -58,7 +58,8 @@ function submit() {
           Which input the daemon listens to — switching swaps the audio stream
           live, no restart. ◆ marks the system default. A device plugged in
           after the daemon started shows on the list, but needs a daemon
-          restart before it can be opened.
+          restart before it can be opened. THIS BROWSER TAB makes this very
+          tab the microphone (asks for permission on pick).
         </p>
       </div>
     </section>

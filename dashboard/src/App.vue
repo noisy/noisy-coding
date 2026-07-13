@@ -16,6 +16,7 @@ import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
 import type { CueName } from "./composables/cueEvents";
 import { useAudioCues } from "./composables/useAudioCues";
+import { useBrowserAudio } from "./composables/useBrowserAudio";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
@@ -211,7 +212,22 @@ const setLanguage = (event: Event) =>
 const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
-const pickMic = (name: string) => setSettings({ input_device: name }).catch(swallow);
+const browserAudio = useBrowserAudio();
+async function pickMic(name: string) {
+  if (name !== "browser") {
+    browserAudio.disable();
+    return setSettings({ input_device: name }).catch(swallow);
+  }
+  // The picker click is our user gesture — getUserMedia is allowed here.
+  try {
+    await browserAudio.enable();
+    await setSettings({ input_device: "browser" });
+  } catch {
+    // Permission or lease refused: stay on the system default rather than
+    // pointing the daemon at a microphone that will never send a frame.
+    await setSettings({ input_device: "" }).catch(swallow);
+  }
+}
 
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
 const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
@@ -469,6 +485,9 @@ const LANGUAGES: Record<string, string> = {
 
     <footer>
       <span>DAEMON <b :class="offline ? 'bad' : 'ok'">{{ offline ? "OFFLINE" : "ONLINE" }}</b></span>
+      <span v-if="status?.input_device === 'browser'">
+        TAB MIC <b :class="status?.tab_audio ? 'ok' : 'bad'">{{ status?.tab_audio ? "LIVE" : "NO TAB" }}</b>
+      </span>
       <span>STT MODE <b>{{ status?.mode?.toUpperCase() ?? "—" }}</b></span>
       <span>LANGUAGE <b>{{ status?.language || "AUTO" }}</b></span>
       <span>QUEUE <b>{{ status?.queued ?? "—" }}</b></span>
