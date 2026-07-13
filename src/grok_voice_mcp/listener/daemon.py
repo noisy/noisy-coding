@@ -117,8 +117,10 @@ def _transcribe_and_enqueue(
         cost_usd=cost,
         duration_s=round(seconds, 1),
     )
+    stt_started = time.monotonic()
     try:
         text = stt.transcribe(stt.encode_wav(samples, sample_rate), state.language)
+        state.set_latency("stt", (time.monotonic() - stt_started) * 1000)
     except stt.GrokSTTError as error:
         _log(f"[stt-error] {error}")
         state.add_event("stt_error", str(error)[:200])
@@ -184,7 +186,9 @@ def _finalize_stream(
         cost_usd=cost,
         duration_s=round(seconds, 1),
     )
+    finish_started = time.monotonic()
     text = session.finish()
+    state.set_latency("stt", (time.monotonic() - finish_started) * 1000)
     if not text:
         _log(f"[dropped] {seconds:.1f}s live stream transcribed to nothing")
         state.update_utterance(utterance_id, status="empty — no speech")

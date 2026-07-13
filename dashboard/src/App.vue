@@ -346,6 +346,28 @@ const LANGUAGES: Record<string, string> = {
             @replay="replay"
             @cancel="cancel"
           />
+          <div class="telemetry">
+            <div>
+              <div class="k">STT LATENCY</div>
+              <div class="v">{{ status?.stt_latency_ms != null ? status.stt_latency_ms : "—" }}<small v-if="status?.stt_latency_ms != null"> ms</small></div>
+            </div>
+            <div>
+              <div class="k">TTS RENDER</div>
+              <div class="v">{{ status?.tts_latency_ms != null ? status.tts_latency_ms : "—" }}<small v-if="status?.tts_latency_ms != null"> ms</small></div>
+            </div>
+            <div>
+              <div class="k">YOU · STT</div>
+              <div class="v warn">${{ (status?.session_cost_usd.user ?? 0).toFixed(4) }}</div>
+            </div>
+            <div>
+              <div class="k">CLAUDE · TTS</div>
+              <div class="v violet">${{ (status?.session_cost_usd.claude ?? 0).toFixed(4) }}</div>
+            </div>
+            <div>
+              <div class="k">CONVERSATION TOTAL</div>
+              <div class="v">${{ ((status?.session_cost_usd.user ?? 0) + (status?.session_cost_usd.claude ?? 0)).toFixed(4) }}</div>
+            </div>
+          </div>
         </HudPanel>
       </div>
 
@@ -570,6 +592,23 @@ footer { flex: none; }
 
 /* Sections that need the API sit dimmed behind the first-contact prompt. */
 .locked { opacity: 0.35; pointer-events: none; filter: saturate(0.4); }
+
+.telemetry {
+  display: flex;
+  gap: 0;
+  margin-top: 14px;
+  flex: none;
+  border: 1px solid var(--line);
+  background: rgba(4, 11, 19, 0.9);
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+}
+.telemetry > div { flex: 1; padding: 9px 12px; border-right: 1px solid rgba(63, 216, 255, 0.12); }
+.telemetry > div:last-child { border-right: none; }
+.telemetry .k { font-size: 8.5px; letter-spacing: 0.22em; color: var(--muted); }
+.telemetry .v { font-size: 14px; color: var(--cyan); margin-top: 3px; text-shadow: 0 0 8px rgba(63, 216, 255, 0.35); }
+.telemetry .v small { font-size: 9px; color: var(--muted); }
+.telemetry .v.warn { color: var(--amber); text-shadow: 0 0 8px rgba(255, 180, 84, 0.35); }
+.telemetry .v.violet { color: var(--violet); text-shadow: 0 0 8px rgba(185, 140, 255, 0.35); }
 
 .setup-overlay {
   position: fixed;

@@ -6,6 +6,8 @@ export interface DaemonStatus {
   voice_muted: boolean;
   api_key_set: boolean;
   api_key_hint: string;
+  stt_latency_ms: number | null;
+  tts_latency_ms: number | null;
   recording: boolean;
   claude_speaking: boolean;
   playing_utterance_id: number;

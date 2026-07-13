@@ -230,7 +230,9 @@ async def _synthesize_and_play(
         )
         await tts_stream.speak_streaming(speech_text, voice, language, speed)
     else:
+        synth_started = time.monotonic()
         audio = await tts.synthesize(speech_text, voice, language, speed)
+        state.set_latency("tts", (time.monotonic() - synth_started) * 1000)
         detail = f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS"
         state.add_event("speak_audio", detail)
         state.update_utterance(

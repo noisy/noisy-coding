@@ -53,6 +53,7 @@ class ListenerState:
         self._recording = False
         self._mic_level = 0.0  # live mic RMS 0..1, for the dashboard oscilloscope
         self._playing_utterance_id = 0  # which card is on the speakers right now
+        self._latency_ms: dict = {"stt": None, "tts": None}  # last measured
         self._last_recording_end = float("-inf")  # monotonic time of last utterance end
         self._last_transcript_at = 0.0
         self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
@@ -416,6 +417,15 @@ class ListenerState:
     def last_transcript_at(self) -> float:
         with self._lock:
             return self._last_transcript_at
+
+    def set_latency(self, kind: str, milliseconds: float) -> None:
+        with self._lock:
+            self._latency_ms[kind] = int(milliseconds)
+
+    @property
+    def latency_ms(self) -> dict:
+        with self._lock:
+            return dict(self._latency_ms)
 
     @property
     def playing_utterance_id(self) -> int:

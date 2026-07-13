@@ -123,6 +123,17 @@ def test_claude_utterance_commits_on_creation():
     assert state.utterances()[0]["committed_at"] > 0.0
 
 
+def test_latency_tracking_keeps_the_last_measurement_per_kind():
+    state = ListenerState()
+    assert state.latency_ms == {"stt": None, "tts": None}
+
+    state.set_latency("stt", 412.7)
+    state.set_latency("tts", 380.2)
+    state.set_latency("stt", 350.0)
+
+    assert state.latency_ms == {"stt": 350, "tts": 380}
+
+
 def test_cancel_transcript_recalls_a_queued_message():
     state = ListenerState()
     utterance_id = state.create_utterance("user", "recording…")

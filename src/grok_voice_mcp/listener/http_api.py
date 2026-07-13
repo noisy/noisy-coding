@@ -139,6 +139,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
                         "playing_utterance_id": state.playing_utterance_id,
+                        "stt_latency_ms": state.latency_ms["stt"],
+                        "tts_latency_ms": state.latency_ms["tts"],
                         "speaking_agents": state.speaking_agents,
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
