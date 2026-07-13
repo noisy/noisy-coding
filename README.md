@@ -1,8 +1,9 @@
-# grok-voice-mcp
+# noisy-coding
 
-Voice conversations with Claude Code. Claude speaks short summaries aloud,
-and an always-on listener daemon turns your speech into messages Claude
-receives **while it works** — powered by the
+Voice coding for Claude Code, Jarvis-style — talk to your agent while it
+works. It's your voice that's noisy, not your code. Claude speaks short
+summaries aloud, and an always-on listener daemon turns your speech into
+messages Claude receives **while it works** — powered by the
 [Grok (xAI) Voice API](https://docs.x.ai/developers/rest-api-reference/inference/voice)
 and a live "tactical HUD" dashboard.
 
@@ -14,7 +15,7 @@ Docker, a browser and `git` — nothing else, on macOS, Windows and Linux
 alike. All configuration happens in the UI.
 
 ```bash
-git clone <this repo> && cd grok-voice-mcp
+git clone https://github.com/noisy/noisy-coding && cd noisy-coding
 
 # 1. the whole backend in one box
 docker compose up -d
@@ -26,7 +27,7 @@ docker compose up -d
 open http://127.0.0.1:8765
 
 # 3. connect Claude Code to the MCP server in the container
-claude mcp add --transport http --scope user grok-voice http://127.0.0.1:8767/mcp
+claude mcp add --transport http --scope user noisy-coding http://127.0.0.1:8767/mcp
 
 # 4. register the hooks (this is how Claude HEARS you) and restart Claude Code
 python3 hooks/install.py
@@ -91,11 +92,11 @@ daemon natively. Requires Python 3.13 and
 dashboard, never in the shell.
 
 ```bash
-git clone <this repo> && cd grok-voice-mcp
+git clone https://github.com/noisy/noisy-coding && cd noisy-coding
 uv sync
-uv run grok-voice-listener            # first run triggers the mic prompt
-claude mcp add grok-voice --scope user \
-  -- uv run --project "$PWD" grok-voice-mcp
+uv run noisy-coding-listener          # first run triggers the mic prompt
+claude mcp add noisy-coding --scope user \
+  -- uv run --project "$PWD" noisy-coding-mcp
 python3 hooks/install.py
 open http://127.0.0.1:8765            # paste your xAI API key
 ```
@@ -120,22 +121,22 @@ Everything is controlled from <http://127.0.0.1:8765> (source in
 ## Configuration
 
 There is deliberately **no required configuration outside the UI** — the
-dashboard writes everything to `~/.config/grok-voice/` (a named volume in
+dashboard writes everything to `~/.config/noisy-coding/` (a named volume in
 Docker). The environment variables below exist for development and unusual
 setups only:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `GROK_VOICE_LISTENER_PORT` | `8765` | Port of the daemon's HTTP API |
-| `GROK_VOICE_BIND` | `127.0.0.1` | HTTP/WS bind address (`0.0.0.0` in Docker) |
-| `GROK_VOICE_STT_LANGUAGE` | auto | Initial language hint (the UI selector overrides) |
-| `GROK_VOICE_MODE` | `batch` | Initial STT mode (`batch`/`live`) |
-| `GROK_VOICE_STOP_WAIT_SECONDS` | `30` | How long the Stop hook waits for speech |
-| `GROK_VOICE_NO_AUTOSPAWN` | — | Don't auto-start the daemon from the server |
-| `GROK_VOICE_INPUT_DEVICE` | system default | Initial mic (`browser` = the dashboard tab) |
-| `GROK_VOICE_OUTPUT_DEVICE` | `system` | Initial speaker (`browser` = the dashboard tab) |
-| `GROK_VOICE_MCP_TRANSPORT` | `stdio` | `http` exposes the MCP server (Docker) |
-| `GROK_VOICE_MCP_PORT` | `8767` | MCP HTTP port (with `http` transport) |
+| `NOISY_CODING_LISTENER_PORT` | `8765` | Port of the daemon's HTTP API |
+| `NOISY_CODING_BIND` | `127.0.0.1` | HTTP/WS bind address (`0.0.0.0` in Docker) |
+| `NOISY_CODING_STT_LANGUAGE` | auto | Initial language hint (the UI selector overrides) |
+| `NOISY_CODING_MODE` | `batch` | Initial STT mode (`batch`/`live`) |
+| `NOISY_CODING_STOP_WAIT_SECONDS` | `30` | How long the Stop hook waits for speech |
+| `NOISY_CODING_NO_AUTOSPAWN` | — | Don't auto-start the daemon from the server |
+| `NOISY_CODING_INPUT_DEVICE` | system default | Initial mic (`browser` = the dashboard tab) |
+| `NOISY_CODING_OUTPUT_DEVICE` | `system` | Initial speaker (`browser` = the dashboard tab) |
+| `NOISY_CODING_MCP_TRANSPORT` | `stdio` | `http` exposes the MCP server (Docker) |
+| `NOISY_CODING_MCP_PORT` | `8767` | MCP HTTP port (with `http` transport) |
 
 ## Development
 
