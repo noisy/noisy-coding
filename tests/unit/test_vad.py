@@ -67,3 +67,25 @@ def test_overlong_speech_is_cut_at_max_utterance_length(make_frames):
 
     assert len(utterances) >= 1
     assert len(utterances[0]) <= (config.max_utterance_ms // config.frame_ms + 1) * config.frame_samples
+
+
+def test_flush_closes_the_open_utterance_immediately(make_frames):
+    # Mic mute mid-sentence: no more frames will EVER arrive, so the
+    # segmenter must hand over what it holds without waiting for silence.
+    segmenter = UtteranceSegmenter(CONFIG)
+    _feed_all(segmenter, make_frames(False, 20) + make_frames(True, 40))
+    assert segmenter.is_recording
+
+    utterance = segmenter.flush()
+
+    assert utterance is not None
+    assert len(utterance) >= 40 * CONFIG.frame_samples
+    assert not segmenter.is_recording
+
+
+def test_flush_is_a_no_op_when_idle(make_frames):
+    segmenter = UtteranceSegmenter(CONFIG)
+    _feed_all(segmenter, make_frames(False, 10))
+
+    assert segmenter.flush() is None
+    assert not segmenter.is_recording

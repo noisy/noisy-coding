@@ -60,6 +60,19 @@ class UtteranceSegmenter:
         """Force the utterance in progress to close on the next frame."""
         self._close_requested = True
 
+    def flush(self) -> np.ndarray | None:
+        """Close the utterance in progress RIGHT NOW and return its audio.
+
+        For hard end-of-turn signals that outrank silence detection — the
+        user hitting mic mute, a device teardown. Unlike request_close this
+        needs no further frame: with a muted mic no frame will ever come.
+        Returns None when nothing was recording or the clip is too short.
+        """
+        if not self.is_recording:
+            return None
+        self._close_requested = False
+        return self._finish_utterance()
+
     @property
     def _end_silence_ms(self) -> int:
         return self.end_silence_ms_override or self.config.end_silence_ms

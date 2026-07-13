@@ -355,6 +355,41 @@ def run(config: VadConfig | None = None) -> None:
                     # A muted mic isn't listening — the oscilloscope must
                     # flatline instead of showing our own playback echo.
                     state.set_mic_level(0.0)
+                    # A muted mic must not stay recording either: paused
+                    # frames never reach the segmenter, so an utterance
+                    # open at mute time would freeze in "transcribing…"
+                    # until unmute. Mute is the hardest end-of-turn signal
+                    # there is — close the segment NOW with the audio it
+                    # already holds. Only for the user's explicit mute:
+                    # the transient echo-pause during playback must not
+                    # cut a PTT barge-in recording short.
+                    if segmenter.is_recording and state.user_muted:
+                        utterance = segmenter.flush()
+                        state.set_recording(False)
+                        _log("[recording] closed by mic mute")
+                        state.add_event("recording_done", "closed by mic mute")
+                        if stream is not None:
+                            seconds = (
+                                len(utterance) / config.sample_rate
+                                if utterance is not None
+                                else config.min_utterance_ms / 1000
+                            )
+                            stt_executor.submit(
+                                _finalize_stream, stream, seconds, state, current_utterance_id
+                            )
+                            stream = None
+                        elif utterance is not None:
+                            stt_executor.submit(
+                                _transcribe_and_enqueue,
+                                utterance,
+                                config.sample_rate,
+                                state,
+                                current_utterance_id,
+                            )
+                        else:
+                            state.update_utterance(
+                                current_utterance_id, status="dropped — too short"
+                            )
                     continue
                 # Live level for the dashboard oscilloscope: frame RMS in
                 # 0..1, scaled so normal speech lands around 0.2-0.8.
