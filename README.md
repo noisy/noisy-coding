@@ -1,107 +1,135 @@
 # grok-voice-mcp
 
-MCP server that gives Claude Code a voice. Instead of (or rather, alongside) a
-wall of text, Claude can call the `speak` tool to read a short spoken summary
-aloud through your speakers, synthesized by the [Grok (xAI) Voice API](https://docs.x.ai/developers/rest-api-reference/inference/voice).
+Voice conversations with Claude Code. Claude speaks short summaries aloud
+through your speakers, and an always-on listener daemon turns your speech into
+messages Claude receives while it works — powered by the
+[Grok (xAI) Voice API](https://docs.x.ai/developers/rest-api-reference/inference/voice)
+and a live "tactical HUD" dashboard at <http://127.0.0.1:8765>.
+
+## Architecture (fat daemon / thin server)
+
+All speech logic lives in one **listener daemon** — the single owner of the
+microphone, the playback queue (one voice at a time, never talking over you)
+and the speakers. The MCP server is a thin messenger that forwards `speak`
+requests over localhost HTTP. Claude Code hooks deliver your transcribed
+speech back into the session.
+
+```
+mic -> VAD -> Grok STT -> transcript queue -> HTTP 127.0.0.1:8765
+                                   ^ polled by Claude Code hooks
+speak (MCP) -> POST /speak -> daemon queue -> Grok TTS -> speakers
+```
 
 ## Tools
 
 | Tool | What it does |
 | --- | --- |
-| `speak(text, voice_id?, language?, speed?)` | Synthesizes `text` via `POST /v1/tts` and plays it through the speakers (`afplay` on macOS, `mpv`/`ffplay` elsewhere). |
-| `list_voices()` | Lists the built-in Grok voices (`ara`, `eve`, `leo`, `rex`, `sal`, …). |
+| `speak(text, interrupt?)` | Queues `text` for speech and waits until it has played. Voice/speed/language come from the daemon (dashboard character), not the call. |
+| `announce(text)` | Fire-and-forget variant: returns immediately, plays in the background. |
+| `change_voice(voice_id)` | Deliberately switches this agent's voice (persists, shows on the dashboard). |
+| `list_voices()` | Lists the built-in Grok voices (`ara`, `eve`, `leo`, `rex`, …). |
 
-## Roadmap
+## Installation
 
-- **v1 (done)** — voice output: Claude speaks short summaries to you.
-- **v2 (done)** — voice input: an always-on listener daemon + Claude Code hooks,
-  so you can talk to Claude hands-free while it works.
+Requires Python 3.13 and [uv](https://docs.astral.sh/uv/). The xAI API key is
+**not** configured anywhere in the shell — the dashboard asks for it on first
+contact and stores it in `~/.config/grok-voice/credentials.json`.
 
-## v2: how voice input works
-
-MCP has no push mechanism, so the listener is a separate daemon and the
-"push" is done by Claude Code hooks:
-
-```
-mic -> VAD (energy, adaptive noise floor) -> Grok STT (POST /v1/stt)
-    -> transcript queue -> HTTP on 127.0.0.1:8765
-         ^ polled by hooks:
-           - PostToolUse: injects queued speech after every tool call
-           - Stop: keeps the conversation alive at turn boundaries; two modes
-             via GROK_VOICE_STOP_MODE:
-               sync   — blocks the turn end while polling (30s / 2s when
-                        voice is inactive)
-               rewake — asyncRewake background hook: the turn ends instantly,
-                        the hook polls for up to 5 min and wakes the model
-                        when you speak (experimental)
-```
-
-Start the daemon (first run triggers the macOS microphone permission prompt):
+### macOS
 
 ```bash
+git clone <this repo> && cd grok-voice-mcp
+uv sync
+
+# 1. start the daemon (first run triggers the mic permission prompt)
 uv run grok-voice-listener
+
+# 2. register the MCP server in Claude Code
+claude mcp add grok-voice --scope user \
+  -- uv run --project "$PWD" grok-voice-mcp
+
+# 3. open the dashboard and paste your xAI API key (console.x.ai)
+open http://127.0.0.1:8765
 ```
 
-The hook scripts live in `hooks/` (stdlib-only, run on system python3) and are
-registered in `~/.claude/settings.json`. They fail open: with the daemon down
-they exit silently in under a second, so keyboard-only sessions are unaffected.
+Playback uses the built-in `afplay`; installing `mpv` or `ffplay` (optional)
+enables lower-latency streaming playback.
 
-## Setup
-
-Requires Python 3.13 (pyenv) and [uv](https://docs.astral.sh/uv/).
+### Linux (native)
 
 ```bash
-uv sync --all-groups
+sudo apt install libportaudio2 mpv     # PortAudio for the mic, mpv for playback
+git clone <this repo> && cd grok-voice-mcp
+uv sync
+uv run grok-voice-listener
+claude mcp add grok-voice --scope user \
+  -- uv run --project "$PWD" grok-voice-mcp
+xdg-open http://127.0.0.1:8765         # paste your xAI API key on first contact
 ```
+
+### Linux (Docker)
+
+The daemon can run in a container, borrowing the host's microphone and
+speakers through the PulseAudio/PipeWire socket:
+
+```bash
+docker compose up -d
+xdg-open http://127.0.0.1:8765   # paste your xAI API key on first contact
+```
+
+Requirements: a user sound server on the host (PulseAudio, or PipeWire with
+its pulse-compat socket — the default on modern desktop distros). The compose
+file mounts `$XDG_RUNTIME_DIR/pulse/native` plus the Pulse auth cookie, and
+keeps the API key/settings/history in a named volume.
+
+Not for macOS: Docker there runs in a VM with no host audio devices — use the
+native install instead.
+
+### Hooks (voice input)
+
+The hook scripts live in `hooks/` (they poll the daemon's queue and inject
+your speech into the session) and are registered in `~/.claude/settings.json`:
+`PostToolUse` delivers speech while Claude works, `Stop` wakes it when you
+speak after a turn ends. They fail open — with the daemon down they exit
+silently, so keyboard-only sessions are unaffected.
+
+## Dashboard
+
+Everything is controlled from <http://127.0.0.1:8765> (source in `dashboard/`,
+Vue 3; the legacy dashboard remains at `/legacy`):
+
+- live conversation log (replay ▶ / stop ⏹ / recall ✕ on queued messages),
+- real-time oscilloscope + spectrum fed by the actual mic level,
+- big MUTE MIC and MUTE CLAUDE (parks speech as UNHEARD, CATCH UP replays),
+- push-to-talk (hold the button or the space bar) vs automatic VAD turns,
+- per-agent character (voice, speed, personality gauges), microphone picker,
+- costs, latencies, session ring, API-key settings.
 
 ## Configuration
 
-Environment variables (set them in the MCP server config, not in the repo):
+Optional environment variables (most tuning lives in the dashboard and
+persists in `~/.config/grok-voice/`):
 
-| Variable | Required | Default | Meaning |
-| --- | --- | --- | --- |
-| `XAI_API_KEY` | yes | — | xAI API key |
-| `GROK_VOICE_DEFAULT_VOICE` | no | `eve` | Voice used when the tool call doesn't specify one |
-| `GROK_VOICE_DEFAULT_LANGUAGE` | no | `en` | BCP-47 language code, or `auto` |
-| `GROK_VOICE_LISTENER_PORT` | no | `8765` | Port of the listener daemon's queue API |
-| `GROK_VOICE_STT_LANGUAGE` | no | auto | Language hint for transcription (e.g. `pl`) |
-| `GROK_VOICE_STOP_WAIT_SECONDS` | no | `30` | How long the Stop hook waits for speech |
-
-## Registering in Claude Code
-
-```bash
-claude mcp add grok-voice --scope user \
-  -e XAI_API_KEY=xai-... \
-  -- uv run --project /path/to/grok-voice-mcp grok-voice-mcp
-```
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `GROK_VOICE_LISTENER_PORT` | `8765` | Port of the daemon's HTTP API |
+| `GROK_VOICE_BIND` | `127.0.0.1` | HTTP bind address (`0.0.0.0` in Docker) |
+| `GROK_VOICE_STT_LANGUAGE` | auto | Initial language hint for transcription |
+| `GROK_VOICE_MODE` | `batch` | Initial STT mode (`batch`/`live`) |
+| `GROK_VOICE_STOP_WAIT_SECONDS` | `30` | How long the Stop hook waits for speech |
+| `GROK_VOICE_NO_AUTOSPAWN` | — | Don't auto-start the daemon from the server |
 
 ## Development
 
 ```bash
-uv run pytest        # unit tests (offline, API mocked)
-uv run ruff check .
+uv run pytest                      # python tests (offline, API mocked)
+cd dashboard && npm test           # frontend tests (Vitest)
+cd dashboard && npm run storybook  # component workbench
+cd dashboard && npm run build      # the daemon serves dashboard/dist at /
 ```
 
 Live smoke test (spends API credits, plays audio):
 
 ```bash
-XAI_API_KEY=xai-... uv run python scripts/smoke_test.py "Hello from Grok"
+uv run python scripts/smoke_test.py "Hello from Grok"
 ```
-
-## Docker (Linux only)
-
-The listener daemon can run in a container, borrowing the host's microphone
-and speakers through the PulseAudio/PipeWire socket:
-
-```bash
-docker compose up -d
-open http://127.0.0.1:8765   # paste your xAI API key on first contact
-```
-
-Requirements: a user sound server on the host (PulseAudio, or PipeWire with
-its pulse-compat socket — the default on modern desktop distros). The
-compose file mounts `$XDG_RUNTIME_DIR/pulse/native` plus the Pulse auth
-cookie, and keeps the API key/settings/history in a named volume.
-
-Not for macOS: Docker there runs in a VM with no host audio devices — use
-the native install instead.
