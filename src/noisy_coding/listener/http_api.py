@@ -108,6 +108,34 @@ def save_characters(state: ListenerState) -> None:
         pass
 
 
+INTRO_FLAG = CONFIG_DIR / "intro-done"
+
+
+def _queue_first_contact_intro(state: ListenerState) -> None:
+    """First contact just completed — have Claude say hello.
+
+    The user is looking at the dashboard and the tab can already play
+    (pasting the key was the browser's autoplay gesture; the WS lease
+    needs no permission). The greeting rides the normal transcript queue
+    with a [DASHBOARD] prefix — a daemon event, not the user's speech —
+    and fires once per install (flag file survives restarts).
+    """
+    if INTRO_FLAG.exists():
+        return
+    state.add_transcript(
+        "[DASHBOARD] The user just finished first-contact setup and is "
+        "looking at the dashboard. Introduce yourself aloud with the "
+        "speak tool — welcome them to noisy-coding in one or two warm "
+        "sentences and ask them to click the amber ENABLE TAB AUDIO "
+        "banner so this tab can also become their microphone."
+    )
+    try:
+        INTRO_FLAG.parent.mkdir(parents=True, exist_ok=True)
+        INTRO_FLAG.touch()
+    except OSError:
+        pass
+
+
 def save_settings(state: ListenerState) -> None:
     """Persist tuning that must survive daemon restarts."""
     try:

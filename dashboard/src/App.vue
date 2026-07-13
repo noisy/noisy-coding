@@ -213,19 +213,34 @@ const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
 const browserAudio = useBrowserAudio();
-// The tab is nominated as an audio device but not actually connected —
-// the state every fresh Docker install boots into.
+// The SPEAKER side needs no permission and no gesture — connect the WS
+// lease the moment the page knows the tab is a nominated device, so
+// Claude's first words (the first-contact greeting) can play at once.
+let autoConnectTried = false;
+watch(status, (s) => {
+  if (autoConnectTried || !s) return;
+  if (s.input_device === "browser" || s.output_device === "browser") {
+    autoConnectTried = true; // once per page load; the banner is the retry
+    browserAudio.connect().catch(swallow);
+  }
+});
+// The banner covers what still needs the USER: the mic permission (and a
+// reconnect after a failed auto-connect).
 const tabAudioNeeded = computed(
   () =>
     !!status.value &&
     !unconfigured.value &&
-    (status.value.input_device === "browser" || status.value.output_device === "browser") &&
-    !browserAudio.active.value,
+    ((status.value.input_device === "browser" && !browserAudio.micLive.value) ||
+      (status.value.output_device === "browser" && !browserAudio.active.value)),
 );
 const tabAudioRoles = computed(() => {
   const roles = [];
-  if (status.value?.input_device === "browser") roles.push("microphone");
-  if (status.value?.output_device === "browser") roles.push("speaker");
+  if (status.value?.input_device === "browser" && !browserAudio.micLive.value) {
+    roles.push("microphone");
+  }
+  if (status.value?.output_device === "browser" && !browserAudio.active.value) {
+    roles.push("speaker");
+  }
   return roles.join(" and ");
 });
 async function enableTabAudio() {
