@@ -399,6 +399,14 @@ def main() -> None:
         run()
     except sd.PortAudioError as error:
         print(f"Cannot open microphone: {error}", file=sys.stderr)
+        print(
+            "Hint: no audio device/server reachable. In Docker on Linux, pass the "
+            "host's PulseAudio socket:\n"
+            "  -v $XDG_RUNTIME_DIR/pulse/native:/run/pulse/native "
+            "-e PULSE_SERVER=unix:/run/pulse/native\n"
+            "(see docker-compose.yml in the repo).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 

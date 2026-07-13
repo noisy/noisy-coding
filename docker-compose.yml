@@ -1,0 +1,29 @@
+# Linux-only: runs the grok-voice listener daemon in a container, borrowing
+# the host's microphone and speakers through the PulseAudio/PipeWire socket.
+#
+#   docker compose up -d
+#   open http://127.0.0.1:8765  → paste your xAI API key on first contact
+#
+# Requirements on the host: a user sound server (PulseAudio, or PipeWire
+# with its pulse-compat socket — the default on modern desktops).
+
+services:
+  grok-voice:
+    build: .
+    container_name: grok-voice
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      PULSE_SERVER: unix:/run/pulse/native
+      # GROK_VOICE_STT_LANGUAGE: pl   # optional: pin the STT language
+    volumes:
+      # Host sound server socket (PipeWire exposes the same pulse socket).
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native:/run/pulse/native
+      # Pulse auth cookie — required when the container's uid differs.
+      - ${HOME}/.config/pulse/cookie:/root/.config/pulse/cookie:ro
+      # API key, character, settings and history survive image rebuilds.
+      - grok-voice-config:/root/.config/grok-voice
+    restart: unless-stopped
+
+volumes:
+  grok-voice-config:

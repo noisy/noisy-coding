@@ -87,3 +87,21 @@ Live smoke test (spends API credits, plays audio):
 ```bash
 XAI_API_KEY=xai-... uv run python scripts/smoke_test.py "Hello from Grok"
 ```
+
+## Docker (Linux only)
+
+The listener daemon can run in a container, borrowing the host's microphone
+and speakers through the PulseAudio/PipeWire socket:
+
+```bash
+docker compose up -d
+open http://127.0.0.1:8765   # paste your xAI API key on first contact
+```
+
+Requirements: a user sound server on the host (PulseAudio, or PipeWire with
+its pulse-compat socket — the default on modern desktop distros). The
+compose file mounts `$XDG_RUNTIME_DIR/pulse/native` plus the Pulse auth
+cookie, and keeps the API key/settings/history in a named volume.
+
+Not for macOS: Docker there runs in a VM with no host audio devices — use
+the native install instead.

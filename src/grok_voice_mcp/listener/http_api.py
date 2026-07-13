@@ -1,6 +1,7 @@
 """Localhost HTTP API: transcript queue for the hooks + live dashboard."""
 
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -16,6 +17,9 @@ from grok_voice_mcp.listener.dashboard import DASHBOARD_HTML
 from grok_voice_mcp.listener.state import ListenerState
 
 DEFAULT_PORT = 8765
+# Bind address. Loopback by default; a Docker container must bind 0.0.0.0
+# or the published port can't reach it (set GROK_VOICE_BIND=0.0.0.0 there).
+BIND_ENV_VAR = "GROK_VOICE_BIND"
 # Mic-level frame cadence for the dashboard oscilloscope (~20 fps). A data
 # rate for smooth rendering, not coordination logic.
 MIC_STREAM_INTERVAL_SECONDS = 0.05
@@ -508,7 +512,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
 
 
 def start_http_api(state: ListenerState, port: int) -> ThreadingHTTPServer:
-    server = ThreadingHTTPServer(("127.0.0.1", port), _handler_class(state))
+    host = os.environ.get(BIND_ENV_VAR, "127.0.0.1")
+    server = ThreadingHTTPServer((host, port), _handler_class(state))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server
