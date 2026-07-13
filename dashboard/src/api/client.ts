@@ -4,7 +4,7 @@
  * at /next, proxied by Vite in development (see vite.config.ts).
  */
 
-import type { Character, DaemonStatus, SettingsPatch, Utterance } from "../types";
+import type { Character, DaemonStatus, InputDevice, SettingsPatch, Utterance } from "../types";
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
@@ -64,6 +64,11 @@ export function setMode(mode: "batch" | "live"): Promise<void> {
 
 export function setSettings(patch: SettingsPatch): Promise<void> {
   return post("/settings", patch);
+}
+
+export async function getDevices(): Promise<InputDevice[]> {
+  const body = await getJson<{ devices: InputDevice[] }>("/devices");
+  return body.devices;
 }
 
 export function setActiveAgent(name: string): Promise<void> {

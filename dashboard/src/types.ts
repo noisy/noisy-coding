@@ -22,6 +22,7 @@ export interface DaemonStatus {
   smart_turn_mode: "soft" | "hard";
   detection_mode: "auto" | "ptt";
   ptt_held: boolean;
+  input_device: string;
   language: string;
   agents: Record<string, number>;
   agent_labels: Record<string, string>;
@@ -59,5 +60,11 @@ export interface SettingsPatch {
   smart_turn?: number;
   smart_turn_mode?: "soft" | "hard";
   detection_mode?: "auto" | "ptt";
+  input_device?: string;
   language?: string;
+}
+
+export interface InputDevice {
+  name: string;
+  default: boolean;
 }

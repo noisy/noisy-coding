@@ -123,6 +123,16 @@ def test_claude_utterance_commits_on_creation():
     assert state.utterances()[0]["committed_at"] > 0.0
 
 
+def test_input_device_defaults_to_system_and_remembers_the_pick():
+    state = ListenerState()
+    assert state.input_device == ""
+
+    assert state.set_input_device("AirPods Pro") == "AirPods Pro"
+    assert state.input_device == "AirPods Pro"
+
+    assert state.set_input_device("") == ""  # back to system default
+
+
 def test_latency_tracking_keeps_the_last_measurement_per_kind():
     state = ListenerState()
     assert state.latency_ms == {"stt": None, "tts": None}

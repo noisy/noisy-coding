@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, saveApiKey, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback } from "./api/client";
+import { cancelTranscript, getDevices, saveApiKey, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback } from "./api/client";
+import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import AgentTabs from "./components/AgentTabs.vue";
@@ -177,6 +178,14 @@ const saveKey = (key: string) => saveApiKey(key).catch(swallow);
 const setLanguage = (event: Event) =>
   setSettings({ language: (event.target as HTMLSelectElement).value }).catch(swallow);
 
+// Microphone picker: the list refreshes when the select gains focus, so a
+// freshly connected headset shows up without reloading the page.
+const devices = ref<InputDevice[]>([]);
+const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
+onMounted(loadDevices);
+const setMic = (event: Event) =>
+  setSettings({ input_device: (event.target as HTMLSelectElement).value }).catch(swallow);
+
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
 const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
 // Languages supported by the Grok voice API (same set as the legacy UI).
@@ -311,6 +320,15 @@ const LANGUAGES: Record<string, string> = {
               <span class="lbl">SMART TURN</span>
               <select class="ctl small" :value="status?.smart_turn" @change="setSmartTurn">
                 <option v-for="v in SMART_TURN_OPTIONS" :key="v" :value="v">{{ v === 0 ? "OFF" : v.toFixed(1) }}</option>
+              </select>
+            </div>
+            <div class="ctlrow" title="Which input device the daemon listens to; switching swaps the stream live, no restart">
+              <span class="lbl">MICROPHONE</span>
+              <select class="ctl small" :value="status?.input_device ?? ''" @change="setMic" @focus="loadDevices">
+                <option value="">SYSTEM DEFAULT</option>
+                <option v-for="d in devices" :key="d.name" :value="d.name">
+                  {{ d.name.toUpperCase() }}{{ d.default ? " ◆" : "" }}
+                </option>
               </select>
             </div>
             <div class="ctlrow" title="Language for speech recognition and synthesis; auto-detect handles mixed Polish/English">

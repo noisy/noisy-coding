@@ -8,7 +8,8 @@ const DAEMON = "http://127.0.0.1:8765";
 const DAEMON_PATHS = [
   "/status", "/utterances", "/character", "/drain", "/events",
   "/stream", "/pause", "/resume", "/mute", "/mode", "/settings",
-  "/voice", "/active-agent",
+  "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
+  "/interrupt", "/voice-mute", "/credentials",
 ];
 
 export default defineConfig({

@@ -1,6 +1,8 @@
 """Localhost HTTP API: transcript queue for the hooks + live dashboard."""
 
 import json
+import subprocess
+import sys
 import threading
 import time
 from dataclasses import asdict
@@ -70,6 +72,28 @@ def notify_gender_change(
     )
 
 
+def list_input_devices() -> list:
+    """Fresh input-device list via a subprocess.
+
+    A new PortAudio instance sees devices plugged in after the daemon
+    started; the daemon's own (cached) instance would not — and it cannot
+    be re-initialized while the input stream is running.
+    """
+    script = (
+        "import json, sounddevice as sd; devices = sd.query_devices(); "
+        "default_in = sd.default.device[0]; "
+        "print(json.dumps([{'name': d['name'], 'default': i == default_in} "
+        "for i, d in enumerate(devices) if d['max_input_channels'] > 0]))"
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, timeout=10
+        )
+        return json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return []
+
+
 def save_characters(state: ListenerState) -> None:
     """Persist per-agent characters so voice choices survive restarts."""
     try:
@@ -92,6 +116,7 @@ def save_settings(state: ListenerState) -> None:
                     "tts_mode": state.tts_mode,
                     "smart_turn_mode": state.smart_turn_mode,
                     "detection_mode": state.detection_mode,
+                    "input_device": state.input_device,
                     "language": state.language,
                 }
             )
@@ -129,6 +154,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/character":
                 agent = parse_qs(url.query).get("agent", [None])[0]
                 self._respond({"character": state.character(agent)})
+            elif url.path == "/devices":
+                self._respond(
+                    {"devices": list_input_devices(), "selected": state.input_device}
+                )
             elif url.path == "/stream/mic":
                 self._stream_mic_levels()
             elif url.path == "/next":
@@ -162,6 +191,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "smart_turn_mode": state.smart_turn_mode,
                         "detection_mode": state.detection_mode,
                         "ptt_held": state.ptt_held,
+                        "input_device": state.input_device,
                         "language": state.language,
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
@@ -276,6 +306,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         state.release_ptt()  # leaving PTT never leaves a stale hold
                 if "language" in body:
                     result["language"] = state.set_language(str(body["language"]))
+                if "input_device" in body:
+                    result["input_device"] = state.set_input_device(str(body["input_device"]))
                 if result:
                     save_settings(state)
                     self._respond(result)

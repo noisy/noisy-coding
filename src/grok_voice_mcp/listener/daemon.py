@@ -197,6 +197,35 @@ def _finalize_stream(
     _log(f"[queued/live] ({seconds:.1f}s) {text}")
 
 
+def _open_input_stream(state: ListenerState, config: VadConfig, on_audio) -> sd.InputStream:
+    """Open the selected microphone, falling back to the system default.
+
+    The user's pick may vanish (unplugged headphones) — revert to the
+    default instead of dying; only a failure of the default propagates.
+    """
+    selected = state.input_device
+    options = {"device": selected} if selected else {}
+    try:
+        input_stream = sd.InputStream(
+            samplerate=config.sample_rate,
+            channels=1,
+            dtype="int16",
+            blocksize=config.frame_samples,
+            callback=on_audio,
+            **options,
+        )
+    except (sd.PortAudioError, ValueError) as error:
+        if not selected:
+            raise
+        _log(f"[mic] cannot open '{selected}': {error} — reverting to system default")
+        state.add_event("mic_error", f"cannot open '{selected}' — reverted to system default")
+        state.set_input_device("")
+        return _open_input_stream(state, config, on_audio)
+    input_stream.start()
+    _log(f"[mic] listening on {selected or 'system default'}")
+    return input_stream
+
+
 def run(config: VadConfig | None = None) -> None:
     config = config or VadConfig()
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
@@ -230,6 +259,8 @@ def run(config: VadConfig | None = None) -> None:
             state.set_smart_turn_mode(saved["smart_turn_mode"])
         if saved.get("detection_mode") in ("auto", "ptt"):
             state.set_detection_mode(saved["detection_mode"])
+        if "input_device" in saved:
+            state.set_input_device(str(saved["input_device"]))
         if "language" in saved:
             state.set_language(saved["language"])
     except (OSError, ValueError):
@@ -249,13 +280,9 @@ def run(config: VadConfig | None = None) -> None:
     _log(f"grok-voice-listener: mic on, API at http://127.0.0.1:{port}")
     _log("Endpoints: GET /drain /status, POST /speak /pause /resume. Ctrl+C to stop.")
 
-    with sd.InputStream(
-        samplerate=config.sample_rate,
-        channels=1,
-        dtype="int16",
-        blocksize=config.frame_samples,
-        callback=on_audio,
-    ):
+    active_input = _open_input_stream(state, config, on_audio)
+    active_device = state.input_device
+    try:
         try:
             current_utterance_id = 0
             stream: stt_stream.StreamingSession | None = None
@@ -263,6 +290,14 @@ def run(config: VadConfig | None = None) -> None:
             key_check_at = 0.0
             while True:
                 frame = frames.get()
+                if state.input_device != active_device:
+                    # The user picked another mic on the dashboard: swap
+                    # the input stream in place, no daemon restart.
+                    active_input.stop()
+                    active_input.close()
+                    active_input = _open_input_stream(state, config, on_audio)
+                    active_device = state.input_device
+                    continue  # this frame may still be the old mic's
                 now = time.monotonic()
                 if now >= key_check_at:
                     api_key_present = bool(credentials.api_key())
@@ -354,6 +389,9 @@ def run(config: VadConfig | None = None) -> None:
             server.shutdown()
             stt_executor.shutdown(wait=False)
             speech.shutdown()
+    finally:
+        active_input.stop()
+        active_input.close()
 
 
 def main() -> None:

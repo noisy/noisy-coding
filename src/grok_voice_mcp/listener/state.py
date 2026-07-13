@@ -70,6 +70,7 @@ class ListenerState:
         self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
         self._ptt_last_hold = float("-inf")  # monotonic time of last lease renewal
         self._language = ""  # "" = auto-detect
+        self._input_device = ""  # "" = system default microphone
         # Character is now PER AGENT: {agent_name: character_dict}. The special
         # key "" holds the character used in single-agent mode (no agents
         # registered) and as the template for a newly seen agent.
@@ -161,6 +162,16 @@ class ListenerState:
         with self._lock:
             self._language = language
             return self._language
+
+    @property
+    def input_device(self) -> str:
+        with self._lock:
+            return self._input_device
+
+    def set_input_device(self, name: str) -> str:
+        with self._lock:
+            self._input_device = str(name)
+            return self._input_device
 
     @property
     def detection_mode(self) -> str:
