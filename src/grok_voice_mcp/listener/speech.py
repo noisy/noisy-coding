@@ -191,8 +191,15 @@ def _render_and_play(
     # Claim the card BEFORE synthesis: the UI's button must flip to STOP as
     # soon as this playback is committed, not seconds later when audio starts.
     state.set_playing_utterance_id(source_id)
-    # Mute the listener while we play, or the mic transcribes our own speech.
-    state.set_paused(True)
+    # Mute the listener while we play, or the mic transcribes our own
+    # speech — EXCEPT tab-in + tab-out: the browser's echo cancellation
+    # removes Claude's voice from the capture, so the mic stays hot and
+    # the user can talk right through the playback (barge-in).
+    aec_covers_echo = (
+        state.output_device == "browser" and state.input_device == "browser"
+    )
+    if not aec_covers_echo:
+        state.set_paused(True)
     state.set_claude_speaking(True, agent)
     try:
         asyncio.run(
@@ -201,7 +208,8 @@ def _render_and_play(
                 resolved_speed, utterance_id,
             )
         )
-        time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
+        if not aec_covers_echo:  # nothing was muted — no echo tail to wait out
+            time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
     except Exception as error:
         _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
@@ -210,7 +218,8 @@ def _render_and_play(
     finally:
         state.set_playing_utterance_id(0)
         state.set_claude_speaking(False, agent)
-        state.set_paused(False)
+        if not aec_covers_echo:
+            state.set_paused(False)
     played_seconds = time.monotonic() - playing_since
     _log(f"[speak] done in {played_seconds:.1f}s")
     state.add_event("speak_done", f"głos '{resolved_voice}'")
