@@ -8,12 +8,14 @@ import os
 import queue
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import numpy as np
 import sounddevice as sd
 
+from grok_voice_mcp import credentials
 from grok_voice_mcp.listener import pricing, speech, stt, stt_stream
 import json
 
@@ -38,6 +40,9 @@ MIC_LEVEL_GAIN = 12.0
 # While the push-to-talk lease is held, silence must never close the
 # utterance — the button release is the only end-of-turn signal.
 PTT_NEVER_CLOSE_MS = 10**9
+# How often the audio loop re-reads whether an API key exists (a file
+# check 30×/s would be waste; a freshly pasted key goes live within this).
+API_KEY_CHECK_SECONDS = 2.0
 
 
 def _poll_credits(state: ListenerState) -> None:
@@ -212,8 +217,14 @@ def run(config: VadConfig | None = None) -> None:
         try:
             current_utterance_id = 0
             stream: stt_stream.StreamingSession | None = None
+            api_key_present = False
+            key_check_at = 0.0
             while True:
                 frame = frames.get()
+                now = time.monotonic()
+                if now >= key_check_at:
+                    api_key_present = bool(credentials.api_key())
+                    key_check_at = now + API_KEY_CHECK_SECONDS
                 if state.paused:
                     # A muted mic isn't listening — the oscilloscope must
                     # flatline instead of showing our own playback echo.
@@ -223,6 +234,12 @@ def run(config: VadConfig | None = None) -> None:
                 # 0..1, scaled so normal speech lands around 0.2-0.8.
                 rms = float(np.sqrt(np.mean((frame / 32768.0) ** 2)))
                 state.set_mic_level(min(1.0, rms * MIC_LEVEL_GAIN))
+                # No API key = no capture: the scopes stay alive (local mic
+                # level), but nothing gets segmented — no doomed bubbles
+                # stuck in "transcribing" during first contact.
+                if not api_key_present:
+                    state.set_recording(False)
+                    continue
                 # Push-to-talk: the held button IS the turn signal. Idle =
                 # cold mic (nothing captured); held = the utterance never
                 # closes on silence; release = close it right now.
