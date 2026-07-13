@@ -183,8 +183,7 @@ const setLanguage = (event: Event) =>
 const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
-const setMic = (event: Event) =>
-  setSettings({ input_device: (event.target as HTMLSelectElement).value }).catch(swallow);
+const pickMic = (name: string) => setSettings({ input_device: name }).catch(swallow);
 
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
 const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
@@ -322,15 +321,6 @@ const LANGUAGES: Record<string, string> = {
                 <option v-for="v in SMART_TURN_OPTIONS" :key="v" :value="v">{{ v === 0 ? "OFF" : v.toFixed(1) }}</option>
               </select>
             </div>
-            <div class="ctlrow" title="Which input device the daemon listens to; switching swaps the stream live, no restart">
-              <span class="lbl">MICROPHONE</span>
-              <select class="ctl small" :value="status?.input_device ?? ''" @change="setMic" @focus="loadDevices">
-                <option value="">SYSTEM DEFAULT</option>
-                <option v-for="d in devices" :key="d.name" :value="d.name">
-                  {{ d.name.toUpperCase() }}{{ d.default ? " ◆" : "" }}
-                </option>
-              </select>
-            </div>
             <div class="ctlrow" title="Language for speech recognition and synthesis; auto-detect handles mixed Polish/English">
               <span class="lbl">LANGUAGE</span>
               <select class="ctl small" :value="status?.language ?? ''" @change="setLanguage">
@@ -344,7 +334,14 @@ const LANGUAGES: Record<string, string> = {
       <div class="col-mid" :class="{ locked: unconfigured }">
         <HudPanel v-if="showSettings" index="08" title="SETTINGS">
           <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
-          <SettingsView :api-key-hint="status?.api_key_hint ?? ''" @save="saveKey" />
+          <SettingsView
+            :api-key-hint="status?.api_key_hint ?? ''"
+            :devices="devices"
+            :selected-device="status?.input_device ?? ''"
+            @save="saveKey"
+            @pick-device="pickMic"
+            @refresh-devices="loadDevices"
+          />
         </HudPanel>
         <HudPanel v-else index="04" title="COMM LOG · UTTERANCE STREAM">
           <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
@@ -700,7 +697,7 @@ footer { flex: none; }
   clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
 }
 .ctl:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
-.ctl.small { padding: 5px 10px; flex: 1; }
+.ctl.small { padding: 5px 10px; flex: 1; min-width: 0; max-width: 100%; }
 .ctl.on { color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); text-shadow: var(--glow-amber); }
 .ctl.danger { color: var(--red); border-color: rgba(255, 95, 107, 0.5); background: rgba(255, 95, 107, 0.08); }
 select.ctl { appearance: none; }
