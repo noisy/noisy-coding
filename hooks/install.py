@@ -1,29 +1,40 @@
 #!/usr/bin/env python3
-"""One-shot hook installer: python3 hooks/install.py
+"""One-shot hook installer.
 
-Registers the noisy-coding hooks in ~/.claude/settings.json (user scope),
-pointing at THIS checkout with the plain `python3` from PATH — every hook
-is stdlib-only and runs on python 3.9+. Idempotent: existing noisy-coding
-entries are replaced in place, everything else in the file is preserved.
-Restart Claude Code (or /mcp reconnect) afterwards.
+Local checkout:   python3 hooks/install.py
+No clone at all:  docker run --rm -v ~/.claude:/root/.claude \
+                    noisy/noisy-coding python3 /app/hooks/install.py --docker
+
+Registers the noisy-coding hooks in ~/.claude/settings.json (user scope).
+Default mode points at THIS checkout with the plain `python3` from PATH
+(every hook is stdlib-only, python 3.9+). --docker mode writes `docker
+exec` commands instead — the hooks run inside the long-lived noisy-coding
+container, so the host needs no python at all (Windows included); env is
+passed with -e, never POSIX VAR=… prefixes, so the commands survive
+cmd/PowerShell. Idempotent: existing noisy-coding entries are replaced in
+place, everything else in the file is preserved. Restart Claude Code (or
+/mcp reconnect) afterwards.
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 HOOKS_DIR = Path(__file__).resolve().parent
 SETTINGS = Path.home() / ".claude" / "settings.json"
+DOCKER_MODE = "--docker" in sys.argv
 
 
 def _command(script: str, env: str = "") -> dict:
-    prefix = f"{env} " if env else ""
-    return {
-        "type": "command",
-        "command": f"{prefix}python3 {HOOKS_DIR / script}",
-        "timeout": 5,
-    }
+    if DOCKER_MODE:
+        env_flag = f"-e {env} " if env else ""
+        command = f"docker exec -i {env_flag}noisy-coding python3 /app/hooks/{script}"
+    else:
+        prefix = f"{env} " if env else ""
+        command = f"{prefix}python3 {HOOKS_DIR / script}"
+    return {"type": "command", "command": command, "timeout": 5}
 
 
 def _entries() -> dict:

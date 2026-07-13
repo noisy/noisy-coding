@@ -42,3 +42,11 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           provenance: mode=max
           sbom: true
+      # Docker Hub does not read the repo README by itself — sync it, so
+      # the image page shows the same docker-first instructions.
+      - uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: noisy/noisy-coding
+          short-description: "Voice coding for Claude Code — talk to your agent while it works"

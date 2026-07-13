@@ -7,35 +7,50 @@ messages Claude receives **while it works** — powered by the
 [Grok (xAI) Voice API](https://docs.x.ai/developers/rest-api-reference/inference/voice)
 and a live "tactical HUD" dashboard.
 
-## Quick start (Docker — any OS)
+## Quick start (Claude Code plugin — any OS, nothing to clone)
 
-The container is hardware-free: **all audio flows through the dashboard
-page** (the browser tab is the microphone and the speaker). The host needs
-Docker, a browser and `git` — nothing else, on macOS, Windows and Linux
-alike. All configuration happens in the UI.
+The backend ships as a hardware-free Docker image ([`noisy/noisy-coding`](https://hub.docker.com/r/noisy/noisy-coding)):
+**all audio flows through the dashboard page** (the browser tab is the
+microphone and the speaker). The host needs Docker and a browser — no
+Python, no git, no environment variables. Inside Claude Code:
+
+```
+/plugin marketplace add noisy/noisy-coding
+/plugin install noisy-coding@noisy
+/noisy-coding:setup
+```
+
+The setup command starts the published image and walks you through first
+contact; the plugin itself carries the MCP connection and the voice hooks
+(they run inside the container via `docker exec`). Then finish in the
+browser at <http://127.0.0.1:8765>: paste your xAI API key
+(console.x.ai), pick **MICROPHONE: THIS BROWSER TAB** and
+**OUTPUT: THIS BROWSER TAB** in Settings — and just talk.
+
+### Plain Docker (no plugin, still nothing to clone)
 
 ```bash
-git clone https://github.com/noisy/noisy-coding && cd noisy-coding
+# 1. the whole backend in one box, straight from Docker Hub
+docker run -d --name noisy-coding \
+  -p 127.0.0.1:8765-8767:8765-8767 \
+  -v noisy-coding-config:/root/.config/noisy-coding \
+  --restart unless-stopped \
+  noisy/noisy-coding:latest
 
-# 1. the whole backend in one box
-docker compose up -d
-
-# 2. open the dashboard
-#    - paste your xAI API key when asked (console.x.ai)
-#    - Settings → MICROPHONE: THIS BROWSER TAB (allow the mic prompt)
-#    - Settings → OUTPUT: THIS BROWSER TAB
+# 2. dashboard: API key + THIS BROWSER TAB (mic and output) in Settings
 open http://127.0.0.1:8765
 
 # 3. connect Claude Code to the MCP server in the container
 claude mcp add --transport http --scope user noisy-coding http://127.0.0.1:8767/mcp
 
-# 4. register the hooks (this is how Claude HEARS you) and restart Claude Code
-python3 hooks/install.py
+# 4. register the hooks (this is how Claude HEARS you), restart Claude Code
+docker run --rm -v ~/.claude:/root/.claude noisy/noisy-coding \
+  python3 /app/hooks/install.py --docker
 ```
 
-That's it — talk. Voice, speed, personality, language, push-to-talk,
-transcription mode: everything lives in the dashboard and persists across
-restarts (in a Docker volume). No environment variables, no config files.
+Voice, speed, personality, language, push-to-talk, transcription mode:
+everything lives in the dashboard and persists across restarts (in a
+Docker volume). No environment variables, no config files.
 
 Notes:
 
