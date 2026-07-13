@@ -251,6 +251,7 @@ const LANGUAGES: Record<string, string> = {
 
       <div class="col-mid">
         <HudPanel v-if="showSettings" index="08" title="SETTINGS">
+          <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
           <SettingsView :api-key-hint="status?.api_key_hint ?? ''" @save="saveKey" />
         </HudPanel>
         <HudPanel v-else index="04" title="COMM LOG · UTTERANCE STREAM">
@@ -300,7 +301,7 @@ const LANGUAGES: Record<string, string> = {
           <StatusStrip :status="status" :offline="offline" />
         </HudPanel>
         <button class="ctl settingsbtn" :class="{ on: showSettings }" @click="showSettings = !showSettings">
-          {{ showSettings ? "✕ CLOSE SETTINGS" : "⚙ SETTINGS" }}
+          ⚙ SETTINGS
         </button>
       </div>
     </div>
@@ -516,6 +517,20 @@ footer { flex: none; }
   padding: 8px 12px;
 }
 .settingsbtn { width: 100%; letter-spacing: 0.24em; }
+.settings-x {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 1;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.settings-x:hover { color: var(--red); text-shadow: 0 0 8px rgba(255, 95, 107, 0.6); }
 .settingsbtn.on { color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); }
 
 .controls { display: grid; gap: 10px; }
