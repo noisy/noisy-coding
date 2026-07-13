@@ -9,6 +9,7 @@ import queue
 import sys
 import threading
 import time
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -43,6 +44,37 @@ PTT_NEVER_CLOSE_MS = 10**9
 # How often the audio loop re-reads whether an API key exists (a file
 # check 30×/s would be waste; a freshly pasted key goes live within this).
 API_KEY_CHECK_SECONDS = 2.0
+# Conversation history persistence: the log used to live only in memory,
+# so every daemon restart wiped the conversation from the dashboard.
+HISTORY_FILE = Path.home() / ".config" / "grok-voice" / "history.json"
+HISTORY_SAVE_SECONDS = 5.0
+
+
+def _load_history(state: ListenerState) -> None:
+    try:
+        items = json.loads(HISTORY_FILE.read_text())
+        if isinstance(items, list):
+            state.load_utterances(items)
+    except (OSError, ValueError):
+        pass
+
+
+def _save_history(state: ListenerState) -> None:
+    try:
+        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        HISTORY_FILE.write_text(json.dumps(state.snapshot_utterances()))
+    except OSError:
+        pass
+
+
+def _history_saver(state: ListenerState) -> None:
+    last_saved = ""
+    while True:
+        threading.Event().wait(HISTORY_SAVE_SECONDS)
+        snapshot = json.dumps(state.snapshot_utterances())
+        if snapshot != last_saved:
+            _save_history(state)
+            last_saved = snapshot
 
 
 def _poll_credits(state: ListenerState) -> None:
@@ -194,6 +226,8 @@ def run(config: VadConfig | None = None) -> None:
             state.set_language(saved["language"])
     except (OSError, ValueError):
         pass
+    _load_history(state)
+    threading.Thread(target=_history_saver, args=(state,), daemon=True).start()
     server = start_http_api(state, port)
     if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
         threading.Thread(target=_poll_credits, args=(state,), daemon=True).start()
@@ -308,6 +342,7 @@ def run(config: VadConfig | None = None) -> None:
         except KeyboardInterrupt:
             _log("\ngrok-voice-listener: stopping")
         finally:
+            _save_history(state)
             server.shutdown()
             stt_executor.shutdown(wait=False)
             speech.shutdown()

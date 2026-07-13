@@ -278,6 +278,32 @@ class ListenerState:
                     return utterance["id"]
             return 0
 
+    def snapshot_utterances(self) -> list[dict]:
+        with self._lock:
+            return [dict(u) for u in self._utterances]
+
+    def load_utterances(self, items: list[dict]) -> None:
+        """Restore history saved by a previous daemon run.
+
+        In-flight statuses are coerced to terminal ones — their work died
+        with the old process: a half-recorded user utterance is dropped
+        (hidden as noise), Claude speech that never played becomes UNHEARD
+        (still replayable via catch-up).
+        """
+        with self._lock:
+            for item in items:
+                utterance = dict(item)
+                status = str(utterance.get("status", "")).lower()
+                role = utterance.get("role")
+                if role == "user" and ("recording" in status or "transcribing" in status):
+                    utterance["status"] = "dropped — daemon restart"
+                if role == "claude" and any(
+                    k in status for k in ("queued", "synthesizing", "playing", "waiting")
+                ):
+                    utterance["status"] = "unheard — daemon restarted"
+                self._utterances.append(utterance)
+                self._utterance_seq = max(self._utterance_seq, int(utterance.get("id", 0)))
+
     def utterances(self, agent: str | None = None) -> list[dict]:
         with self._lock:
             items = [dict(u) for u in self._utterances]
