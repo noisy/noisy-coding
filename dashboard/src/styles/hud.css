@@ -1,4 +1,4 @@
-/* GROK-VOICE HUD — design tokens and global chrome.
+/* NOISY-CODING HUD — design tokens and global chrome.
    Style source of truth: design-concepts/scifi-hud.html */
 :root {
   /* Global UI scale (like browser zoom, but baked in): the whole HUD

@@ -2,7 +2,7 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import AgentTabs from "./AgentTabs.vue";
 
-const agents = { "id-a": "grok-voice-stabilization", "id-b": "personal" };
+const agents = { "id-a": "noisy-coding-stabilization", "id-b": "personal" };
 
 describe("AgentTabs", () => {
   it("renders a labeled tab per agent", () => {
@@ -11,7 +11,7 @@ describe("AgentTabs", () => {
     });
 
     const labels = wrapper.findAll("button").map((b) => b.text());
-    expect(labels).toEqual(["grok-voice-stabilization", "personal"]);
+    expect(labels).toEqual(["noisy-coding-stabilization", "personal"]);
   });
 
   it("emits select with the agent id on click", async () => {

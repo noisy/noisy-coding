@@ -6,7 +6,7 @@ import type { DaemonStatus, Utterance } from "../types";
 import { detectCues, snapshotUtterances, type CueName } from "./cueEvents";
 import { playCue } from "./cueSounds";
 
-const STORAGE_KEY = "grok-voice.audio-cues";
+const STORAGE_KEY = "noisy-coding.audio-cues";
 
 export interface CuePrefs {
   enabled: boolean;

@@ -9,7 +9,7 @@ export default meta;
 
 export const ThreeAgents: StoryObj<typeof AgentTabs> = {
   args: {
-    agents: { a: "grok-voice-stabilization", b: "personal", c: "work" },
+    agents: { a: "noisy-coding-stabilization", b: "personal", c: "work" },
     active: "a",
     viewed: "b",
     speaking: ["c"],

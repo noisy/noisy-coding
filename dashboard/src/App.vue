@@ -276,7 +276,7 @@ const LANGUAGES: Record<string, string> = {
        mic works, API-dependent sections sit dimmed behind the key prompt. -->
   <div v-if="unconfigured" class="setup-overlay">
     <div class="setup-box">
-      <div class="setup-title">GROK-VOICE · FIRST CONTACT</div>
+      <div class="setup-title">NOISY-CODING · FIRST CONTACT</div>
       <p class="setup-text">
         Talk to Claude out loud — it hears you, answers through your speakers,
         and this console shows the whole conversation live. The oscilloscope
@@ -316,7 +316,7 @@ const LANGUAGES: Record<string, string> = {
           </g>
         </svg>
         <div>
-          <div class="title">GROK-VOICE</div>
+          <div class="title">NOISY-CODING</div>
           <div class="sub">TACTICAL VOICE INTERFACE</div>
         </div>
       </div>
