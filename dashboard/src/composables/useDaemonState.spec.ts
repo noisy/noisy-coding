@@ -43,6 +43,7 @@ describe("useDaemonState", () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.startsWith("/status")) return jsonResponse(STATUS);
       if (url.startsWith("/utterances")) return jsonResponse({ utterances: [{ id: 1 }] });
+      if (url.startsWith("/events")) return jsonResponse({ events: [] });
       return jsonResponse({ character: { voice: "altair" } });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -58,6 +59,36 @@ describe("useDaemonState", () => {
     unmount();
   });
 
+  it("collects only error events from the daemon's event stream", async () => {
+    let served = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.startsWith("/status")) return jsonResponse(STATUS);
+        if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
+        if (url.startsWith("/events")) {
+          if (served) return jsonResponse({ events: [] });
+          served = true;
+          return jsonResponse({
+            events: [
+              { seq: 1, ts: 1, kind: "transcript", detail: "hello" },
+              { seq: 2, ts: 2, kind: "stt_error", detail: "HTTP 500" },
+            ],
+          });
+        }
+        return jsonResponse({ character: {} });
+      }),
+    );
+
+    const { state, unmount } = mountComposable();
+    await flush();
+
+    expect(state.errors.value).toEqual([
+      { seq: 2, ts: 2, kind: "stt_error", detail: "HTTP 500" },
+    ]);
+    unmount();
+  });
+
   it("flips offline when the daemon is unreachable and back when it answers", async () => {
     let failing = true;
     vi.stubGlobal(
@@ -66,6 +97,7 @@ describe("useDaemonState", () => {
         if (failing) throw new TypeError("fetch failed");
         if (url.startsWith("/status")) return jsonResponse(STATUS);
         if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
+        if (url.startsWith("/events")) return jsonResponse({ events: [] });
         return jsonResponse({ character: {} });
       }),
     );
@@ -85,6 +117,7 @@ describe("useDaemonState", () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.startsWith("/status")) return jsonResponse({ ...STATUS, active_agent: "agent-a" });
       if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
+      if (url.startsWith("/events")) return jsonResponse({ events: [] });
       return jsonResponse({ character: {} });
     });
     vi.stubGlobal("fetch", fetchMock);

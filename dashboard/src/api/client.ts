@@ -21,6 +21,18 @@ export function getStatus(): Promise<DaemonStatus> {
   return getJson<DaemonStatus>("/status");
 }
 
+export interface DaemonEvent {
+  seq: number;
+  ts: number;
+  kind: string;
+  detail: string;
+}
+
+export async function getEvents(sinceSeq: number): Promise<DaemonEvent[]> {
+  const body = await getJson<{ events: DaemonEvent[] }>(`/events?since=${sinceSeq}`);
+  return body.events;
+}
+
 export async function getUtterances(agent?: string): Promise<Utterance[]> {
   const query = agent ? `?agent=${encodeURIComponent(agent)}` : "";
   const body = await getJson<{ utterances: Utterance[] }>(`/utterances${query}`);

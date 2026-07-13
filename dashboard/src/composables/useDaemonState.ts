@@ -1,8 +1,12 @@
 /** Poll the daemon's REST API into reactive state (legacy cadence: 400 ms). */
 
 import { onMounted, onUnmounted, ref, type Ref } from "vue";
-import { getCharacter, getStatus, getUtterances, setActiveAgent } from "../api/client";
+import {
+  getCharacter, getEvents, getStatus, getUtterances, setActiveAgent, type DaemonEvent,
+} from "../api/client";
 import type { Character, DaemonStatus, Utterance } from "../types";
+
+const ERROR_LOG_SIZE = 20;
 
 export interface DaemonState {
   status: Ref<DaemonStatus | null>;
@@ -10,6 +14,7 @@ export interface DaemonState {
   character: Ref<Character | null>;
   offline: Ref<boolean>;
   viewedAgent: Ref<string | null>;
+  errors: Ref<DaemonEvent[]>; // newest last, errors only
   selectAgent: (name: string) => void;
 }
 
@@ -19,6 +24,8 @@ export function useDaemonState(pollMs = 400): DaemonState {
   const character = ref<Character | null>(null);
   const offline = ref(false);
   const viewedAgent = ref<string | null>(null);
+  const errors = ref<DaemonEvent[]>([]);
+  let lastEventSeq = 0;
 
   // Like the legacy dashboard: follow the active agent until the user pins
   // a tab by clicking it.
@@ -37,6 +44,16 @@ export function useDaemonState(pollMs = 400): DaemonState {
       const agent = viewedAgent.value ?? undefined;
       utterances.value = await getUtterances(agent);
       character.value = await getCharacter(agent);
+      // Surface system failures (STT/TTS errors) that otherwise die
+      // silently in the daemon's event log.
+      const fresh = await getEvents(lastEventSeq);
+      if (fresh.length) {
+        lastEventSeq = fresh[fresh.length - 1].seq;
+        const failures = fresh.filter((e) => e.kind.endsWith("_error"));
+        if (failures.length) {
+          errors.value = [...errors.value, ...failures].slice(-ERROR_LOG_SIZE);
+        }
+      }
     } catch {
       offline.value = true;
     }
@@ -55,5 +72,5 @@ export function useDaemonState(pollMs = 400): DaemonState {
   });
   onUnmounted(() => clearInterval(timer));
 
-  return { status, utterances, character, offline, viewedAgent, selectAgent };
+  return { status, utterances, character, offline, viewedAgent, errors, selectAgent };
 }

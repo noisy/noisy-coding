@@ -14,7 +14,15 @@ import StatusStrip from "./components/StatusStrip.vue";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, character, offline, viewedAgent, selectAgent } = useDaemonState();
+const { status, utterances, character, offline, viewedAgent, errors, selectAgent } = useDaemonState();
+
+const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
+function eventTime(ts: number): string {
+  const d = new Date(ts * 1000);
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map((n) => String(n).padStart(2, "0"))
+    .join(":");
+}
 const { level } = useMicStream();
 
 const levelPercent = computed(() => `${Math.round(level.value * 100)}%`);
@@ -319,7 +327,10 @@ const LANGUAGES: Record<string, string> = {
       <span>STT MODE <b>{{ status?.mode?.toUpperCase() ?? "—" }}</b></span>
       <span>LANGUAGE <b>{{ status?.language || "AUTO" }}</b></span>
       <span>QUEUE <b>{{ status?.queued ?? "—" }}</b></span>
-      <span style="margin-left: auto">{{ offline ? "◈ LINK DOWN" : "◈ ALL SYSTEMS NOMINAL" }}</span>
+      <span v-if="lastError" class="lasterr" :title="`${errors.length} error(s) this session`">
+        ⚠ {{ eventTime(lastError.ts) }} {{ lastError.kind.toUpperCase() }} · {{ lastError.detail }}
+      </span>
+      <span style="margin-left: auto">{{ offline ? "◈ LINK DOWN" : lastError ? "◈ DEGRADED — SEE LAST ERROR" : "◈ ALL SYSTEMS NOMINAL" }}</span>
     </footer>
   </div>
 </template>
@@ -589,4 +600,12 @@ footer {
 footer b { color: var(--cyan-dim); font-weight: 400; }
 footer .ok { color: var(--green); }
 footer .bad { color: var(--red); }
+footer .lasterr {
+  color: var(--red);
+  text-shadow: 0 0 8px rgba(255, 95, 107, 0.4);
+  max-width: 46ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
