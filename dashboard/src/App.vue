@@ -49,6 +49,18 @@ const unreadAgents = computed(() => {
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
 
+// Latency traffic lights, calibrated on observed healthy values
+// (STT ≈ 250-450 ms, TTS first-audio/render ≈ 1-1.5 s).
+const LATENCY_BANDS = {
+  stt: { warn: 600, bad: 1200 },
+  tts: { warn: 1500, bad: 3000 },
+} as const;
+function latencyTone(kind: keyof typeof LATENCY_BANDS, ms: number | null | undefined): string {
+  if (ms == null) return "";
+  const bands = LATENCY_BANDS[kind];
+  return ms >= bands.bad ? "bad" : ms >= bands.warn ? "warn" : "ok";
+}
+
 function formatAudioTime(seconds: number): string {
   if (seconds < 60) return `${seconds.toFixed(0)}s`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
@@ -373,11 +385,15 @@ const LANGUAGES: Record<string, string> = {
           <div class="telemetry">
             <div>
               <div class="k">STT LATENCY</div>
-              <div class="v">{{ status?.stt_latency_ms != null ? status.stt_latency_ms : "—" }}<small v-if="status?.stt_latency_ms != null"> ms</small></div>
+              <div class="v" :class="latencyTone('stt', status?.stt_latency_ms)">
+                {{ status?.stt_latency_ms != null ? status.stt_latency_ms : "—" }}<small v-if="status?.stt_latency_ms != null"> ms</small>
+              </div>
             </div>
             <div>
               <div class="k">TTS RENDER</div>
-              <div class="v">{{ status?.tts_latency_ms != null ? status.tts_latency_ms : "—" }}<small v-if="status?.tts_latency_ms != null"> ms</small></div>
+              <div class="v" :class="latencyTone('tts', status?.tts_latency_ms)">
+                {{ status?.tts_latency_ms != null ? status.tts_latency_ms : "—" }}<small v-if="status?.tts_latency_ms != null"> ms</small>
+              </div>
             </div>
             <div>
               <div class="k">YOU · STT</div>
@@ -639,6 +655,8 @@ footer { flex: none; }
 .telemetry .v small { font-size: 9px; color: var(--muted); }
 .telemetry .v.warn { color: var(--amber); text-shadow: 0 0 8px rgba(255, 180, 84, 0.35); }
 .telemetry .v.violet { color: var(--violet); text-shadow: 0 0 8px rgba(185, 140, 255, 0.35); }
+.telemetry .v.ok { color: var(--green); text-shadow: 0 0 8px rgba(77, 255, 180, 0.35); }
+.telemetry .v.bad { color: var(--red); text-shadow: 0 0 8px rgba(255, 95, 107, 0.45); }
 
 .setup-overlay {
   position: fixed;
