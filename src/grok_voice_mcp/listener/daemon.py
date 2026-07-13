@@ -33,6 +33,9 @@ from grok_voice_mcp.listener.vad import UtteranceSegmenter, VadConfig
 
 STT_LANGUAGE_ENV_VAR = "GROK_VOICE_STT_LANGUAGE"
 MODE_ENV_VAR = "GROK_VOICE_MODE"
+# Container/headless defaults; saved settings (newer intent) override them.
+INPUT_DEVICE_ENV_VAR = "GROK_VOICE_INPUT_DEVICE"
+OUTPUT_DEVICE_ENV_VAR = "GROK_VOICE_OUTPUT_DEVICE"
 MANAGEMENT_KEY_ENV_VAR = "GROK_VOICE_MANAGEMENT_KEY"
 TEAM_ID_ENV_VAR = "GROK_VOICE_TEAM_ID"
 CREDITS_POLL_SECONDS = 60.0
@@ -236,7 +239,14 @@ def _open_input_stream(
         )
     except (sd.PortAudioError, ValueError) as error:
         if not selected:
-            raise
+            # No selection and even the default won't open: this host has
+            # no usable audio hardware at all (a container, a headless
+            # box). The browser tab is the only possible microphone —
+            # switch to it instead of dying.
+            _log(f"[mic] no audio hardware ({error}) — the browser tab is the microphone")
+            state.add_event("mic_error", "no audio hardware — browser tab input")
+            state.set_input_device("browser")
+            return _open_input_stream(state, config, on_audio)
         _log(f"[mic] cannot open '{selected}': {error} — reverting to system default")
         state.add_event("mic_error", f"cannot open '{selected}' — reverted to system default")
         state.set_input_device("")
@@ -259,6 +269,8 @@ def run(config: VadConfig | None = None) -> None:
     state = ListenerState()
     state.set_mode(os.environ.get(MODE_ENV_VAR, "batch"))
     state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
+    state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
+    state.set_output_device(os.environ.get(OUTPUT_DEVICE_ENV_VAR, ""))
     try:
         saved_chars = json.loads(CHARACTER_FILE.read_text())
         # New format: {agent: character}. Old format: a single character dict.

@@ -37,6 +37,7 @@ const REAL_CLAUDE_STATUSES: Array<[string, string]> = [
   ["played", "played"],
   ["unheard — voice muted", "unheard"],
   ["unheard — daemon restarted", "unheard"],
+  ["unheard — no browser tab", "unheard"],
   ["error", "error"],
 ];
 

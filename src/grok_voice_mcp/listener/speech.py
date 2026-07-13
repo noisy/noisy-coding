@@ -30,6 +30,12 @@ ECHO_TAIL_SECONDS = 0.25
 # take the speaker. Counts from the actual end of recording, so speech long
 # after silence starts instantly.
 POST_TURN_GRACE_SECONDS = 1.5
+
+
+class NoAudioSink(Exception):
+    """Nowhere to play: no live browser tab AND system playback failed
+    (hardware-free host). The card parks as UNHEARD — CATCH UP replays it
+    once a tab connects."""
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
 # One worker = one utterance at a time; every speak in the whole system
@@ -210,6 +216,11 @@ def _render_and_play(
         )
         if not aec_covers_echo:  # nothing was muted — no echo tail to wait out
             time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
+    except NoAudioSink as error:
+        _log(f"[speak] parked unheard — no audio sink ({error})")
+        state.add_event("speak_unheard", "no browser tab, no speakers — parked")
+        state.update_utterance(utterance_id, status="unheard — no browser tab")
+        return resolved_voice
     except Exception as error:
         _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
@@ -269,6 +280,18 @@ async def _synthesize_and_play(
             # No live tab took the clip — never lose speech: fall back to
             # the system speakers and say so in the event log.
             state.add_event("speak_fallback", "no browser tab — system speakers")
+            state.add_event("speak_audio", detail)
+            state.update_utterance(
+                utterance_id, status="playing through speakers…", detail=detail
+            )
+            try:
+                await playback.play(audio.audio, audio.content_type)
+            except Exception as error:
+                # Hardware-free host (container): there is NOTHING to play
+                # through right now. Park, don't error — the speech is
+                # synthesized and waits for CATCH UP once a tab connects.
+                raise NoAudioSink(str(error)) from error
+            return
         state.add_event("speak_audio", detail)
         state.update_utterance(
             utterance_id, status="playing through speakers…", detail=detail
