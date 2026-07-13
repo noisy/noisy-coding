@@ -21,38 +21,50 @@ const age = computed(() => {
 </script>
 
 <template>
-  <div v-if="activity" class="actline" :title="activity.text">
+  <!-- One-line pseudo-bubble at the bottom of the feed: explains a missing
+       reply ("he's busy doing X") right where you'd expect the reply. -->
+  <div
+    v-if="activity"
+    class="busyrow"
+    title="Claude reads your speech while working; the reply comes when he's done."
+  >
     <span class="pulse" />
-    <span class="txt">{{ activity.text }}</span>
+    <span class="txt">CLAUDE IS BUSY — {{ activity.text }}</span>
     <span class="age">{{ age }}</span>
   </div>
 </template>
 
 <style scoped>
-.actline {
+.busyrow {
+  align-self: flex-start;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 9px;
+  max-width: 88%;
+  padding: 6px 12px;
   font-size: 9.5px;
   letter-spacing: 0.14em;
   color: var(--muted);
+  border: 1px dashed rgba(185, 140, 255, 0.35);
+  border-left: 2px solid var(--violet-dim);
+  background: rgba(185, 140, 255, 0.04);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
 }
 .pulse {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex: none;
-  background: var(--cyan);
-  box-shadow: 0 0 6px var(--cyan);
+  background: var(--violet);
+  box-shadow: 0 0 6px var(--violet);
   animation: act-pulse 1.2s ease-in-out infinite;
 }
 .txt {
-  color: var(--cyan-dim);
+  color: rgba(185, 140, 255, 0.75);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.age { margin-left: auto; flex: none; color: rgba(93, 127, 150, 0.7); }
+.age { flex: none; color: rgba(93, 127, 150, 0.7); }
 @keyframes act-pulse { 50% { opacity: 0.35; } }
 </style>

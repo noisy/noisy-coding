@@ -390,11 +390,10 @@ const LANGUAGES: Record<string, string> = {
             :unread="unreadAgents"
             @select="selectAgent"
           />
-          <!-- Placement provisional — Krzysztof will pick the final spot. -->
-          <ActivityLine :activity="status?.activity?.[viewedAgent ?? ''] ?? null" />
           <ConversationLog
             :utterances="utterances"
             :playing-id="status?.playing_utterance_id ?? 0"
+            :activity="status?.activity?.[viewedAgent ?? ''] ?? null"
             @replay="replay"
             @cancel="cancel"
           />

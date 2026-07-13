@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { Utterance } from "../types";
+import ActivityLine from "./ActivityLine.vue";
 import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
 const props = withDefaults(
-  defineProps<{ utterances: Utterance[]; playingId?: number }>(),
-  { playingId: 0 },
+  defineProps<{
+    utterances: Utterance[];
+    playingId?: number;
+    activity?: { text: string; at: number } | null;
+  }>(),
+  { playingId: 0, activity: null },
 );
 defineEmits<{ replay: [utterance: Utterance]; cancel: [utterance: Utterance] }>();
 
@@ -103,7 +108,8 @@ onMounted(scrollToBottom);
 watch(
   () => {
     const last = ordered.value[ordered.value.length - 1];
-    return last ? `${last.id}:${last.updated_at}` : "";
+    // The busy row appearing/changing also grows the feed's bottom.
+    return `${last ? `${last.id}:${last.updated_at}` : ""}|${props.activity?.text ?? ""}`;
   },
   async () => {
     await nextTick();
@@ -134,6 +140,7 @@ watch(
           @replay="$emit('replay', $event)"
         />
       </template>
+      <ActivityLine :activity="activity" />
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
     </div>
     <button

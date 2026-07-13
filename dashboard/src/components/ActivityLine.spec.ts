@@ -8,13 +8,13 @@ describe("ActivityLine", () => {
       props: { activity: { text: "Edit · App.vue", at: Date.now() / 1000 - 3 } },
     });
 
-    expect(wrapper.find(".txt").text()).toBe("Edit · App.vue");
+    expect(wrapper.find(".txt").text()).toBe("CLAUDE IS BUSY — Edit · App.vue");
     expect(wrapper.find(".age").text()).toMatch(/^\d+s$/);
   });
 
   it("renders nothing when the agent is idle", () => {
     const wrapper = mount(ActivityLine, { props: { activity: null } });
 
-    expect(wrapper.find(".actline").exists()).toBe(false);
+    expect(wrapper.find(".busyrow").exists()).toBe(false);
   });
 });
