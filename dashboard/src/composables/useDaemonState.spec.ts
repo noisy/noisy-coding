@@ -42,7 +42,8 @@ describe("useDaemonState", () => {
   it("polls status, utterances and character for the viewed agent", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.startsWith("/status")) return jsonResponse(STATUS);
-      if (url.startsWith("/utterances")) return jsonResponse({ utterances: [{ id: 1 }] });
+      if (url.startsWith("/utterances"))
+        return jsonResponse({ utterances: [{ id: 1, agent: "agent-a" }, { id: 2, agent: "agent-b" }] });
       if (url.startsWith("/events")) return jsonResponse({ events: [] });
       return jsonResponse({ character: { voice: "altair" } });
     });
@@ -53,7 +54,8 @@ describe("useDaemonState", () => {
 
     expect(state.status.value?.active_agent).toBe("agent-a");
     expect(state.viewedAgent.value).toBe("agent-a"); // follows active until pinned
-    expect(state.utterances.value).toEqual([{ id: 1 }]);
+    expect(state.utterances.value).toEqual([{ id: 1, agent: "agent-a" }]); // viewed slice
+    expect(state.allUtterances.value).toHaveLength(2); // full list for badges
     expect(state.character.value?.voice).toBe("altair");
     expect(state.offline.value).toBe(false);
     unmount();
