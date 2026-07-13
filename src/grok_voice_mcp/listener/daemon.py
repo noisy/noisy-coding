@@ -306,40 +306,47 @@ def run(config: VadConfig | None = None) -> None:
             api_key_present = False
             key_check_at = 0.0
             last_frame_at = time.monotonic()
+
+            def reopen_input(reason: str, kind: str = "mic") -> None:
+                nonlocal active_input, active_device, segmenter, stream, last_frame_at
+                _log(f"[mic] {reason} — reopening input stream")
+                state.add_event(kind, f"input reopened: {reason}")
+                # New stream = new acoustics: the adaptive noise floor
+                # calibrated on the old device is void — a dead device's
+                # digital silence anchors it near zero, after which every
+                # ambient sound reads as speech and the utterance never
+                # closes. Fresh segmenter; a half-recorded utterance is
+                # closed out honestly.
+                if segmenter.is_recording:
+                    state.update_utterance(
+                        current_utterance_id, status="dropped — mic changed"
+                    )
+                if stream is not None:
+                    stream.abort()
+                    stream = None
+                segmenter = UtteranceSegmenter(config)
+                state.set_recording(False)
+                active_input.stop()
+                active_input.close()
+                active_input = _open_input_stream(state, config, on_audio)
+                active_device = state.input_device
+                last_frame_at = time.monotonic()
+
             while True:
                 try:
                     frame = frames.get(timeout=FRAME_WAIT_SECONDS)
                 except queue.Empty:
-                    # Input stream died silently: unstick the turn state,
-                    # close any half-recorded utterance with what we have,
-                    # and reopen the mic.
-                    _log("[mic] no audio frames — input stream stalled, reopening")
-                    state.add_event("mic_error", "input stream stalled — reopened")
-                    state.set_recording(False)
-                    if segmenter.is_recording:
-                        segmenter.request_close()
-                    active_input.stop()
-                    active_input.close()
-                    active_input = _open_input_stream(state, config, on_audio)
-                    active_device = state.input_device
-                    last_frame_at = time.monotonic()
+                    reopen_input("no audio frames (stream stalled)", kind="mic_error")
                     continue
                 now = time.monotonic()
                 frame_gap = now - last_frame_at
                 last_frame_at = now
                 if state.input_device != active_device or frame_gap > AUDIO_GAP_REOPEN_SECONDS:
-                    # Reopen the input stream: either the user picked
-                    # another mic on the dashboard, or the audio flow
-                    # starved (sleep/wake, device unplugged) and the old
-                    # stream can't be trusted anymore.
-                    if frame_gap > AUDIO_GAP_REOPEN_SECONDS:
-                        _log(f"[mic] {frame_gap:.0f}s audio gap (sleep/device change?) — reopening input stream")
-                        state.add_event("mic", f"reopened input after a {frame_gap:.0f}s audio gap")
-                    active_input.stop()
-                    active_input.close()
-                    active_input = _open_input_stream(state, config, on_audio)
-                    active_device = state.input_device
-                    last_frame_at = time.monotonic()
+                    reopen_input(
+                        f"{frame_gap:.0f}s audio gap (sleep/device change?)"
+                        if frame_gap > AUDIO_GAP_REOPEN_SECONDS
+                        else "microphone switched"
+                    )
                     continue  # this frame may still be the old stream's
                 if now >= key_check_at:
                     api_key_present = bool(credentials.api_key())
