@@ -51,7 +51,7 @@ describe("ConversationLog", () => {
     expect(wrapper.findAll(".msg")).toHaveLength(1);
   });
 
-  it("places the busy row above an awaiting message, else at the bottom", () => {
+  it("keeps the busy row at the timeline's end, below unprocessed messages", () => {
     const activity = { text: "Edit · App.vue", at: 0 };
     const awaiting = { ...utterance(2, "user"), status: "ready — awaiting pickup", committed_at: 20 };
     const wrapper = mount(ConversationLog, {
@@ -59,9 +59,11 @@ describe("ConversationLog", () => {
     });
 
     const feedChildren = wrapper.find(".feed").element.children;
-    // busy row sits between message 1 and the awaiting message 2
-    expect(feedChildren[1].className).toContain("busyrow");
+    // one stable position: the very last feed element, right below the
+    // awaiting message it explains
+    expect(feedChildren[feedChildren.length - 1].className).toContain("busyrow");
 
+    // and it shows whenever Claude does anything — awaiting or not
     const noAwaiting = mount(ConversationLog, {
       props: { utterances: [utterance(1, "user")], activity },
     });
