@@ -11,7 +11,9 @@ import json
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
+from typing import Callable
 
 import websockets
 
@@ -91,10 +93,27 @@ async def _play_buffered(chunks: asyncio.Queue[bytes | None]) -> None:
 
 
 async def speak_streaming(
-    text: str, voice_id: str, language: str, speed: float
+    text: str,
+    voice_id: str,
+    language: str,
+    speed: float,
+    on_first_audio: Callable[[float], None] | None = None,
 ) -> None:
-    """Synthesize and play `text`, streaming audio as it is generated."""
+    """Synthesize and play `text`, streaming audio as it is generated.
+
+    `on_first_audio` fires once with the seconds from request to the first
+    audio chunk — the perceived render latency of the streaming path.
+    """
     api_key = tts._api_key()
+    started = time.monotonic()
+    first_audio_seen = False
+
+    def mark_first_audio() -> None:
+        nonlocal first_audio_seen
+        if not first_audio_seen:
+            first_audio_seen = True
+            if on_first_audio:
+                on_first_audio(time.monotonic() - started)
     query = (
         f"language={language or 'auto'}&voice={voice_id}"
         f"&codec=mp3&speed={speed}&optimize_streaming_latency=1"
@@ -113,11 +132,13 @@ async def speak_streaming(
             player = asyncio.create_task(_play_from_stream(chunks))
             async for message in ws:
                 if isinstance(message, bytes):
+                    mark_first_audio()
                     await chunks.put(message)
                     continue
                 payload = json.loads(message)
                 kind = payload.get("type")
                 if kind == "audio.delta":
+                    mark_first_audio()
                     await chunks.put(base64.b64decode(payload["delta"]))
                 elif kind == "audio.done":
                     break

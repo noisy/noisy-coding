@@ -228,7 +228,13 @@ async def _synthesize_and_play(
         state.update_utterance(
             utterance_id, status="playing through speakers…", detail=detail
         )
-        await tts_stream.speak_streaming(speech_text, voice, language, speed)
+        await tts_stream.speak_streaming(
+            speech_text,
+            voice,
+            language,
+            speed,
+            on_first_audio=lambda seconds: state.set_latency("tts", seconds * 1000),
+        )
     else:
         synth_started = time.monotonic()
         audio = await tts.synthesize(speech_text, voice, language, speed)
