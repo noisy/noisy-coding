@@ -187,6 +187,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "queued": state.queued_count,
                         "last_transcript_at": state.last_transcript_at,
                         "session_cost_usd": state.session_cost_usd,
+                        "usage": state.usage,
                         "credits_usd": state.credits_usd,
                         "mode": state.mode,
                         "tts_mode": state.tts_mode,

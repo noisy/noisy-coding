@@ -108,6 +108,7 @@ def _transcribe_and_enqueue(
     seconds = len(samples) / sample_rate
     cost = pricing.stt_cost_usd(seconds)
     state.add_cost("user", cost)
+    state.add_usage("stt_seconds", seconds)
     _log(f"[transcribing] {seconds:.1f}s of audio (batch)")
     state.add_event("transcribing", f"{seconds:.1f}s")
     state.update_utterance(
@@ -180,6 +181,7 @@ def _finalize_stream(
 ) -> None:
     cost = pricing.stt_streaming_cost_usd(seconds)
     state.add_cost("user", cost)
+    state.add_usage("stt_seconds", seconds)
     state.update_utterance(
         utterance_id,
         detail=f"{seconds:.1f}s audio · live",

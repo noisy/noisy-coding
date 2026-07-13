@@ -133,6 +133,17 @@ def test_input_device_defaults_to_system_and_remembers_the_pick():
     assert state.set_input_device("") == ""  # back to system default
 
 
+def test_usage_accumulates_audio_seconds_and_characters():
+    state = ListenerState()
+    assert state.usage == {"stt_seconds": 0.0, "tts_chars": 0}
+
+    state.add_usage("stt_seconds", 7.5)
+    state.add_usage("stt_seconds", 2.5)
+    state.add_usage("tts_chars", 120)
+
+    assert state.usage == {"stt_seconds": 10.0, "tts_chars": 120}
+
+
 def test_latency_tracking_keeps_the_last_measurement_per_kind():
     state = ListenerState()
     assert state.latency_ms == {"stt": None, "tts": None}

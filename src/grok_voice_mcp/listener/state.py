@@ -61,6 +61,8 @@ class ListenerState:
         self._utterances: deque[dict] = deque(maxlen=UTTERANCE_LOG_SIZE)
         self._utterance_seq = 0
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
+        # Volume behind the costs: audio seconds transcribed, chars spoken.
+        self._usage = {"stt_seconds": 0.0, "tts_chars": 0}
         self._credits_usd: float | None = None
         self._mode = "batch"
         self._tts_mode = "batch"
@@ -216,6 +218,15 @@ class ListenerState:
     def session_cost_usd(self) -> dict:
         with self._lock:
             return dict(self._session_cost_usd)
+
+    def add_usage(self, kind: str, amount: float) -> None:
+        with self._lock:
+            self._usage[kind] = self._usage.get(kind, 0) + amount
+
+    @property
+    def usage(self) -> dict:
+        with self._lock:
+            return dict(self._usage)
 
     @property
     def credits_usd(self) -> float | None:

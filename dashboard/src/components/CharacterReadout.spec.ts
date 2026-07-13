@@ -75,6 +75,7 @@ function status(overrides: Partial<DaemonStatus>): DaemonStatus {
     api_key_set: true, api_key_hint: "····1234",
     stt_latency_ms: null, tts_latency_ms: null, input_device: "",
     speaking_agents: [], queued: 0, session_cost_usd: { user: 0.01, claude: 0.02 },
+    usage: { stt_seconds: 0, tts_chars: 0 },
     credits_usd: 4.5, mode: "live", tts_mode: "live", end_silence_ms: 800,
     smart_turn: 0, smart_turn_mode: "soft", detection_mode: "auto", ptt_held: false,
     language: "pl", agents: {}, agent_labels: {}, active_agent: null,

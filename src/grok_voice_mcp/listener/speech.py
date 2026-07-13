@@ -177,6 +177,7 @@ def _render_and_play(
     state.add_event("speak", f"[{resolved_voice}] „{text}”")
     cost = pricing.tts_cost_usd(len(text))
     state.add_cost("claude", cost)
+    state.add_usage("tts_chars", len(text))
     state.update_utterance(utterance_id, status="synthesizing (Grok TTS)…", cost_usd=cost)
 
     speech_text = _emphasis_to_speech_tags(text)

@@ -14,6 +14,7 @@ export interface DaemonStatus {
   speaking_agents: string[];
   queued: number;
   session_cost_usd: { user: number; claude: number };
+  usage: { stt_seconds: number; tts_chars: number };
   credits_usd: number | null;
   mode: "batch" | "live";
   tts_mode: "batch" | "live";

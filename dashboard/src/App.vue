@@ -48,6 +48,15 @@ const unreadAgents = computed(() => {
 });
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
+
+function formatAudioTime(seconds: number): string {
+  if (seconds < 60) return `${seconds.toFixed(0)}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+}
+function formatChars(chars: number): string {
+  return chars < 10_000 ? `${chars}` : `${(chars / 1000).toFixed(1)}k`;
+}
 function eventTime(ts: number): string {
   const d = new Date(ts * 1000);
   return [d.getHours(), d.getMinutes(), d.getSeconds()]
@@ -372,11 +381,17 @@ const LANGUAGES: Record<string, string> = {
             </div>
             <div>
               <div class="k">YOU · STT</div>
-              <div class="v warn">${{ (status?.session_cost_usd.user ?? 0).toFixed(4) }}</div>
+              <div class="v warn">
+                ${{ (status?.session_cost_usd.user ?? 0).toFixed(4) }}
+                <small>· {{ formatAudioTime(status?.usage.stt_seconds ?? 0) }} AUDIO</small>
+              </div>
             </div>
             <div>
               <div class="k">CLAUDE · TTS</div>
-              <div class="v violet">${{ (status?.session_cost_usd.claude ?? 0).toFixed(4) }}</div>
+              <div class="v violet">
+                ${{ (status?.session_cost_usd.claude ?? 0).toFixed(4) }}
+                <small>· {{ formatChars(status?.usage.tts_chars ?? 0) }} CHARS</small>
+              </div>
             </div>
             <div>
               <div class="k">CONVERSATION TOTAL</div>
