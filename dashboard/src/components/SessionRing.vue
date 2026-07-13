@@ -18,7 +18,7 @@ function durationOf(u: Utterance): number {
 
 const turns = computed(() =>
   props.utterances
-    .filter((u) => u.committed_at > 0)
+    .filter((u) => u.committed_at > 0 && u.role !== "system")
     .sort((a, b) => a.committed_at - b.committed_at),
 );
 

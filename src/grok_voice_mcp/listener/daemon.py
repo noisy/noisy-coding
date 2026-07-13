@@ -234,6 +234,12 @@ def _open_input_stream(state: ListenerState, config: VadConfig, on_audio) -> sd.
         return _open_input_stream(state, config, on_audio)
     input_stream.start()
     _log(f"[mic] listening on {selected or 'system default'}")
+    # An inline system row in the conversation timeline: seeing "mic →
+    # Jabra" right above three garbled messages explains them instantly,
+    # without raising any alarm when nothing is actually wrong.
+    state.create_utterance(
+        "system", "", text=f"MIC → {selected or 'system default'}"
+    )
     return input_stream
 
 

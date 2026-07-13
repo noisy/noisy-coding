@@ -27,6 +27,11 @@ function commitTime(u: Utterance): number {
   return u.committed_at || u.started_at;
 }
 
+function sysTime(epochSeconds: number): string {
+  const d = new Date(epochSeconds * 1000);
+  return [d.getHours(), d.getMinutes()].map((n) => String(n).padStart(2, "0")).join(":");
+}
+
 const ordered = computed(() =>
   props.utterances
     .filter((u) => !isNoise(u.status))
@@ -111,8 +116,14 @@ watch(
   <div class="logroot">
     <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
       <template v-for="utterance in settled" :key="utterance.id">
+        <!-- System rows: small inline annotations (mic switched, …) that
+             sit in the timeline so oddities right below them explain
+             themselves — informative, never an alarm. -->
+        <div v-if="utterance.role === 'system'" class="sysrow">
+          <span>{{ utterance.text }} · {{ sysTime(utterance.committed_at) }}</span>
+        </div>
         <UserBubble
-          v-if="utterance.role === 'user'"
+          v-else-if="utterance.role === 'user'"
           :utterance="utterance"
           @cancel="$emit('cancel', $event)"
         />
@@ -175,6 +186,23 @@ watch(
   display: flex;
   flex-direction: column;
 }
+.sysrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.sysrow::before,
+.sysrow::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line), transparent);
+}
+
 .jumpdown {
   position: absolute;
   right: 28px; /* clear of the scrollbar with breathing room */

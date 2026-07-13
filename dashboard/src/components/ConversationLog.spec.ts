@@ -38,6 +38,19 @@ describe("ConversationLog", () => {
     expect(bubbles[1].classes()).toContain("accent-amber");
   });
 
+  it("renders system rows as inline annotations, not bubbles", () => {
+    const mic = {
+      ...utterance(2, "user"), role: "system" as const,
+      text: "MIC → Jabra Link 380", committed_at: 50,
+    };
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [utterance(1, "user"), mic] },
+    });
+
+    expect(wrapper.find(".sysrow").text()).toContain("MIC → Jabra Link 380");
+    expect(wrapper.findAll(".msg")).toHaveLength(1);
+  });
+
   it("shows an empty-state line without utterances", () => {
     const wrapper = mount(ConversationLog, { props: { utterances: [] } });
 

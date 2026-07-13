@@ -48,7 +48,10 @@ export function useDaemonState(pollMs = 400): DaemonState {
       // badges on background tabs.
       const all = await getUtterances();
       allUtterances.value = all;
-      utterances.value = agent ? all.filter((u) => u.agent === agent) : all;
+      // System rows (mic switched, …) belong to every tab's timeline.
+      utterances.value = agent
+        ? all.filter((u) => u.agent === agent || u.role === "system")
+        : all;
       character.value = await getCharacter(agent);
       // Surface system failures (STT/TTS errors) that otherwise die
       // silently in the daemon's event log.

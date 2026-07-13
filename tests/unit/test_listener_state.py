@@ -133,6 +133,15 @@ def test_input_device_defaults_to_system_and_remembers_the_pick():
     assert state.set_input_device("") == ""  # back to system default
 
 
+def test_system_rows_commit_on_creation():
+    state = ListenerState()
+    state.create_utterance("system", "", text="MIC → Jabra Link 380")
+
+    row = state.utterances()[0]
+    assert row["role"] == "system"
+    assert row["committed_at"] > 0.0  # joins the timeline immediately
+
+
 def test_usage_accumulates_audio_seconds_and_characters():
     state = ListenerState()
     assert state.usage == {"stt_seconds": 0.0, "tts_chars": 0}

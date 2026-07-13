@@ -272,11 +272,10 @@ class ListenerState:
                     "started_at": time.time(),
                     "updated_at": time.time(),
                     # When the message ENTERED the conversation, iMessage
-                    # style: Claude's counts on arrival (queued — the user
-                    # may consciously ignore it while composing); the
-                    # user's counts when their utterance is finished (0
-                    # until then — still in the composer).
-                    "committed_at": time.time() if role == "claude" else 0.0,
+                    # style: Claude's (and system rows') counts on arrival;
+                    # the user's counts when their utterance is finished
+                    # (0 until then — still in the composer).
+                    "committed_at": 0.0 if role == "user" else time.time(),
                 }
             )
             return self._utterance_seq

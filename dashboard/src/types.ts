@@ -32,7 +32,7 @@ export interface DaemonStatus {
 
 export interface Utterance {
   id: number;
-  role: "user" | "claude";
+  role: "user" | "claude" | "system";
   status: string;
   text: string;
   detail: string;
