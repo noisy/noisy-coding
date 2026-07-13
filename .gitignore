@@ -11,3 +11,11 @@ FEEDBACK.md
 .claude/settings.local.json
 
 .DS_Store
+
+# private working notes — never publish
+TODO.md
+FEEDBACK.md
+presentation-ideas.md
+design-concepts/
+HANDOFF-*.md
+ANALYSIS-*.md
