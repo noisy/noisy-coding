@@ -39,6 +39,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends libportaudio2 \
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src/ src/
+# Hooks live in the image too: the Claude Code plugin invokes them with
+# `docker exec`, so the HOST needs no python at all (Windows included).
+COPY hooks/ hooks/
 # Editable install keeps sources under /app, so the daemon finds the built
 # HUD at /app/dashboard/dist (same repo layout as a dev checkout).
 RUN uv pip install --system -e .
