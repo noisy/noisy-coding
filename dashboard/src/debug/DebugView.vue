@@ -13,6 +13,7 @@ import { computed, ref } from "vue";
 import ConversationLog from "../components/ConversationLog.vue";
 import HudPanel from "../components/HudPanel.vue";
 import {
+  canDeliverDuring,
   nextState,
   statusAllows,
   stateToStatus,
@@ -62,6 +63,16 @@ const EVENT_FIELDS: Record<string, (u: Utterance) => Partial<Utterance>> = {
   "claude.PLAYED": () => ({ duration_s: 8.2 }),
 };
 
+// Cross-machine invariants live outside the per-card machines: they gate
+// an event on the state of ANOTHER machine. Returns why the event is
+// impossible right now, or null when it may fire.
+function crossGuard(role: Role, event: string): string | null {
+  if (role === "user" && event === "DELIVER" && !canDeliverDuring(activity.value?.text ?? null)) {
+    return `a tool is executing ("${activity.value?.text}") — hooks drain only between tools or at turn end`;
+  }
+  return null;
+}
+
 function inject(role: Role, event: string) {
   const u = latest(role);
   if (!u) {
@@ -74,6 +85,11 @@ function inject(role: Role, event: string) {
     note(`⚠ UNEXPECTED ${role}.${event} in state "${from ?? u.status}" (id ${u.id})`);
     return;
   }
+  const blocked = crossGuard(role, event);
+  if (blocked) {
+    note(`⚠ UNEXPECTED ${role}.${event} — ${blocked}`);
+    return;
+  }
   const fields = EVENT_FIELDS[`${role}.${event}`]?.(u) ?? {};
   Object.assign(u, fields, { status: stateToStatus(role, to), updated_at: now() });
   if (role === "claude" && event === "PLAY") playingId.value = u.id;
@@ -83,7 +99,7 @@ function inject(role: Role, event: string) {
 
 function allows(role: Role, event: string): boolean {
   const u = latest(role);
-  return !!u && statusAllows(role, u.status, event);
+  return !!u && statusAllows(role, u.status, event) && crossGuard(role, event) === null;
 }
 
 interface EventButton {

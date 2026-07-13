@@ -250,3 +250,14 @@ export function validStatusChange(role: Role, fromStatus: string, toStatus: stri
   if (from === null || to === null) return false;
   return from === to || reachable(role, from, to);
 }
+
+// --- cross-machine invariants -------------------------------------------------
+
+/** Transcripts reach Claude only through HOOKS, and hooks run only between
+ * tools or at turn end: PostToolUse flips the activity line to THINKING…
+ * before draining, Stop clears it before draining. While a concrete tool
+ * line is showing, the tool is still executing and nothing can deliver.
+ * (Delivery DURING busy is by design — that's mid-work voice steering.) */
+export function canDeliverDuring(activityLine: string | null): boolean {
+  return activityLine === null || activityLine === "THINKING…";
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canDeliverDuring,
   canFire,
   legalEvents,
   nextState,
@@ -176,6 +177,17 @@ describe("validStatusChange (live transition audit)", () => {
 
   it("rejects changes involving unknown statuses", () => {
     expect(validStatusChange("user", "recording…", "beamed to the mothership")).toBe(false);
+  });
+});
+
+describe("canDeliverDuring (cross-machine invariant)", () => {
+  it("allows delivery between tools and at turn end — hooks run there", () => {
+    expect(canDeliverDuring("THINKING…")).toBe(true); // PostToolUse just drained
+    expect(canDeliverDuring(null)).toBe(true); // Stop cleared the line, then drained
+  });
+
+  it("forbids delivery while a tool is executing — no hook can drain", () => {
+    expect(canDeliverDuring("Edit · App.vue")).toBe(false);
   });
 });
 
