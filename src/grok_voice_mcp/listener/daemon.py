@@ -49,6 +49,10 @@ API_KEY_CHECK_SECONDS = 2.0
 # long-lived PortAudio stream can come back degraded (wrong device /
 # resampling), which garbles STT. Reopen instead of trusting it.
 AUDIO_GAP_REOPEN_SECONDS = 5.0
+# And when the stream dies OUTRIGHT (device disappears mid-utterance),
+# frames stop arriving at all — the loop must not block forever waiting
+# for one, or `recording` wedges True and the speech gate never releases.
+FRAME_WAIT_SECONDS = 2.0
 # Conversation history persistence: the log used to live only in memory,
 # so every daemon restart wiped the conversation from the dashboard.
 HISTORY_FILE = Path.home() / ".config" / "grok-voice" / "history.json"
@@ -297,7 +301,23 @@ def run(config: VadConfig | None = None) -> None:
             key_check_at = 0.0
             last_frame_at = time.monotonic()
             while True:
-                frame = frames.get()
+                try:
+                    frame = frames.get(timeout=FRAME_WAIT_SECONDS)
+                except queue.Empty:
+                    # Input stream died silently: unstick the turn state,
+                    # close any half-recorded utterance with what we have,
+                    # and reopen the mic.
+                    _log("[mic] no audio frames — input stream stalled, reopening")
+                    state.add_event("mic_error", "input stream stalled — reopened")
+                    state.set_recording(False)
+                    if segmenter.is_recording:
+                        segmenter.request_close()
+                    active_input.stop()
+                    active_input.close()
+                    active_input = _open_input_stream(state, config, on_audio)
+                    active_device = state.input_device
+                    last_frame_at = time.monotonic()
+                    continue
                 now = time.monotonic()
                 frame_gap = now - last_frame_at
                 last_frame_at = now
