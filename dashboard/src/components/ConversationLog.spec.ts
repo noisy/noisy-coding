@@ -56,6 +56,20 @@ describe("ConversationLog", () => {
     expect(texts).toEqual(["utterance 2", "utterance 1"]);
   });
 
+  it("keeps the composition in the slot even when a reply arrives after it", () => {
+    // User started composing at t=10; Claude's reply landed at t=20 and
+    // sorts after it — the reply must join the feed, not push the
+    // composition out of the slot.
+    const composing = { ...utterance(1, "user"), status: "recording…", started_at: 10, committed_at: 0 };
+    const reply = { ...utterance(2, "claude"), started_at: 20, committed_at: 20 };
+
+    const wrapper = mount(ConversationLog, { props: { utterances: [composing, reply] } });
+
+    expect(wrapper.find(".liveslot .msg").exists()).toBe(true);
+    expect(wrapper.findAll(".feed .msg")).toHaveLength(1);
+    expect(wrapper.find(".feed .txt").text()).toBe("utterance 2");
+  });
+
   it("renders the in-progress utterance in the reserved live slot", () => {
     const recording = { ...utterance(3, "user"), status: "recording…" };
     const wrapper = mount(ConversationLog, {

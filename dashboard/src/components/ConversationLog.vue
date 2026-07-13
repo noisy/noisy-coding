@@ -43,14 +43,15 @@ function isLiveUser(u: Utterance): boolean {
   return u.role === "user" && (s.includes("recording") || s.includes("transcribing"));
 }
 
+// The composer holds ANY in-progress user utterance — even when a Claude
+// message arrived meanwhile and sorted after it. The reply belongs in the
+// feed above; the composition stays pinned at the bottom until finished.
 const liveTail = computed(() => {
-  const last = ordered.value[ordered.value.length - 1];
-  return last && isLiveUser(last) ? last : null;
+  const live = ordered.value.filter(isLiveUser);
+  return live.length ? live[live.length - 1] : null;
 });
 
-const settled = computed(() =>
-  liveTail.value ? ordered.value.slice(0, -1) : ordered.value,
-);
+const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
 
 const feed = ref<HTMLElement | null>(null);
 
