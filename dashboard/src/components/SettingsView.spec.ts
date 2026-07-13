@@ -25,7 +25,7 @@ describe("SettingsView", () => {
     expect(wrapper.emitted("save")).toEqual([["xai-new-key-123"]]);
     // Back to the readonly masked field — the editable input is gone.
     expect(wrapper.find(".keyinput.stored").exists()).toBe(true);
-    expect(wrapper.findAll(".keyinput")).toHaveLength(1);
+    expect(wrapper.findAll("input.keyinput")).toHaveLength(1);
   });
 
   it("rejects obviously-not-a-key input without emitting", async () => {
