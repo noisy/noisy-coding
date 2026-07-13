@@ -2,12 +2,23 @@
 /** Chat-window sandbox at /debug.
 
 Drives the REAL ConversationLog with hand-clicked state transitions, no
-daemon involved. Every click lands in an event log (ms timestamps) that
-can be copied and pasted into a bug report: "with this sequence, X". */
+daemon involved. The chat machine (machines/chat.ts) decides which events
+are clickable: a button lights up only when the event is legal in the
+target card's current state, and anything injected illegally anyway lands
+in the log as ⚠ UNEXPECTED — that's the assumption-bug detector. Every
+click lands in an event log (ms timestamps) that can be copied and pasted
+into a bug report: "with this sequence, X". */
 
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import ConversationLog from "../components/ConversationLog.vue";
 import HudPanel from "../components/HudPanel.vue";
+import {
+  nextState,
+  statusAllows,
+  stateToStatus,
+  statusToState,
+  type Role,
+} from "../machines/chat";
 import type { Utterance } from "../types";
 
 const utterances = ref<Utterance[]>([]);
@@ -31,84 +42,112 @@ function now() {
   return Date.now() / 1000;
 }
 
-function latest(role: "user" | "claude"): Utterance | undefined {
+function latest(role: Role): Utterance | undefined {
   return [...utterances.value].reverse().find((u) => u.role === role);
 }
 
-function patch(u: Utterance | undefined, fields: Partial<Utterance>, action: string) {
+// --- event injection --------------------------------------------------------
+// One path for every lifecycle event: ask the machine for the next state,
+// write its canonical status onto the card, log the hop. An illegal event
+// (impossible via the disabled buttons, but not via future replays of a
+// pasted log) is the interesting case: it gets a ⚠ line instead of a patch.
+
+// Sandbox dressing per event — the fields the daemon would fill alongside
+// the status change.
+const EVENT_FIELDS: Record<string, (u: Utterance) => Partial<Utterance>> = {
+  "user.TRANSCRIBE": (u) => ({
+    text: (u.text ? u.text + " " : "") + SAMPLE_USER.split(" ").slice(0, 5).join(" "),
+  }),
+  "user.READY": () => ({ text: SAMPLE_USER, committed_at: now(), duration_s: 6.4 }),
+  "claude.PLAYED": () => ({ duration_s: 8.2 }),
+};
+
+function inject(role: Role, event: string) {
+  const u = latest(role);
   if (!u) {
-    note(`${action} — SKIPPED (no such message)`);
+    note(`⚠ ${role}.${event} — no ${role} card on stage`);
     return;
   }
-  Object.assign(u, fields, { updated_at: now() });
-  note(action, `(id ${u.id} → "${u.status}")`);
+  const from = statusToState(role, u.status);
+  const to = from === null ? null : nextState(role, from, event);
+  if (to === null) {
+    note(`⚠ UNEXPECTED ${role}.${event} in state "${from ?? u.status}" (id ${u.id})`);
+    return;
+  }
+  const fields = EVENT_FIELDS[`${role}.${event}`]?.(u) ?? {};
+  Object.assign(u, fields, { status: stateToStatus(role, to), updated_at: now() });
+  if (role === "claude" && event === "PLAY") playingId.value = u.id;
+  if (role === "claude" && event !== "PLAY" && playingId.value === u.id) playingId.value = 0;
+  note(`${role}.${event}`, `(id ${u.id}: ${from} → ${to})`);
 }
 
-// --- user lifecycle -------------------------------------------------------
+function allows(role: Role, event: string): boolean {
+  const u = latest(role);
+  return !!u && statusAllows(role, u.status, event);
+}
+
+interface EventButton {
+  event: string;
+  label: string;
+  dim?: boolean;
+}
+
+const USER_BUTTONS: EventButton[] = [
+  { event: "TRANSCRIBE", label: "+ PARTIAL TRANSCRIPT" },
+  { event: "READY", label: "READY (AWAITING)" },
+  { event: "DELIVER", label: "DELIVERED" },
+  { event: "EMPTY", label: "EMPTY (NOISE)", dim: true },
+  { event: "DROP", label: "DROPPED", dim: true },
+  { event: "STT_ERROR", label: "STT ERROR", dim: true },
+  { event: "CANCEL", label: "CANCELLED", dim: true },
+];
+
+const CLAUDE_BUTTONS: EventButton[] = [
+  { event: "HOLD", label: "HOLDING" },
+  { event: "SYNTHESIZE", label: "SYNTHESIZING" },
+  { event: "PLAY", label: "PLAYING" },
+  { event: "PLAYED", label: "PLAYED" },
+  { event: "UNHEARD", label: "UNHEARD", dim: true },
+  { event: "TTS_ERROR", label: "TTS ERROR", dim: true },
+];
+
+// --- card spawns ------------------------------------------------------------
+// The one mic can't record two segments at once — a new recording is legal
+// only while no user card is still composing. Claude messages just queue.
+const canStartRecording = computed(
+  () =>
+    !utterances.value.some((u) => {
+      if (u.role !== "user") return false;
+      const state = statusToState("user", u.status);
+      return state === "recording" || state === "transcribing";
+    }),
+);
+
 function userStartRecording() {
   const u: Utterance = {
-    id: nextId++, role: "user", status: "recording…", text: "",
+    id: nextId++, role: "user", status: stateToStatus("user", "recording"), text: "",
     detail: "VAD OPEN", cost_usd: 0, agent: null,
     started_at: now(), updated_at: now(), committed_at: 0,
   };
   utterances.value.push(u);
-  note("user.start_recording", `(id ${u.id})`);
-}
-function userTranscribing() {
-  const u = latest("user");
-  patch(u, {
-    status: "transcribing (live)…",
-    text: (u?.text ? u.text + " " : "") + SAMPLE_USER.split(" ").slice(0, 5).join(" "),
-  }, "user.transcribing_partial");
-}
-function userReady() {
-  patch(latest("user"), {
-    status: "ready — awaiting pickup", text: SAMPLE_USER, committed_at: now(), duration_s: 6.4,
-  }, "user.ready_awaiting");
-}
-function userDelivered() {
-  patch(latest("user"), { status: "delivered to Claude" }, "user.delivered");
-}
-function userEmpty() {
-  patch(latest("user"), { status: "empty — no speech" }, "user.empty_noise");
-}
-function userError() {
-  patch(latest("user"), { status: "transcription error" }, "user.stt_error");
-}
-function userCancelled() {
-  patch(latest("user"), { status: "cancelled by you" }, "user.cancelled");
+  note("user.START_RECORDING", `(id ${u.id})`);
 }
 
-// --- claude lifecycle -----------------------------------------------------
 function claudeNew() {
   const u: Utterance = {
-    id: nextId++, role: "claude", status: "queued", text: SAMPLE_CLAUDE,
+    id: nextId++, role: "claude", status: stateToStatus("claude", "queued"), text: SAMPLE_CLAUDE,
     detail: "", cost_usd: 0.0008, agent: null,
     started_at: now(), updated_at: now(), committed_at: now(),
   };
   utterances.value.push(u);
-  note("claude.arrives_queued", `(id ${u.id})`);
-}
-function claudeHolding() {
-  patch(latest("claude"), { status: "queued — waiting for you to finish" }, "claude.holding");
-}
-function claudeSynthesizing() {
-  patch(latest("claude"), { status: "synthesizing (Grok TTS)…" }, "claude.synthesizing");
-}
-function claudePlaying() {
-  const u = latest("claude");
-  patch(u, { status: "playing through speakers…" }, "claude.playing");
-  if (u) playingId.value = u.id;
-}
-function claudePlayed() {
-  patch(latest("claude"), { status: "played", duration_s: 8.2 }, "claude.played");
-  playingId.value = 0;
-}
-function claudeUnheard() {
-  patch(latest("claude"), { status: "unheard — voice muted" }, "claude.unheard");
+  note("claude.ARRIVES", `(id ${u.id}: queued)`);
 }
 
-// --- activity (start/stop pairs) -----------------------------------------
+// --- activity (start/stop pairs) -------------------------------------------
+// Deliberately NOT a machine: the activity line is last-writer-wins from
+// hooks that may fire in any order (parallel tool batches, parallel
+// agents, a restart mid-turn) — every sequence is legal, so every button
+// stays clickable.
 function startTool() {
   activity.value = { text: "Edit · App.vue", at: now() };
   note("activity.start_tool", "(Edit · App.vue)");
@@ -156,29 +195,36 @@ async function copyLog() {
   <div class="hud">
     <header class="dbg-header">
       <div class="title">GROK-VOICE // CHAT SANDBOX</div>
-      <span class="sub">/debug — clicks drive the real ConversationLog; nothing touches the daemon</span>
+      <span class="sub">/debug — clicks drive the real ConversationLog; buttons follow the chat machine; nothing touches the daemon</span>
     </header>
 
     <div class="dbg-cols">
       <HudPanel index="D1" title="EVENT INJECTOR" class="dbg-panel">
         <div class="group">
           <div class="glabel">USER MESSAGE</div>
-          <button class="ctl" @click="userStartRecording">START RECORDING</button>
-          <button class="ctl" @click="userTranscribing">+ PARTIAL TRANSCRIPT</button>
-          <button class="ctl" @click="userReady">READY (AWAITING)</button>
-          <button class="ctl" @click="userDelivered">DELIVERED</button>
-          <button class="ctl dim" @click="userEmpty">EMPTY (NOISE)</button>
-          <button class="ctl dim" @click="userError">STT ERROR</button>
-          <button class="ctl dim" @click="userCancelled">CANCELLED</button>
+          <button class="ctl" :disabled="!canStartRecording" @click="userStartRecording">
+            START RECORDING
+          </button>
+          <button
+            v-for="b in USER_BUTTONS"
+            :key="b.event"
+            class="ctl"
+            :class="{ dim: b.dim }"
+            :disabled="!allows('user', b.event)"
+            @click="inject('user', b.event)"
+          >{{ b.label }}</button>
         </div>
         <div class="group">
           <div class="glabel">CLAUDE MESSAGE</div>
           <button class="ctl" @click="claudeNew">ARRIVES (QUEUED)</button>
-          <button class="ctl" @click="claudeHolding">HOLDING</button>
-          <button class="ctl" @click="claudeSynthesizing">SYNTHESIZING</button>
-          <button class="ctl" @click="claudePlaying">PLAYING</button>
-          <button class="ctl" @click="claudePlayed">PLAYED</button>
-          <button class="ctl dim" @click="claudeUnheard">UNHEARD</button>
+          <button
+            v-for="b in CLAUDE_BUTTONS"
+            :key="b.event"
+            class="ctl"
+            :class="{ dim: b.dim }"
+            :disabled="!allows('claude', b.event)"
+            @click="inject('claude', b.event)"
+          >{{ b.label }}</button>
         </div>
         <div class="group">
           <div class="glabel">ACTIVITY (START/STOP)</div>
@@ -244,10 +290,16 @@ async function copyLog() {
   text-align: left;
   clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
 }
-.ctl:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.ctl:hover:not(:disabled) { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .ctl.dim { color: var(--muted); border-color: var(--line); }
 .ctl.warn { color: var(--amber); border-color: var(--amber-dim); }
 .ctl.danger { color: var(--red); border-color: rgba(255, 95, 107, 0.5); }
+.ctl:disabled {
+  /* Illegal in the current machine state — visibly off, not just inert. */
+  opacity: 0.28;
+  cursor: not-allowed;
+  text-shadow: none;
+}
 
 .loglines { margin-top: 10px; display: grid; gap: 3px; overflow-y: auto; }
 .logline { font-size: 9px; color: var(--muted); letter-spacing: 0.04em; white-space: nowrap; }
