@@ -10,7 +10,7 @@ DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50, "chatty": 50}
 DEFAULT_VOICE = "carina"
 DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
-DEFAULT_END_SILENCE_MS = 800
+DEFAULT_END_SILENCE_MS = 2000
 MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
 # An agent that hasn't drained the queue in this long is treated as gone.
 # Live agents poll far more often than this (PostToolUse + Stop rewake).
@@ -71,8 +71,8 @@ class ListenerState:
         # Volume behind the costs: audio seconds transcribed, chars spoken.
         self._usage = {"stt_seconds": 0.0, "tts_chars": 0}
         self._credits_usd: float | None = None
-        self._mode = "batch"
-        self._tts_mode = "batch"
+        self._mode = "live"
+        self._tts_mode = "live"
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"

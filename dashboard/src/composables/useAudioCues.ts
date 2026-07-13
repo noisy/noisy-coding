@@ -23,7 +23,7 @@ export const CUE_LABELS: Record<CueName, string> = {
 
 function defaultPrefs(): CuePrefs {
   return {
-    enabled: false, // opt-in — sounds are a taste, not a default
+    enabled: true, // on by default — the cues carry real state changes
     cues: { committed: true, delivered: true, claude: true, unheard: true, error: true },
   };
 }

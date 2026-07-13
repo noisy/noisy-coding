@@ -19,7 +19,7 @@ class VadConfig:
     speech_multiplier: float = 3.0
     min_speech_rms: float = 300.0
     start_frames: int = 2
-    end_silence_ms: int = 800
+    end_silence_ms: int = 2000
     pre_roll_ms: int = 700
     min_utterance_ms: int = 400
     max_utterance_ms: int = 180_000

@@ -270,7 +270,7 @@ def run(config: VadConfig | None = None) -> None:
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
     state = ListenerState()
-    state.set_mode(os.environ.get(MODE_ENV_VAR, "batch"))
+    state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
     state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
     state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
     state.set_output_device(os.environ.get(OUTPUT_DEVICE_ENV_VAR, ""))
