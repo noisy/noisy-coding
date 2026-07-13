@@ -23,6 +23,16 @@ def _activity_line(hook_input: dict) -> str:
     if not tool:
         return ""
     params = hook_input.get("tool_input") or {}
+    if tool.startswith("mcp__grok-voice__"):
+        # Claude's own speech: name the act, not the plumbing. This line is
+        # what explains a transcript stuck AWAITING — the speak call blocks
+        # through synthesis AND playback, and it fires BEFORE the daemon
+        # even creates the voice card.
+        action = tool[len("mcp__grok-voice__"):]
+        spoken = str(params.get("text") or "").strip()
+        if action in ("speak", "announce") and spoken:
+            return f"SPEAKING · „{spoken[:60]}”"
+        return action.upper().replace("_", " ")
     path = params.get("file_path") or params.get("path") or params.get("notebook_path")
     if path:
         return f"{tool} · {os.path.basename(str(path))}"
