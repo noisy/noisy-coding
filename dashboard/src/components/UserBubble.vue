@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { statusAllows } from "../machines/chat";
 import type { Utterance } from "../types";
 import Bubble from "./Bubble.vue";
 import { formatCost, formatTime, statusChip } from "./bubbleStatus";
@@ -7,10 +8,10 @@ import { formatCost, formatTime, statusChip } from "./bubbleStatus";
 const props = defineProps<{ utterance: Utterance }>();
 defineEmits<{ cancel: [utterance: Utterance] }>();
 
-const chip = computed(() => statusChip(props.utterance.status));
+const chip = computed(() => statusChip(props.utterance.status, "user"));
 const pending = computed(() => !props.utterance.text);
-// Recall is possible only while the transcript still waits in the queue.
-const cancelable = computed(() => props.utterance.status.includes("ready"));
+// Recall is offered exactly where the machine allows it: awaiting pickup.
+const cancelable = computed(() => statusAllows("user", props.utterance.status, "CANCEL"));
 </script>
 
 <template>

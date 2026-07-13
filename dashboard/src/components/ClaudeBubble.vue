@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { statusAllows } from "../machines/chat";
 import type { Utterance } from "../types";
 import Bubble from "./Bubble.vue";
 import { formatCost, formatTime, statusChip } from "./bubbleStatus";
@@ -10,12 +11,13 @@ const props = withDefaults(
 );
 defineEmits<{ replay: [utterance: Utterance] }>();
 
-const chip = computed(() => statusChip(props.utterance.status));
+const chip = computed(() => statusChip(props.utterance.status, "claude"));
 const pending = computed(() => !props.utterance.text);
-// Replay settled speech (played or parked UNHEARD) — a card mid-synthesis
-// re-queues on its own, and an errored one has nothing worth repeating.
+// Replay = re-entering synthesis; the machine knows which cards allow that
+// (played or parked UNHEARD — mid-synthesis re-queues on its own, an
+// errored card has nothing worth repeating).
 const replayable = computed(
-  () => (chip.value.kind === "done" || chip.value.kind === "off") && !!props.utterance.text,
+  () => statusAllows("claude", props.utterance.status, "SYNTHESIZE") && !!props.utterance.text,
 );
 </script>
 

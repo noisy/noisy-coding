@@ -8,20 +8,28 @@ import UserBubble from "./UserBubble.vue";
 
 describe("statusChip", () => {
   it.each([
-    ["recording…", "rec", "● RECORDING"],
-    ["playing through speakers…", "spoken", "▶ PLAYING"],
-    ["queued — waiting for you to finish", "work", "◌ HOLDING"],
-    ["queued", "work", "◌ QUEUED"],
-    ["synthesizing (Grok TTS)…", "work", "◌ SYNTHESIZING"],
-    ["transcribing (live)…", "work", "◌ TRANSCRIBING"],
-    ["delivered to Claude", "done", "✓ DELIVERED"],
-    ["played", "done", "✓ PLAYED"],
-    ["ready — awaiting pickup", "work", "◌ AWAITING CLAUDE"],
-    ["cancelled by you", "off", "✕ CANCELLED"],
-    ["transcription error", "fail", "✕ ERROR"],
-    ["dropped — too short", "fail", "✕ DROPPED"],
-  ])("maps %s → %s", (status, kind, label) => {
-    expect(statusChip(status)).toEqual({ kind, label });
+    ["user", "recording…", "rec", "● RECORDING"],
+    ["user", "transcribing (live)…", "work", "◌ TRANSCRIBING"],
+    ["user", "ready — awaiting pickup", "work", "◌ AWAITING CLAUDE"],
+    ["user", "delivered to Claude", "done", "✓ DELIVERED"],
+    ["user", "cancelled by you", "off", "✕ CANCELLED"],
+    ["user", "transcription error", "fail", "✕ ERROR"],
+    ["user", "dropped — too short", "fail", "✕ DROPPED"],
+    ["claude", "queued", "work", "◌ QUEUED"],
+    ["claude", "queued — waiting for you to finish", "work", "◌ HOLDING"],
+    ["claude", "synthesizing (Grok TTS)…", "work", "◌ SYNTHESIZING"],
+    ["claude", "playing through speakers…", "spoken", "▶ PLAYING"],
+    ["claude", "played", "done", "✓ PLAYED"],
+    ["claude", "unheard — voice muted", "off", "◌ UNHEARD"],
+  ] as const)("maps %s %s → %s", (role, status, kind, label) => {
+    expect(statusChip(status, role)).toEqual({ kind, label });
+  });
+
+  it("renders a status outside the machine's vocabulary raw", () => {
+    expect(statusChip("reticulating splines…", "user")).toEqual({
+      kind: "work",
+      label: "RETICULATING SPLINES…",
+    });
   });
 });
 

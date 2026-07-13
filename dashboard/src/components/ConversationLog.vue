@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { statusToState } from "../machines/chat";
 import type { Utterance } from "../types";
 import ActivityLine from "./ActivityLine.vue";
 import ClaudeBubble from "./ClaudeBubble.vue";
@@ -15,13 +16,13 @@ const props = withDefaults(
 );
 defineEmits<{ replay: [utterance: Utterance]; cancel: [utterance: Utterance] }>();
 
-// Noise guard: utterances that never became real speech ("empty — no
-// speech", "dropped — too short") would flood the log in a loud room and
-// bury the actual conversation — hide them entirely. STT errors stay
-// visible: that's real speech that got lost.
-function isNoise(status: string): boolean {
-  const s = status.toLowerCase();
-  return s.includes("empty") || s.includes("dropped") || s.includes("cancelled");
+// Noise guard: utterances that never became real speech (empty, dropped)
+// or were recalled would flood the log in a loud room and bury the actual
+// conversation — hide them entirely. STT errors stay visible: that's real
+// speech that got lost.
+const NOISE_STATES = new Set(["empty", "dropped", "cancelled"]);
+function isNoise(u: Utterance): boolean {
+  return u.role === "user" && NOISE_STATES.has(statusToState("user", u.status) ?? "");
 }
 
 // Oldest first — the newest message lands at the BOTTOM, like a chat.
@@ -39,7 +40,7 @@ function sysTime(epochSeconds: number): string {
 
 const ordered = computed(() =>
   props.utterances
-    .filter((u) => !isNoise(u.status))
+    .filter((u) => !isNoise(u))
     .sort((a, b) => commitTime(a) - commitTime(b) || a.id - b.id),
 );
 
@@ -48,9 +49,9 @@ const ordered = computed(() =>
 // its own space every appearance/disappearance shoves the whole log
 // around. Once it settles into a real message it moves into the feed —
 // visually the same spot.
+const LIVE_STATES = new Set(["recording", "transcribing"]);
 function isLiveUser(u: Utterance): boolean {
-  const s = u.status.toLowerCase();
-  return u.role === "user" && (s.includes("recording") || s.includes("transcribing"));
+  return u.role === "user" && LIVE_STATES.has(statusToState("user", u.status) ?? "");
 }
 
 // The composer holds ANY in-progress user utterance — even when a Claude
@@ -68,7 +69,7 @@ const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
 // With nothing awaiting, the busy work happened after everything: bottom.
 const busyBeforeId = computed(() => {
   const awaiting = settled.value.find(
-    (u) => u.role === "user" && u.status.includes("ready"),
+    (u) => u.role === "user" && statusToState("user", u.status) === "ready",
   );
   return awaiting?.id ?? null;
 });
