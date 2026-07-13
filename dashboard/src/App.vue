@@ -8,6 +8,7 @@ import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
+import SettingsView from "./components/SettingsView.vue";
 import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
 import { useDaemonState } from "./composables/useDaemonState";
@@ -94,17 +95,18 @@ function pttRelease() {
 }
 onUnmounted(() => clearInterval(pttTimer));
 
-// API key setup: full-screen gate when unconfigured, REPLACE in SETTINGS.
+// API key setup: full-screen gate when unconfigured; later managed from
+// the SETTINGS view (which swaps in for the comm log).
 const keyInput = ref("");
-const editingKey = ref(false);
+const showSettings = ref(false);
 const unconfigured = computed(() => status.value != null && !status.value.api_key_set);
 async function submitKey() {
   const key = keyInput.value.trim();
   if (key.length < 8) return;
   await saveApiKey(key).catch(swallow);
   keyInput.value = "";
-  editingKey.value = false;
 }
+const saveKey = (key: string) => saveApiKey(key).catch(swallow);
 
 const setLanguage = (event: Event) =>
   setSettings({ language: (event.target as HTMLSelectElement).value }).catch(swallow);
@@ -248,7 +250,10 @@ const LANGUAGES: Record<string, string> = {
       </div>
 
       <div class="col-mid">
-        <HudPanel index="04" title="COMM LOG · UTTERANCE STREAM">
+        <HudPanel v-if="showSettings" index="08" title="SETTINGS">
+          <SettingsView :api-key-hint="status?.api_key_hint ?? ''" @save="saveKey" />
+        </HudPanel>
+        <HudPanel v-else index="04" title="COMM LOG · UTTERANCE STREAM">
           <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
             ▶ CATCH UP ({{ unheard.length }} UNHEARD)
           </button>
@@ -294,25 +299,9 @@ const LANGUAGES: Record<string, string> = {
         <HudPanel index="06" title="SYSTEM STATE · COST">
           <StatusStrip :status="status" :offline="offline" />
         </HudPanel>
-        <HudPanel index="08" title="SETTINGS">
-          <div class="ctlrow">
-            <span class="lbl">API KEY</span>
-            <template v-if="!editingKey">
-              <span class="keyhint">SET {{ status?.api_key_hint }}</span>
-              <button class="ctl small" @click="editingKey = true">REPLACE</button>
-            </template>
-            <template v-else>
-              <input
-                v-model="keyInput"
-                type="password"
-                class="ctl small keyinput"
-                placeholder="xai-…"
-                @keyup.enter="submitKey"
-              />
-              <button class="ctl small" @click="submitKey">SAVE</button>
-            </template>
-          </div>
-        </HudPanel>
+        <button class="ctl settingsbtn" :class="{ on: showSettings }" @click="showSettings = !showSettings">
+          {{ showSettings ? "✕ CLOSE SETTINGS" : "⚙ SETTINGS" }}
+        </button>
       </div>
     </div>
 
@@ -526,7 +515,8 @@ footer { flex: none; }
   border: 1px solid var(--line-strong);
   padding: 8px 12px;
 }
-.keyhint { flex: 1; font-size: 10px; letter-spacing: 0.14em; color: var(--green); }
+.settingsbtn { width: 100%; letter-spacing: 0.24em; }
+.settingsbtn.on { color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); }
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }
