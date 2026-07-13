@@ -13,7 +13,8 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "xstate": "^5.32.4"
   },
   "devDependencies": {
     "@storybook/vue3": "^8.6.18",
