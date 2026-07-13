@@ -10,16 +10,17 @@ interface Tone {
 }
 
 // Each cue is one or two short sine blips; volumes stay whisper-quiet so
-// they never compete with speech.
+// they never compete with speech. Contours are deliberately distinct:
+// committed = single tick, delivered = rising pair, claude = FALLING pair.
 const CUE_TONES: Record<CueName, Tone[]> = {
-  committed: [
+  committed: [{ freq: 1180, at: 0, duration: 0.05, gain: 0.04 }],
+  delivered: [
     { freq: 620, at: 0, duration: 0.06, gain: 0.05 },
     { freq: 880, at: 0.07, duration: 0.08, gain: 0.05 },
   ],
-  delivered: [{ freq: 1180, at: 0, duration: 0.05, gain: 0.04 }],
   claude: [
-    { freq: 520, at: 0, duration: 0.09, gain: 0.06 },
-    { freq: 780, at: 0.1, duration: 0.12, gain: 0.06 },
+    { freq: 840, at: 0, duration: 0.09, gain: 0.06 },
+    { freq: 540, at: 0.1, duration: 0.14, gain: 0.06 },
   ],
   unheard: [{ freq: 320, at: 0, duration: 0.1, gain: 0.03 }],
   error: [
