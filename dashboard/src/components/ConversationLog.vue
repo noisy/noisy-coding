@@ -177,7 +177,7 @@ watch(
 }
 .jumpdown {
   position: absolute;
-  right: 14px;
+  right: 28px; /* clear of the scrollbar with breathing room */
   z-index: 1;
   width: 28px;
   height: 28px;
