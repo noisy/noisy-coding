@@ -15,12 +15,15 @@ Set up the noisy-coding voice backend for this user. Follow these steps in order
      noisy/noisy-coding:latest
    ```
    If the container name already exists, `docker start noisy-coding` instead.
-4. Verify all three services: `curl -s http://127.0.0.1:8765/status` (daemon), and confirm ports 8766 (tab-audio WebSocket) and 8767 (MCP) are listening.
+4. Verify the services NON-INVASIVELY — exactly like this, no raw TCP probes:
+   - `curl -s http://127.0.0.1:8765/status` must return JSON (the daemon),
+   - `docker port noisy-coding` must list 8765, 8766 and 8767 (do NOT `nc -z` port 8766 — a bare TCP open on the WebSocket bridge dumps harmless-but-scary handshake tracebacks into the container logs),
+   - the MCP endpoint needs no probe; if you must, know that a plain `curl http://127.0.0.1:8767/mcp` returning `406 Not Acceptable` IS the healthy answer (MCP requires an `Accept: text/event-stream` header).
 5. Tell the user to finish in the browser at http://127.0.0.1:8765 —
    - paste their xAI API key when asked (from console.x.ai),
-   - Settings → MICROPHONE: THIS BROWSER TAB (allow the mic permission),
-   - Settings → OUTPUT: THIS BROWSER TAB,
+   - click the big amber **ENABLE TAB AUDIO** banner (the container preselects this tab as microphone and speaker; the click grants the mic permission),
    - keep that tab open while talking.
-6. The plugin already registered the MCP server (http://127.0.0.1:8767/mcp) and the voice hooks — remind the user to restart Claude Code (or run /mcp) once, then just talk: their speech reaches Claude even while it works, and Claude answers aloud.
+6. CLOSE THE LOOP — do not declare success yet. Ask the user to say when they've pasted the key and clicked the banner, then poll `curl -s http://127.0.0.1:8765/status` and confirm BOTH `"api_key_set": true` AND `"tab_audio": true`. Only then report the setup as complete. If either stays false, debug with the user (key rejected? mic permission denied?).
+7. The plugin already registered the MCP server (http://127.0.0.1:8767/mcp) and the voice hooks — remind the user to restart Claude Code once (first install only), then just talk: their speech reaches Claude even while it works, and Claude answers aloud.
 
 Do not configure anything through environment variables — every setting lives in the dashboard UI.

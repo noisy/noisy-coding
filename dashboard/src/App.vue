@@ -213,6 +213,29 @@ const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
 const browserAudio = useBrowserAudio();
+// The tab is nominated as an audio device but not actually connected —
+// the state every fresh Docker install boots into.
+const tabAudioNeeded = computed(
+  () =>
+    !!status.value &&
+    !unconfigured.value &&
+    (status.value.input_device === "browser" || status.value.output_device === "browser") &&
+    !browserAudio.active.value,
+);
+const tabAudioRoles = computed(() => {
+  const roles = [];
+  if (status.value?.input_device === "browser") roles.push("microphone");
+  if (status.value?.output_device === "browser") roles.push("speaker");
+  return roles.join(" and ");
+});
+async function enableTabAudio() {
+  try {
+    if (status.value?.input_device === "browser") await browserAudio.enable();
+    else await browserAudio.connect();
+  } catch {
+    // the reason is already in browserAudio.error, shown on the banner
+  }
+}
 // The tab connection serves both directions — tear it down only when
 // NEITHER side uses the tab anymore.
 function dropTabUnlessNeeded() {
@@ -303,6 +326,13 @@ const LANGUAGES: Record<string, string> = {
   </div>
 
   <div class="hud">
+    <!-- The Docker path preselects the tab as mic/speaker, so the picker
+         never fires a change event — and getUserMedia needs a user
+         gesture anyway. This banner IS that gesture. -->
+    <button v-if="tabAudioNeeded" class="tabaudio" @click="enableTabAudio">
+      🎙 ENABLE TAB AUDIO — this tab is your {{ tabAudioRoles }}; click once to activate
+      <span v-if="browserAudio.error.value" class="taberr">{{ browserAudio.error.value }}</span>
+    </button>
     <header>
       <div class="logo">
         <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
@@ -815,4 +845,29 @@ footer .lasterr {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.tabaudio {
+  /* The one action a fresh Docker install must take — impossible to miss. */
+  flex: none;
+  width: 100%;
+  padding: 12px 18px;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: #0a0f14;
+  background: var(--amber);
+  border: none;
+  cursor: pointer;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  animation: tabaudio-pulse 1.6s ease-in-out infinite;
+}
+.tabaudio .taberr {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #5a1020;
+}
+@keyframes tabaudio-pulse { 50% { filter: brightness(0.82); } }
 </style>
