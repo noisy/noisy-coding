@@ -12,20 +12,30 @@ and a live "tactical HUD" dashboard.
 The backend ships as a hardware-free Docker image ([`noisy/noisy-coding`](https://hub.docker.com/r/noisy/noisy-coding)):
 **all audio flows through the dashboard page** (the browser tab is the
 microphone and the speaker). The host needs Docker and a browser — no
-Python, no git, no environment variables. Inside Claude Code:
+Python, no git, no environment variables.
+
+```bash
+# terminal: install the plugin (marketplace + plugin in one line)
+claude plugin marketplace add noisy/noisy-coding && claude plugin install noisy-coding@noisy
+```
 
 ```
-/plugin marketplace add noisy/noisy-coding
-/plugin install noisy-coding@noisy
+# inside Claude Code (new session):
 /noisy-coding:setup
 ```
 
 The setup command starts the published image and walks you through first
 contact; the plugin itself carries the MCP connection and the voice hooks
-(they run inside the container via `docker exec`). Then finish in the
-browser at <http://127.0.0.1:8765>: paste your xAI API key
-(console.x.ai), pick **MICROPHONE: THIS BROWSER TAB** and
-**OUTPUT: THIS BROWSER TAB** in Settings — and just talk.
+(they run inside the container via `docker exec`, silent until the
+container exists). Then finish in the browser at <http://127.0.0.1:8765>:
+paste your xAI API key (console.x.ai) and click the amber
+**ENABLE TAB AUDIO** banner — that one click makes the tab your
+microphone and speaker. Keep the tab open and just talk.
+
+Prefer staying inside Claude Code? Same thing, four commands:
+`/plugin marketplace add noisy/noisy-coding` →
+`/plugin install noisy-coding@noisy` → `/reload-plugins` →
+`/noisy-coding:setup`.
 
 ### Plain Docker (no plugin, still nothing to clone)
 
