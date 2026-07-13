@@ -13,6 +13,7 @@ import { computed, ref } from "vue";
 import ConversationLog from "../components/ConversationLog.vue";
 import HudPanel from "../components/HudPanel.vue";
 import {
+  CLAUDE_WORKER_STATES,
   canDeliverDuring,
   nextState,
   statusAllows,
@@ -43,8 +44,31 @@ function now() {
   return Date.now() / 1000;
 }
 
-function latest(role: Role): Utterance | undefined {
-  return [...utterances.value].reverse().find((u) => u.role === role);
+// --- event targeting --------------------------------------------------------
+// The daemon's single playback worker takes the OLDEST queued claude card
+// and walks it through holding/synthesizing/playing before touching the
+// next — so lifecycle events land on the worker's current card, or the
+// FIFO head when the worker is free. Never on the newest arrival.
+function claudeTarget(): Utterance | undefined {
+  const cards = utterances.value.filter((u) => u.role === "claude");
+  const working = cards.find((u) =>
+    CLAUDE_WORKER_STATES.has(statusToState("claude", u.status) ?? ""),
+  );
+  return working ?? cards.find((u) => statusToState("claude", u.status) === "queued");
+}
+
+// User events hit the newest card that accepts them (the mic guard keeps
+// at most one composition alive, so this is unambiguous in practice).
+function userTarget(event: string): Utterance | undefined {
+  return [...utterances.value]
+    .reverse()
+    .find((u) => u.role === "user" && statusAllows("user", u.status, event));
+}
+
+function readyCards(): Utterance[] {
+  return utterances.value.filter(
+    (u) => u.role === "user" && statusToState("user", u.status) === "ready",
+  );
 }
 
 // --- event injection --------------------------------------------------------
@@ -73,12 +97,9 @@ function crossGuard(role: Role, event: string): string | null {
   return null;
 }
 
-function inject(role: Role, event: string) {
-  const u = latest(role);
-  if (!u) {
-    note(`⚠ ${role}.${event} — no ${role} card on stage`);
-    return;
-  }
+// Apply one event to one specific card — the shared core for injector
+// buttons and the bubbles' own ↻/✕ affordances.
+function fire(u: Utterance, role: Role, event: string) {
   const from = statusToState(role, u.status);
   const to = from === null ? null : nextState(role, from, event);
   if (to === null) {
@@ -97,9 +118,52 @@ function inject(role: Role, event: string) {
   note(`${role}.${event}`, `(id ${u.id}: ${from} → ${to})`);
 }
 
+function inject(role: Role, event: string) {
+  // A hook drain delivers EVERY ready transcript in one gulp, not one card.
+  if (role === "user" && event === "DELIVER") {
+    const cards = readyCards();
+    if (!cards.length) {
+      note("⚠ user.DELIVER — nothing awaiting pickup");
+      return;
+    }
+    cards.forEach((u) => fire(u, "user", "DELIVER"));
+    return;
+  }
+  const u = role === "user" ? userTarget(event) : claudeTarget();
+  if (!u) {
+    note(`⚠ ${role}.${event} — no ${role} card can receive it`);
+    return;
+  }
+  fire(u, role, event);
+}
+
 function allows(role: Role, event: string): boolean {
-  const u = latest(role);
-  return !!u && statusAllows(role, u.status, event) && crossGuard(role, event) === null;
+  if (crossGuard(role, event) !== null) return false;
+  if (role === "user" && event === "DELIVER") return readyCards().length > 0;
+  const u = role === "user" ? userTarget(event) : claudeTarget();
+  return !!u && statusAllows(role, u.status, event);
+}
+
+// The bubbles' own controls work in the sandbox too: ↻ re-queues that very
+// card (visible only once the worker picks it up — like the daemon), ⏹
+// stops the playback, ✕ recalls an awaiting transcript.
+function onReplay(u: Utterance) {
+  note("ui.replay_clicked", `(id ${u.id})`);
+  if (playingId.value === u.id) {
+    fire(u, "claude", "PLAYED"); // ⏹ — stop lands the card as played
+    return;
+  }
+  const busy = claudeTarget();
+  if (busy && CLAUDE_WORKER_STATES.has(statusToState("claude", busy.status) ?? "")) {
+    note("ui.replay_deferred", `(worker busy with id ${busy.id} — no visible change until it frees)`);
+    return;
+  }
+  fire(u, "claude", "SYNTHESIZE");
+}
+
+function onCancel(u: Utterance) {
+  note("ui.cancel_clicked", `(id ${u.id})`);
+  fire(u, "user", "CANCEL");
 }
 
 interface EventButton {
@@ -260,8 +324,8 @@ async function copyLog() {
           :utterances="utterances"
           :playing-id="playingId"
           :activity="activity"
-          @replay="(u) => note('ui.replay_clicked', `(id ${u.id})`)"
-          @cancel="(u) => note('ui.cancel_clicked', `(id ${u.id})`)"
+          @replay="onReplay"
+          @cancel="onCancel"
         />
       </HudPanel>
 

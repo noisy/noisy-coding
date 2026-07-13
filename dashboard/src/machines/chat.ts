@@ -253,6 +253,16 @@ export function validStatusChange(role: Role, fromStatus: string, toStatus: stri
 
 // --- cross-machine invariants -------------------------------------------------
 
+/** The daemon has ONE playback worker: it takes the OLDEST queued card and
+ * walks it through these states before touching the next. At any moment at
+ * most one claude card may sit in a worker state — and lifecycle events
+ * always land on the FIFO head, never on the newest arrival. */
+export const CLAUDE_WORKER_STATES: ReadonlySet<string> = new Set([
+  "holding",
+  "synthesizing",
+  "playing",
+]);
+
 /** Transcripts reach Claude only through HOOKS, and hooks run only between
  * tools or at turn end: PostToolUse flips the activity line to THINKING…
  * before draining, Stop clears it before draining. While a concrete tool
