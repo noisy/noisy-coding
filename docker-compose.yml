@@ -1,10 +1,10 @@
-# grok-voice in a box — any host OS, no audio hardware needed.
+# noisy-coding in a box — any host OS, no audio hardware needed.
 #
 #   docker compose up -d
 #   open http://127.0.0.1:8765   → paste your xAI API key on first contact,
 #                                  then Settings → MICROPHONE: THIS BROWSER
 #                                  TAB and OUTPUT: THIS BROWSER TAB
-#   claude mcp add --transport http grok-voice http://127.0.0.1:8767/mcp
+#   claude mcp add --transport http noisy-coding http://127.0.0.1:8767/mcp
 #
 # All audio flows through the dashboard page; Claude Code connects to the
 # MCP server over HTTP. Hooks run on the host's system python (stdlib
@@ -14,25 +14,25 @@
 # exposing plain HTTP:  ssh -L 8765:localhost:8765 -L 8766:localhost:8766 host
 
 services:
-  grok-voice:
+  noisy-coding:
     build: .
-    container_name: grok-voice
+    container_name: noisy-coding
     ports:
       - "127.0.0.1:8765:8765"   # HTTP API + dashboard
       - "127.0.0.1:8766:8766"   # tab-audio WebSocket bridge
       - "127.0.0.1:8767:8767"   # MCP server (streamable HTTP)
     # environment:
-    #   GROK_VOICE_STT_LANGUAGE: pl   # optional: pin the STT language
+    #   NOISY_CODING_STT_LANGUAGE: pl   # optional: pin the STT language
     volumes:
       # API key, character, settings and history survive image rebuilds.
-      - grok-voice-config:/root/.config/grok-voice
+      - noisy-coding-config:/root/.config/noisy-coding
     restart: unless-stopped
 
   # --- optional Linux-only variant: native host audio through Pulse -------
   # Replace the service above with this one to use the HOST's mic/speakers
   # (PulseAudio, or PipeWire's pulse-compat socket).
   #
-  # grok-voice:
+  # noisy-coding:
   #   build: .
   #   ports:
   #     - "127.0.0.1:8765:8765"
@@ -40,12 +40,12 @@ services:
   #     - "127.0.0.1:8767:8767"
   #   environment:
   #     PULSE_SERVER: unix:/run/pulse/native
-  #     GROK_VOICE_OUTPUT_DEVICE: system
+  #     NOISY_CODING_OUTPUT_DEVICE: system
   #   volumes:
   #     - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native:/run/pulse/native
   #     - ${HOME}/.config/pulse/cookie:/root/.config/pulse/cookie:ro
-  #     - grok-voice-config:/root/.config/grok-voice
+  #     - noisy-coding-config:/root/.config/noisy-coding
   #   restart: unless-stopped
 
 volumes:
-  grok-voice-config:
+  noisy-coding-config:
