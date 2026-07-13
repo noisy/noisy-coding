@@ -73,6 +73,12 @@ function zoneOf(u: Utterance): "done" | "active" | "pending" {
 const processed = computed(() => settled.value.filter((u) => zoneOf(u) !== "pending"));
 const pending = computed(() => settled.value.filter((u) => zoneOf(u) === "pending"));
 
+// The card being spoken renders right above the busy line — quoting the
+// speech in the line too would double it (see ActivityLine).
+const playingCardVisible = computed(
+  () => props.playingId !== 0 && settled.value.some((u) => u.id === props.playingId),
+);
+
 const feed = ref<HTMLElement | null>(null);
 const slot = ref<HTMLElement | null>(null);
 
@@ -141,7 +147,7 @@ watch(
       />
       <!-- The processed line: everything above already happened, everything
            below still waits its turn. -->
-      <ActivityLine :activity="activity" />
+      <ActivityLine :activity="activity" :playing-card-visible="playingCardVisible" />
       <FeedRow
         v-for="utterance in pending"
         :key="utterance.id"

@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 
-const props = defineProps<{
-  activity: { text: string; at: number } | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    activity: { text: string; at: number } | null;
+    /** The card being spoken is rendered in this feed — drop the quote. */
+    playingCardVisible?: boolean;
+  }>(),
+  { playingCardVisible: false },
+);
 
 // The age ticks locally between polls so the line feels alive.
 const now = ref(Date.now() / 1000);
@@ -18,6 +23,17 @@ const age = computed(() => {
   const seconds = Math.max(0, now.value - props.activity.at);
   return seconds < 60 ? `${Math.floor(seconds)}s` : `${Math.floor(seconds / 60)}m`;
 });
+
+// While the spoken card itself is on screen (▶ PLAYING right above this
+// line), quoting the speech again would double it — keep only the act.
+// The full quote stays for feeds where the card is absent (another tab).
+const label = computed(() => {
+  if (!props.activity) return "";
+  if (props.playingCardVisible && props.activity.text.startsWith("SPEAKING")) {
+    return "SPEAKING";
+  }
+  return props.activity.text;
+});
 </script>
 
 <template>
@@ -29,7 +45,7 @@ const age = computed(() => {
     title="Claude reads your speech while working; the reply comes when he's done."
   >
     <span class="pulse" />
-    <span class="txt">CLAUDE IS BUSY — {{ activity.text }}</span>
+    <span class="txt">CLAUDE IS BUSY — {{ label }}</span>
     <span class="age">{{ age }}</span>
   </div>
 </template>
