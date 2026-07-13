@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { cancelTranscript, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback } from "./api/client";
+import { cancelTranscript, saveApiKey, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback } from "./api/client";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import AgentTabs from "./components/AgentTabs.vue";
@@ -94,6 +94,18 @@ function pttRelease() {
 }
 onUnmounted(() => clearInterval(pttTimer));
 
+// API key setup: full-screen gate when unconfigured, REPLACE in SETTINGS.
+const keyInput = ref("");
+const editingKey = ref(false);
+const unconfigured = computed(() => status.value != null && !status.value.api_key_set);
+async function submitKey() {
+  const key = keyInput.value.trim();
+  if (key.length < 8) return;
+  await saveApiKey(key).catch(swallow);
+  keyInput.value = "";
+  editingKey.value = false;
+}
+
 const setLanguage = (event: Event) =>
   setSettings({ language: (event.target as HTMLSelectElement).value }).catch(swallow);
 
@@ -117,7 +129,30 @@ const LANGUAGES: Record<string, string> = {
 <template>
   <div class="scanlines" />
   <div class="vignette" />
-  <div class="hud">
+
+  <!-- Setup gate: without an API key nothing below can work. -->
+  <div v-if="unconfigured" class="setup">
+    <div class="setup-box">
+      <div class="setup-title">GROK-VOICE · FIRST CONTACT</div>
+      <p class="setup-text">
+        This console needs an xAI API key to hear and speak.
+        Create one at <b>console.x.ai</b>, then paste it below — it is stored
+        locally in <b>~/.config/grok-voice/credentials.json</b>.
+      </p>
+      <div class="setup-row">
+        <input
+          v-model="keyInput"
+          type="password"
+          class="setup-input"
+          placeholder="xai-…"
+          @keyup.enter="submitKey"
+        />
+        <button class="ctl" @click="submitKey">CONNECT</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-else class="hud">
     <header>
       <div class="logo">
         <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
@@ -258,6 +293,25 @@ const LANGUAGES: Record<string, string> = {
         </HudPanel>
         <HudPanel index="06" title="SYSTEM STATE · COST">
           <StatusStrip :status="status" :offline="offline" />
+        </HudPanel>
+        <HudPanel index="08" title="SETTINGS">
+          <div class="ctlrow">
+            <span class="lbl">API KEY</span>
+            <template v-if="!editingKey">
+              <span class="keyhint">SET {{ status?.api_key_hint }}</span>
+              <button class="ctl small" @click="editingKey = true">REPLACE</button>
+            </template>
+            <template v-else>
+              <input
+                v-model="keyInput"
+                type="password"
+                class="ctl small keyinput"
+                placeholder="xai-…"
+                @keyup.enter="submitKey"
+              />
+              <button class="ctl small" @click="submitKey">SAVE</button>
+            </template>
+          </div>
         </HudPanel>
       </div>
     </div>
@@ -442,6 +496,37 @@ footer { flex: none; }
 @keyframes catchup-pulse {
   50% { box-shadow: 0 0 26px rgba(77, 255, 180, 0.5), inset 0 0 26px rgba(77, 255, 180, 0.2); }
 }
+
+.setup {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.setup-box {
+  max-width: 480px;
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  padding: 26px 28px;
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+.setup-title { font-size: 13px; letter-spacing: 0.3em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); margin-bottom: 14px; }
+.setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 18px; }
+.setup-text b { color: var(--cyan); font-weight: 400; }
+.setup-row { display: flex; gap: 8px; }
+.setup-input, .keyinput {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: rgba(4, 12, 20, 0.9);
+  border: 1px solid var(--line-strong);
+  padding: 8px 12px;
+}
+.keyhint { flex: 1; font-size: 10px; letter-spacing: 0.14em; color: var(--green); }
 
 .controls { display: grid; gap: 10px; }
 .ctlrow { display: flex; align-items: center; gap: 8px; }

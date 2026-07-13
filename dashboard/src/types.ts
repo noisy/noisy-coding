@@ -4,6 +4,8 @@ export interface DaemonStatus {
   listening: boolean;
   muted: boolean;
   voice_muted: boolean;
+  api_key_set: boolean;
+  api_key_hint: string;
   recording: boolean;
   claude_speaking: boolean;
   playing_utterance_id: number;

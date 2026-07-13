@@ -5,14 +5,14 @@ import pytest
 import respx
 from httpx import Response
 
-from grok_voice_mcp import tts
+from grok_voice_mcp import credentials, tts
 
 FAKE_AUDIO = b"fake-mp3-bytes"
 
 
 @pytest.fixture(autouse=True)
 def api_key(monkeypatch):
-    monkeypatch.setenv(tts.API_KEY_ENV_VAR, "xai-test-key")
+    monkeypatch.setattr(credentials, "api_key", lambda: "xai-test-key")
 
 
 @respx.mock
@@ -89,7 +89,7 @@ async def test_synthesize_rejects_text_over_api_limit_without_calling_api():
 
 
 async def test_synthesize_raises_when_api_key_is_missing(monkeypatch):
-    monkeypatch.delenv(tts.API_KEY_ENV_VAR)
+    monkeypatch.setattr(credentials, "api_key", lambda: "")
 
-    with pytest.raises(tts.GrokTTSError, match=tts.API_KEY_ENV_VAR):
+    with pytest.raises(tts.GrokTTSError, match="No xAI API key configured"):
         await tts.synthesize("hello", voice_id="eve", language="en", speed=1.0)

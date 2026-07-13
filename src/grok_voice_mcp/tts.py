@@ -1,13 +1,13 @@
 """Client for the Grok (xAI) batch text-to-speech API."""
 
 import base64
-import os
 from dataclasses import dataclass
 
 import httpx
 
+from grok_voice_mcp import credentials
+
 XAI_API_BASE = "https://api.x.ai/v1"
-API_KEY_ENV_VAR = "XAI_API_KEY"
 REQUEST_TIMEOUT_SECONDS = 60.0
 MAX_TEXT_LENGTH = 15_000
 
@@ -24,10 +24,10 @@ class SynthesizedAudio:
 
 
 def _api_key() -> str:
-    api_key = os.environ.get(API_KEY_ENV_VAR)
+    api_key = credentials.api_key()
     if not api_key:
         raise GrokTTSError(
-            f"{API_KEY_ENV_VAR} is not set. Configure it in the MCP server environment."
+            "No xAI API key configured yet — set it on the dashboard (SETTINGS panel)."
         )
     return api_key
 

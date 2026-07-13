@@ -42,6 +42,10 @@ export function setVoiceMuted(muted: boolean): Promise<void> {
   return post("/voice-mute", { muted });
 }
 
+export function saveApiKey(key: string): Promise<void> {
+  return post("/credentials", { xai_api_key: key });
+}
+
 export function setMode(mode: "batch" | "live"): Promise<void> {
   return post("/mode", { mode });
 }

@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from grok_voice_mcp import playback
+from grok_voice_mcp import credentials, playback
 from grok_voice_mcp.listener import pricing, speech
 from grok_voice_mcp.listener.dashboard import DASHBOARD_HTML
 from grok_voice_mcp.listener.state import ListenerState
@@ -134,6 +134,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "listening": not state.paused,
                         "muted": state.user_muted,
                         "voice_muted": state.voice_muted,
+                        "api_key_set": bool(credentials.api_key()),
+                        "api_key_hint": credentials.api_key_hint(),
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
                         "playing_utterance_id": state.playing_utterance_id,
@@ -296,6 +298,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 else:
                     state.release_ptt()
                 self._respond({"held": state.ptt_held})
+            elif self.path == "/credentials":
+                key = str(self._read_json_body().get("xai_api_key", "")).strip()
+                if len(key) < 8:
+                    self._respond({"error": "that does not look like an API key"}, status=400)
+                else:
+                    credentials.save_api_key(key)
+                    state.add_event("credentials", "xAI API key configured")
+                    self._respond({"api_key_set": True, "api_key_hint": credentials.api_key_hint()})
             elif self.path == "/voice-mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_voice_muted(muted)
