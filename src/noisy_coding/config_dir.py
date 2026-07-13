@@ -14,10 +14,21 @@ _LEGACY_CONFIG_DIR = Path.home() / ".config" / "grok-voice"
 def migrate_legacy_config_dir() -> None:
     """Carry the user's data across the grok-voice -> noisy-coding rename.
 
-    The directory holds the xAI API key, settings and conversation history —
-    losing it would force a re-setup — so on first startup under the new name
-    we move the old directory into place if it exists and the new one does not.
+    The old directory holds the xAI API key, character, settings and
+    conversation history — losing them would force a re-setup — so on the
+    first daemon startup under the new name we move each legacy file into
+    the new directory.
+
+    We move file-by-file (not a single dir rename) and skip any name that
+    already exists at the destination: the hooks write sessions.json to the
+    new path the moment a session starts, so the new directory can already
+    exist before the daemon ever runs. A blanket "new dir must not exist"
+    guard would then wrongly skip the whole migration and hide the API key.
     """
-    if _LEGACY_CONFIG_DIR.exists() and not CONFIG_DIR.exists():
-        CONFIG_DIR.parent.mkdir(parents=True, exist_ok=True)
-        _LEGACY_CONFIG_DIR.rename(CONFIG_DIR)
+    if not _LEGACY_CONFIG_DIR.is_dir():
+        return
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    for legacy_file in _LEGACY_CONFIG_DIR.iterdir():
+        destination = CONFIG_DIR / legacy_file.name
+        if not destination.exists():
+            legacy_file.rename(destination)
