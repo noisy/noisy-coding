@@ -1,29 +1,51 @@
-# Linux-only: runs the grok-voice listener daemon in a container, borrowing
-# the host's microphone and speakers through the PulseAudio/PipeWire socket.
+# grok-voice in a box — any host OS, no audio hardware needed.
 #
 #   docker compose up -d
-#   open http://127.0.0.1:8765  → paste your xAI API key on first contact
+#   open http://127.0.0.1:8765   → paste your xAI API key on first contact,
+#                                  then Settings → MICROPHONE: THIS BROWSER
+#                                  TAB and OUTPUT: THIS BROWSER TAB
+#   claude mcp add --transport http grok-voice http://127.0.0.1:8767/mcp
 #
-# Requirements on the host: a user sound server (PulseAudio, or PipeWire
-# with its pulse-compat socket — the default on modern desktops).
+# All audio flows through the dashboard page; Claude Code connects to the
+# MCP server over HTTP. Hooks run on the host's system python (stdlib
+# only) against the published 8765.
+#
+# Remote host? getUserMedia needs a secure context — tunnel instead of
+# exposing plain HTTP:  ssh -L 8765:localhost:8765 -L 8766:localhost:8766 host
 
 services:
   grok-voice:
     build: .
     container_name: grok-voice
     ports:
-      - "127.0.0.1:8765:8765"
-    environment:
-      PULSE_SERVER: unix:/run/pulse/native
-      # GROK_VOICE_STT_LANGUAGE: pl   # optional: pin the STT language
+      - "127.0.0.1:8765:8765"   # HTTP API + dashboard
+      - "127.0.0.1:8766:8766"   # tab-audio WebSocket bridge
+      - "127.0.0.1:8767:8767"   # MCP server (streamable HTTP)
+    # environment:
+    #   GROK_VOICE_STT_LANGUAGE: pl   # optional: pin the STT language
     volumes:
-      # Host sound server socket (PipeWire exposes the same pulse socket).
-      - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native:/run/pulse/native
-      # Pulse auth cookie — required when the container's uid differs.
-      - ${HOME}/.config/pulse/cookie:/root/.config/pulse/cookie:ro
       # API key, character, settings and history survive image rebuilds.
       - grok-voice-config:/root/.config/grok-voice
     restart: unless-stopped
+
+  # --- optional Linux-only variant: native host audio through Pulse -------
+  # Replace the service above with this one to use the HOST's mic/speakers
+  # (PulseAudio, or PipeWire's pulse-compat socket).
+  #
+  # grok-voice:
+  #   build: .
+  #   ports:
+  #     - "127.0.0.1:8765:8765"
+  #     - "127.0.0.1:8766:8766"
+  #     - "127.0.0.1:8767:8767"
+  #   environment:
+  #     PULSE_SERVER: unix:/run/pulse/native
+  #     GROK_VOICE_OUTPUT_DEVICE: system
+  #   volumes:
+  #     - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native:/run/pulse/native
+  #     - ${HOME}/.config/pulse/cookie:/root/.config/pulse/cookie:ro
+  #     - grok-voice-config:/root/.config/grok-voice
+  #   restart: unless-stopped
 
 volumes:
   grok-voice-config:

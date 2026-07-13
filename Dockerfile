@@ -1,8 +1,16 @@
-# grok-voice listener daemon — Linux-only image.
+# grok-voice in a box — works on ANY host OS.
 #
-# The daemon needs the HOST's microphone and speakers; on Linux that means
-# passing the PulseAudio/PipeWire socket in (see docker-compose.yml). On
-# macOS Docker runs in a VM with no host audio — use the native install.
+# The container is hardware-free: all audio flows through the dashboard
+# page (the browser tab is the microphone AND the speaker), and the MCP
+# server is exposed over streamable HTTP. The host needs nothing but
+# Docker and a browser:
+#
+#   docker compose up -d
+#   open http://127.0.0.1:8765        → pick THIS BROWSER TAB (mic + output)
+#   claude mcp add --transport http grok-voice http://127.0.0.1:8767/mcp
+#
+# Optional Linux-only native audio (host Pulse socket) stays possible —
+# see the commented variant in docker-compose.yml.
 
 # --- stage 1: build the Vue HUD ---
 FROM node:22-slim AS hud
@@ -15,15 +23,15 @@ RUN npm run build
 # --- stage 2: runtime ---
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
-# PortAudio for the mic, the ALSA→Pulse bridge + Pulse client libs to reach
-# the host's sound server, mpv to play Claude's voice.
+# libportaudio2: sounddevice imports it even when no device ever opens.
+# Pulse client libs + mpv only serve the optional Linux native-audio
+# variant; the default path never touches them.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libportaudio2 \
         libasound2-plugins \
         libpulse0 \
         mpv \
     && rm -rf /var/lib/apt/lists/* \
-    # Route ALSA (what PortAudio speaks) through PulseAudio by default.
     && printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > /etc/asound.conf
 
 WORKDIR /app
@@ -34,8 +42,14 @@ COPY src/ src/
 RUN uv pip install --system -e .
 COPY --from=hud /build/dist/ dashboard/dist/
 
-# The published port can't reach a loopback-only server inside a container.
-ENV GROK_VOICE_BIND=0.0.0.0
-EXPOSE 8765
+# Published ports can't reach loopback-only servers inside a container.
+ENV GROK_VOICE_BIND=0.0.0.0 \
+    GROK_VOICE_MCP_TRANSPORT=http \
+    GROK_VOICE_MCP_BIND=0.0.0.0 \
+    GROK_VOICE_NO_AUTOSPAWN=1 \
+    GROK_VOICE_OUTPUT_DEVICE=browser
+EXPOSE 8765 8766 8767
 
-CMD ["grok-voice-listener"]
+# Two processes, one box: the listener daemon (HTTP 8765 + tab-audio WS
+# 8766) in the background, the MCP server (streamable HTTP 8767) as PID 1.
+CMD ["sh", "-c", "grok-voice-listener & exec grok-voice-mcp"]

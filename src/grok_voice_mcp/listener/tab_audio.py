@@ -20,6 +20,7 @@ Wire protocol, deliberately tiny:
 from __future__ import annotations
 
 import json
+import os
 import queue
 import threading
 
@@ -187,7 +188,10 @@ class TabAudioBridge:
     def serve_forever(self, port: int) -> None:  # pragma: no cover — thread shell
         from websockets.sync.server import serve
 
-        with serve(self._handle, "127.0.0.1", port) as server:
+        # Same bind rule as the HTTP API: loopback by default, overridable
+        # for containers where the published port must reach us.
+        host = os.environ.get("GROK_VOICE_BIND", "127.0.0.1")
+        with serve(self._handle, host, port) as server:
             server.serve_forever()
 
 

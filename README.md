@@ -67,23 +67,31 @@ claude mcp add grok-voice --scope user \
 xdg-open http://127.0.0.1:8765         # paste your xAI API key on first contact
 ```
 
-### Linux (Docker)
+### Docker (any OS)
 
-The daemon can run in a container, borrowing the host's microphone and
-speakers through the PulseAudio/PipeWire socket:
+The container is hardware-free: **all audio flows through the dashboard
+page** (the browser tab is the microphone and the speaker), and the MCP
+server is exposed over HTTP. The host needs Docker and a browser — works on
+macOS, Windows and Linux alike:
 
 ```bash
 docker compose up -d
-xdg-open http://127.0.0.1:8765   # paste your xAI API key on first contact
+open http://127.0.0.1:8765     # paste your xAI API key on first contact,
+                               # then Settings → MICROPHONE: THIS BROWSER TAB
+                               # and OUTPUT: THIS BROWSER TAB
+claude mcp add --transport http grok-voice http://127.0.0.1:8767/mcp
 ```
 
-Requirements: a user sound server on the host (PulseAudio, or PipeWire with
-its pulse-compat socket — the default on modern desktop distros). The compose
-file mounts `$XDG_RUNTIME_DIR/pulse/native` plus the Pulse auth cookie, and
-keeps the API key/settings/history in a named volume.
+Voice input hooks still run from a repo checkout (`hooks/`, stdlib-only
+system python) against the published port 8765. Speech with no dashboard
+tab open parks as UNHEARD — the CATCH UP button replays it when you return.
 
-Not for macOS: Docker there runs in a VM with no host audio devices — use the
-native install instead.
+Container on a remote box? `getUserMedia` needs a secure context, so tunnel
+instead of exposing plain HTTP:
+`ssh -L 8765:localhost:8765 -L 8766:localhost:8766 -L 8767:localhost:8767 host`.
+
+Linux can alternatively pass the host's PulseAudio/PipeWire socket through
+and use native audio — see the commented variant in `docker-compose.yml`.
 
 ### Hooks (voice input)
 
@@ -118,6 +126,10 @@ persists in `~/.config/grok-voice/`):
 | `GROK_VOICE_MODE` | `batch` | Initial STT mode (`batch`/`live`) |
 | `GROK_VOICE_STOP_WAIT_SECONDS` | `30` | How long the Stop hook waits for speech |
 | `GROK_VOICE_NO_AUTOSPAWN` | — | Don't auto-start the daemon from the server |
+| `GROK_VOICE_INPUT_DEVICE` | system default | Initial mic (`browser` = the dashboard tab) |
+| `GROK_VOICE_OUTPUT_DEVICE` | `system` | Initial speaker (`browser` = the dashboard tab) |
+| `GROK_VOICE_MCP_TRANSPORT` | `stdio` | `http` exposes the MCP server (Docker) |
+| `GROK_VOICE_MCP_PORT` | `8767` | MCP HTTP port (with `http` transport) |
 
 ## Development
 

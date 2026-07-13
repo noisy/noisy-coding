@@ -226,7 +226,15 @@ def _register_agent() -> None:
 def main() -> None:
     _ensure_daemon()
     _register_agent()
-    mcp.run()
+    # stdio (default): Claude Code launches this process per session.
+    # http: one long-lived server (the Docker image) — Claude Code connects
+    # with `claude mcp add --transport http http://host:8767/mcp`.
+    if os.environ.get("GROK_VOICE_MCP_TRANSPORT", "stdio") == "http":
+        mcp.settings.host = os.environ.get("GROK_VOICE_MCP_BIND", "127.0.0.1")
+        mcp.settings.port = int(os.environ.get("GROK_VOICE_MCP_PORT", "8767"))
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":
