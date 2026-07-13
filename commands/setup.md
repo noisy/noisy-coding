@@ -24,6 +24,6 @@ Set up the noisy-coding voice backend for this user. Follow these steps in order
    - click the big amber **ENABLE TAB AUDIO** banner (the container preselects this tab as microphone and speaker; the click grants the mic permission),
    - keep that tab open while talking.
 6. CLOSE THE LOOP — do not declare success yet. Ask the user to say when they've pasted the key and clicked the banner, then poll `curl -s http://127.0.0.1:8765/status` and confirm BOTH `"api_key_set": true` AND `"tab_audio": true`. Only then report the setup as complete. If either stays false, debug with the user (key rejected? mic permission denied?).
-7. The plugin already registered the MCP server (http://127.0.0.1:8767/mcp) and the voice hooks — remind the user to restart Claude Code once (first install only), then just talk: their speech reaches Claude even while it works, and Claude answers aloud.
+7. The plugin already registered the MCP server (http://127.0.0.1:8767/mcp) and the voice hooks — remind the user to restart Claude Code once (first install only; without it the speak tool is absent and Claude cannot answer aloud, though the user's speech already comes through). After the restart, messages tagged [VOICE] are the user's real spoken words delivered by this plugin's hooks — see the plugin's voice-conversations skill for the conventions.
 
 Do not configure anything through environment variables — every setting lives in the dashboard UI.
