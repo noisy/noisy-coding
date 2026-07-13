@@ -8,6 +8,7 @@ import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
+import SessionRing from "./components/SessionRing.vue";
 import SettingsView from "./components/SettingsView.vue";
 import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
@@ -373,6 +374,9 @@ const LANGUAGES: Record<string, string> = {
         </HudPanel>
         <HudPanel index="06" title="SYSTEM STATE · COST">
           <StatusStrip :status="status" :offline="offline" />
+        </HudPanel>
+        <HudPanel index="07" title="SESSION RING · TURN TIMELINE">
+          <SessionRing :utterances="utterances" />
         </HudPanel>
         <button class="ctl settingsbtn" :class="{ on: showSettings }" @click="showSettings = !showSettings">
           ⚙ SETTINGS

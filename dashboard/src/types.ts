@@ -38,6 +38,8 @@ export interface Utterance {
   updated_at: number;
   /** When the message entered the conversation (0 = still composing). */
   committed_at: number;
+  /** Real audio duration in seconds (absent for older/mid-flight cards). */
+  duration_s?: number;
 }
 
 export interface Character {

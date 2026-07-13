@@ -205,9 +205,12 @@ def _render_and_play(
         state.set_playing_utterance_id(0)
         state.set_claude_speaking(False, agent)
         state.set_paused(False)
-    _log(f"[speak] done in {time.monotonic() - playing_since:.1f}s")
+    played_seconds = time.monotonic() - playing_since
+    _log(f"[speak] done in {played_seconds:.1f}s")
     state.add_event("speak_done", f"głos '{resolved_voice}'")
-    state.update_utterance(utterance_id, status="played")
+    state.update_utterance(
+        utterance_id, status="played", duration_s=round(played_seconds, 1)
+    )
     return resolved_voice
 
 

@@ -115,6 +115,7 @@ def _transcribe_and_enqueue(
         status="transcribing (Grok STT)…",
         detail=f"{seconds:.1f}s audio",
         cost_usd=cost,
+        duration_s=round(seconds, 1),
     )
     try:
         text = stt.transcribe(stt.encode_wav(samples, sample_rate), state.language)
@@ -178,7 +179,10 @@ def _finalize_stream(
     cost = pricing.stt_streaming_cost_usd(seconds)
     state.add_cost("user", cost)
     state.update_utterance(
-        utterance_id, detail=f"{seconds:.1f}s audio · live", cost_usd=cost
+        utterance_id,
+        detail=f"{seconds:.1f}s audio · live",
+        cost_usd=cost,
+        duration_s=round(seconds, 1),
     )
     text = session.finish()
     if not text:
