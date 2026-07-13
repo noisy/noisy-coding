@@ -44,6 +44,11 @@ PTT_NEVER_CLOSE_MS = 10**9
 # How often the audio loop re-reads whether an API key exists (a file
 # check 30×/s would be waste; a freshly pasted key goes live within this).
 API_KEY_CHECK_SECONDS = 2.0
+# A healthy mic feeds the callback ~30 frames/s; a multi-second starvation
+# means the machine slept or the device vanished — after either, a
+# long-lived PortAudio stream can come back degraded (wrong device /
+# resampling), which garbles STT. Reopen instead of trusting it.
+AUDIO_GAP_REOPEN_SECONDS = 5.0
 # Conversation history persistence: the log used to live only in memory,
 # so every daemon restart wiped the conversation from the dashboard.
 HISTORY_FILE = Path.home() / ".config" / "grok-voice" / "history.json"
@@ -290,17 +295,26 @@ def run(config: VadConfig | None = None) -> None:
             stream: stt_stream.StreamingSession | None = None
             api_key_present = False
             key_check_at = 0.0
+            last_frame_at = time.monotonic()
             while True:
                 frame = frames.get()
-                if state.input_device != active_device:
-                    # The user picked another mic on the dashboard: swap
-                    # the input stream in place, no daemon restart.
+                now = time.monotonic()
+                frame_gap = now - last_frame_at
+                last_frame_at = now
+                if state.input_device != active_device or frame_gap > AUDIO_GAP_REOPEN_SECONDS:
+                    # Reopen the input stream: either the user picked
+                    # another mic on the dashboard, or the audio flow
+                    # starved (sleep/wake, device unplugged) and the old
+                    # stream can't be trusted anymore.
+                    if frame_gap > AUDIO_GAP_REOPEN_SECONDS:
+                        _log(f"[mic] {frame_gap:.0f}s audio gap (sleep/device change?) — reopening input stream")
+                        state.add_event("mic", f"reopened input after a {frame_gap:.0f}s audio gap")
                     active_input.stop()
                     active_input.close()
                     active_input = _open_input_stream(state, config, on_audio)
                     active_device = state.input_device
-                    continue  # this frame may still be the old mic's
-                now = time.monotonic()
+                    last_frame_at = time.monotonic()
+                    continue  # this frame may still be the old stream's
                 if now >= key_check_at:
                     api_key_present = bool(credentials.api_key())
                     key_check_at = now + API_KEY_CHECK_SECONDS
