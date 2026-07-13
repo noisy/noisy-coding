@@ -162,8 +162,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 agent = parse_qs(url.query).get("agent", [None])[0]
                 self._respond({"character": state.character(agent)})
             elif url.path == "/devices":
+                # The dashboard tab is a virtual microphone: selectable
+                # always, audible only while a tab holds the audio lease.
+                browser_entry = [{"name": "THIS BROWSER TAB", "default": False, "value": "browser"}]
                 self._respond(
-                    {"devices": list_input_devices(), "selected": state.input_device}
+                    {
+                        "devices": list_input_devices() + browser_entry,
+                        "selected": state.input_device,
+                    }
                 )
             elif url.path == "/stream/mic":
                 self._stream_mic_levels()

@@ -209,13 +209,21 @@ def _finalize_stream(
     _log(f"[queued/live] ({seconds:.1f}s) {text}")
 
 
-def _open_input_stream(state: ListenerState, config: VadConfig, on_audio) -> sd.InputStream:
+def _open_input_stream(
+    state: ListenerState, config: VadConfig, on_audio
+) -> sd.InputStream | None:
     """Open the selected microphone, falling back to the system default.
 
     The user's pick may vanish (unplugged headphones) — revert to the
     default instead of dying; only a failure of the default propagates.
+    Returns None for the browser tab: its frames arrive over the WS
+    bridge, there is no hardware stream to own.
     """
     selected = state.input_device
+    if selected == "browser":
+        _log("[mic] input = browser tab (WS bridge)")
+        state.create_utterance("system", "", text="MIC → THIS BROWSER TAB")
+        return None
     options = {"device": selected} if selected else {}
     try:
         input_stream = sd.InputStream(
@@ -330,28 +338,71 @@ def run(config: VadConfig | None = None) -> None:
                     stream = None
                 segmenter = UtteranceSegmenter(config)
                 state.set_recording(False)
-                active_input.stop()
-                active_input.close()
+                if active_input is not None:  # None while the browser tab is the mic
+                    active_input.stop()
+                    active_input.close()
                 active_input = _open_input_stream(state, config, on_audio)
                 active_device = state.input_device
                 last_frame_at = time.monotonic()
+
+            def finalize_open_segment() -> None:
+                """Close the in-progress utterance NOW with the audio it
+                holds — for hard end-of-turn signals (mic mute, browser tab
+                death) where no further frame will ever arrive."""
+                nonlocal stream
+                utterance = segmenter.flush()
+                state.set_recording(False)
+                if stream is not None:
+                    seconds = (
+                        len(utterance) / config.sample_rate
+                        if utterance is not None
+                        else config.min_utterance_ms / 1000
+                    )
+                    stt_executor.submit(
+                        _finalize_stream, stream, seconds, state, current_utterance_id
+                    )
+                    stream = None
+                elif utterance is not None:
+                    stt_executor.submit(
+                        _transcribe_and_enqueue,
+                        utterance,
+                        config.sample_rate,
+                        state,
+                        current_utterance_id,
+                    )
+                else:
+                    state.update_utterance(
+                        current_utterance_id, status="dropped — too short"
+                    )
 
             while True:
                 try:
                     frame = frames.get(timeout=FRAME_WAIT_SECONDS)
                 except queue.Empty:
-                    reopen_input("no audio frames (stream stalled)", kind="mic_error")
+                    if state.input_device != active_device:
+                        reopen_input("input device switched")  # native ↔ browser too
+                    elif active_device == "browser":
+                        # The tab is the mic and stopped sending: nothing to
+                        # reopen. The lease decides — a dead tab mid-utterance
+                        # closes the segment with the audio we hold.
+                        if segmenter.is_recording and not state.tab_audio_alive:
+                            _log("[recording] closed — browser tab lost the audio lease")
+                            state.add_event("tab_audio_lost", "tab stopped sending mid-utterance")
+                            finalize_open_segment()
+                    else:
+                        reopen_input("no audio frames (stream stalled)", kind="mic_error")
                     continue
                 now = time.monotonic()
                 frame_gap = now - last_frame_at
                 last_frame_at = now
-                if state.input_device != active_device or frame_gap > AUDIO_GAP_REOPEN_SECONDS:
-                    reopen_input(
-                        f"{frame_gap:.0f}s audio gap (sleep/device change?)"
-                        if frame_gap > AUDIO_GAP_REOPEN_SECONDS
-                        else "microphone switched"
-                    )
+                if state.input_device != active_device:
+                    reopen_input("microphone switched")
                     continue  # this frame may still be the old stream's
+                # Hardware only: a long gap means stale PortAudio buffers
+                # (sleep/wake). A tab hiccup has no hardware to reanimate.
+                if active_device != "browser" and frame_gap > AUDIO_GAP_REOPEN_SECONDS:
+                    reopen_input(f"{frame_gap:.0f}s audio gap (sleep/device change?)")
+                    continue
                 if now >= key_check_at:
                     api_key_present = bool(credentials.api_key())
                     key_check_at = now + API_KEY_CHECK_SECONDS
@@ -368,32 +419,9 @@ def run(config: VadConfig | None = None) -> None:
                     # the transient echo-pause during playback must not
                     # cut a PTT barge-in recording short.
                     if segmenter.is_recording and state.user_muted:
-                        utterance = segmenter.flush()
-                        state.set_recording(False)
                         _log("[recording] closed by mic mute")
                         state.add_event("recording_done", "closed by mic mute")
-                        if stream is not None:
-                            seconds = (
-                                len(utterance) / config.sample_rate
-                                if utterance is not None
-                                else config.min_utterance_ms / 1000
-                            )
-                            stt_executor.submit(
-                                _finalize_stream, stream, seconds, state, current_utterance_id
-                            )
-                            stream = None
-                        elif utterance is not None:
-                            stt_executor.submit(
-                                _transcribe_and_enqueue,
-                                utterance,
-                                config.sample_rate,
-                                state,
-                                current_utterance_id,
-                            )
-                        else:
-                            state.update_utterance(
-                                current_utterance_id, status="dropped — too short"
-                            )
+                        finalize_open_segment()
                     continue
                 # Live level for the dashboard oscilloscope: frame RMS in
                 # 0..1, scaled so normal speech lands around 0.2-0.8.
