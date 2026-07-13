@@ -132,14 +132,22 @@ const LANGUAGES: Record<string, string> = {
   <div class="scanlines" />
   <div class="vignette" />
 
-  <!-- Setup gate: without an API key nothing below can work. -->
-  <div v-if="unconfigured" class="setup">
+  <!-- First contact: the HUD itself is the demo — live scopes prove the
+       mic works, API-dependent sections sit dimmed behind the key prompt. -->
+  <div v-if="unconfigured" class="setup-overlay">
     <div class="setup-box">
       <div class="setup-title">GROK-VOICE · FIRST CONTACT</div>
       <p class="setup-text">
-        This console needs an xAI API key to hear and speak.
-        Create one at <b>console.x.ai</b>, then paste it below — it is stored
-        locally in <b>~/.config/grok-voice/credentials.json</b>.
+        Talk to Claude out loud — it hears you, answers through your speakers,
+        and this console shows the whole conversation live. The oscilloscope
+        below is already listening to your mic.
+      </p>
+      <p class="setup-text">
+        All it needs is an xAI API key, and it runs on <b>pennies</b>:
+        listening costs <b>$0.10 per hour</b>, a spoken reply is a fraction of
+        a cent. Create a key at
+        <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
+        and paste it here:
       </p>
       <div class="setup-row">
         <input
@@ -154,7 +162,7 @@ const LANGUAGES: Record<string, string> = {
     </div>
   </div>
 
-  <div v-else class="hud">
+  <div class="hud">
     <header>
       <div class="logo">
         <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
@@ -185,11 +193,11 @@ const LANGUAGES: Record<string, string> = {
       <div class="col-left">
         <!-- Panic-sized mute: quick muting must not require aiming at a
              tiny control, so it gets widget-scale real estate up top. -->
-        <button class="bigmute" :class="{ muted: status?.muted }" @click="toggleMute">
+        <button class="bigmute" :class="{ muted: status?.muted, locked: unconfigured }" @click="toggleMute">
           <span class="bm-label">{{ status?.muted ? "◉ MIC MUTED" : "MUTE MIC" }}</span>
           <span class="bm-sub">{{ status?.muted ? "TAP TO UNMUTE" : "ONE TAP TO GO SILENT" }}</span>
         </button>
-        <button class="voicemute" :class="{ muted: status?.voice_muted }" @click="toggleVoiceMute">
+        <button class="voicemute" :class="{ muted: status?.voice_muted, locked: unconfigured }" @click="toggleVoiceMute">
           <span class="vm-label">{{ status?.voice_muted ? "◉ CLAUDE MUTED" : "MUTE CLAUDE" }}</span>
           <span class="vm-sub">
             {{ status?.voice_muted ? `${unheard.length} UNHEARD — PARKING SILENTLY` : "PARK SPEECH WHILE AWAY" }}
@@ -206,7 +214,7 @@ const LANGUAGES: Record<string, string> = {
         <HudPanel index="02" title="AUDIO SPECTRUM">
           <SpectrumBars :level="level" />
         </HudPanel>
-        <HudPanel index="03" title="CONTROLS">
+        <HudPanel index="03" title="CONTROLS" :class="{ locked: unconfigured }">
           <div class="controls">
             <!-- The two mode toggles sit together: same choice, two
                  directions (Claude's voice out vs your voice in). -->
@@ -249,7 +257,7 @@ const LANGUAGES: Record<string, string> = {
         </HudPanel>
       </div>
 
-      <div class="col-mid">
+      <div class="col-mid" :class="{ locked: unconfigured }">
         <HudPanel v-if="showSettings" index="08" title="SETTINGS">
           <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
           <SettingsView :api-key-hint="status?.api_key_hint ?? ''" @save="saveKey" />
@@ -274,7 +282,7 @@ const LANGUAGES: Record<string, string> = {
         </HudPanel>
       </div>
 
-      <div class="col-right">
+      <div class="col-right" :class="{ locked: unconfigured }">
         <!-- Holding while muted records nothing — lock the button and say
              why instead of silently eating the press. -->
         <button
@@ -487,25 +495,34 @@ footer { flex: none; }
   50% { box-shadow: 0 0 26px rgba(77, 255, 180, 0.5), inset 0 0 26px rgba(77, 255, 180, 0.2); }
 }
 
-.setup {
-  position: relative;
-  z-index: 1;
-  min-height: 100dvh;
+/* Sections that need the API sit dimmed behind the first-contact prompt. */
+.locked { opacity: 0.35; pointer-events: none; filter: saturate(0.4); }
+
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* above scanlines/vignette */
   display: grid;
   place-items: center;
   padding: 24px;
+  pointer-events: none; /* the live scopes behind stay hoverable */
+  background: radial-gradient(560px 380px at 50% 46%, rgba(2, 6, 12, 0.88), rgba(2, 6, 12, 0.25) 75%, transparent);
 }
 .setup-box {
+  pointer-events: auto;
   max-width: 480px;
   width: 100%;
-  background: var(--panel);
+  background: var(--panel-solid);
   border: 1px solid var(--line-strong);
+  box-shadow: 0 0 40px rgba(63, 216, 255, 0.15);
   padding: 26px 28px;
   clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
 }
 .setup-title { font-size: 13px; letter-spacing: 0.3em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); margin-bottom: 14px; }
-.setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 18px; }
+.setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 14px; }
 .setup-text b { color: var(--cyan); font-weight: 400; }
+.setup-text a { color: var(--amber); text-decoration: none; border-bottom: 1px dotted var(--amber-dim); }
+.setup-text a:hover { text-shadow: var(--glow-amber); }
 .setup-row { display: flex; gap: 8px; }
 .setup-input, .keyinput {
   flex: 1;
