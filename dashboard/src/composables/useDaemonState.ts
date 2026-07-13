@@ -10,7 +10,8 @@ const ERROR_LOG_SIZE = 20;
 
 export interface DaemonState {
   status: Ref<DaemonStatus | null>;
-  utterances: Ref<Utterance[]>;
+  utterances: Ref<Utterance[]>; // the viewed agent's slice
+  allUtterances: Ref<Utterance[]>; // every agent — feeds unread badges
   character: Ref<Character | null>;
   offline: Ref<boolean>;
   viewedAgent: Ref<string | null>;
@@ -21,6 +22,7 @@ export interface DaemonState {
 export function useDaemonState(pollMs = 400): DaemonState {
   const status = ref<DaemonStatus | null>(null);
   const utterances = ref<Utterance[]>([]);
+  const allUtterances = ref<Utterance[]>([]);
   const character = ref<Character | null>(null);
   const offline = ref(false);
   const viewedAgent = ref<string | null>(null);
@@ -42,7 +44,11 @@ export function useDaemonState(pollMs = 400): DaemonState {
         pinned = false;
       }
       const agent = viewedAgent.value ?? undefined;
-      utterances.value = await getUtterances(agent);
+      // One unfiltered fetch serves both the viewed log and the unread
+      // badges on background tabs.
+      const all = await getUtterances();
+      allUtterances.value = all;
+      utterances.value = agent ? all.filter((u) => u.agent === agent) : all;
       character.value = await getCharacter(agent);
       // Surface system failures (STT/TTS errors) that otherwise die
       // silently in the daemon's event log.
@@ -72,5 +78,5 @@ export function useDaemonState(pollMs = 400): DaemonState {
   });
   onUnmounted(() => clearInterval(timer));
 
-  return { status, utterances, character, offline, viewedAgent, errors, selectAgent };
+  return { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent };
 }

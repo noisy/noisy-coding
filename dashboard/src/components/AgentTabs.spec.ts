@@ -35,6 +35,16 @@ describe("AgentTabs", () => {
     expect(b.find(".spk").exists()).toBe(true);
   });
 
+  it("shows an unread dot only on background tabs with activity", () => {
+    const wrapper = mount(AgentTabs, {
+      props: { agents, active: "id-a", viewed: "id-a", speaking: [], unread: ["id-a", "id-b"] },
+    });
+
+    const [a, b] = wrapper.findAll("button");
+    expect(a.find(".unread").exists()).toBe(false); // viewed tab never nags
+    expect(b.find(".unread").exists()).toBe(true);
+  });
+
   it("renders nothing without agents", () => {
     const wrapper = mount(AgentTabs, {
       props: { agents: {}, active: null, viewed: null, speaking: [] },

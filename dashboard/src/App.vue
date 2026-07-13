@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { cancelTranscript, saveApiKey, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback } from "./api/client";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -14,7 +14,36 @@ import StatusStrip from "./components/StatusStrip.vue";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, character, offline, viewedAgent, errors, selectAgent } = useDaemonState();
+const { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent } =
+  useDaemonState();
+
+// Unread badges: an agent has "unread" when its newest utterance id is
+// beyond what was on screen the last time you viewed that tab. Agents seen
+// for the first time start caught-up (old history isn't news).
+const lastSeen = ref<Record<string, number>>({});
+watch(allUtterances, (list) => {
+  const maxByAgent: Record<string, number> = {};
+  for (const u of list) {
+    const agent = u.agent ?? "";
+    maxByAgent[agent] = Math.max(maxByAgent[agent] ?? 0, u.id);
+  }
+  for (const [agent, max] of Object.entries(maxByAgent)) {
+    if (!(agent in lastSeen.value)) lastSeen.value[agent] = max;
+  }
+  const viewed = viewedAgent.value ?? "";
+  if (maxByAgent[viewed] != null) lastSeen.value[viewed] = maxByAgent[viewed];
+});
+const unreadAgents = computed(() => {
+  const viewed = viewedAgent.value ?? "";
+  const unread = new Set<string>();
+  for (const u of allUtterances.value) {
+    const agent = u.agent ?? "";
+    if (agent && agent !== viewed && u.id > (lastSeen.value[agent] ?? Infinity)) {
+      unread.add(agent);
+    }
+  }
+  return [...unread];
+});
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
 function eventTime(ts: number): string {
@@ -307,6 +336,7 @@ const LANGUAGES: Record<string, string> = {
             :active="status?.active_agent ?? null"
             :viewed="viewedAgent"
             :speaking="status?.speaking_agents ?? []"
+            :unread="unreadAgents"
             @select="selectAgent"
           />
           <ConversationLog

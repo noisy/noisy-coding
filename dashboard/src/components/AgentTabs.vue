@@ -1,10 +1,14 @@
 <script setup lang="ts">
-defineProps<{
-  agents: Record<string, string>; // id -> human label
-  active: string | null; // the agent receiving transcripts
-  viewed: string | null; // the tab being displayed
-  speaking: string[]; // agents currently playing audio
-}>();
+withDefaults(
+  defineProps<{
+    agents: Record<string, string>; // id -> human label
+    active: string | null; // the agent receiving transcripts
+    viewed: string | null; // the tab being displayed
+    speaking: string[]; // agents currently playing audio
+    unread?: string[]; // agents with activity since you last viewed them
+  }>(),
+  { unread: () => [] },
+);
 
 defineEmits<{ select: [name: string] }>();
 </script>
@@ -20,6 +24,7 @@ defineEmits<{ select: [name: string] }>();
       <span class="dot" />
       {{ label }}
       <span v-if="speaking.includes(name)" class="spk">🔊</span>
+      <span v-if="unread.includes(name) && name !== viewed" class="unread" title="New activity" />
     </button>
   </nav>
 </template>
@@ -52,4 +57,13 @@ button.viewing {
 }
 button.speaking { border-color: var(--violet-dim); }
 .spk { filter: drop-shadow(0 0 4px var(--violet)); }
+.unread {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+  animation: unread-pulse 1.4s ease-in-out infinite;
+}
+@keyframes unread-pulse { 50% { opacity: 0.4; } }
 </style>
