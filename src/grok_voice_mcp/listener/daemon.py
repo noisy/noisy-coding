@@ -287,6 +287,8 @@ def run(config: VadConfig | None = None) -> None:
             state.set_detection_mode(saved["detection_mode"])
         if "input_device" in saved:
             state.set_input_device(str(saved["input_device"]))
+        if saved.get("output_device") in ("system", "browser"):
+            state.set_output_device(saved["output_device"])
         if "language" in saved:
             state.set_language(saved["language"])
     except (OSError, ValueError):

@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from grok_voice_mcp import credentials, playback
-from grok_voice_mcp.listener import pricing, speech
+from grok_voice_mcp.listener import pricing, speech, tab_audio
 from grok_voice_mcp.listener.dashboard import DASHBOARD_HTML
 from grok_voice_mcp.listener.state import ListenerState
 
@@ -121,6 +121,7 @@ def save_settings(state: ListenerState) -> None:
                     "smart_turn_mode": state.smart_turn_mode,
                     "detection_mode": state.detection_mode,
                     "input_device": state.input_device,
+                    "output_device": state.output_device,
                     "language": state.language,
                 }
             )
@@ -206,6 +207,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "detection_mode": state.detection_mode,
                         "ptt_held": state.ptt_held,
                         "input_device": state.input_device,
+                        "output_device": state.output_device,
                         "tab_audio": state.tab_audio_alive,
                         "activity": state.activity,
                         "language": state.language,
@@ -324,6 +326,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     result["language"] = state.set_language(str(body["language"]))
                 if "input_device" in body:
                     result["input_device"] = state.set_input_device(str(body["input_device"]))
+                if "output_device" in body:
+                    result["output_device"] = state.set_output_device(str(body["output_device"]))
                 if result:
                     save_settings(state)
                     self._respond(result)
@@ -339,6 +343,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/interrupt":
                 # Stop whatever is on the speakers; queued speech continues.
                 playback.stop_all_players()
+                live_bridge = tab_audio.bridge()
+                if live_bridge is not None:
+                    live_bridge.stop_tab_playback()
                 self._respond({"stopped": True})
             elif self.path == "/cancel":
                 utterance_id = int(self._read_json_body().get("utterance_id", 0))

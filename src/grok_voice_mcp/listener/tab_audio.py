@@ -64,15 +64,21 @@ class TabAudioBridge:
         self._frame_samples = frame_samples
         self._lock = threading.Lock()
         self._holder: int | None = None  # id() of the connection holding the lease
+        self._holder_ws = None  # the holder's socket, for outbound playback
+        # Signalled by the tab's "played" ack — and by anything that makes
+        # the ack impossible (holder disconnect), so the playback waiter
+        # never blocks on a dead tab.
+        self._play_ack = threading.Event()
 
     # --- lease election -----------------------------------------------------
 
-    def claim(self, connection_id: int) -> bool:
+    def claim(self, connection_id: int, ws=None) -> bool:
         """First live tab wins; a dead holder's lease has already expired."""
         with self._lock:
             if self._holder is not None and self._state.tab_audio_alive:
                 return self._holder == connection_id
             self._holder = connection_id
+            self._holder_ws = ws
             self._state.refresh_tab_audio()
             return True
 
@@ -80,7 +86,9 @@ class TabAudioBridge:
         with self._lock:
             if self._holder == connection_id:
                 self._holder = None
+                self._holder_ws = None
                 self._state.release_tab_audio()
+                self._play_ack.set()  # a clip mid-flight can never be acked now
 
     # --- ingest ---------------------------------------------------------------
 
@@ -99,6 +107,53 @@ class TabAudioBridge:
             self._frames.put(frame)
         return len(frames)
 
+    # --- outbound playback ------------------------------------------------------
+
+    def play_through_tab(self, audio: bytes, content_type: str) -> bool:
+        """Send one clip to the lease-holding tab; block until it reports
+        playback finished. Returns False when no live tab could play it —
+        the caller falls back to the system speakers, speech is never lost.
+
+        The wait is structural, not a guessed deadline: it ends on the
+        tab's "played" ack, on the holder disconnecting (release() sets
+        the event), or on lease death (a hung-but-connected tab stops
+        heartbeating within TAB_AUDIO_LEASE_SECONDS). The 0.5 s wait slice
+        only paces the lease re-check, it decides nothing by itself.
+        """
+        with self._lock:
+            ws = self._holder_ws
+        if ws is None or not self._state.tab_audio_alive:
+            return False
+        self._play_ack.clear()
+        try:
+            ws.send(json.dumps({"type": "play", "content_type": content_type}))
+            ws.send(audio)
+        except Exception:
+            return False
+        while not self._play_ack.wait(timeout=0.5):
+            with self._lock:
+                holder_changed = self._holder_ws is not ws
+            if holder_changed or not self._state.tab_audio_alive:
+                return False
+        with self._lock:
+            return self._holder_ws is ws
+
+    def ack_played(self, connection_id: int, ws=None) -> None:
+        """The tab reports its current clip finished (or was stopped)."""
+        if self.claim(connection_id, ws):
+            self._play_ack.set()
+
+    def stop_tab_playback(self) -> None:
+        """User hit ⏹ — the tab pauses its clip and acks 'played'."""
+        with self._lock:
+            ws = self._holder_ws
+        if ws is None:
+            return
+        try:
+            ws.send(json.dumps({"type": "stop"}))
+        except Exception:
+            pass
+
     # --- WS plumbing ----------------------------------------------------------
 
     def _handle(self, ws) -> None:  # pragma: no cover — thin I/O shell
@@ -107,7 +162,7 @@ class TabAudioBridge:
         try:
             for message in ws:
                 if isinstance(message, bytes):
-                    if not self.claim(connection_id):
+                    if not self.claim(connection_id, ws):
                         ws.send(json.dumps({"type": "rejected", "reason": "another tab holds the audio lease"}))
                         return
                     self.ingest(rechunker, message)
@@ -117,13 +172,15 @@ class TabAudioBridge:
                 except ValueError:
                     continue
                 if kind == "hello":
-                    if self.claim(connection_id):
+                    if self.claim(connection_id, ws):
                         ws.send(json.dumps({"type": "granted"}))
                     else:
                         ws.send(json.dumps({"type": "rejected", "reason": "another tab holds the audio lease"}))
                         return
-                elif kind == "hb" and self.claim(connection_id):
+                elif kind == "hb" and self.claim(connection_id, ws):
                     self._state.refresh_tab_audio()
+                elif kind == "played":
+                    self.ack_played(connection_id, ws)
         finally:
             self.release(connection_id)
 
@@ -134,6 +191,14 @@ class TabAudioBridge:
             server.serve_forever()
 
 
+_bridge: TabAudioBridge | None = None
+
+
+def bridge() -> TabAudioBridge | None:
+    """The running bridge, for modules that can't be handed it (speech)."""
+    return _bridge
+
+
 def start_bridge(
     state: ListenerState,
     frames: "queue.Queue[np.ndarray]",
@@ -141,8 +206,9 @@ def start_bridge(
     http_port: int,
 ) -> TabAudioBridge:
     """Start the WS bridge on http_port+1 in a daemon thread."""
-    bridge = TabAudioBridge(state, frames, frame_samples)
+    global _bridge
+    _bridge = TabAudioBridge(state, frames, frame_samples)
     threading.Thread(
-        target=bridge.serve_forever, args=(http_port + BRIDGE_PORT_OFFSET,), daemon=True
+        target=_bridge.serve_forever, args=(http_port + BRIDGE_PORT_OFFSET,), daemon=True
     ).start()
-    return bridge
+    return _bridge

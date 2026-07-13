@@ -78,3 +78,65 @@ def test_ingest_renews_the_lease():
     bridge.ingest(FrameRechunker(FRAME_SAMPLES), _pcm(10))
 
     assert state.tab_audio_alive
+
+
+class FakeWs:
+    def __init__(self):
+        self.sent: list = []
+
+    def send(self, data):
+        self.sent.append(data)
+
+
+def test_play_through_tab_without_a_tab_reports_false():
+    bridge, _, _ = _bridge()
+
+    assert bridge.play_through_tab(b"mp3", "audio/mpeg") is False
+
+
+def test_play_through_tab_sends_clip_and_waits_for_the_ack():
+    import threading
+
+    bridge, _, _ = _bridge()
+    ws = FakeWs()
+    assert bridge.claim(1, ws)
+
+    result: list = []
+    player = threading.Thread(
+        target=lambda: result.append(bridge.play_through_tab(b"mp3-bytes", "audio/mpeg"))
+    )
+    player.start()
+    bridge.ack_played(1, ws)
+    player.join(timeout=3)
+
+    assert result == [True]
+    assert ws.sent[0] == '{"type": "play", "content_type": "audio/mpeg"}'
+    assert ws.sent[1] == b"mp3-bytes"
+
+
+def test_play_through_tab_aborts_when_the_tab_disconnects_mid_clip():
+    import threading
+
+    bridge, _, _ = _bridge()
+    ws = FakeWs()
+    assert bridge.claim(1, ws)
+
+    result: list = []
+    player = threading.Thread(
+        target=lambda: result.append(bridge.play_through_tab(b"mp3", "audio/mpeg"))
+    )
+    player.start()
+    bridge.release(1)  # tab closed: the ack can never come
+    player.join(timeout=3)
+
+    assert result == [False]
+
+
+def test_stop_tab_playback_tells_the_tab_to_stop():
+    bridge, _, _ = _bridge()
+    ws = FakeWs()
+    bridge.claim(1, ws)
+
+    bridge.stop_tab_playback()
+
+    assert '{"type": "stop"}' in ws.sent

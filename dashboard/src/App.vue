@@ -213,10 +213,19 @@ const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
 const browserAudio = useBrowserAudio();
+// The tab connection serves both directions — tear it down only when
+// NEITHER side uses the tab anymore.
+function dropTabUnlessNeeded() {
+  const s = status.value;
+  if (s?.input_device !== "browser" && s?.output_device !== "browser") {
+    browserAudio.disable();
+  }
+}
 async function pickMic(name: string) {
   if (name !== "browser") {
-    browserAudio.disable();
-    return setSettings({ input_device: name }).catch(swallow);
+    await setSettings({ input_device: name }).catch(swallow);
+    dropTabUnlessNeeded();
+    return;
   }
   // The picker click is our user gesture — getUserMedia is allowed here.
   try {
@@ -226,6 +235,19 @@ async function pickMic(name: string) {
     // Permission or lease refused: stay on the system default rather than
     // pointing the daemon at a microphone that will never send a frame.
     await setSettings({ input_device: "" }).catch(swallow);
+  }
+}
+async function pickOutput(value: string) {
+  if (value !== "browser") {
+    await setSettings({ output_device: "system" }).catch(swallow);
+    dropTabUnlessNeeded();
+    return;
+  }
+  try {
+    await browserAudio.connect(); // lease only — the speaker needs no mic permission
+    await setSettings({ output_device: "browser" });
+  } catch {
+    await setSettings({ output_device: "system" }).catch(swallow);
   }
 }
 
@@ -387,9 +409,11 @@ const LANGUAGES: Record<string, string> = {
             :api-key-hint="status?.api_key_hint ?? ''"
             :devices="devices"
             :selected-device="status?.input_device ?? ''"
+            :output-device="status?.output_device ?? 'system'"
             :cue-prefs="cuePrefs"
             @save="saveKey"
             @pick-device="pickMic"
+            @pick-output="pickOutput"
             @refresh-devices="loadDevices"
             @toggle-cue="setCue"
           />

@@ -24,6 +24,8 @@ export interface DaemonStatus {
   detection_mode: "auto" | "ptt";
   ptt_held: boolean;
   input_device: string;
+  /** Where Claude's voice plays: system speakers or the browser tab. */
+  output_device: "system" | "browser";
   /** A browser tab currently holds the audio lease (WS bridge). */
   tab_audio: boolean;
   activity: Record<string, { text: string; at: number }>;
@@ -65,6 +67,7 @@ export interface SettingsPatch {
   smart_turn_mode?: "soft" | "hard";
   detection_mode?: "auto" | "ptt";
   input_device?: string;
+  output_device?: "system" | "browser";
   language?: string;
 }
 

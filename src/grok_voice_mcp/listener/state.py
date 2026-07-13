@@ -51,6 +51,7 @@ class ListenerState:
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
+        self._output_device = "system"  # where Claude's voice plays: system | browser
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
         self._claude_speaking = False  # any agent playing audio right now
@@ -180,6 +181,17 @@ class ListenerState:
         with self._lock:
             self._input_device = str(name)
             return self._input_device
+
+    @property
+    def output_device(self) -> str:
+        with self._lock:
+            return self._output_device
+
+    def set_output_device(self, name: str) -> str:
+        with self._lock:
+            if name in ("system", "browser"):
+                self._output_device = name
+            return self._output_device
 
     @property
     def detection_mode(self) -> str:

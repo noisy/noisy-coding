@@ -14,6 +14,7 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from grok_voice_mcp import playback, tts, tts_stream
+from grok_voice_mcp.listener import tab_audio
 from grok_voice_mcp.listener import pricing
 from grok_voice_mcp.listener.state import ListenerState
 
@@ -147,6 +148,10 @@ def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
 
 def _tts_streaming(state: ListenerState) -> bool:
     """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
+    if state.output_device == "browser":
+        # The tab plays one complete clip per message (v1) — streaming
+        # chunks over the bridge is a later iteration.
+        return False
     if os.environ.get(TTS_MODE_ENV_VAR, "").lower() == "live":
         return True
     return state.tts_mode == "live"
@@ -241,6 +246,20 @@ async def _synthesize_and_play(
         audio = await tts.synthesize(speech_text, voice, language, speed)
         state.set_latency("tts", (time.monotonic() - synth_started) * 1000)
         detail = f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS"
+        if state.output_device == "browser":
+            live_bridge = tab_audio.bridge()
+            state.add_event("speak_audio", detail + " → browser tab")
+            state.update_utterance(
+                utterance_id, status="playing through speakers…",
+                detail="playing in the browser tab",
+            )
+            if live_bridge is not None and await asyncio.to_thread(
+                live_bridge.play_through_tab, audio.audio, audio.content_type
+            ):
+                return
+            # No live tab took the clip — never lose speech: fall back to
+            # the system speakers and say so in the event log.
+            state.add_event("speak_fallback", "no browser tab — system speakers")
         state.add_event("speak_audio", detail)
         state.update_utterance(
             utterance_id, status="playing through speakers…", detail=detail

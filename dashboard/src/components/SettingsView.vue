@@ -10,13 +10,15 @@ withDefaults(
     apiKeyHint: string;
     devices?: InputDevice[];
     selectedDevice?: string;
+    outputDevice?: string;
     cuePrefs?: CuePrefs | null;
   }>(),
-  { devices: () => [], selectedDevice: "", cuePrefs: null },
+  { devices: () => [], selectedDevice: "", outputDevice: "system", cuePrefs: null },
 );
 const emit = defineEmits<{
   save: [key: string];
   pickDevice: [name: string];
+  pickOutput: [value: string];
   refreshDevices: [];
   toggleCue: [name: CueName, value: boolean];
 }>();
@@ -60,6 +62,27 @@ function submit() {
           after the daemon started shows on the list, but needs a daemon
           restart before it can be opened. THIS BROWSER TAB makes this very
           tab the microphone (asks for permission on pick).
+        </p>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="keyrow">
+        <span class="lbl">OUTPUT</span>
+        <select
+          class="keyinput"
+          :value="outputDevice"
+          @change="emit('pickOutput', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="system">SYSTEM SPEAKERS</option>
+          <option value="browser">THIS BROWSER TAB</option>
+        </select>
+      </div>
+      <div class="text">
+        <p>
+          Where Claude's voice plays. THIS BROWSER TAB routes speech through
+          this page — pair it with the tab microphone and the browser's echo
+          cancellation lets you interrupt Claude mid-sentence.
         </p>
       </div>
     </section>
