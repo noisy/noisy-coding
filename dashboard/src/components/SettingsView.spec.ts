@@ -19,8 +19,8 @@ describe("SettingsView", () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "····kRc9" } });
 
     await wrapper.find(".btn").trigger("click"); // REPLACE
-    await wrapper.find(".keyinput").setValue("xai-new-key-123");
-    await wrapper.find(".keyinput").trigger("keyup.enter");
+    await wrapper.find("input.keyinput").setValue("xai-new-key-123");
+    await wrapper.find("input.keyinput").trigger("keyup.enter");
 
     expect(wrapper.emitted("save")).toEqual([["xai-new-key-123"]]);
     // Back to the readonly masked field — the editable input is gone.
@@ -32,8 +32,8 @@ describe("SettingsView", () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "" } });
 
     await wrapper.find(".btn").trigger("click");
-    await wrapper.find(".keyinput").setValue("abc");
-    await wrapper.find(".keyinput").trigger("keyup.enter");
+    await wrapper.find("input.keyinput").setValue("abc");
+    await wrapper.find("input.keyinput").trigger("keyup.enter");
 
     expect(wrapper.emitted("save")).toBeUndefined();
   });
