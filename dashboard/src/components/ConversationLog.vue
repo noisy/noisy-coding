@@ -77,7 +77,23 @@ function scrollToBottom() {
   if (feed.value) feed.value.scrollTop = feed.value.scrollHeight;
 }
 
-// Scrolled to the newest message by default, and kept there as new ones land.
+// Sticky-bottom, like every decent chat: we follow new content ONLY while
+// you are at the bottom. Scrolled up to read something older? Nothing may
+// move your view — new messages just light up the jump-down button.
+const STICK_THRESHOLD_PX = 24;
+const stickToBottom = ref(true);
+function onFeedScroll() {
+  const el = feed.value;
+  if (!el) return;
+  stickToBottom.value = el.scrollTop + el.clientHeight >= el.scrollHeight - STICK_THRESHOLD_PX;
+}
+function jumpToBottom() {
+  stickToBottom.value = true;
+  scrollToBottom();
+}
+
+// Scrolled to the newest message by default, and kept there as new ones
+// land — but only while sticking.
 onMounted(scrollToBottom);
 watch(
   () => {
@@ -86,14 +102,14 @@ watch(
   },
   async () => {
     await nextTick();
-    scrollToBottom();
+    if (stickToBottom.value) scrollToBottom();
   },
 );
 </script>
 
 <template>
   <div class="logroot">
-    <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }">
+    <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
       <template v-for="utterance in settled" :key="utterance.id">
         <UserBubble
           v-if="utterance.role === 'user'"
@@ -109,6 +125,13 @@ watch(
       </template>
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
     </div>
+    <button
+      v-if="!stickToBottom"
+      class="jumpdown"
+      :style="{ bottom: padBottom + 10 + 'px' }"
+      title="Jump to the newest message and follow"
+      @click="jumpToBottom"
+    >▼</button>
     <div ref="slot" class="liveslot">
       <UserBubble v-if="liveTail" :utterance="liveTail" />
     </div>
@@ -152,6 +175,22 @@ watch(
   display: flex;
   flex-direction: column;
 }
+.jumpdown {
+  position: absolute;
+  right: 14px;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--cyan);
+  background: rgba(4, 12, 20, 0.95);
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+.jumpdown:hover { color: var(--cyan-hi); border-color: var(--cyan); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+
 .liveslot :deep(.msg) {
   /* Solid backdrop: scrolled history may pass underneath. */
   background-color: rgba(4, 11, 19, 0.97);
