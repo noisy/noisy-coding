@@ -142,6 +142,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond_html(DASHBOARD_HTML)
             elif url.path == "/legacy":
                 self._respond_html(DASHBOARD_HTML)
+            elif url.path == "/debug":
+                # The chat-window sandbox — same SPA bundle, routed client-side.
+                self._serve_hud_file("index.html")
             elif url.path.startswith("/assets/"):
                 self._serve_hud_file(url.path[1:])
             elif url.path == "/drain":
