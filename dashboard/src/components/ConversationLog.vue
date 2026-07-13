@@ -63,6 +63,16 @@ const liveTail = computed(() => {
 
 const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
 
+// Where the busy row belongs: ABOVE the first message still awaiting
+// pickup (the ongoing action shown is what precedes — and blocks — it).
+// With nothing awaiting, the busy work happened after everything: bottom.
+const busyBeforeId = computed(() => {
+  const awaiting = settled.value.find(
+    (u) => u.role === "user" && u.status.includes("ready"),
+  );
+  return awaiting?.id ?? null;
+});
+
 const feed = ref<HTMLElement | null>(null);
 const slot = ref<HTMLElement | null>(null);
 
@@ -122,6 +132,7 @@ watch(
   <div class="logroot">
     <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
       <template v-for="utterance in settled" :key="utterance.id">
+        <ActivityLine v-if="utterance.id === busyBeforeId" :activity="activity" />
         <!-- System rows: small inline annotations (mic switched, …) that
              sit in the timeline so oddities right below them explain
              themselves — informative, never an alarm. -->
@@ -140,7 +151,7 @@ watch(
           @replay="$emit('replay', $event)"
         />
       </template>
-      <ActivityLine :activity="activity" />
+      <ActivityLine v-if="busyBeforeId === null" :activity="activity" />
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
     </div>
     <button

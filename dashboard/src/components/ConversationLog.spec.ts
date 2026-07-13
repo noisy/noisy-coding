@@ -51,6 +51,24 @@ describe("ConversationLog", () => {
     expect(wrapper.findAll(".msg")).toHaveLength(1);
   });
 
+  it("places the busy row above an awaiting message, else at the bottom", () => {
+    const activity = { text: "Edit · App.vue", at: 0 };
+    const awaiting = { ...utterance(2, "user"), status: "ready — awaiting pickup", committed_at: 20 };
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [utterance(1, "user"), awaiting], activity },
+    });
+
+    const feedChildren = wrapper.find(".feed").element.children;
+    // busy row sits between message 1 and the awaiting message 2
+    expect(feedChildren[1].className).toContain("busyrow");
+
+    const noAwaiting = mount(ConversationLog, {
+      props: { utterances: [utterance(1, "user")], activity },
+    });
+    const children = noAwaiting.find(".feed").element.children;
+    expect(children[children.length - 1].className).toContain("busyrow");
+  });
+
   it("shows an empty-state line without utterances", () => {
     const wrapper = mount(ConversationLog, { props: { utterances: [] } });
 
