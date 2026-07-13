@@ -1,6 +1,6 @@
 [project]
 name = "grok-voice-mcp"
-version = "0.1.0"
+version = "2.0.0"
 description = "MCP server that speaks short summaries aloud via the Grok (xAI) Voice API"
 readme = "README.md"
 authors = [
