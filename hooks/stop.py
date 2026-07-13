@@ -50,6 +50,19 @@ def _get(path: str) -> dict:
         return json.load(response)
 
 
+def _post_activity(text: str) -> None:
+    """Best-effort live-activity update ("" clears the line)."""
+    try:
+        request = urllib.request.Request(
+            f"{BASE_URL}/activity",
+            data=json.dumps({"agent": AGENT, "text": text}).encode(),
+            method="POST",
+        )
+        urllib.request.urlopen(request, timeout=0.3).close()
+    except Exception:
+        pass
+
+
 def _wait_seconds() -> float:
     status = _get("/status")
     voice_recently_used = (
@@ -103,15 +116,7 @@ def main() -> None:
     AGENT, _label = identity(hook_input)
     DRAIN_PATH = f"/drain?agent={AGENT}"
     # Turn ended — the agent is idle now; clear its live-activity line.
-    try:
-        _clear = urllib.request.Request(
-            f"http://127.0.0.1:{PORT}/activity",
-            data=json.dumps({"agent": AGENT, "text": ""}).encode(),
-            method="POST",
-        )
-        urllib.request.urlopen(_clear, timeout=0.3).close()
-    except Exception:
-        pass
+    _post_activity("")
     # Per-agent rewake lock so one session's poller can't block another's.
     REWAKE_LOCK_FILE = (
         Path.home() / ".config" / "grok-voice" / f"rewake-{AGENT}.lock"
@@ -129,6 +134,10 @@ def main() -> None:
             spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
             if spoken:
                 spoken = _collect_continuation(spoken)
+                # Waking the model resumes the turn — relight the activity
+                # line this hook cleared on entry, or the model reasons
+                # with the busy bubble dark until its first tool call.
+                _post_activity("THINKING…")
                 # Experiment: some harness versions surface stdout systemMessage
                 # from async hooks too; harmless if ignored.
                 print(json.dumps({"systemMessage": f"🎙️ Voice: „{spoken}”"}))
@@ -140,6 +149,7 @@ def main() -> None:
             return
         spoken = _poll_for_speech(_wait_seconds())
         if spoken:
+            _post_activity("THINKING…")  # blocked stop = the turn resumes
             print(
                 json.dumps(
                     {
