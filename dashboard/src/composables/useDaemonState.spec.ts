@@ -91,6 +91,41 @@ describe("useDaemonState", () => {
     unmount();
   });
 
+  it("flags a status change the chat machine cannot explain", async () => {
+    const card = { id: 7, role: "user", agent: "agent-a", started_at: 100 };
+    let poll = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.startsWith("/status")) return jsonResponse(STATUS);
+        if (url.startsWith("/utterances")) {
+          poll += 1;
+          // Legal hop first, then a resurrection no event chain explains.
+          const status = poll === 1 ? "recording…" : poll === 2 ? "delivered to Claude" : "recording…";
+          return jsonResponse({ utterances: [{ ...card, status }] });
+        }
+        if (url.startsWith("/events")) return jsonResponse({ events: [] });
+        return jsonResponse({ character: {} });
+      }),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { state, unmount } = mountComposable();
+    await flush();
+    await vi.advanceTimersByTimeAsync(400); // recording → delivered: legal path
+    await flush();
+    expect(state.errors.value).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(400); // delivered → recording: resurrection
+    await flush();
+    expect(state.errors.value).toHaveLength(1);
+    expect(state.errors.value[0].kind).toBe("machine_violation");
+    expect(state.errors.value[0].detail).toContain('"delivered to Claude" → "recording…"');
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+    unmount();
+  });
+
   it("flips offline when the daemon is unreachable and back when it answers", async () => {
     let failing = true;
     vi.stubGlobal(

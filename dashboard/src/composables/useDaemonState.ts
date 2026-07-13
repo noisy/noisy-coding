@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
   getCharacter, getEvents, getStatus, getUtterances, setActiveAgent, type DaemonEvent,
 } from "../api/client";
+import { validStatusChange } from "../machines/chat";
 import type { Character, DaemonStatus, Utterance } from "../types";
 
 const ERROR_LOG_SIZE = 20;
@@ -33,6 +34,30 @@ export function useDaemonState(pollMs = 400): DaemonState {
   // a tab by clicking it.
   let pinned = false;
 
+  // Assumption detector: every observed status change must be a path in
+  // the chat machine (see machines/chat.ts). A change the model can't
+  // explain means the daemon and the model disagree — surface it in the
+  // error ticker instead of silently rendering nonsense. Keyed by
+  // id:started_at because a daemon restart reuses ids from 1.
+  const lastStatuses = new Map<string, string>();
+  let violationSeq = 0;
+  function auditTransitions(all: Utterance[]) {
+    for (const u of all) {
+      if (u.role !== "user" && u.role !== "claude") continue;
+      const key = `${u.id}:${u.started_at}`;
+      const prev = lastStatuses.get(key);
+      lastStatuses.set(key, u.status);
+      if (prev === undefined || prev === u.status) continue;
+      if (validStatusChange(u.role, prev, u.status)) continue;
+      const detail = `#${u.id} ${u.role}: "${prev}" → "${u.status}"`;
+      console.warn(`[chat-machine] unexpected transition ${detail}`);
+      errors.value = [
+        ...errors.value,
+        { seq: --violationSeq, ts: Date.now() / 1000, kind: "machine_violation", detail },
+      ].slice(-ERROR_LOG_SIZE);
+    }
+  }
+
   async function tick() {
     try {
       const s = await getStatus();
@@ -47,6 +72,7 @@ export function useDaemonState(pollMs = 400): DaemonState {
       // One unfiltered fetch serves both the viewed log and the unread
       // badges on background tabs.
       const all = await getUtterances();
+      auditTransitions(all);
       allUtterances.value = all;
       // System rows (mic switched, …) belong to every tab's timeline.
       utterances.value = agent
