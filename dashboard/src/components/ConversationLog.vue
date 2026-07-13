@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { statusToState } from "../machines/chat";
+import { statusToState, timelineZone } from "../machines/chat";
 import type { Utterance } from "../types";
 import ActivityLine from "./ActivityLine.vue";
-import ClaudeBubble from "./ClaudeBubble.vue";
+import FeedRow from "./FeedRow.vue";
 import UserBubble from "./UserBubble.vue";
 
 const props = withDefaults(
@@ -33,11 +33,6 @@ function commitTime(u: Utterance): number {
   return u.committed_at || u.started_at;
 }
 
-function sysTime(epochSeconds: number): string {
-  const d = new Date(epochSeconds * 1000);
-  return [d.getHours(), d.getMinutes()].map((n) => String(n).padStart(2, "0")).join(":");
-}
-
 const ordered = computed(() =>
   props.utterances
     .filter((u) => !isNoise(u))
@@ -64,11 +59,19 @@ const liveTail = computed(() => {
 
 const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
 
-// The busy row is the NEWEST thing happening, so it lives at the end of
-// the timeline — below any not-yet-processed messages — whenever Claude is
-// doing anything at all. One stable position: it never teleports around
-// the feed, and a message stuck AWAITING always has its explanation right
-// below it.
+// The virtual "processed line" (see timelineZone in machines/chat.ts): the
+// feed reads past → present → future. History first (delivered, played,
+// parked, failed — plus in-flight speech, which settles in place), then
+// the busy row AS the line itself, then everything still waiting its turn.
+// A card never renders below a zone it outranks, so a PLAYING reply can't
+// dive under the user's AWAITING transcripts.
+function zoneOf(u: Utterance): "done" | "active" | "pending" {
+  if (u.role === "system") return "done";
+  return timelineZone(u.role, u.status);
+}
+
+const processed = computed(() => settled.value.filter((u) => zoneOf(u) !== "pending"));
+const pending = computed(() => settled.value.filter((u) => zoneOf(u) === "pending"));
 
 const feed = ref<HTMLElement | null>(null);
 const slot = ref<HTMLElement | null>(null);
@@ -128,26 +131,25 @@ watch(
 <template>
   <div class="logroot">
     <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
-      <template v-for="utterance in settled" :key="utterance.id">
-        <!-- System rows: small inline annotations (mic switched, …) that
-             sit in the timeline so oddities right below them explain
-             themselves — informative, never an alarm. -->
-        <div v-if="utterance.role === 'system'" class="sysrow">
-          <span>{{ utterance.text }} · {{ sysTime(utterance.committed_at) }}</span>
-        </div>
-        <UserBubble
-          v-else-if="utterance.role === 'user'"
-          :utterance="utterance"
-          @cancel="$emit('cancel', $event)"
-        />
-        <ClaudeBubble
-          v-else
-          :utterance="utterance"
-          :playing="utterance.id === playingId"
-          @replay="$emit('replay', $event)"
-        />
-      </template>
+      <FeedRow
+        v-for="utterance in processed"
+        :key="utterance.id"
+        :utterance="utterance"
+        :playing="utterance.id === playingId"
+        @replay="$emit('replay', $event)"
+        @cancel="$emit('cancel', $event)"
+      />
+      <!-- The processed line: everything above already happened, everything
+           below still waits its turn. -->
       <ActivityLine :activity="activity" />
+      <FeedRow
+        v-for="utterance in pending"
+        :key="utterance.id"
+        :utterance="utterance"
+        :playing="utterance.id === playingId"
+        @replay="$emit('replay', $event)"
+        @cancel="$emit('cancel', $event)"
+      />
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
     </div>
     <button
@@ -200,23 +202,6 @@ watch(
   display: flex;
   flex-direction: column;
 }
-.sysrow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 8.5px;
-  letter-spacing: 0.22em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-.sysrow::before,
-.sysrow::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--line), transparent);
-}
-
 .jumpdown {
   position: absolute;
   right: 28px; /* clear of the scrollbar with breathing room */

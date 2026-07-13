@@ -271,3 +271,24 @@ export const CLAUDE_WORKER_STATES: ReadonlySet<string> = new Set([
 export function canDeliverDuring(activityLine: string | null): boolean {
   return activityLine === null || activityLine === "THINKING…";
 }
+
+export type TimelineZone = "done" | "active" | "pending";
+
+/** The chat window's virtual "processed line" (Krzysztof's model): the
+ * timeline reads past → present → future, top to bottom. Above the line
+ * only things that already HAPPENED (delivered to Claude, played to the
+ * user, parked, failed); ON the line the present (the busy row, and any
+ * card mid-synthesis/mid-playback just above it); below it only things
+ * still WAITING their turn (transcripts awaiting pickup, replies queued
+ * behind the speaker). */
+export function timelineZone(role: Role, status: string): TimelineZone {
+  const state = statusToState(role, status);
+  if (role === "user") {
+    // recording/transcribing never ask (they live in the composer slot);
+    // unknown statuses render as settled history rather than jumping zones.
+    return state === "ready" ? "pending" : "done";
+  }
+  if (state === "queued" || state === "holding") return "pending";
+  if (state === "synthesizing" || state === "playing") return "active";
+  return "done";
+}

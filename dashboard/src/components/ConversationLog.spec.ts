@@ -51,24 +51,39 @@ describe("ConversationLog", () => {
     expect(wrapper.findAll(".msg")).toHaveLength(1);
   });
 
-  it("keeps the busy row at the timeline's end, below unprocessed messages", () => {
+  it("draws the processed line: busy row between history and waiting messages", () => {
     const activity = { text: "Edit · App.vue", at: 0 };
-    const awaiting = { ...utterance(2, "user"), status: "ready — awaiting pickup", committed_at: 20 };
+    const delivered = { ...utterance(1, "user"), status: "delivered to Claude", committed_at: 10 };
+    const awaitingA = { ...utterance(2, "user"), status: "ready — awaiting pickup", committed_at: 20 };
+    const awaitingB = { ...utterance(3, "user"), status: "ready — awaiting pickup", committed_at: 30 };
     const wrapper = mount(ConversationLog, {
-      props: { utterances: [utterance(1, "user"), awaiting], activity },
+      props: { utterances: [delivered, awaitingA, awaitingB], activity },
     });
 
     const feedChildren = wrapper.find(".feed").element.children;
-    // one stable position: the very last feed element, right below the
-    // awaiting message it explains
-    expect(feedChildren[feedChildren.length - 1].className).toContain("busyrow");
+    // history, THE LINE, then both awaiting messages below it
+    expect(feedChildren[1].className).toContain("busyrow");
+    expect(feedChildren.length).toBe(4);
 
-    // and it shows whenever Claude does anything — awaiting or not
+    // with nothing waiting it still shows — at the timeline's end
     const noAwaiting = mount(ConversationLog, {
-      props: { utterances: [utterance(1, "user")], activity },
+      props: { utterances: [delivered], activity },
     });
     const children = noAwaiting.find(".feed").element.children;
     expect(children[children.length - 1].className).toContain("busyrow");
+  });
+
+  it("never renders in-flight speech below waiting messages", () => {
+    // The reply started PLAYING after the transcripts queued (later
+    // committed_at) — but present outranks future: it must sit ABOVE them.
+    const awaiting = { ...utterance(1, "user"), status: "ready — awaiting pickup", committed_at: 10 };
+    const playing = { ...utterance(2, "claude"), status: "playing through speakers…", committed_at: 20 };
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [awaiting, playing], playingId: 2 },
+    });
+
+    const texts = wrapper.findAll(".txt").map((n) => n.text());
+    expect(texts).toEqual(["utterance 2", "utterance 1"]);
   });
 
   it("shows an empty-state line without utterances", () => {
