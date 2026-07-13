@@ -52,7 +52,10 @@ def main() -> None:
     except ValueError:
         hook_input = {}
     agent, _label = identity(hook_input)
-    _post_activity(agent, _activity_line(hook_input))
+    # The tool just FINISHED — between tools the model is reasoning (or
+    # waiting on the API; indistinguishable from outside). The pre-tool
+    # hook overwrites this with the concrete tool line when work resumes.
+    _post_activity(agent, "THINKING…")
     drain_url = f"http://127.0.0.1:{PORT}/drain?agent={agent}"
     try:
         with urllib.request.urlopen(drain_url, timeout=0.5) as response:
