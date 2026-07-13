@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { Utterance } from "../types";
 import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
@@ -54,6 +54,24 @@ const liveTail = computed(() => {
 const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
 
 const feed = ref<HTMLElement | null>(null);
+const slot = ref<HTMLElement | null>(null);
+
+// The composer floats OVER the feed's bottom padding instead of owning a
+// dead strip below it: while you scroll, history flows through that area;
+// only at the very bottom does the padding hold space for the overlay —
+// and it grows with the bubble as live transcription lengthens it.
+const SLOT_MIN_PX = 96; // one single-line bubble
+const padBottom = ref(SLOT_MIN_PX);
+let resizeObserver: ResizeObserver | undefined;
+onMounted(() => {
+  if (typeof ResizeObserver !== "undefined" && slot.value) {
+    resizeObserver = new ResizeObserver(() => {
+      padBottom.value = Math.max(SLOT_MIN_PX, slot.value?.offsetHeight ?? 0);
+    });
+    resizeObserver.observe(slot.value);
+  }
+});
+onUnmounted(() => resizeObserver?.disconnect());
 
 function scrollToBottom() {
   if (feed.value) feed.value.scrollTop = feed.value.scrollHeight;
@@ -75,7 +93,7 @@ watch(
 
 <template>
   <div class="logroot">
-    <div ref="feed" class="feed">
+    <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }">
       <template v-for="utterance in settled" :key="utterance.id">
         <UserBubble
           v-if="utterance.role === 'user'"
@@ -91,7 +109,7 @@ watch(
       </template>
       <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
     </div>
-    <div class="liveslot">
+    <div ref="slot" class="liveslot">
       <UserBubble v-if="liveTail" :utterance="liveTail" />
     </div>
   </div>
@@ -99,6 +117,7 @@ watch(
 
 <style scoped>
 .logroot {
+  position: relative; /* anchors the .liveslot overlay */
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -123,12 +142,18 @@ watch(
   padding: 28px 0;
 }
 .liveslot {
-  /* Reserved landing pad for the in-progress utterance: one full
-     single-line bubble tall (head + text + foot ≈ 84px), so even a cough
-     that appears and vanishes doesn't nudge the feed above. */
-  min-height: 96px;
-  margin-top: 12px;
+  /* Overlay pinned to the bottom of the log: it renders over the feed's
+     reserved bottom padding, so nothing reflows when a composition
+     appears, grows, or vanishes — and scrolling has no dead strip. */
+  position: absolute;
+  left: 0;
+  right: 4px; /* clear of the feed scrollbar */
+  bottom: 0;
   display: flex;
   flex-direction: column;
+}
+.liveslot :deep(.msg) {
+  /* Solid backdrop: scrolled history may pass underneath. */
+  background-color: rgba(4, 11, 19, 0.97);
 }
 </style>
