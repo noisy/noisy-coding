@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import SettingsView from "./SettingsView.vue";
 
 describe("SettingsView", () => {
-  it("shows the key status and the pricing/link guidance", () => {
+  it("shows the key as a masked form field plus the pricing/link guidance", () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "····kRc9" } });
 
-    expect(wrapper.find(".keyhint").text()).toBe("SET ····kRc9");
+    const stored = wrapper.find(".keyinput.stored");
+    expect((stored.element as HTMLInputElement).value).toContain("kRc9");
+    expect((stored.element as HTMLInputElement).value).toContain("••••");
     expect(wrapper.text()).toContain("$0.10 per hour of audio");
     const links = wrapper.findAll("a").map((a) => a.attributes("href"));
     expect(links).toContain("https://console.x.ai");

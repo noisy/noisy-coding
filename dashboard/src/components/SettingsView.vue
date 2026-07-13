@@ -22,9 +22,11 @@ function submit() {
       <div class="sec-title"><span class="idx">01</span> GROK · XAI API KEY</div>
 
       <div class="keyrow">
-        <span class="lbl">STATUS</span>
+        <span class="lbl">API KEY</span>
+        <!-- Always an input-shaped field, so it reads as a form at a
+             glance — readonly masked value until REPLACE is clicked. -->
         <template v-if="!editing">
-          <span class="keyhint">SET {{ apiKeyHint }}</span>
+          <input class="keyinput stored" :value="`••••••••••••${apiKeyHint.replace(/·/g, '')}`" readonly @click="editing = true" />
           <button class="btn" @click="editing = true">REPLACE</button>
         </template>
         <template v-else>
@@ -89,7 +91,6 @@ function submit() {
 
 .keyrow { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .keyrow .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); width: 78px; flex: none; }
-.keyhint { flex: 1; font-size: 11px; letter-spacing: 0.14em; color: var(--green); text-shadow: 0 0 8px rgba(77, 255, 180, 0.4); }
 .keyinput {
   flex: 1;
   font-family: var(--mono);
@@ -99,6 +100,7 @@ function submit() {
   border: 1px solid var(--line-strong);
   padding: 8px 12px;
 }
+.keyinput.stored { color: var(--green); letter-spacing: 0.12em; cursor: pointer; }
 .btn {
   font-family: var(--mono);
   font-size: 10px;
@@ -113,11 +115,11 @@ function submit() {
 .btn:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .btn.dim { color: var(--muted); border-color: var(--line); }
 
-.text { font-size: 11.5px; line-height: 1.75; color: var(--ink); display: grid; gap: 10px; max-width: 640px; }
-.text b { color: var(--cyan-hi); font-weight: 400; }
-.text a { color: var(--amber); text-decoration: none; border-bottom: 1px dotted var(--amber-dim); }
-.text a:hover { text-shadow: var(--glow-amber); }
+/* The form is the star of this screen; the guidance stays muted. */
+.text { font-size: 10.5px; line-height: 1.75; color: var(--muted); display: grid; gap: 10px; max-width: 640px; }
+.text b { color: var(--ink); font-weight: 400; }
+.text a { color: var(--amber-dim); text-decoration: none; border-bottom: 1px dotted var(--amber-dim); }
+.text a:hover { color: var(--amber); text-shadow: var(--glow-amber); }
 .text ul { margin: 0 0 0 18px; display: grid; gap: 4px; }
-.text li { color: var(--muted); }
-.text li b { color: var(--green); }
+.text li b { color: var(--ink); }
 </style>
