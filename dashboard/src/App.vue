@@ -88,20 +88,48 @@ async function catchUp() {
     .forEach((u) => speakText(replaySpeechText(u.text), u.id).catch(swallow));
 }
 
-// Push-to-talk: while the button is physically held we renew the daemon's
-// hold lease (it expires by itself if we die mid-hold — see the daemon).
+// Push-to-talk: while the button (or the space bar) is physically held we
+// renew the daemon's hold lease (it expires by itself if we die mid-hold).
 let pttTimer: ReturnType<typeof setInterval> | undefined;
-function pttPress(event: PointerEvent) {
-  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+function startPtt() {
+  if (pttTimer) return; // already holding (e.g. key auto-repeat)
   setPtt(true).catch(swallow);
   pttTimer = setInterval(() => setPtt(true).catch(swallow), 500);
 }
-function pttRelease() {
+function stopPtt() {
+  if (!pttTimer) return;
   clearInterval(pttTimer);
   pttTimer = undefined;
   setPtt(false).catch(swallow);
 }
-onUnmounted(() => clearInterval(pttTimer));
+function pttPress(event: PointerEvent) {
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  startPtt();
+}
+
+// Space = the talk button, but never while typing into a field.
+function isTypingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+function onKeyDown(event: KeyboardEvent) {
+  if (event.code !== "Space" || isTypingTarget(event.target)) return;
+  if (status.value?.detection_mode !== "ptt" || status.value?.muted) return;
+  event.preventDefault(); // don't scroll / re-click focused buttons
+  startPtt();
+}
+function onKeyUp(event: KeyboardEvent) {
+  if (event.code !== "Space" || isTypingTarget(event.target)) return;
+  stopPtt();
+}
+onMounted(() => {
+  addEventListener("keydown", onKeyDown);
+  addEventListener("keyup", onKeyUp);
+});
+onUnmounted(() => {
+  removeEventListener("keydown", onKeyDown);
+  removeEventListener("keyup", onKeyUp);
+  clearInterval(pttTimer);
+});
 
 // API key setup: full-screen gate when unconfigured; later managed from
 // the SETTINGS view (which swaps in for the comm log).
@@ -299,14 +327,14 @@ const LANGUAGES: Record<string, string> = {
           :class="{ held: status?.ptt_held }"
           :disabled="status?.muted"
           @pointerdown="pttPress"
-          @pointerup="pttRelease"
-          @pointercancel="pttRelease"
+          @pointerup="stopPtt"
+          @pointercancel="stopPtt"
         >
           <span class="bm-label">
             {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}
           </span>
           <span class="bm-sub">
-            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "RECORDS WHILE HELD" }}
+            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "HOLD THIS OR THE SPACE BAR" }}
           </span>
         </button>
         <HudPanel index="05" title="CHARACTER MATRIX">
