@@ -30,6 +30,32 @@ function submit() {
 
 <template>
   <div class="settings">
+    <!-- Microphone first: switched far more often than the API key. -->
+    <section class="sec">
+      <div class="keyrow">
+        <span class="lbl">MICROPHONE</span>
+        <select
+          class="keyinput"
+          :value="selectedDevice"
+          @focus="emit('refreshDevices')"
+          @change="emit('pickDevice', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">SYSTEM DEFAULT</option>
+          <option v-for="d in devices" :key="d.name" :value="d.name">
+            {{ d.name.toUpperCase() }}{{ d.default ? " ◆" : "" }}
+          </option>
+        </select>
+      </div>
+      <div class="text">
+        <p>
+          Which input the daemon listens to — switching swaps the audio stream
+          live, no restart. ◆ marks the system default. A device plugged in
+          after the daemon started shows on the list, but needs a daemon
+          restart before it can be opened.
+        </p>
+      </div>
+    </section>
+
     <section class="sec">
       <div class="keyrow">
         <span class="lbl">XAI API KEY</span>
@@ -80,31 +106,6 @@ function submit() {
             <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>.
           </p>
         </details>
-      </div>
-    </section>
-
-    <section class="sec">
-      <div class="keyrow">
-        <span class="lbl">MICROPHONE</span>
-        <select
-          class="keyinput"
-          :value="selectedDevice"
-          @focus="emit('refreshDevices')"
-          @change="emit('pickDevice', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">SYSTEM DEFAULT</option>
-          <option v-for="d in devices" :key="d.name" :value="d.name">
-            {{ d.name.toUpperCase() }}{{ d.default ? " ◆" : "" }}
-          </option>
-        </select>
-      </div>
-      <div class="text">
-        <p>
-          Which input the daemon listens to — switching swaps the audio stream
-          live, no restart. ◆ marks the system default. A device plugged in
-          after the daemon started shows on the list, but needs a daemon
-          restart before it can be opened.
-        </p>
       </div>
     </section>
   </div>
