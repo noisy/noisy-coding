@@ -1,7 +1,7 @@
 {
-  "name": "grok-voice-hud",
+  "name": "noisy-coding-hud",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,8 @@
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
     "happy-dom": "^17.4.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "storybook": "^8.6.18",
     "typescript": "~5.7.2",
     "vite": "^6.2.0",
