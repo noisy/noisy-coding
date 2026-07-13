@@ -102,6 +102,16 @@ def main() -> None:
         hook_input = {}
     AGENT, _label = identity(hook_input)
     DRAIN_PATH = f"/drain?agent={AGENT}"
+    # Turn ended — the agent is idle now; clear its live-activity line.
+    try:
+        _clear = urllib.request.Request(
+            f"http://127.0.0.1:{PORT}/activity",
+            data=json.dumps({"agent": AGENT, "text": ""}).encode(),
+            method="POST",
+        )
+        urllib.request.urlopen(_clear, timeout=0.3).close()
+    except Exception:
+        pass
     # Per-agent rewake lock so one session's poller can't block another's.
     REWAKE_LOCK_FILE = (
         Path.home() / ".config" / "grok-voice" / f"rewake-{AGENT}.lock"

@@ -197,6 +197,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "detection_mode": state.detection_mode,
                         "ptt_held": state.ptt_held,
                         "input_device": state.input_device,
+                        "activity": state.activity,
                         "language": state.language,
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
@@ -332,6 +333,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/cancel":
                 utterance_id = int(self._read_json_body().get("utterance_id", 0))
                 self._respond({"cancelled": state.cancel_transcript(utterance_id)})
+            elif self.path == "/activity":
+                body = self._read_json_body()
+                state.set_activity(str(body.get("agent") or ""), str(body.get("text") or ""))
+                self._respond({"ok": True})
             elif self.path == "/ptt":
                 # Lease renewal/release for push-to-talk; the UI renews
                 # while the button is held (see PTT_LEASE_SECONDS).

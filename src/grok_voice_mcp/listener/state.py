@@ -52,6 +52,7 @@ class ListenerState:
         self._speaking_agents: set[str] = set()  # which agents are speaking now
         self._recording = False
         self._mic_level = 0.0  # live mic RMS 0..1, for the dashboard oscilloscope
+        self._activity: dict[str, dict] = {}  # agent -> current tool one-liner
         self._playing_utterance_id = 0  # which card is on the speakers right now
         self._latency_ms: dict = {"stt": None, "tts": None}  # last measured
         self._last_recording_end = float("-inf")  # monotonic time of last utterance end
@@ -447,6 +448,19 @@ class ListenerState:
     def latency_ms(self) -> dict:
         with self._lock:
             return dict(self._latency_ms)
+
+    def set_activity(self, agent: str, text: str) -> None:
+        """What an agent is doing right now (one line from the hooks)."""
+        with self._lock:
+            if text:
+                self._activity[agent] = {"text": text, "at": time.time()}
+            else:
+                self._activity.pop(agent, None)  # turn ended — idle
+
+    @property
+    def activity(self) -> dict:
+        with self._lock:
+            return {agent: dict(entry) for agent, entry in self._activity.items()}
 
     @property
     def playing_utterance_id(self) -> int:

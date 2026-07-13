@@ -24,6 +24,7 @@ export interface DaemonStatus {
   detection_mode: "auto" | "ptt";
   ptt_held: boolean;
   input_device: string;
+  activity: Record<string, { text: string; at: number }>;
   language: string;
   agents: Record<string, number>;
   agent_labels: Record<string, string>;

@@ -4,6 +4,7 @@ import { cancelTranscript, getDevices, saveApiKey, setCharacter, setMode, setMut
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
+import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
@@ -389,6 +390,8 @@ const LANGUAGES: Record<string, string> = {
             :unread="unreadAgents"
             @select="selectAgent"
           />
+          <!-- Placement provisional — Krzysztof will pick the final spot. -->
+          <ActivityLine :activity="status?.activity?.[viewedAgent ?? ''] ?? null" />
           <ConversationLog
             :utterances="utterances"
             :playing-id="status?.playing_utterance_id ?? 0"
