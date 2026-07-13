@@ -24,15 +24,17 @@ RUN npm run build
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 # libportaudio2: sounddevice imports it even when no device ever opens.
-# Pulse client libs + mpv only serve the optional Linux native-audio
-# variant; the default path never touches them.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libportaudio2 \
-        libasound2-plugins \
-        libpulse0 \
-        mpv \
-    && rm -rf /var/lib/apt/lists/* \
-    && printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > /etc/asound.conf
+# The default (hardware-free) image ships NO players — audio flows through
+# the dashboard tab, and speech with no tab parks as UNHEARD. mpv + Pulse
+# client libs serve only the optional Linux native-audio variant:
+#   docker compose build --build-arg NATIVE_AUDIO=1
+ARG NATIVE_AUDIO=0
+RUN apt-get update && apt-get install -y --no-install-recommends libportaudio2 \
+    && if [ "$NATIVE_AUDIO" = "1" ]; then \
+         apt-get install -y --no-install-recommends libasound2-plugins libpulse0 mpv \
+         && printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > /etc/asound.conf; \
+       fi \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY pyproject.toml README.md ./

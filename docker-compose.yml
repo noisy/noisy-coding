@@ -33,7 +33,9 @@ services:
   # (PulseAudio, or PipeWire's pulse-compat socket).
   #
   # noisy-coding:
-  #   build: .
+  #   build:
+  #     context: .
+  #     args: { NATIVE_AUDIO: 1 }   # bundles mpv + Pulse client libs
   #   ports:
   #     - "127.0.0.1:8765:8765"
   #     - "127.0.0.1:8766:8766"

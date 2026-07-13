@@ -1,0 +1,11 @@
+{
+  "name": "noisy",
+  "owner": { "name": "Krzysztof Szumny", "url": "https://github.com/noisy" },
+  "plugins": [
+    {
+      "name": "noisy-coding",
+      "source": "./",
+      "description": "Voice coding for Claude Code — talk to your agent while it works."
+    }
+  ]
+}
