@@ -27,11 +27,16 @@ class GrokTTSStreamError(RuntimeError):
 
 
 def _stream_player_command() -> list[str] | None:
-    """A player that can read an MP3 stream from stdin, or None if absent."""
-    if shutil.which("ffplay"):
-        return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-"]
+    """A player that can read an MP3 stream from stdin, or None if absent.
+
+    mpv first: ffplay proved fragile against CoreAudio device changes
+    (robotic/distorted output after sleep-wake with a different default
+    output device), while mpv recovers cleanly.
+    """
     if shutil.which("mpv"):
         return ["mpv", "--no-video", "--really-quiet", "-"]
+    if shutil.which("ffplay"):
+        return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-"]
     return None
 
 
