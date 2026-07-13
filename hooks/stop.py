@@ -22,27 +22,27 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 
-PORT = os.environ.get("GROK_VOICE_LISTENER_PORT", "8765")
+PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
 VOICE_ACTIVE_WINDOW_SECONDS = 300
-LONG_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_STOP_WAIT_SECONDS", "30"))
+LONG_WAIT_SECONDS = float(os.environ.get("NOISY_CODING_STOP_WAIT_SECONDS", "30"))
 SHORT_WAIT_SECONDS = 2.0
 POLL_INTERVAL_SECONDS = 0.5
 # "sync": block the turn end via stdout JSON while polling (documented path).
 # "rewake": run as an asyncRewake background hook — poll long, then exit(2)
 # with the transcript on stderr to wake the model.
-MODE = os.environ.get("GROK_VOICE_STOP_MODE", "sync")
-REWAKE_WAIT_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_WAIT_SECONDS", "3600"))
+MODE = os.environ.get("NOISY_CODING_STOP_MODE", "sync")
+REWAKE_WAIT_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "3600"))
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
-GRACE_SECONDS = float(os.environ.get("GROK_VOICE_REWAKE_GRACE_SECONDS", "2.0"))
+GRACE_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_GRACE_SECONDS", "2.0"))
 GRACE_CAP_SECONDS = 20.0
 
 # Per-session identity is resolved from stdin in main() and stored here so the
 # module-level polling helpers can reach it.
 AGENT = ""
 DRAIN_PATH = "/drain"
-REWAKE_LOCK_FILE = Path.home() / ".config" / "grok-voice" / "rewake-default.lock"
+REWAKE_LOCK_FILE = Path.home() / ".config" / "noisy-coding" / "rewake-default.lock"
 
 
 def _get(path: str) -> dict:
@@ -102,7 +102,7 @@ def _collect_continuation(first: str) -> str:
 
 VOICE_INSTRUCTION = (
     "Treat this as his next message. Answer it now — aloud via the "
-    "grok-voice speak tool (briefly) and in text."
+    "noisy-coding speak tool (briefly) and in text."
 )
 
 
@@ -119,7 +119,7 @@ def main() -> None:
     _post_activity("")
     # Per-agent rewake lock so one session's poller can't block another's.
     REWAKE_LOCK_FILE = (
-        Path.home() / ".config" / "grok-voice" / f"rewake-{AGENT}.lock"
+        Path.home() / ".config" / "noisy-coding" / f"rewake-{AGENT}.lock"
     )
     try:
         if MODE == "rewake":

@@ -1,5 +1,5 @@
-from grok_voice_mcp.listener import daemon
-from grok_voice_mcp.listener.state import ListenerState
+from noisy_coding.listener import daemon
+from noisy_coding.listener.state import ListenerState
 
 
 def test_history_roundtrip_restores_cards_and_id_sequence(tmp_path, monkeypatch):

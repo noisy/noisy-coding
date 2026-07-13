@@ -1,8 +1,8 @@
 import asyncio
 import time
 
-from grok_voice_mcp.listener import speech
-from grok_voice_mcp.listener.state import ListenerState
+from noisy_coding.listener import speech
+from noisy_coding.listener.state import ListenerState
 
 
 def test_playback_queue_serializes_concurrent_speaks(monkeypatch):

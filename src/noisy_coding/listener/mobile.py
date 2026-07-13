@@ -11,7 +11,7 @@ MOBILE_HTML = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>grok-voice — switch agent</title>
+<title>noisy-coding — switch agent</title>
 <style>
   :root {
     --bg: #15171B; --surface: #1D2026; --ink: #E9E7E1; --muted: #9A968C;
@@ -53,7 +53,7 @@ MOBILE_HTML = """<!doctype html>
 </head>
 <body>
   <header>
-    <h1>grok-voice</h1>
+    <h1>noisy-coding</h1>
     <div class="status" id="status"><span class="dot"></span><span id="status-label">connecting…</span></div>
   </header>
   <div id="agents"><div class="empty" id="empty">Waiting for agents to register…</div></div>

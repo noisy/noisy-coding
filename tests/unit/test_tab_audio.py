@@ -2,8 +2,8 @@ import queue
 
 import numpy as np
 
-from grok_voice_mcp.listener.state import ListenerState
-from grok_voice_mcp.listener.tab_audio import FrameRechunker, TabAudioBridge
+from noisy_coding.listener.state import ListenerState
+from noisy_coding.listener.tab_audio import FrameRechunker, TabAudioBridge
 
 FRAME_SAMPLES = 480  # 30 ms @ 16 kHz
 

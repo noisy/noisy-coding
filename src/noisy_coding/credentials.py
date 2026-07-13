@@ -6,9 +6,10 @@ on the next API call — no restarts.
 """
 
 import json
-from pathlib import Path
 
-CREDENTIALS_FILE = Path.home() / ".config" / "grok-voice" / "credentials.json"
+from noisy_coding.config_dir import CONFIG_DIR
+
+CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
 
 
 def api_key() -> str:

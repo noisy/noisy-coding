@@ -5,7 +5,7 @@ DASHBOARD_HTML = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>grok-voice — live view</title>
+<title>noisy-coding — live view</title>
 <style>
   :root {
     --paper: #FBFAF6; --surface: #FFFFFF; --ink: #23262B; --muted: #6E6A61;
@@ -150,7 +150,7 @@ DASHBOARD_HTML = """<!doctype html>
 </head>
 <body>
 <main>
-  <h1>grok-voice — live view</h1>
+  <h1>noisy-coding — live view</h1>
   <p class="sub">Every utterance is a card with a live status: recording → transcription → text → delivery.</p>
 
   <div class="statusbar">

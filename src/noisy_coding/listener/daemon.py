@@ -1,6 +1,6 @@
 """Always-on listener daemon: mic -> VAD -> Grok STT -> localhost queue.
 
-Run with: grok-voice-listener
+Run with: noisy-coding-listener
 The Claude Code hooks poll GET /drain on the HTTP API to pick up transcripts.
 """
 
@@ -9,35 +9,35 @@ import queue
 import sys
 import threading
 import time
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import numpy as np
 import sounddevice as sd
 
-from grok_voice_mcp import credentials
-from grok_voice_mcp.listener import pricing, speech, stt, stt_stream
+from noisy_coding import credentials
+from noisy_coding.config_dir import CONFIG_DIR, migrate_legacy_config_dir
+from noisy_coding.listener import pricing, speech, stt, stt_stream
 import json
 
-from grok_voice_mcp.listener.http_api import (
+from noisy_coding.listener.http_api import (
     CHARACTER_FILE,
     DEFAULT_PORT,
     PORT_ENV_VAR,
     SETTINGS_FILE,
     start_http_api,
 )
-from grok_voice_mcp.listener.state import ListenerState
-from grok_voice_mcp.listener.tab_audio import start_bridge
-from grok_voice_mcp.listener.vad import UtteranceSegmenter, VadConfig
+from noisy_coding.listener.state import ListenerState
+from noisy_coding.listener.tab_audio import start_bridge
+from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
 
-STT_LANGUAGE_ENV_VAR = "GROK_VOICE_STT_LANGUAGE"
-MODE_ENV_VAR = "GROK_VOICE_MODE"
+STT_LANGUAGE_ENV_VAR = "NOISY_CODING_STT_LANGUAGE"
+MODE_ENV_VAR = "NOISY_CODING_MODE"
 # Container/headless defaults; saved settings (newer intent) override them.
-INPUT_DEVICE_ENV_VAR = "GROK_VOICE_INPUT_DEVICE"
-OUTPUT_DEVICE_ENV_VAR = "GROK_VOICE_OUTPUT_DEVICE"
-MANAGEMENT_KEY_ENV_VAR = "GROK_VOICE_MANAGEMENT_KEY"
-TEAM_ID_ENV_VAR = "GROK_VOICE_TEAM_ID"
+INPUT_DEVICE_ENV_VAR = "NOISY_CODING_INPUT_DEVICE"
+OUTPUT_DEVICE_ENV_VAR = "NOISY_CODING_OUTPUT_DEVICE"
+MANAGEMENT_KEY_ENV_VAR = "NOISY_CODING_MANAGEMENT_KEY"
+TEAM_ID_ENV_VAR = "NOISY_CODING_TEAM_ID"
 CREDITS_POLL_SECONDS = 60.0
 # Display gain for the dashboard mic level: int16 speech RMS is small
 # (~0.02-0.08 full-scale), this maps it into a readable 0..1 range.
@@ -59,7 +59,7 @@ AUDIO_GAP_REOPEN_SECONDS = 5.0
 FRAME_WAIT_SECONDS = 2.0
 # Conversation history persistence: the log used to live only in memory,
 # so every daemon restart wiped the conversation from the dashboard.
-HISTORY_FILE = Path.home() / ".config" / "grok-voice" / "history.json"
+HISTORY_FILE = CONFIG_DIR / "history.json"
 HISTORY_SAVE_SECONDS = 5.0
 
 
@@ -263,6 +263,9 @@ def _open_input_stream(
 
 
 def run(config: VadConfig | None = None) -> None:
+    # Before any config file is read: carry the user's data across the
+    # grok-voice -> noisy-coding rename so the API key/settings/history survive.
+    migrate_legacy_config_dir()
     config = config or VadConfig()
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
@@ -320,7 +323,7 @@ def run(config: VadConfig | None = None) -> None:
     def on_audio(indata: np.ndarray, *_args: object) -> None:
         frames.put(indata[:, 0].copy())
 
-    _log(f"grok-voice-listener: mic on, API at http://127.0.0.1:{port}")
+    _log(f"noisy-coding-listener: mic on, API at http://127.0.0.1:{port}")
     _log("Endpoints: GET /drain /status, POST /speak /pause /resume. Ctrl+C to stop.")
 
     active_input = _open_input_stream(state, config, on_audio)
@@ -513,7 +516,7 @@ def run(config: VadConfig | None = None) -> None:
                             current_utterance_id,
                         )
         except KeyboardInterrupt:
-            _log("\ngrok-voice-listener: stopping")
+            _log("\nnoisy-coding-listener: stopping")
         finally:
             _save_history(state)
             server.shutdown()

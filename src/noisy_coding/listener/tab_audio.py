@@ -190,7 +190,7 @@ class TabAudioBridge:
 
         # Same bind rule as the HTTP API: loopback by default, overridable
         # for containers where the published port must reach us.
-        host = os.environ.get("GROK_VOICE_BIND", "127.0.0.1")
+        host = os.environ.get("NOISY_CODING_BIND", "127.0.0.1")
         with serve(self._handle, host, port) as server:
             server.serve_forever()
 

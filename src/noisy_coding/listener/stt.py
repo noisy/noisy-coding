@@ -6,7 +6,7 @@ import wave
 import httpx
 import numpy as np
 
-from grok_voice_mcp import tts
+from noisy_coding import tts
 
 REQUEST_TIMEOUT_SECONDS = 60.0
 

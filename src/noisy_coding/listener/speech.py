@@ -13,14 +13,14 @@ import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from grok_voice_mcp import playback, tts, tts_stream
-from grok_voice_mcp.listener import tab_audio
-from grok_voice_mcp.listener import pricing
-from grok_voice_mcp.listener.state import ListenerState
+from noisy_coding import playback, tts, tts_stream
+from noisy_coding.listener import tab_audio
+from noisy_coding.listener import pricing
+from noisy_coding.listener.state import ListenerState
 
-DEFAULT_VOICE_ENV_VAR = "GROK_VOICE_DEFAULT_VOICE"
-DEFAULT_LANGUAGE_ENV_VAR = "GROK_VOICE_DEFAULT_LANGUAGE"
-TTS_MODE_ENV_VAR = "GROK_VOICE_TTS_MODE"
+DEFAULT_VOICE_ENV_VAR = "NOISY_CODING_DEFAULT_VOICE"
+DEFAULT_LANGUAGE_ENV_VAR = "NOISY_CODING_DEFAULT_LANGUAGE"
+TTS_MODE_ENV_VAR = "NOISY_CODING_TTS_MODE"
 FALLBACK_VOICE = "eve"
 # Physical echo guard, not turn-taking: the room's sound tail after the
 # player exits would land in the just-unmuted mic and get transcribed.

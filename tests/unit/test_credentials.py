@@ -1,7 +1,7 @@
 import json
 import stat
 
-from grok_voice_mcp import credentials
+from noisy_coding import credentials
 
 
 def test_api_key_roundtrip_with_private_file(tmp_path, monkeypatch):

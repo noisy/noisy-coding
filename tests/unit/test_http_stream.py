@@ -1,8 +1,8 @@
 import http.client
 import json
 
-from grok_voice_mcp.listener.http_api import start_http_api
-from grok_voice_mcp.listener.state import ListenerState
+from noisy_coding.listener.http_api import start_http_api
+from noisy_coding.listener.state import ListenerState
 
 
 def test_set_mic_level_clamps_to_unit_range():
@@ -21,7 +21,7 @@ def test_set_mic_level_clamps_to_unit_range():
 def test_ptt_hold_barges_in_on_playback_only_in_ptt_mode(monkeypatch):
     import json as json_module
 
-    from grok_voice_mcp.listener import http_api as http_api_module
+    from noisy_coding.listener import http_api as http_api_module
 
     stops = []
     monkeypatch.setattr(http_api_module.playback, "stop_all_players", lambda: stops.append(1))

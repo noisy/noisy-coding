@@ -3,9 +3,9 @@ import json
 
 import pytest
 
-from grok_voice_mcp.listener import http_api
-from grok_voice_mcp.listener.http_api import start_http_api
-from grok_voice_mcp.listener.state import ListenerState
+from noisy_coding.listener import http_api
+from noisy_coding.listener.http_api import start_http_api
+from noisy_coding.listener.state import ListenerState
 
 
 @pytest.fixture

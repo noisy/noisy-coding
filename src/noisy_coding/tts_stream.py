@@ -17,7 +17,7 @@ from typing import Callable
 
 import websockets
 
-from grok_voice_mcp import playback, tts
+from noisy_coding import playback, tts
 
 STREAM_URL_BASE = "wss://api.x.ai/v1/tts"
 
@@ -158,5 +158,5 @@ async def speak_streaming(
 def streaming_available() -> bool:
     """True if a stdin-streaming player exists (else we buffer-and-play)."""
     return _stream_player_command() is not None or bool(
-        os.environ.get("GROK_VOICE_ALLOW_BUFFERED_STREAM")
+        os.environ.get("NOISY_CODING_ALLOW_BUFFERED_STREAM")
     )

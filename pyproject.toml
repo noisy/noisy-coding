@@ -1,7 +1,7 @@
 [project]
-name = "grok-voice-mcp"
+name = "noisy-coding"
 version = "2.0.0"
-description = "MCP server that speaks short summaries aloud via the Grok (xAI) Voice API"
+description = "Voice coding for Claude Code — talk to your agent while it works (Grok/xAI voice backend)"
 readme = "README.md"
 authors = [
     { name = "Krzysztof Szumny", email = "noisy.pl@gmail.com" }
@@ -16,9 +16,9 @@ dependencies = [
 ]
 
 [project.scripts]
-grok-voice-mcp = "grok_voice_mcp.server:main"
-grok-voice-listener = "grok_voice_mcp.listener.daemon:main"
-grok-voice-mobile = "grok_voice_mcp.mobile_server:main"
+noisy-coding-mcp = "noisy_coding.server:main"
+noisy-coding-listener = "noisy_coding.listener.daemon:main"
+noisy-coding-mobile = "noisy_coding.mobile_server:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

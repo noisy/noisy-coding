@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from grok_voice_mcp import credentials
+from noisy_coding import credentials
 
 XAI_API_BASE = "https://api.x.ai/v1"
 REQUEST_TIMEOUT_SECONDS = 60.0

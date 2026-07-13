@@ -8,7 +8,7 @@ Spends API credits and makes sound. Usage:
 import asyncio
 import sys
 
-from grok_voice_mcp import playback, tts
+from noisy_coding import playback, tts
 
 
 async def main() -> None:

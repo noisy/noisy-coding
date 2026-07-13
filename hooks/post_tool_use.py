@@ -14,7 +14,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 
-PORT = os.environ.get("GROK_VOICE_LISTENER_PORT", "8765")
+PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
 
 
 def _activity_line(hook_input: dict) -> str:
@@ -23,12 +23,12 @@ def _activity_line(hook_input: dict) -> str:
     if not tool:
         return ""
     params = hook_input.get("tool_input") or {}
-    if tool.startswith("mcp__grok-voice__"):
+    if tool.startswith("mcp__noisy-coding__"):
         # Claude's own speech: name the act, not the plumbing. This line is
         # what explains a transcript stuck AWAITING — the speak call blocks
         # through synthesis AND playback, and it fires BEFORE the daemon
         # even creates the voice card.
-        action = tool[len("mcp__grok-voice__"):]
+        action = tool[len("mcp__noisy-coding__"):]
         spoken = str(params.get("text") or "").strip()
         if action in ("speak", "announce") and spoken:
             return f"SPEAKING · „{spoken[:60]}”"

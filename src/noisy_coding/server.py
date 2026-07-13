@@ -13,14 +13,14 @@ import socket
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from grok_voice_mcp import tts
+from noisy_coding import tts
+from noisy_coding.config_dir import CONFIG_DIR
 
-LISTENER_PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
+LISTENER_PORT_ENV_VAR = "NOISY_CODING_LISTENER_PORT"
 # speak blocks until the daemon has waited out the user's turn, rendered
 # AND played the utterance — allow for a long queue ahead of us.
 SPEAK_TIMEOUT_SECONDS = 180.0
@@ -29,17 +29,17 @@ DAEMON_DOWN_MESSAGE = (
     "Deliver the message in writing instead."
 )
 
-_SESSIONS_MAP = Path.home() / ".config" / "grok-voice" / "sessions.json"
+_SESSIONS_MAP = CONFIG_DIR / "sessions.json"
 
 
 def _agent_name() -> str:
     """This server's agent id.
 
     The MCP server can't see the Claude session_id, so: use an explicit
-    GROK_VOICE_AGENT_NAME if set (per-config mode); otherwise look up the
+    NOISY_CODING_AGENT_NAME if set (per-config mode); otherwise look up the
     per-session id the hooks recorded for this working directory.
     """
-    env_name = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    env_name = os.environ.get("NOISY_CODING_AGENT_NAME", "").strip()
     if env_name:
         return env_name
     try:
@@ -49,7 +49,7 @@ def _agent_name() -> str:
         return ""
 
 
-mcp = FastMCP("grok-voice")
+mcp = FastMCP("noisy-coding")
 
 
 async def _daemon_speak(body: dict) -> dict | None:
@@ -181,10 +181,10 @@ def _ensure_daemon() -> None:
     Daily use: the server spawns the daemon so voice "just works" with no
     manual step. Development: start the daemon yourself first — the server
     sees the port taken, adopts it, and you keep restarting the daemon in
-    place without touching the server. Set GROK_VOICE_NO_AUTOSPAWN=1 to opt
+    place without touching the server. Set NOISY_CODING_NO_AUTOSPAWN=1 to opt
     out (e.g. to always manage the daemon by hand).
     """
-    if os.environ.get("GROK_VOICE_NO_AUTOSPAWN"):
+    if os.environ.get("NOISY_CODING_NO_AUTOSPAWN"):
         return
     port = int(os.environ.get(LISTENER_PORT_ENV_VAR, "8765"))
     if _daemon_running(port):
@@ -193,7 +193,7 @@ def _ensure_daemon() -> None:
         # Child process: dies with the server (no orphaned daemons). A dev
         # daemon started by hand is a separate process and outlives us.
         subprocess.Popen(
-            [sys.executable, "-m", "grok_voice_mcp.listener.daemon"],
+            [sys.executable, "-m", "noisy_coding.listener.daemon"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -209,9 +209,9 @@ def _register_agent() -> None:
     """Announce this agent to the daemon so it appears in the switcher.
 
     In per-session mode the hook registers the agent (it knows session_id);
-    this only fires for explicit GROK_VOICE_AGENT_NAME (per-config mode).
+    this only fires for explicit NOISY_CODING_AGENT_NAME (per-config mode).
     """
-    name = os.environ.get("GROK_VOICE_AGENT_NAME", "").strip()
+    name = os.environ.get("NOISY_CODING_AGENT_NAME", "").strip()
     if not name:
         return
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
@@ -229,9 +229,9 @@ def main() -> None:
     # stdio (default): Claude Code launches this process per session.
     # http: one long-lived server (the Docker image) — Claude Code connects
     # with `claude mcp add --transport http http://host:8767/mcp`.
-    if os.environ.get("GROK_VOICE_MCP_TRANSPORT", "stdio") == "http":
-        mcp.settings.host = os.environ.get("GROK_VOICE_MCP_BIND", "127.0.0.1")
-        mcp.settings.port = int(os.environ.get("GROK_VOICE_MCP_PORT", "8767"))
+    if os.environ.get("NOISY_CODING_MCP_TRANSPORT", "stdio") == "http":
+        mcp.settings.host = os.environ.get("NOISY_CODING_MCP_BIND", "127.0.0.1")
+        mcp.settings.port = int(os.environ.get("NOISY_CODING_MCP_PORT", "8767"))
         mcp.run(transport="streamable-http")
     else:
         mcp.run()

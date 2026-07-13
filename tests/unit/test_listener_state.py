@@ -1,8 +1,8 @@
 import threading
 import time
 
-from grok_voice_mcp.listener import state as state_module
-from grok_voice_mcp.listener.state import ListenerState
+from noisy_coding.listener import state as state_module
+from noisy_coding.listener.state import ListenerState
 
 
 def _finishes_within(fn, seconds: float) -> bool:

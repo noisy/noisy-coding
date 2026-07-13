@@ -11,15 +11,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from grok_voice_mcp import credentials, playback
-from grok_voice_mcp.listener import pricing, speech, tab_audio
-from grok_voice_mcp.listener.dashboard import DASHBOARD_HTML
-from grok_voice_mcp.listener.state import ListenerState
+from noisy_coding import credentials, playback
+from noisy_coding.config_dir import CONFIG_DIR
+from noisy_coding.listener import pricing, speech, tab_audio
+from noisy_coding.listener.dashboard import DASHBOARD_HTML
+from noisy_coding.listener.state import ListenerState
 
 DEFAULT_PORT = 8765
 # Bind address. Loopback by default; a Docker container must bind 0.0.0.0
-# or the published port can't reach it (set GROK_VOICE_BIND=0.0.0.0 there).
-BIND_ENV_VAR = "GROK_VOICE_BIND"
+# or the published port can't reach it (set NOISY_CODING_BIND=0.0.0.0 there).
+BIND_ENV_VAR = "NOISY_CODING_BIND"
 # Mic-level frame cadence for the dashboard oscilloscope (~20 fps). A data
 # rate for smooth rendering, not coordination logic.
 MIC_STREAM_INTERVAL_SECONDS = 0.05
@@ -40,9 +41,9 @@ BUILD_HINT_HTML = """<!doctype html><meta charset="utf-8">
 <h2>HUD not built yet</h2>
 <p>Run: <code>cd dashboard &amp;&amp; npm install &amp;&amp; npm run build</code>, then reload.</p>
 </body>"""
-PORT_ENV_VAR = "GROK_VOICE_LISTENER_PORT"
-CHARACTER_FILE = Path.home() / ".config" / "grok-voice" / "character.json"
-SETTINGS_FILE = Path.home() / ".config" / "grok-voice" / "settings.json"
+PORT_ENV_VAR = "NOISY_CODING_LISTENER_PORT"
+CHARACTER_FILE = CONFIG_DIR / "character.json"
+SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
 
 # Grok voice genders (matches the dashboard's voice list). The agent's

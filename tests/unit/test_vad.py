@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from grok_voice_mcp.listener.vad import UtteranceSegmenter, VadConfig
+from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
 
 CONFIG = VadConfig()
 

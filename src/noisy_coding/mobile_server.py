@@ -5,7 +5,7 @@ daemon — restart it freely without forcing agents to reconnect. Serves the
 mobile page and proxies /api/status and /api/active-agent to the daemon
 (127.0.0.1:8765), so it can be exposed via ngrok without exposing the daemon.
 
-Run: uv run grok-voice-mobile   (then: ngrok http 8770)
+Run: uv run noisy-coding-mobile   (then: ngrok http 8770)
 """
 
 import os
@@ -13,10 +13,10 @@ import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from grok_voice_mcp.listener.mobile import MOBILE_HTML
+from noisy_coding.listener.mobile import MOBILE_HTML
 
-MOBILE_PORT = int(os.environ.get("GROK_VOICE_MOBILE_PORT", "8770"))
-DAEMON = f"http://127.0.0.1:{os.environ.get('GROK_VOICE_LISTENER_PORT', '8765')}"
+MOBILE_PORT = int(os.environ.get("NOISY_CODING_MOBILE_PORT", "8770"))
+DAEMON = f"http://127.0.0.1:{os.environ.get('NOISY_CODING_LISTENER_PORT', '8765')}"
 
 
 def _daemon_get(path: str) -> bytes:
@@ -66,7 +66,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     server = ThreadingHTTPServer(("0.0.0.0", MOBILE_PORT), Handler)
-    print(f"grok-voice-mobile on http://0.0.0.0:{MOBILE_PORT} → daemon {DAEMON}", flush=True)
+    print(f"noisy-coding-mobile on http://0.0.0.0:{MOBILE_PORT} → daemon {DAEMON}", flush=True)
     print(f"Expose it:  ngrok http {MOBILE_PORT}", flush=True)
     server.serve_forever()
 

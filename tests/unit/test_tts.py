@@ -5,7 +5,7 @@ import pytest
 import respx
 from httpx import Response
 
-from grok_voice_mcp import credentials, tts
+from noisy_coding import credentials, tts
 
 FAKE_AUDIO = b"fake-mp3-bytes"
 

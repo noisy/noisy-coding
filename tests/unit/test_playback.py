@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from grok_voice_mcp import playback
+from noisy_coding import playback
 
 
 def test_player_command_uses_afplay_on_macos(monkeypatch):
