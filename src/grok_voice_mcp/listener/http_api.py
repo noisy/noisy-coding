@@ -105,7 +105,16 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
         def do_GET(self) -> None:
             url = urlparse(self.path)
             if url.path == "/":
+                # The Vue HUD is the main dashboard; the legacy one stays
+                # at /legacy (and serves as fallback before the first build).
+                if DIST_DIR.is_dir():
+                    self._serve_hud_file("index.html")
+                else:
+                    self._respond_html(DASHBOARD_HTML)
+            elif url.path == "/legacy":
                 self._respond_html(DASHBOARD_HTML)
+            elif url.path.startswith("/assets/"):
+                self._serve_hud_file(url.path[1:])
             elif url.path == "/drain":
                 agent = parse_qs(url.query).get("agent", [None])[0]
                 self._respond(

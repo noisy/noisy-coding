@@ -28,6 +28,39 @@ def _get(port: int, path: str) -> http.client.HTTPResponse:
     return connection.getresponse()
 
 
+def test_root_serves_the_hud_when_built(hud_server):
+    response = _get(hud_server, "/")
+
+    assert response.status == 200
+    assert b"HUD" in response.read()
+
+
+def test_root_assets_are_served(hud_server):
+    response = _get(hud_server, "/assets/app.js")
+
+    assert response.status == 200
+    assert response.getheader("Content-Type") == "text/javascript"
+
+
+def test_legacy_dashboard_lives_at_legacy(hud_server):
+    response = _get(hud_server, "/legacy")
+
+    assert response.status == 200
+    assert response.getheader("Content-Type") == "text/html; charset=utf-8"
+    assert b"character-box" in response.read()  # the old inline dashboard
+
+
+def test_root_falls_back_to_legacy_without_a_build(tmp_path, monkeypatch):
+    monkeypatch.setattr(http_api, "DIST_DIR", tmp_path / "missing")
+    server = start_http_api(ListenerState(), 0)
+    try:
+        response = _get(server.server_address[1], "/")
+        assert response.status == 200
+        assert b"character-box" in response.read()
+    finally:
+        server.shutdown()
+
+
 def test_next_redirects_to_trailing_slash(hud_server):
     response = _get(hud_server, "/next")
 
