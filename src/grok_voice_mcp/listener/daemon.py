@@ -28,6 +28,7 @@ from grok_voice_mcp.listener.http_api import (
     start_http_api,
 )
 from grok_voice_mcp.listener.state import ListenerState
+from grok_voice_mcp.listener.tab_audio import start_bridge
 from grok_voice_mcp.listener.vad import UtteranceSegmenter, VadConfig
 
 STT_LANGUAGE_ENV_VAR = "GROK_VOICE_STT_LANGUAGE"
@@ -290,6 +291,9 @@ def run(config: VadConfig | None = None) -> None:
     segmenter = UtteranceSegmenter(config)
     frames: queue.Queue[np.ndarray] = queue.Queue()
     stt_executor = ThreadPoolExecutor(max_workers=1)
+    # Browser-tab audio: a WS bridge one port up feeds the SAME frames
+    # queue, so downstream (VAD/STT/PTT) can't tell tab from hardware.
+    start_bridge(state, frames, config.frame_samples, port)
 
     def on_audio(indata: np.ndarray, *_args: object) -> None:
         frames.put(indata[:, 0].copy())

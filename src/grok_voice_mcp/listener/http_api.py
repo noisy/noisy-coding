@@ -200,6 +200,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "detection_mode": state.detection_mode,
                         "ptt_held": state.ptt_held,
                         "input_device": state.input_device,
+                        "tab_audio": state.tab_audio_alive,
                         "activity": state.activity,
                         "language": state.language,
                         "agents": state.agents,

@@ -21,6 +21,10 @@ DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
 # never leave the daemon stuck recording. Structural safety, not a timer
 # guessing at human behavior.
 PTT_LEASE_SECONDS = 2.0
+# Same structural-safety pattern for the browser-tab audio device: the tab
+# renews the lease with every audio/heartbeat message, so a closed or
+# crashed tab frees the device by itself — no timer guessing.
+TAB_AUDIO_LEASE_SECONDS = 2.0
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,7 @@ class ListenerState:
         self._agent_labels: dict[str, str] = {}  # name -> human label (rename title)
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
+        self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
         self._claude_speaking = False  # any agent playing audio right now
@@ -186,6 +191,21 @@ class ListenerState:
             if mode in ("auto", "ptt"):
                 self._detection_mode = mode
             return self._detection_mode
+
+    def refresh_tab_audio(self) -> None:
+        with self._lock:
+            self._tab_audio_last_beat = time.monotonic()
+
+    def release_tab_audio(self) -> None:
+        with self._lock:
+            self._tab_audio_last_beat = float("-inf")
+
+    @property
+    def tab_audio_alive(self) -> bool:
+        with self._lock:
+            return (
+                time.monotonic() - self._tab_audio_last_beat < TAB_AUDIO_LEASE_SECONDS
+            )
 
     def refresh_ptt_hold(self) -> None:
         with self._lock:
