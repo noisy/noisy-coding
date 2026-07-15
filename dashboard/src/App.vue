@@ -379,18 +379,23 @@ const LANGUAGES: Record<string, string> = {
   <div v-if="unconfigured" class="setup-overlay">
     <div class="setup-box">
       <div class="setup-title">NOISY-CODING · FIRST CONTACT</div>
-      <p class="setup-text">
-        Talk to Claude out loud — it hears you, answers through your speakers,
-        and this console shows the whole conversation live. The oscilloscope
-        below is already listening to your mic.
-      </p>
-      <p class="setup-text">
-        All it needs is an xAI API key, and it runs on <b>pennies</b>:
-        listening costs <b>$0.10 per hour</b>, a spoken reply is a fraction of
-        a cent. Create a key at
-        <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
-        and paste it here:
-      </p>
+      <!-- The welcome pitch has done its job the moment a key is submitted:
+           from then on the box is a verification panel, and every saved
+           line keeps it on-screen even with seven failing checks. -->
+      <template v-if="!checksRunning && !visibleChecks && !firstContactFailed">
+        <p class="setup-text">
+          Talk to Claude out loud — it hears you, answers through your speakers,
+          and this console shows the whole conversation live. The oscilloscope
+          below is already listening to your mic.
+        </p>
+        <p class="setup-text">
+          All it needs is an xAI API key, and it runs on <b>pennies</b>:
+          listening costs <b>$0.10 per hour</b>, a spoken reply is a fraction of
+          a cent. Create a key at
+          <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
+          and paste it here:
+        </p>
+      </template>
       <div class="setup-row">
         <input
           v-model="keyInput"
@@ -868,6 +873,12 @@ footer { flex: none; }
   pointer-events: auto;
   max-width: 480px;
   width: 100%;
+  /* Never taller than the viewport allows (see the anchored overlay
+     padding) — worst case the box scrolls inside instead of overflowing. */
+  max-height: 82vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
   background: var(--panel-solid);
   border: 1px solid var(--line-strong);
   box-shadow: 0 0 40px rgba(63, 216, 255, 0.15);

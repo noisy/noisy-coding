@@ -44,7 +44,9 @@ const keyFineServiceDegraded = computed(() => {
         >{{ check.pending ? "◌" : check.ok ? `✓${check.ms != null ? ` ${check.ms} ms` : ""}` : "✗ FAILED" }}</span>
       </div>
       <div class="errwrap" :class="{ open: check.ok === false }">
-        <div class="errinner">{{ check.detail }}</div>
+        <!-- One line, ellipsised: seven failures must not stack the modal
+             off the screen. The full body lives in the tooltip. -->
+        <div class="errinner" :title="check.detail">{{ check.detail }}</div>
       </div>
     </template>
     <p v-if="keyFineServiceDegraded" class="check-note">
@@ -80,7 +82,8 @@ const keyFineServiceDegraded = computed(() => {
   font-size: 9.5px;
   line-height: 1.6;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   padding-left: 14px;
 }
 
