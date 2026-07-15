@@ -416,7 +416,7 @@ const LANGUAGES: Record<string, string> = {
         <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
         and paste it again. In fairness, it can also be xAI itself having a
         moment (<a href="https://status.x.ai" target="_blank" rel="noreferrer">status.x.ai</a>)
-        — in that case the very same key will pass in a few minutes.
+        — in that case the very same key might pass if you retry in a while.
       </p>
     </div>
   </div>
