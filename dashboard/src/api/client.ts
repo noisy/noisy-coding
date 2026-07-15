@@ -69,9 +69,18 @@ export interface EndpointCheck {
 }
 export type DiagnosticChecks = Record<string, EndpointCheck>;
 
-/** Saves the key AND live-checks every xAI call site with it. */
-export function saveApiKey(key: string): Promise<{ checks?: DiagnosticChecks }> {
-  return postJson<{ checks?: DiagnosticChecks }>("/credentials", { xai_api_key: key });
+/** Verify-then-commit: live-checks every xAI call site with the candidate
+ * key. A key failing its own check is rejected server-side (ok: false) —
+ * the checks come back either way so the form can show WHY. */
+export async function saveApiKey(
+  key: string,
+): Promise<{ ok: boolean; checks?: DiagnosticChecks; error?: string }> {
+  const response = await fetch("/credentials", {
+    method: "POST",
+    body: JSON.stringify({ xai_api_key: key }),
+  });
+  const body = await response.json().catch(() => ({}));
+  return { ok: response.ok, ...body };
 }
 
 /** The same per-endpoint checks, on demand (SETTINGS → RUN CHECKS). */

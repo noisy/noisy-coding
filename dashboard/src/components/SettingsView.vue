@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import type { DiagnosticChecks } from "../api/client";
 import type { InputDevice } from "../types";
 import { CUE_LABELS, type CuePrefs } from "../composables/useAudioCues";
 import type { CueName } from "../composables/cueEvents";
 import { playCue } from "../composables/cueSounds";
+import DiagnosticChecklist from "./DiagnosticChecklist.vue";
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     apiKeyHint: string;
     devices?: InputDevice[];
@@ -31,27 +32,6 @@ const emit = defineEmits<{
 }>();
 
 const cueNames = Object.keys(CUE_LABELS) as CueName[];
-
-// What each check confirms, in the plugin's own terms.
-const CHECK_LABELS: Record<string, string> = {
-  api_key: "API KEY",
-  tts_batch: "TEXT-TO-SPEECH",
-  tts_stream: "TEXT-TO-SPEECH (LIVE)",
-  stt_batch: "SPEECH-TO-TEXT",
-  stt_stream: "SPEECH-TO-TEXT (LIVE)",
-  voices: "VOICE LIST",
-  billing: "CREDITS DISPLAY",
-};
-
-// The distinction that saves a debugging session: the key itself passed,
-// but a voice endpoint rejected it → xAI-side degradation, not the key.
-const keyFineServiceDegraded = computed(() => {
-  const checks = props.checks;
-  if (!checks?.api_key?.ok) return false;
-  return ["tts_batch", "tts_stream", "stt_batch", "stt_stream"].some(
-    (name) => checks[name] && !checks[name].ok,
-  );
-});
 
 const keyInput = ref("");
 const editing = ref(false);
@@ -175,19 +155,7 @@ function submit() {
           {{ checksRunning ? "RUNNING…" : "RUN CHECKS" }}
         </button>
       </div>
-      <div v-if="checks" class="checkgrid">
-        <div v-for="(check, name) in checks" :key="name" class="checkrow">
-          <span class="check-mark" :class="check.ok ? 'pass' : 'fail'">{{ check.ok ? "✓" : "✗" }}</span>
-          <span class="check-label">{{ CHECK_LABELS[name] ?? String(name).toUpperCase() }}</span>
-          <span class="check-detail">{{ check.ok ? (check.ms != null ? `${check.ms} ms` : "") : check.detail }}</span>
-        </div>
-        <p v-if="keyFineServiceDegraded" class="check-note">
-          Your API key is valid, but xAI's voice service is currently
-          rejecting it — this looks like a temporary xAI-side issue, not
-          your key. Check <a href="https://status.x.ai" target="_blank" rel="noreferrer">status.x.ai</a>
-          or try again shortly.
-        </p>
-      </div>
+      <DiagnosticChecklist v-if="checks" class="checks-indent" :checks="checks" />
       <div class="text">
         <p>
           Live-checks every xAI call this console makes — each verdict
@@ -252,20 +220,7 @@ function submit() {
 .btn:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .btn.dim { color: var(--muted); border-color: var(--line); }
 
-.checkgrid { display: grid; gap: 6px; margin: 4px 0 14px 102px; max-width: 640px; }
-.checkrow { display: flex; align-items: baseline; gap: 10px; }
-.check-mark { width: 14px; flex: none; font-size: 11px; }
-.check-mark.pass { color: var(--green); }
-.check-mark.fail { color: var(--red, #ff5f56); }
-.check-label { width: 190px; flex: none; font-size: 10px; letter-spacing: 0.14em; color: var(--ink); }
-.check-detail { flex: 1; font-size: 9.5px; color: var(--muted); overflow-wrap: anywhere; }
-.check-note {
-  margin-top: 8px;
-  font-size: 10.5px;
-  line-height: 1.7;
-  color: var(--amber);
-}
-.check-note a { color: var(--amber); }
+.checks-indent { margin: 4px 0 14px 102px; }
 
 .cue-hint { flex: 1; font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
 .cuegrid { display: grid; gap: 8px; margin: 4px 0 14px 102px; max-width: 420px; }

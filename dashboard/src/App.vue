@@ -8,6 +8,7 @@ import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
+import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import SessionRing from "./components/SessionRing.vue";
@@ -198,27 +199,34 @@ onUnmounted(() => {
 const keyInput = ref("");
 const showSettings = ref(false);
 const unconfigured = computed(() => status.value != null && !status.value.api_key_set);
-async function submitKey() {
-  const key = keyInput.value.trim();
-  if (key.length < 8) return;
-  await saveApiKey(key).catch(swallow);
-  keyInput.value = "";
-}
 // Per-endpoint xAI checks: run automatically on key save, or on demand.
-// Kept here (not in SettingsView) so the panel stays a dumb form.
+// Kept here (not in SettingsView) so the panel stays a dumb form — and
+// shared with the first-contact gate, which accepts a key ONLY once the
+// daemon verified it against the live service.
 const keyChecks = ref<DiagnosticChecks | null>(null);
 const checksRunning = ref(false);
-const saveKey = async (key: string) => {
+const keyError = ref("");
+const saveKey = async (key: string): Promise<boolean> => {
   keyChecks.value = null;
+  keyError.value = "";
   checksRunning.value = true;
   try {
-    keyChecks.value = (await saveApiKey(key)).checks ?? null;
+    const result = await saveApiKey(key);
+    keyChecks.value = result.checks ?? null;
+    if (!result.ok) keyError.value = result.error ?? "the key failed verification";
+    return result.ok;
   } catch {
-    // key save failure already shows via api_key_hint staying unchanged
+    keyError.value = "cannot reach the daemon";
+    return false;
   } finally {
     checksRunning.value = false;
   }
 };
+async function submitKey() {
+  const key = keyInput.value.trim();
+  if (key.length < 8) return;
+  if (await saveKey(key)) keyInput.value = "";
+}
 const runChecks = async () => {
   keyChecks.value = null;
   checksRunning.value = true;
@@ -365,10 +373,21 @@ const LANGUAGES: Record<string, string> = {
           type="password"
           class="setup-input"
           placeholder="xai-…"
+          :disabled="checksRunning"
           @keyup.enter="submitKey"
         />
-        <button class="ctl" @click="submitKey">CONNECT</button>
+        <button class="ctl" :disabled="checksRunning" @click="submitKey">
+          {{ checksRunning ? "VERIFYING…" : "CONNECT" }}
+        </button>
       </div>
+      <!-- Verify-then-commit: the key is accepted only after the daemon
+           confirmed it against the live service — a dead key must fail
+           HERE, not utterances later. -->
+      <p v-if="checksRunning" class="setup-text verifying">
+        Running live checks against xAI — key, speech synthesis, transcription…
+      </p>
+      <p v-if="keyError" class="setup-error">✗ {{ keyError.toUpperCase() }}</p>
+      <DiagnosticChecklist v-if="keyChecks" :checks="keyChecks" class="setup-checks" />
     </div>
   </div>
 
@@ -824,6 +843,9 @@ footer { flex: none; }
 }
 .setup-title { font-size: 13px; letter-spacing: 0.3em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); margin-bottom: 14px; }
 .setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 14px; }
+.setup-text.verifying { color: var(--cyan-dim); margin: 12px 0 0; }
+.setup-error { font-size: 10px; letter-spacing: 0.14em; color: var(--red, #ff5f56); margin: 12px 0 0; }
+.setup-checks { margin-top: 12px; }
 .setup-text b { color: var(--cyan); font-weight: 400; }
 .setup-text a { color: var(--amber); text-decoration: none; border-bottom: 1px dotted var(--amber-dim); }
 .setup-text a:hover { text-shadow: var(--glow-amber); }

@@ -425,12 +425,36 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if len(key) < 8:
                     self._respond({"error": "that does not look like an API key"}, status=400)
                 else:
+                    # Verify-then-commit: live-check every real call site
+                    # with the candidate key. A key that fails the api_key
+                    # check itself is NEVER accepted (the previous one, if
+                    # any, is restored) — first contact must not swallow a
+                    # dead key and let the user discover it utterances
+                    # later. A VALID key with degraded voice endpoints is
+                    # still accepted: that's xAI's outage, not the key
+                    # (per-check verdicts tell the user exactly that).
+                    previous_key = credentials.api_key()
                     credentials.save_api_key(key)
-                    state.add_event("credentials", "xAI API key configured")
-                    # Live-check every real call site with the fresh key —
-                    # per-check verdicts, so an intermittent voice-endpoint
-                    # rejection can't masquerade as "your key is wrong".
                     checks = diagnostics.run_checks_sync()
+                    if not checks["api_key"]["ok"]:
+                        if previous_key:
+                            credentials.save_api_key(previous_key)
+                        else:
+                            credentials.delete_api_key()
+                        state.add_event(
+                            "credentials_rejected",
+                            checks["api_key"].get("detail", "")[:160],
+                        )
+                        self._respond(
+                            {
+                                "api_key_set": bool(previous_key),
+                                "error": "the key failed verification — nothing was saved",
+                                "checks": checks,
+                            },
+                            status=400,
+                        )
+                        return
+                    state.add_event("credentials", "xAI API key configured")
                     failed = [name for name, c in checks.items() if not c["ok"]]
                     if failed:
                         state.add_event(

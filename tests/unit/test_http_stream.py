@@ -125,33 +125,90 @@ def test_diagnose_returns_the_per_check_breakdown(monkeypatch):
     assert body == {"checks": checks}
 
 
-def test_saving_credentials_runs_the_checks_and_reports_them(monkeypatch):
+def _post_credentials(port: int, key: str) -> tuple[int, dict]:
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    body = json.dumps({"xai_api_key": key})
+    connection.request(
+        "POST", "/credentials", body=body,
+        headers={"Content-Length": str(len(body))},
+    )
+    response = connection.getresponse()
+    payload = json.loads(response.read())
+    connection.close()
+    return response.status, payload
+
+
+def _fake_key_store(monkeypatch, initial: str = ""):
+    from noisy_coding.listener import http_api as http_api_module
+
+    store = {"key": initial}
+    monkeypatch.setattr(
+        http_api_module.credentials, "save_api_key",
+        lambda key: store.__setitem__("key", key),
+    )
+    monkeypatch.setattr(
+        http_api_module.credentials, "delete_api_key",
+        lambda: store.__setitem__("key", ""),
+    )
+    monkeypatch.setattr(http_api_module.credentials, "api_key", lambda: store["key"])
+    monkeypatch.setattr(http_api_module.credentials, "api_key_hint", lambda: "····abcd")
+    return store
+
+
+def test_saving_a_verified_key_reports_the_checks(monkeypatch):
     from noisy_coding.listener import http_api as http_api_module
 
     checks = {"api_key": {"ok": True, "ms": 90}}
-    saved = []
-    monkeypatch.setattr(http_api_module.credentials, "save_api_key", saved.append)
-    monkeypatch.setattr(http_api_module.credentials, "api_key_hint", lambda: "····abcd")
+    store = _fake_key_store(monkeypatch)
     monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
     state = ListenerState()
     server = start_http_api(state, 0)
-    port = server.server_address[1]
     try:
-        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-        body = json.dumps({"xai_api_key": "xai-new-key"})
-        connection.request(
-            "POST", "/credentials", body=body,
-            headers={"Content-Length": str(len(body))},
-        )
-        response = connection.getresponse()
-        payload = json.loads(response.read())
-        connection.close()
+        status, payload = _post_credentials(server.server_address[1], "xai-new-key")
     finally:
         server.shutdown()
 
-    assert saved == ["xai-new-key"]
+    assert status == 200
+    assert store["key"] == "xai-new-key"
     assert payload["api_key_set"] is True
     assert payload["checks"] == checks
+
+
+def test_a_key_failing_verification_is_never_accepted(monkeypatch):
+    from noisy_coding.listener import http_api as http_api_module
+
+    checks = {"api_key": {"ok": False, "detail": "HTTP 401: invalid key"}}
+    store = _fake_key_store(monkeypatch, initial="xai-old-working")
+    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    state = ListenerState()
+    server = start_http_api(state, 0)
+    try:
+        status, payload = _post_credentials(server.server_address[1], "xai-dead-key")
+    finally:
+        server.shutdown()
+
+    assert status == 400
+    assert store["key"] == "xai-old-working"  # rollback, the old key survives
+    assert payload["api_key_set"] is True  # the OLD key still counts
+    assert payload["checks"] == checks
+
+
+def test_a_rejected_first_key_leaves_the_daemon_unconfigured(monkeypatch):
+    from noisy_coding.listener import http_api as http_api_module
+
+    checks = {"api_key": {"ok": False, "detail": "HTTP 401: invalid key"}}
+    store = _fake_key_store(monkeypatch, initial="")
+    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    state = ListenerState()
+    server = start_http_api(state, 0)
+    try:
+        status, payload = _post_credentials(server.server_address[1], "xai-dead-key")
+    finally:
+        server.shutdown()
+
+    assert status == 400
+    assert store["key"] == ""  # first contact stays unconfigured
+    assert payload["api_key_set"] is False
 
 
 def test_stream_mic_serves_sse_frames_with_level_and_recording():

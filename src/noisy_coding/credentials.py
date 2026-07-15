@@ -26,6 +26,12 @@ def save_api_key(key: str) -> None:
     CREDENTIALS_FILE.chmod(0o600)
 
 
+def delete_api_key() -> None:
+    """Back to unconfigured — used when a candidate key fails verification
+    and there is no previous key to fall back to."""
+    CREDENTIALS_FILE.unlink(missing_ok=True)
+
+
 def api_key_hint() -> str:
     """Safe display form: last 4 characters only (never the full key)."""
     key = api_key()
