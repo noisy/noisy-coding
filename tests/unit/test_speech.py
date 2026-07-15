@@ -254,7 +254,69 @@ def test_fatal_synthesis_error_says_retry_wont_help(monkeypatch, batch_pipeline)
     assert state.utterances()[0]["status"] == "error — retry won't help"
 
 
+def test_transient_synth_error_retries_automatically(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    monkeypatch.setattr(speech, "SYNTH_RETRY_DELAYS_SECONDS", (0.0, 0.0))
+    attempts = []
+
+    async def flaky_synthesize(text, voice, language, speed):
+        attempts.append(text)
+        if len(attempts) < 3:
+            raise tts.GrokTTSError("peer closed connection without sending complete message body")
+        return tts.SynthesizedAudio(b"mp3-bytes", "audio/mpeg", 0.0)
+
+    monkeypatch.setattr(speech.tts, "synthesize", flaky_synthesize)
+    _install_fake_play(monkeypatch, [])
+
+    speech.submit(state, "self-healing").result(timeout=5)
+
+    assert len(attempts) == 3  # two transparent retries, then success
+    assert state.utterances()[0]["status"] == "played"
+    retry_events = [e for e in state.events_since(0) if e["kind"] == "speak_retry"]
+    assert len(retry_events) == 2  # the log still tells the story
+
+
+def test_fatal_synth_error_never_retries(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    monkeypatch.setattr(speech, "SYNTH_RETRY_DELAYS_SECONDS", (0.0, 0.0))
+    attempts = []
+
+    async def oversized(text, voice, language, speed):
+        attempts.append(text)
+        raise tts.GrokTTSError("Text is 20000 characters; the API accepts at most 15000.")
+
+    monkeypatch.setattr(speech.tts, "synthesize", oversized)
+    _install_fake_play(monkeypatch, [])
+
+    with pytest.raises(tts.GrokTTSError):
+        speech.submit(state, "way too long").result(timeout=5)
+
+    assert len(attempts) == 1  # the same request cannot ever succeed
+
+
+def test_exhausted_retries_surface_the_error(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    monkeypatch.setattr(speech, "SYNTH_RETRY_DELAYS_SECONDS", (0.0, 0.0))
+    attempts = []
+
+    async def always_down(text, voice, language, speed):
+        attempts.append(text)
+        raise tts.GrokTTSError("Grok TTS request failed with HTTP 503")
+
+    monkeypatch.setattr(speech.tts, "synthesize", always_down)
+    _install_fake_play(monkeypatch, [])
+
+    with pytest.raises(tts.GrokTTSError):
+        speech.submit(state, "doomed").result(timeout=5)
+
+    assert len(attempts) == 3  # all attempts spent before giving up
+    assert state.utterances()[0]["status"].startswith("error — likely transient")
+
+
 def test_errored_card_replays_through_the_normal_path(monkeypatch, batch_pipeline):
+    # Auto-retry off: this exercises the MANUAL ↻ path on a card that
+    # already exhausted its chances and landed in ERROR.
+    monkeypatch.setattr(speech, "SYNTH_RETRY_DELAYS_SECONDS", ())
     state = ListenerState()
     attempts = []
 

@@ -263,6 +263,33 @@ FATAL_SPEECH_MARKERS = (
     "No xAI API key",  # nothing to speak with until the key is set
 )
 
+# xAI's voice endpoints fail transiently — dropped responses mid-body,
+# momentary 5xx, stray 400 key rejections (issues #2/#3). Retry in code
+# before ever showing the user an ERROR: the first retry is immediate
+# (catches dropped connections), the second takes one breath (momentary
+# upstream blips). Deterministic failures never retry.
+SYNTH_RETRY_DELAYS_SECONDS = (0.0, 1.0)
+
+
+def _is_fatal_speech_error(error: Exception) -> bool:
+    return any(marker in str(error) for marker in FATAL_SPEECH_MARKERS)
+
+
+async def _synthesize_with_retry(
+    state: ListenerState, speech_text: str, voice: str, language: str, speed: float
+) -> tts.SynthesizedAudio:
+    for attempt, delay in enumerate(SYNTH_RETRY_DELAYS_SECONDS):
+        try:
+            return await tts.synthesize(speech_text, voice, language, speed)
+        except Exception as error:
+            if _is_fatal_speech_error(error):
+                raise
+            _log(f"[speak] transient synth error (attempt {attempt + 1}): {error}")
+            state.add_event("speak_retry", str(error)[:160])
+            if delay:
+                await asyncio.sleep(delay)
+    return await tts.synthesize(speech_text, voice, language, speed)
+
 
 def _error_card_fields(error: Exception) -> dict:
     """Status + detail for a failed card: say WHY, and whether ↻ is worth it.
@@ -383,7 +410,9 @@ def _synthesize_now(
     _charge_synthesis(state, text, utterance_id)
     synth_started = time.monotonic()
     audio = asyncio.run(
-        tts.synthesize(_emphasis_to_speech_tags(text), voice, language, speed)
+        _synthesize_with_retry(
+            state, _emphasis_to_speech_tags(text), voice, language, speed
+        )
     )
     state.set_latency("tts", (time.monotonic() - synth_started) * 1000)
     _audio_cache.put(_cache_key(source_id, text, voice, language, speed), audio.audio)
@@ -500,14 +529,26 @@ async def _stream_and_play(
         utterance_id, status="playing through speakers…", detail=detail
     )
     chunks = bytearray()
-    await tts_stream.speak_streaming(
-        _emphasis_to_speech_tags(text),
-        prepared.voice,
-        prepared.language,
-        prepared.speed,
-        on_first_audio=lambda seconds: state.set_latency("tts", seconds * 1000),
-        on_audio_chunk=chunks.extend,
-    )
+    for attempt, delay in enumerate((*SYNTH_RETRY_DELAYS_SECONDS, None)):
+        try:
+            await tts_stream.speak_streaming(
+                _emphasis_to_speech_tags(text),
+                prepared.voice,
+                prepared.language,
+                prepared.speed,
+                on_first_audio=lambda seconds: state.set_latency("tts", seconds * 1000),
+                on_audio_chunk=chunks.extend,
+            )
+            break
+        except Exception as error:
+            # Retry only while NOTHING has reached the speaker yet — once
+            # audio played, a restarted stream would repeat it aloud.
+            if chunks or delay is None or _is_fatal_speech_error(error):
+                raise
+            _log(f"[speak] transient stream error (attempt {attempt + 1}): {error}")
+            state.add_event("speak_retry", str(error)[:160])
+            if delay:
+                await asyncio.sleep(delay)
     _audio_cache.put(
         _cache_key(source_id, text, prepared.voice, prepared.language, prepared.speed),
         bytes(chunks),
