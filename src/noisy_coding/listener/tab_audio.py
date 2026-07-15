@@ -102,6 +102,7 @@ class TabAudioBridge:
     def ingest(self, rechunker: FrameRechunker, message: bytes) -> int:
         """One binary WS message → zero or more VAD frames. Returns count."""
         self._state.refresh_tab_audio()
+        self._state.set_tab_mic(True)  # PCM arriving = the mic is capturing
         # Frames flow only while the tab IS the selected microphone —
         # otherwise the lease stays warm but audio is discarded, so
         # selecting "THIS BROWSER TAB" later starts clean, not with a
@@ -185,9 +186,10 @@ class TabAudioBridge:
                     self.ingest(rechunker, message)
                     continue
                 try:
-                    kind = json.loads(message).get("type")
+                    payload = json.loads(message)
                 except ValueError:
                     continue
+                kind = payload.get("type")
                 if kind == "hello":
                     if self.claim(connection_id, ws):
                         ws.send(json.dumps({"type": "granted"}))
@@ -196,6 +198,7 @@ class TabAudioBridge:
                         return
                 elif kind == "hb" and self.claim(connection_id, ws):
                     self._state.refresh_tab_audio()
+                    self._state.set_tab_mic(bool(payload.get("mic")))
                 elif kind == "played":
                     self.ack_played(connection_id, ws)
         finally:

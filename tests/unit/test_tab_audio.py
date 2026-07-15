@@ -164,3 +164,13 @@ def test_stop_tab_playback_is_a_noop_while_nothing_plays():
     # No stray stop → no stray "played" ack poisoning the NEXT clip's wait
     # (the tab acks every stop, even with nothing playing).
     assert ws.sent == []
+
+
+def test_ingest_marks_the_tab_mic_as_live():
+    bridge, state, _ = _bridge()
+    state.set_input_device("browser")
+    state.refresh_tab_audio()
+
+    bridge.ingest(FrameRechunker(FRAME_SAMPLES), _pcm(FRAME_SAMPLES))
+
+    assert state.tab_mic_live is True  # PCM flowing = capturing, no guesswork

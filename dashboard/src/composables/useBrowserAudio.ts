@@ -158,7 +158,9 @@ export function useBrowserAudio(): BrowserAudio {
 
     heartbeat = setInterval(() => {
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "hb" }));
+        // The mic flag keeps the daemon honest: a connected tab can play
+        // audio while its microphone still awaits the activation click.
+        socket.send(JSON.stringify({ type: "hb", mic: micLive.value }));
       }
     }, HEARTBEAT_MS);
 
@@ -213,6 +215,10 @@ export function useBrowserAudio(): BrowserAudio {
       socket.send(floatToInt16(resampleTo16k(batch, capturedRate)).buffer);
     };
     micLive.value = true;
+    // Tell the daemon right away — the next heartbeat could be a beat late.
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "hb", mic: true }));
+    }
   }
 
   return { active, micLive, error, connect, enable, disable };

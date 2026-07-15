@@ -57,6 +57,7 @@ class ListenerState:
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
+        self._tab_mic = False  # the tab's mic is actually capturing
         self._output_device = "system"  # where Claude's voice plays: system | browser
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
@@ -248,6 +249,7 @@ class ListenerState:
     def release_tab_audio(self) -> None:
         with self._lock:
             self._tab_audio_last_beat = float("-inf")
+            self._tab_mic = False
 
     @property
     def tab_audio_alive(self) -> bool:
@@ -255,6 +257,21 @@ class ListenerState:
             return (
                 time.monotonic() - self._tab_audio_last_beat < TAB_AUDIO_LEASE_SECONDS
             )
+
+    def set_tab_mic(self, live: bool) -> None:
+        """The tab's own word on its microphone (heartbeat flag): a
+        connected tab can PLAY audio while its mic still awaits the
+        activation click — the lease alone must not imply a live mic."""
+        with self._lock:
+            self._tab_mic = bool(live)
+
+    @property
+    def tab_mic_live(self) -> bool:
+        with self._lock:
+            alive = (
+                time.monotonic() - self._tab_audio_last_beat < TAB_AUDIO_LEASE_SECONDS
+            )
+            return alive and self._tab_mic
 
     def refresh_ptt_hold(self) -> None:
         with self._lock:

@@ -467,9 +467,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         # Spoken confirmation doubles as the ultimate TTS
                         # proof: hearing it means the whole voice path works.
                         # It also hands the user their NEXT step — the mic.
+                        # tab_mic_live, not tab_audio_alive: a connected tab
+                        # plays audio just fine while its microphone still
+                        # awaits the activation click (the yellow banner).
                         mic_pending = (
                             state.input_device == "browser"
-                            and not state.tab_audio_alive
+                            and not state.tab_mic_live
                         )
                         next_step = (
                             "One step left: the microphone. Click the ENABLE "
