@@ -89,3 +89,39 @@ def test_flush_is_a_no_op_when_idle(make_frames):
 
     assert segmenter.flush() is None
     assert not segmenter.is_recording
+
+
+def test_low_sensitivity_ignores_speech_that_default_would_catch(make_frames):
+    # Same audio, two gates: the default segmenter records it, a MIN
+    # sensitivity (noisy-room) segmenter treats it as background.
+    quiet_speech = [
+        (frame * 0.25).astype(np.int16) for frame in make_frames(True, 40)
+    ]
+    silence = make_frames(False, CONFIG.end_silence_ms // CONFIG.frame_ms + 1)
+
+    default_segmenter = UtteranceSegmenter(CONFIG)
+    deaf_segmenter = UtteranceSegmenter(CONFIG)
+    deaf_segmenter.mic_sensitivity_override = 0
+
+    assert len(_feed_all(default_segmenter, make_frames(False, 20) + quiet_speech + silence)) == 1
+    assert _feed_all(deaf_segmenter, make_frames(False, 20) + quiet_speech + silence) == []
+
+
+def test_high_sensitivity_catches_speech_that_default_misses(make_frames):
+    whisper = [(frame * 0.12).astype(np.int16) for frame in make_frames(True, 40)]
+    silence = make_frames(False, CONFIG.end_silence_ms // CONFIG.frame_ms + 1)
+
+    default_segmenter = UtteranceSegmenter(CONFIG)
+    eager_segmenter = UtteranceSegmenter(CONFIG)
+    eager_segmenter.mic_sensitivity_override = 100
+
+    assert _feed_all(default_segmenter, make_frames(False, 20) + whisper + silence) == []
+    assert len(_feed_all(eager_segmenter, make_frames(False, 20) + whisper + silence)) == 1
+
+
+def test_default_sensitivity_scale_is_exactly_todays_behaviour():
+    from noisy_coding.listener.vad import sensitivity_scale
+
+    assert sensitivity_scale(50) == 1.0
+    assert sensitivity_scale(0) == 2.0
+    assert sensitivity_scale(100) == 0.5

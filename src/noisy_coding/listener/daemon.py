@@ -290,6 +290,8 @@ def run(config: VadConfig | None = None) -> None:
         saved = json.loads(SETTINGS_FILE.read_text())
         if "end_silence_ms" in saved:
             state.set_end_silence_ms(saved["end_silence_ms"])
+        if "mic_sensitivity" in saved:
+            state.set_mic_sensitivity(saved["mic_sensitivity"])
         if "smart_turn" in saved:
             state.set_smart_turn(saved["smart_turn"])
         if saved.get("mode") in ("batch", "live"):
@@ -470,6 +472,7 @@ def run(config: VadConfig | None = None) -> None:
                     if ptt and segmenter.is_recording:
                         segmenter.request_close()
                 segmenter.smart_turn_mode = state.smart_turn_mode
+                segmenter.mic_sensitivity_override = state.mic_sensitivity
                 was_recording = segmenter.is_recording
                 utterance = segmenter.feed(frame)
                 state.set_recording(segmenter.is_recording)

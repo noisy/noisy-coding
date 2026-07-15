@@ -19,6 +19,8 @@ export interface DaemonStatus {
   mode: "batch" | "live";
   tts_mode: "batch" | "live";
   end_silence_ms: number;
+  /** Noise gate: 0 (needs a loud voice) … 100 (hair-trigger); 50 = default. */
+  mic_sensitivity: number;
   smart_turn: number;
   smart_turn_mode: "soft" | "hard";
   detection_mode: "auto" | "ptt";
@@ -63,6 +65,7 @@ export interface Character {
 export interface SettingsPatch {
   tts_mode?: "batch" | "live";
   end_silence_ms?: number;
+  mic_sensitivity?: number;
   smart_turn?: number;
   smart_turn_mode?: "soft" | "hard";
   detection_mode?: "auto" | "ptt";

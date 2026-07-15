@@ -114,6 +114,8 @@ const setSttMode = (mode: "batch" | "live") => setMode(mode).catch(swallow);
 const setTtsMode = (mode: "batch" | "live") => setSettings({ tts_mode: mode }).catch(swallow);
 const setSilence = (event: Event) =>
   setSettings({ end_silence_ms: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
+const setSensitivity = (event: Event) =>
+  setSettings({ mic_sensitivity: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
 const setSmartTurn = (event: Event) =>
   setSettings({ smart_turn: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
 
@@ -290,6 +292,11 @@ async function pickOutput(value: string) {
 }
 
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
+// User terms for the VAD speech threshold (never raw RMS): LOW for noisy
+// rooms (mic needs a clear voice), HIGH for quiet rooms / soft speakers.
+const SENSITIVITY_OPTIONS: Array<[number, string]> = [
+  [0, "MIN"], [25, "LOW"], [50, "MID"], [75, "HIGH"], [100, "MAX"],
+];
 const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
 // Languages supported by the Grok voice API (same set as the legacy UI).
 const LANGUAGES: Record<string, string> = {
@@ -429,6 +436,12 @@ const LANGUAGES: Record<string, string> = {
               <span class="lbl">SILENCE</span>
               <select class="ctl small" :value="status?.end_silence_ms" @change="setSilence">
                 <option v-for="ms in SILENCE_OPTIONS" :key="ms" :value="ms">{{ (ms / 1000).toFixed(1) }}s</option>
+              </select>
+            </div>
+            <div class="ctlrow" title="Noise gate: how loud a voice must be to trip the mic. Lower it in a noisy room (café, open office) so background sound stops triggering recordings.">
+              <span class="lbl">MIC SENSITIVITY</span>
+              <select class="ctl small" :value="status?.mic_sensitivity ?? 50" @change="setSensitivity">
+                <option v-for="[value, label] in SENSITIVITY_OPTIONS" :key="value" :value="value">{{ label }}</option>
               </select>
             </div>
             <div class="ctlrow">

@@ -5,6 +5,12 @@ import time
 from collections import deque
 from dataclasses import dataclass
 
+from noisy_coding.listener.vad import (
+    DEFAULT_MIC_SENSITIVITY,
+    MAX_MIC_SENSITIVITY,
+    MIN_MIC_SENSITIVITY,
+)
+
 EVENT_LOG_SIZE = 300
 DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50, "chatty": 50}
 DEFAULT_VOICE = "carina"
@@ -74,6 +80,7 @@ class ListenerState:
         self._mode = "live"
         self._tts_mode = "live"
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
+        self._mic_sensitivity = DEFAULT_MIC_SENSITIVITY
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
         self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
@@ -151,6 +158,18 @@ class ListenerState:
                 MIN_END_SILENCE_MS, min(MAX_END_SILENCE_MS, int(value))
             )
             return self._end_silence_ms
+
+    @property
+    def mic_sensitivity(self) -> int:
+        with self._lock:
+            return self._mic_sensitivity
+
+    def set_mic_sensitivity(self, value: int) -> int:
+        with self._lock:
+            self._mic_sensitivity = max(
+                MIN_MIC_SENSITIVITY, min(MAX_MIC_SENSITIVITY, int(value))
+            )
+            return self._mic_sensitivity
 
     @property
     def smart_turn(self) -> float:

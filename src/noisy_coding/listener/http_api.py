@@ -144,6 +144,7 @@ def save_settings(state: ListenerState) -> None:
             json.dumps(
                 {
                     "end_silence_ms": state.end_silence_ms,
+                    "mic_sensitivity": state.mic_sensitivity,
                     "smart_turn": state.smart_turn,
                     "mode": state.mode,
                     "tts_mode": state.tts_mode,
@@ -236,6 +237,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "mode": state.mode,
                         "tts_mode": state.tts_mode,
                         "end_silence_ms": state.end_silence_ms,
+                        "mic_sensitivity": state.mic_sensitivity,
                         "smart_turn": state.smart_turn,
                         "smart_turn_mode": state.smart_turn_mode,
                         "detection_mode": state.detection_mode,
@@ -344,6 +346,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if "end_silence_ms" in body:
                     result["end_silence_ms"] = state.set_end_silence_ms(
                         body["end_silence_ms"]
+                    )
+                if "mic_sensitivity" in body:
+                    result["mic_sensitivity"] = state.set_mic_sensitivity(
+                        body["mic_sensitivity"]
                     )
                 if "smart_turn" in body:
                     result["smart_turn"] = state.set_smart_turn(body["smart_turn"])

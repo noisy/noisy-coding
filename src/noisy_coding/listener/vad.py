@@ -10,6 +10,21 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+DEFAULT_MIC_SENSITIVITY = 50
+MIN_MIC_SENSITIVITY, MAX_MIC_SENSITIVITY = 0, 100
+
+
+def sensitivity_scale(sensitivity: int) -> float:
+    """Map the user's 0-100 mic sensitivity onto a speech-threshold scale.
+
+    50 is exactly today's default (scale 1.0). Exponential, so steps feel
+    even in both directions: 0 doubles the threshold (a noisy room must
+    shout to trip the mic), 100 halves it (quiet rooms, soft speakers).
+    The scale never drops the effective multiplier below the noise floor,
+    so a maxed slider cannot leave the mic permanently open.
+    """
+    return 2.0 ** ((DEFAULT_MIC_SENSITIVITY - sensitivity) / DEFAULT_MIC_SENSITIVITY)
+
 
 @dataclass(frozen=True)
 class VadConfig:
@@ -50,6 +65,8 @@ class UtteranceSegmenter:
         self._pre_roll_frames_included = 0
         # Live-adjustable from the dashboard; None = use the config default.
         self.end_silence_ms_override: int | None = None
+        # User's mic sensitivity (0-100); None = DEFAULT_MIC_SENSITIVITY.
+        self.mic_sensitivity_override: int | None = None
         # "soft": smart_turn may close after a short pause (fast, may over-split).
         # "hard": smart_turn may not close before end_silence — pause-split rules.
         self.smart_turn_mode = "soft"
@@ -94,7 +111,12 @@ class UtteranceSegmenter:
         return self._feed_idle(frame, loud)
 
     def _is_speech(self, rms: float) -> bool:
-        threshold = max(
+        sensitivity = (
+            self.mic_sensitivity_override
+            if self.mic_sensitivity_override is not None
+            else DEFAULT_MIC_SENSITIVITY
+        )
+        threshold = sensitivity_scale(sensitivity) * max(
             self.config.min_speech_rms,
             self._noise_floor * self.config.speech_multiplier,
         )

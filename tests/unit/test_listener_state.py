@@ -267,3 +267,12 @@ def test_restore_active_agent_survives_the_first_to_register_race():
 
     assert state.active_agent == "mine"
     assert "mine" in state.agents  # visible as a tab even before it returns
+
+
+def test_mic_sensitivity_defaults_to_mid_and_clamps():
+    state = ListenerState()
+
+    assert state.mic_sensitivity == 50
+    assert state.set_mic_sensitivity(250) == 100
+    assert state.set_mic_sensitivity(-5) == 0
+    assert state.set_mic_sensitivity(75) == 75
