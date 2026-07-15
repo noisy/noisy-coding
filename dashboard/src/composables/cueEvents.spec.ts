@@ -36,4 +36,29 @@ describe("detectCues", () => {
     expect(detectCues(snapshotUtterances([]), history, false)).toEqual([]);
     expect(detectCues(snapshotUtterances(history), history, false)).toEqual([]);
   });
+
+  it("stays silent when the whole list swaps — that's an agent tab switch", () => {
+    // Every card of the other agent's history is "new" to the snapshot;
+    // cueing them all would stack N blips into one very loud blast.
+    const mine = snapshotUtterances([utterance(1, "claude", "played")]);
+    const theirs = [
+      utterance(10, "claude", "played"),
+      utterance(11, "claude", "played"),
+      utterance(12, "user", "delivered to Claude"),
+    ];
+
+    expect(detectCues(mine, theirs, false)).toEqual([]);
+  });
+
+  it("plays each cue kind once per tick, even for a burst of new cards", () => {
+    const before = snapshotUtterances([utterance(1, "user", "delivered to Claude")]);
+    const burst = [
+      utterance(1, "user", "delivered to Claude"),
+      utterance(2, "claude", "queued"),
+      utterance(3, "claude", "queued"),
+      utterance(4, "claude", "queued"),
+    ];
+
+    expect(detectCues(before, burst, false)).toEqual(["claude"]);
+  });
 });

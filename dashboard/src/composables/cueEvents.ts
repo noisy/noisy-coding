@@ -28,6 +28,12 @@ export function detectCues(
   utterances: Utterance[],
   voiceMuted: boolean,
 ): CueName[] {
+  // A complete id swap is a VIEW change (agent tab switched), not events:
+  // every claude card of the other conversation would read as "new" and
+  // its whole history would blast N overlapping blips at once.
+  const swapped =
+    previous.size > 0 && utterances.length > 0 && utterances.every((u) => !previous.has(u.id));
+  if (swapped) return [];
   const cues: CueName[] = [];
   for (const u of utterances) {
     const before = previous.get(u.id);
@@ -44,5 +50,7 @@ export function detectCues(
       if (previous.size > 0) cues.push(voiceMuted ? "unheard" : "claude");
     }
   }
-  return cues;
+  // One blip per cue kind per tick: a burst of four announces is one
+  // arrival, not four overlapping (and therefore loud) ones.
+  return [...new Set(cues)];
 }
