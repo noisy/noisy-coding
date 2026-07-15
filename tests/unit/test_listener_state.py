@@ -221,3 +221,49 @@ def test_wait_for_user_silence_skips_grace_when_user_finished_long_ago():
     assert _finishes_within(
         lambda: state.wait_for_user_silence(grace_s=0.3), seconds=0.2
     )
+
+
+def test_new_agent_never_steals_the_active_slot():
+    state = ListenerState()
+    state.register_agent("first")
+    state.register_agent("second")
+
+    assert state.active_agent == "first"
+
+
+def test_stale_active_agent_keeps_the_mic_and_stays_visible(monkeypatch):
+    monkeypatch.setattr(state_module, "AGENT_TTL_SECONDS", 0.05)
+    state = ListenerState()
+    state.register_agent("mine")
+    state.register_agent("other")
+    time.sleep(0.1)
+    state.drain("other")  # only "other" keeps polling
+
+    agents = state.agents  # triggers the prune
+
+    # Switching is the user's conscious act: the quiet active agent stays
+    # active AND visible; its speech queues until it returns.
+    assert state.active_agent == "mine"
+    assert "mine" in agents
+    assert state.drain("other") == []  # not their turn — speech is not rerouted
+
+
+def test_stale_non_active_agents_are_pruned(monkeypatch):
+    monkeypatch.setattr(state_module, "AGENT_TTL_SECONDS", 0.05)
+    state = ListenerState()
+    state.register_agent("mine")
+    state.register_agent("other")
+    time.sleep(0.1)
+    state.drain("mine")  # only the active one keeps polling
+
+    assert "other" not in state.agents
+
+
+def test_restore_active_agent_survives_the_first_to_register_race():
+    state = ListenerState()
+    state.restore_active_agent("mine")  # daemon restart restored the pick
+
+    state.register_agent("interloper")  # polls first after the restart
+
+    assert state.active_agent == "mine"
+    assert "mine" in state.agents  # visible as a tab even before it returns

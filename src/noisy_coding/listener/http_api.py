@@ -152,6 +152,9 @@ def save_settings(state: ListenerState) -> None:
                     "input_device": state.input_device,
                     "output_device": state.output_device,
                     "language": state.language,
+                    # The user's conscious pick — a restart must not re-run
+                    # the first-to-register race and reroute their speech.
+                    "active_agent": state.active_agent,
                 }
             )
         )
@@ -179,9 +182,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._serve_hud_file(url.path[1:])
             elif url.path == "/drain":
                 agent = parse_qs(url.query).get("agent", [None])[0]
-                self._respond(
-                    {"transcripts": [asdict(t) for t in state.drain(agent)]}
-                )
+                active_before = state.active_agent
+                transcripts = [asdict(t) for t in state.drain(agent)]
+                if state.active_agent != active_before:
+                    save_settings(state)  # bootstrap activation must stick too
+                self._respond({"transcripts": transcripts})
             elif url.path == "/events":
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
@@ -255,9 +260,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 label = str(body.get("label", "")).strip()
                 if name:
                     already = name in state.agents
+                    active_before = state.active_agent
                     state.register_agent(name, label)
                     if not already:  # avoid spamming the event log every hook fire
                         state.add_event("agent", f"'{label or name}' registered")
+                    if state.active_agent != active_before:
+                        save_settings(state)  # bootstrap activation must stick too
                     self._respond(
                         {"registered": name, "active_agent": state.active_agent}
                     )
@@ -267,6 +275,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 name = str(self._read_json_body().get("name", "")).strip()
                 active = state.set_active_agent(name)
                 state.add_event("agent", f"switched to '{active}'")
+                save_settings(state)
                 self._respond({"active_agent": active})
             elif self.path == "/pause":
                 state.set_paused(True)

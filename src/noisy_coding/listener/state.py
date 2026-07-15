@@ -423,13 +423,21 @@ class ListenerState:
         # last-seen time. One that hasn't polled in AGENT_TTL_SECONDS is gone
         # (reconnected under a new id, closed, crashed) — drop it so dead tabs
         # like a renamed "work" don't linger.
+        #
+        # NEVER the active one, though: handing the mic to whichever agent
+        # happens to be next would silently reroute the user's speech
+        # mid-conversation (it happened — P1). The active tab stays visible
+        # even when quiet, its speech queues up, and it resumes seamlessly
+        # on return; switching agents is only ever the user's conscious act.
         now = time.time()
-        stale = [n for n, seen in self._agents.items() if now - seen > AGENT_TTL_SECONDS]
+        stale = [
+            name
+            for name, seen in self._agents.items()
+            if now - seen > AGENT_TTL_SECONDS and name != self._active_agent
+        ]
         for name in stale:
             del self._agents[name]
             self._agent_labels.pop(name, None)
-            if self._active_agent == name:
-                self._active_agent = next(iter(self._agents), None)
 
     @property
     def agents(self) -> dict:
@@ -462,6 +470,17 @@ class ListenerState:
             if name in self._agents:
                 self._active_agent = name
             return self._active_agent
+
+    def restore_active_agent(self, name: str) -> None:
+        """Carry the user's chosen agent across a daemon restart.
+
+        Registered as a (possibly not-yet-returned) agent so its tab stays
+        visible and later registrations can't win the empty-slate race that
+        used to hand the mic to whichever agent polled first after boot.
+        """
+        with self._lock:
+            self._agents.setdefault(name, time.time())
+            self._active_agent = name
 
     @property
     def queued_count(self) -> int:

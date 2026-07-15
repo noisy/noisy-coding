@@ -306,6 +306,11 @@ def run(config: VadConfig | None = None) -> None:
             state.set_output_device(saved["output_device"])
         if "language" in saved:
             state.set_language(saved["language"])
+        if saved.get("active_agent"):
+            # The user's chosen agent survives restarts: without this, the
+            # first agent to poll after boot would win the mic — and the
+            # user would unknowingly talk to the wrong Claude (P1).
+            state.restore_active_agent(str(saved["active_agent"]))
     except (OSError, ValueError):
         pass
     _load_history(state)
