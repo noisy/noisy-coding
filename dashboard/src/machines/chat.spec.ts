@@ -156,10 +156,16 @@ describe("claude lifecycle", () => {
     }
   });
 
-  it("keeps error terminal and rejects nonsense", () => {
-    expect(legalEvents("claude", "error")).toEqual([]);
+  it("lets error re-enter the pipeline like a replay — failures are often transient", () => {
+    expect(nextState("claude", "error", "SYNTHESIZE")).toBe("synthesizing");
+    expect(nextState("claude", "error", "READY")).toBe("ready"); // cached render → instant retry
+    expect(nextState("claude", "error", "HOLD")).toBe("holding");
+  });
+
+  it("rejects nonsense", () => {
     expect(nextState("claude", "queued", "PLAY")).toBeNull();
     expect(nextState("claude", "played", "PLAYED")).toBeNull();
+    expect(nextState("claude", "error", "PLAYED")).toBeNull();
   });
 });
 
@@ -170,11 +176,11 @@ describe("statusAllows (UI affordances)", () => {
     expect(statusAllows("user", "delivered to Claude", "CANCEL")).toBe(false);
   });
 
-  it("replay is offered on settled speech (played or parked unheard)", () => {
+  it("replay is offered on settled speech — played, parked unheard, or failed", () => {
     expect(statusAllows("claude", "played", "SYNTHESIZE")).toBe(true);
     expect(statusAllows("claude", "unheard — voice muted", "SYNTHESIZE")).toBe(true);
+    expect(statusAllows("claude", "error — likely transient, tap ↻ to retry", "SYNTHESIZE")).toBe(true);
     expect(statusAllows("claude", "synthesizing (Grok TTS)…", "SYNTHESIZE")).toBe(false);
-    expect(statusAllows("claude", "error", "SYNTHESIZE")).toBe(false);
   });
 
   it("allows nothing on unknown statuses", () => {

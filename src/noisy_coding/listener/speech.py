@@ -257,6 +257,26 @@ def _log(message: str) -> None:
     print(message, flush=True)
 
 
+# Failures deterministic for this text/config — the same retry WILL fail.
+FATAL_SPEECH_MARKERS = (
+    "characters; the API accepts",  # text over the TTS limit
+    "No xAI API key",  # nothing to speak with until the key is set
+)
+
+
+def _error_card_fields(error: Exception) -> dict:
+    """Status + detail for a failed card: say WHY, and whether ↻ is worth it.
+
+    Most speech failures are transient — a dropped websocket, a 5xx, xAI's
+    intermittent key rejections — so the default wording invites a retry.
+    Only failures that cannot succeed on a second attempt say so.
+    """
+    fields = {"detail": str(error)[:160]}
+    if any(marker in str(error) for marker in FATAL_SPEECH_MARKERS):
+        return fields | {"status": "error — retry won't help"}
+    return fields | {"status": "error — likely transient, tap ↻ to retry"}
+
+
 def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
     """Wait out an in-progress user utterance before taking the speaker.
 
@@ -388,7 +408,7 @@ def _play_prepared(
     except Exception as error:
         _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
-        state.update_utterance(utterance_id, status="error")
+        state.update_utterance(utterance_id, **_error_card_fields(error))
         raise
     if state.voice_muted:
         # Speaker muted (user away / wants quiet): park the message as
@@ -444,7 +464,7 @@ def _play_prepared(
     except Exception as error:
         _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
-        state.update_utterance(utterance_id, status="error")
+        state.update_utterance(utterance_id, **_error_card_fields(error))
         raise
     finally:
         state.set_playing_utterance_id(0)

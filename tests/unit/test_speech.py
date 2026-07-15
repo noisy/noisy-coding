@@ -220,11 +220,11 @@ def test_replay_clicks_jump_queued_speech_but_keep_click_order(monkeypatch, batc
     assert played_ids == [fresh_one_id, old_a, old_b, fresh_two_id]
 
 
-def test_synthesis_error_lands_the_card_in_error(monkeypatch, batch_pipeline):
+def test_transient_synthesis_error_invites_a_retry(monkeypatch, batch_pipeline):
     state = ListenerState()
 
     async def failing_synthesize(*_args):
-        raise tts.GrokTTSError("Grok TTS request failed with HTTP 500")
+        raise tts.GrokTTSError("Grok TTS request failed with HTTP 500: upstream sad")
 
     monkeypatch.setattr(speech.tts, "synthesize", failing_synthesize)
     _install_fake_play(monkeypatch, [])
@@ -233,7 +233,48 @@ def test_synthesis_error_lands_the_card_in_error(monkeypatch, batch_pipeline):
     with pytest.raises(tts.GrokTTSError):
         future.result(timeout=5)
 
-    assert state.utterances()[0]["status"] == "error"
+    card = state.utterances()[0]
+    assert card["status"] == "error — likely transient, tap ↻ to retry"
+    assert "HTTP 500" in card["detail"]
+
+
+def test_fatal_synthesis_error_says_retry_wont_help(monkeypatch, batch_pipeline):
+    state = ListenerState()
+
+    async def failing_synthesize(*_args):
+        raise tts.GrokTTSError("Text is 20000 characters; the API accepts at most 15000.")
+
+    monkeypatch.setattr(speech.tts, "synthesize", failing_synthesize)
+    _install_fake_play(monkeypatch, [])
+
+    future = speech.submit(state, "way too long")
+    with pytest.raises(tts.GrokTTSError):
+        future.result(timeout=5)
+
+    assert state.utterances()[0]["status"] == "error — retry won't help"
+
+
+def test_errored_card_replays_through_the_normal_path(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    attempts = []
+
+    async def flaky_synthesize(text, voice, language, speed):
+        attempts.append(text)
+        if len(attempts) == 1:
+            raise tts.GrokTTSError("Grok TTS request failed with HTTP 502")
+        return tts.SynthesizedAudio(b"mp3-bytes", "audio/mpeg", 0.0)
+
+    monkeypatch.setattr(speech.tts, "synthesize", flaky_synthesize)
+    _install_fake_play(monkeypatch, [])
+
+    first = speech.submit(state, "flaky message")
+    with pytest.raises(tts.GrokTTSError):
+        first.result(timeout=5)
+    card_id = state.utterances()[0]["id"]
+    speech.submit(state, "flaky message", card=False, source_id=card_id).result(timeout=5)
+
+    assert len(attempts) == 2  # the retry re-synthesized and succeeded
+    assert state.utterances()[0]["status"] == "played"
 
 
 def test_live_mode_streams_the_head_and_prefetches_the_queue(monkeypatch):

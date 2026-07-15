@@ -130,7 +130,14 @@ export const claudeUtteranceMachine = createMachine({
     unheard: {
       on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding" },
     },
-    error: { type: "final" },
+    // Not terminal: speech failures are frequently transient (dropped
+    // websocket, 5xx, xAI's intermittent key rejections), and the text is
+    // still on the card — so ERROR re-enters the pipeline exactly like a
+    // replay. A render that succeeded before the playback failure is
+    // cached, making the retry instant and free.
+    error: {
+      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", UNHEARD: "unheard" },
+    },
   },
 });
 
