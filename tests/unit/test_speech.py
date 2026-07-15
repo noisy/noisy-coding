@@ -172,6 +172,25 @@ def test_replay_after_voice_change_resynthesizes(monkeypatch, batch_pipeline):
     assert [call["voice"] for call in synth_calls] == ["carina", "rex"]
 
 
+def test_queued_clips_synthesize_concurrently_closest_first(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    synth_calls = []
+    _install_fake_synth(monkeypatch, synth_calls, delay_s=0.15)
+    _install_fake_play(monkeypatch, [], delay_s=0.4)
+
+    futures = [speech.submit(state, f"clip {i}") for i in (1, 2, 3)]
+    for future in futures:
+        future.result(timeout=5)
+
+    # Synth windows overlap instead of queueing one behind the other:
+    # clips 1 and 2 grab both workers at once (their exact start order is
+    # scheduler noise), clip 3 must wait for a worker to free up.
+    starts = {call["text"].split()[-1]: call["started"] for call in synth_calls}
+    ends = {clip: started + 0.15 for clip, started in starts.items()}
+    assert starts["2"] < ends["1"]  # 2 rendered alongside 1, not after it
+    assert starts["3"] >= min(ends["1"], ends["2"])  # 3 queued for a free worker
+
+
 def test_replay_clicks_jump_queued_speech_but_keep_click_order(monkeypatch, batch_pipeline):
     state = ListenerState()
     played_ids = []

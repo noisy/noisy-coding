@@ -47,21 +47,29 @@ class NoAudioSink(Exception):
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
 class _SerialWorker:
-    """One daemon thread, strict submit order — with a fast lane.
+    """Daemon worker(s) starting jobs in strict submit order — with a fast
+    lane.
 
     Fresh speech appends to the tail; a user's replay click means "play
     this NOW", so it jumps ahead of everything still queued (but never cuts
     into the job already running — one voice at a time stays inviolable).
     Replays keep click order among themselves: a jump lands behind earlier
     jumps, not in front of them, so CATCH UP replays a backlog in sequence.
+
+    `workers` > 1 keeps the START order strict but lets jobs overlap — the
+    synth stage uses this so a whole queued burst renders concurrently
+    (the clip closest to playing always starts first). is_next() is only
+    meaningful on a single-worker instance (the playback stage).
     """
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, workers: int = 1) -> None:
         self._jobs: deque[tuple[int, object, tuple, Future, bool]] = deque()
         self._cond = threading.Condition()
         self._current: int | None = None
         self._stopping = False
-        threading.Thread(target=self._run, name=name, daemon=True).start()
+        for index in range(workers):
+            thread_name = f"{name}-{index}" if workers > 1 else name
+            threading.Thread(target=self._run, name=thread_name, daemon=True).start()
 
     def submit(self, seq, fn, *args, jump_queue: bool = False) -> Future:
         future: Future = Future()
@@ -112,10 +120,12 @@ class _SerialWorker:
 
 
 # One playback worker = one utterance at a time; every speak in the whole
-# system queues here, so two voices can never overlap. The synth worker
-# runs AHEAD of it: while clip N plays, clip N+1 is already rendering, so
-# back-to-back announces play with no dead air between them.
-_synth_worker = _SerialWorker("tts-synth")
+# system queues here, so two voices can never overlap. The synth workers
+# run AHEAD of it: while clip N plays, the queued clips render concurrently
+# (closest to playing starts first), so back-to-back announces play with no
+# dead air between them.
+_SYNTH_WORKERS = 2  # network-bound renders; 2 keeps a burst ahead of playback
+_synth_worker = _SerialWorker("tts-synth", workers=_SYNTH_WORKERS)
 _playback_worker = _SerialWorker("playback")
 
 # Rendered clips by card + render options — replays and catch-ups play
