@@ -103,11 +103,14 @@ async def speak_streaming(
     language: str,
     speed: float,
     on_first_audio: Callable[[float], None] | None = None,
+    on_audio_chunk: Callable[[bytes], None] | None = None,
 ) -> None:
     """Synthesize and play `text`, streaming audio as it is generated.
 
     `on_first_audio` fires once with the seconds from request to the first
     audio chunk — the perceived render latency of the streaming path.
+    `on_audio_chunk` fires with every audio chunk as it arrives, so the
+    caller can keep the complete clip (the audio cache does).
     """
     api_key = tts._api_key()
     started = time.monotonic()
@@ -138,13 +141,18 @@ async def speak_streaming(
             async for message in ws:
                 if isinstance(message, bytes):
                     mark_first_audio()
+                    if on_audio_chunk:
+                        on_audio_chunk(message)
                     await chunks.put(message)
                     continue
                 payload = json.loads(message)
                 kind = payload.get("type")
                 if kind == "audio.delta":
                     mark_first_audio()
-                    await chunks.put(base64.b64decode(payload["delta"]))
+                    chunk = base64.b64decode(payload["delta"])
+                    if on_audio_chunk:
+                        on_audio_chunk(chunk)
+                    await chunks.put(chunk)
                 elif kind == "audio.done":
                     break
                 elif kind == "error":
