@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from noisy_coding import credentials, playback
+from noisy_coding import credentials, diagnostics, playback
 from noisy_coding.config_dir import CONFIG_DIR
 from noisy_coding.listener import pricing, speech, tab_audio
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
@@ -191,6 +191,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/events":
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
+            elif url.path == "/diagnose":
+                # The same per-check breakdown /credentials runs at save
+                # time, on demand — mid-session failures become
+                # self-diagnosable without hand-crafted curl calls.
+                if not credentials.api_key():
+                    self._respond({"error": "no API key configured"}, status=400)
+                else:
+                    self._respond({"checks": diagnostics.run_checks_sync()})
             elif url.path == "/utterances":
                 agent = parse_qs(url.query).get("agent", [None])[0]
                 self._respond({"utterances": state.utterances(agent)})
@@ -419,7 +427,22 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 else:
                     credentials.save_api_key(key)
                     state.add_event("credentials", "xAI API key configured")
-                    self._respond({"api_key_set": True, "api_key_hint": credentials.api_key_hint()})
+                    # Live-check every real call site with the fresh key —
+                    # per-check verdicts, so an intermittent voice-endpoint
+                    # rejection can't masquerade as "your key is wrong".
+                    checks = diagnostics.run_checks_sync()
+                    failed = [name for name, c in checks.items() if not c["ok"]]
+                    if failed:
+                        state.add_event(
+                            "credentials_check", "failing: " + ", ".join(failed)
+                        )
+                    self._respond(
+                        {
+                            "api_key_set": True,
+                            "api_key_hint": credentials.api_key_hint(),
+                            "checks": checks,
+                        }
+                    )
             elif self.path == "/voice-mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_voice_muted(muted)

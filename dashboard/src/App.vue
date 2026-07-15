@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, saveApiKey, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -204,7 +204,32 @@ async function submitKey() {
   await saveApiKey(key).catch(swallow);
   keyInput.value = "";
 }
-const saveKey = (key: string) => saveApiKey(key).catch(swallow);
+// Per-endpoint xAI checks: run automatically on key save, or on demand.
+// Kept here (not in SettingsView) so the panel stays a dumb form.
+const keyChecks = ref<DiagnosticChecks | null>(null);
+const checksRunning = ref(false);
+const saveKey = async (key: string) => {
+  keyChecks.value = null;
+  checksRunning.value = true;
+  try {
+    keyChecks.value = (await saveApiKey(key)).checks ?? null;
+  } catch {
+    // key save failure already shows via api_key_hint staying unchanged
+  } finally {
+    checksRunning.value = false;
+  }
+};
+const runChecks = async () => {
+  keyChecks.value = null;
+  checksRunning.value = true;
+  try {
+    keyChecks.value = await runDiagnostics();
+  } catch {
+    keyChecks.value = null;
+  } finally {
+    checksRunning.value = false;
+  }
+};
 
 const setLanguage = (event: Event) =>
   setSettings({ language: (event.target as HTMLSelectElement).value }).catch(swallow);
@@ -469,11 +494,14 @@ const LANGUAGES: Record<string, string> = {
             :selected-device="status?.input_device ?? ''"
             :output-device="status?.output_device ?? 'system'"
             :cue-prefs="cuePrefs"
+            :checks="keyChecks"
+            :checks-running="checksRunning"
             @save="saveKey"
             @pick-device="pickMic"
             @pick-output="pickOutput"
             @refresh-devices="loadDevices"
             @toggle-cue="setCue"
+            @run-checks="runChecks"
           />
         </HudPanel>
         <HudPanel v-else index="04" title="COMM LOG · UTTERANCE STREAM">

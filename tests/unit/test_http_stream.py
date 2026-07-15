@@ -82,6 +82,78 @@ def test_speak_with_interrupt_stops_local_players_and_the_tab(monkeypatch):
     assert stops == ["local", "tab"]  # replay click cuts audio wherever it plays
 
 
+def test_diagnose_requires_an_api_key(monkeypatch):
+    from noisy_coding.listener import http_api as http_api_module
+
+    monkeypatch.setattr(http_api_module.credentials, "api_key", lambda: "")
+    state = ListenerState()
+    server = start_http_api(state, 0)
+    port = server.server_address[1]
+    try:
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        connection.request("GET", "/diagnose")
+        response = connection.getresponse()
+        assert response.status == 400
+        response.read()
+        connection.close()
+    finally:
+        server.shutdown()
+
+
+def test_diagnose_returns_the_per_check_breakdown(monkeypatch):
+    from noisy_coding.listener import http_api as http_api_module
+
+    checks = {
+        "api_key": {"ok": True, "ms": 120},
+        "tts_stream": {"ok": False, "detail": "HTTP 400 Incorrect API key"},
+    }
+    monkeypatch.setattr(http_api_module.credentials, "api_key", lambda: "xai-secret")
+    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    state = ListenerState()
+    server = start_http_api(state, 0)
+    port = server.server_address[1]
+    try:
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        connection.request("GET", "/diagnose")
+        response = connection.getresponse()
+        assert response.status == 200
+        body = json.loads(response.read())
+        connection.close()
+    finally:
+        server.shutdown()
+
+    assert body == {"checks": checks}
+
+
+def test_saving_credentials_runs_the_checks_and_reports_them(monkeypatch):
+    from noisy_coding.listener import http_api as http_api_module
+
+    checks = {"api_key": {"ok": True, "ms": 90}}
+    saved = []
+    monkeypatch.setattr(http_api_module.credentials, "save_api_key", saved.append)
+    monkeypatch.setattr(http_api_module.credentials, "api_key_hint", lambda: "····abcd")
+    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    state = ListenerState()
+    server = start_http_api(state, 0)
+    port = server.server_address[1]
+    try:
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        body = json.dumps({"xai_api_key": "xai-new-key"})
+        connection.request(
+            "POST", "/credentials", body=body,
+            headers={"Content-Length": str(len(body))},
+        )
+        response = connection.getresponse()
+        payload = json.loads(response.read())
+        connection.close()
+    finally:
+        server.shutdown()
+
+    assert saved == ["xai-new-key"]
+    assert payload["api_key_set"] is True
+    assert payload["checks"] == checks
+
+
 def test_stream_mic_serves_sse_frames_with_level_and_recording():
     state = ListenerState()
     state.set_mic_level(0.5)

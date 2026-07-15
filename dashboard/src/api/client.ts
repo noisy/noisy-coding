@@ -17,6 +17,12 @@ async function post(path: string, body: object): Promise<void> {
   if (!response.ok) throw new Error(`POST ${path} → HTTP ${response.status}`);
 }
 
+async function postJson<T>(path: string, body: object): Promise<T> {
+  const response = await fetch(path, { method: "POST", body: JSON.stringify(body) });
+  if (!response.ok) throw new Error(`POST ${path} → HTTP ${response.status}`);
+  return response.json() as Promise<T>;
+}
+
 export function getStatus(): Promise<DaemonStatus> {
   return getJson<DaemonStatus>("/status");
 }
@@ -54,8 +60,24 @@ export function setVoiceMuted(muted: boolean): Promise<void> {
   return post("/voice-mute", { muted });
 }
 
-export function saveApiKey(key: string): Promise<void> {
-  return post("/credentials", { xai_api_key: key });
+/** One xAI call site's live verdict — rendered separately from the rest,
+ * so a flaky voice endpoint can't masquerade as a bad key. */
+export interface EndpointCheck {
+  ok: boolean;
+  ms?: number;
+  detail?: string;
+}
+export type DiagnosticChecks = Record<string, EndpointCheck>;
+
+/** Saves the key AND live-checks every xAI call site with it. */
+export function saveApiKey(key: string): Promise<{ checks?: DiagnosticChecks }> {
+  return postJson<{ checks?: DiagnosticChecks }>("/credentials", { xai_api_key: key });
+}
+
+/** The same per-endpoint checks, on demand (SETTINGS → RUN CHECKS). */
+export async function runDiagnostics(): Promise<DiagnosticChecks> {
+  const body = await getJson<{ checks: DiagnosticChecks }>("/diagnose");
+  return body.checks;
 }
 
 export function setMode(mode: "batch" | "live"): Promise<void> {

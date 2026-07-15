@@ -58,7 +58,16 @@ class StreamingSession:
                 open_timeout=CONNECT_TIMEOUT_SECONDS,
             )
         except Exception as error:
-            raise GrokStreamError(f"Cannot open streaming STT session: {error}") from error
+            # The handshake rejection's HTTP body names the actual reason
+            # ("Incorrect API key", quota, …) — surface it like batch STT
+            # does, or live-mode failures stay undiagnosable one-liners.
+            body = getattr(getattr(error, "response", None), "body", b"")
+            detail = str(error)
+            if body:
+                detail += f" — {body[:500].decode(errors='replace')}"
+            raise GrokStreamError(
+                f"Cannot open streaming STT session: {detail}"
+            ) from error
 
         self._on_partial = on_partial
         self._on_turn_end = on_turn_end
