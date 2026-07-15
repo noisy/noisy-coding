@@ -182,6 +182,31 @@ def test_saving_a_verified_key_reports_the_checks_and_speaks(monkeypatch):
     assert payload["api_key_set"] is True
     assert payload["checks"] == checks
     assert spoken and "accepted" in spoken[0]  # audible proof the voice path works
+    assert "already live" in spoken[0]  # default mic → no activation step needed
+
+
+def test_accepted_key_walks_the_user_to_the_mic_when_the_tab_is_silent(monkeypatch):
+    from noisy_coding.listener import http_api as http_api_module
+
+    checks = {"api_key": {"ok": True, "ms": 90}}
+    _fake_key_store(monkeypatch)
+    spoken = []
+    monkeypatch.setattr(
+        http_api_module.diagnostics, "run_checks_sync", lambda *_a, **_k: checks
+    )
+    monkeypatch.setattr(
+        http_api_module.speech, "submit",
+        lambda _state, text, **_k: spoken.append(text),
+    )
+    state = ListenerState()
+    state.set_input_device("browser")  # tab is the mic, but no live lease yet
+    server = start_http_api(state, 0)
+    try:
+        _post_credentials(server.server_address[1], "xai-new-key")
+    finally:
+        server.shutdown()
+
+    assert spoken and "ENABLE TAB AUDIO" in spoken[0]  # the next step, out loud
 
 
 def test_a_key_failing_verification_is_never_accepted(monkeypatch):

@@ -466,10 +466,23 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     else:
                         # Spoken confirmation doubles as the ultimate TTS
                         # proof: hearing it means the whole voice path works.
+                        # It also hands the user their NEXT step — the mic.
+                        mic_pending = (
+                            state.input_device == "browser"
+                            and not state.tab_audio_alive
+                        )
+                        next_step = (
+                            "One step left: the microphone. Click the ENABLE "
+                            "TAB AUDIO banner at the top of the page and allow "
+                            "microphone access when your browser asks — then "
+                            "just say hello."
+                            if mic_pending
+                            else "Your microphone is already live — just start talking."
+                        )
                         speech.submit(
                             state,
-                            "New xAI key accepted — every voice check passed. "
-                            "You are hearing the proof right now.",
+                            "New xAI key accepted — every voice check passed, "
+                            "and you are hearing the proof right now. " + next_step,
                         )
                     self._respond(
                         {
