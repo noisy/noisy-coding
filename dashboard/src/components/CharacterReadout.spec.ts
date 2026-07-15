@@ -77,7 +77,7 @@ function status(overrides: Partial<DaemonStatus>): DaemonStatus {
     tab_audio: false, activity: {},
     speaking_agents: [], queued: 0, session_cost_usd: { user: 0.01, claude: 0.02 },
     usage: { stt_seconds: 0, tts_chars: 0 },
-    credits_usd: 4.5, mode: "live", tts_mode: "live", end_silence_ms: 800,
+    credits_usd: 4.5, mode: "live", tts_mode: "live", end_silence_ms: 800, mic_sensitivity: 50,
     smart_turn: 0, smart_turn_mode: "soft", detection_mode: "auto", ptt_held: false,
     language: "pl", agents: {}, agent_labels: {}, active_agent: null,
     ...overrides,

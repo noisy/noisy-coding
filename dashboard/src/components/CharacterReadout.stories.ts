@@ -22,7 +22,7 @@ export const Status: StoryObj = {
       status: {
         listening: true, muted: false, recording: true, claude_speaking: false,
         speaking_agents: [], queued: 1, session_cost_usd: { user: 0.0021, claude: 0.0226 },
-        credits_usd: 4.53, mode: "live", tts_mode: "live", end_silence_ms: 800,
+        credits_usd: 4.53, mode: "live", tts_mode: "live", end_silence_ms: 800, mic_sensitivity: 50,
         smart_turn: 0, smart_turn_mode: "soft", language: "pl", agents: {},
         agent_labels: {}, active_agent: null,
       },
