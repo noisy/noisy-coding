@@ -198,12 +198,17 @@ onUnmounted(() => {
 // the SETTINGS view (which swaps in for the comm log).
 const keyInput = ref("");
 const showSettings = ref(false);
-// The gate must not blink away mid-verification: the daemon stores the
-// candidate key while it live-checks it, so api_key_set flips true for a
-// few seconds even for a key that is about to be rejected.
+// The gate must not blink away mid-verification OR right after a
+// rejection: the daemon stores the candidate key while it live-checks it,
+// so the polled api_key_set reads true for a few seconds even for a key
+// about to be rejected — and stays stale for one more poll after the
+// verdict. Both flags bridge those windows.
 const firstContactVerifying = ref(false);
+const firstContactFailed = ref(false);
 const unconfigured = computed(
-  () => status.value != null && (!status.value.api_key_set || firstContactVerifying.value),
+  () =>
+    status.value != null &&
+    (!status.value.api_key_set || firstContactVerifying.value || firstContactFailed.value),
 );
 // Per-endpoint xAI checks: run automatically on key save, or on demand.
 // Kept here (not in SettingsView) so the panel stays a dumb form — and
@@ -232,8 +237,11 @@ async function submitKey() {
   const key = keyInput.value.trim();
   if (key.length < 8) return;
   firstContactVerifying.value = true;
+  firstContactFailed.value = false;
   try {
-    if (await saveKey(key)) keyInput.value = "";
+    const accepted = await saveKey(key);
+    if (accepted) keyInput.value = "";
+    firstContactFailed.value = !accepted;
   } finally {
     firstContactVerifying.value = false;
   }
@@ -401,6 +409,15 @@ const LANGUAGES: Record<string, string> = {
            HERE, not utterances later. Verdicts land row by row, live. -->
       <p v-if="keyError" class="setup-error">✗ {{ keyError.toUpperCase() }}</p>
       <DiagnosticChecklist v-if="visibleChecks" :checks="visibleChecks" class="setup-checks" />
+      <!-- Honest next steps: usually it's the key, sometimes it's xAI. -->
+      <p v-if="firstContactFailed && !checksRunning" class="setup-text setup-hint">
+        This key doesn't seem right — xAI rejected it. Most often the key is
+        mistyped, expired, or lacks permissions: check it at
+        <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
+        and paste it again. In fairness, it can also be xAI itself having a
+        moment (<a href="https://status.x.ai" target="_blank" rel="noreferrer">status.x.ai</a>)
+        — in that case the very same key will pass in a few minutes.
+      </p>
     </div>
   </div>
 
@@ -861,6 +878,7 @@ footer { flex: none; }
 .setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 14px; }
 .setup-error { font-size: 10px; letter-spacing: 0.14em; color: var(--red, #ff5f56); margin: 12px 0 0; }
 .setup-checks { margin-top: 12px; }
+.setup-hint { margin: 12px 0 0; }
 .setup-text b { color: var(--cyan); font-weight: 400; }
 .setup-text a { color: var(--amber); text-decoration: none; border-bottom: 1px dotted var(--amber-dim); }
 .setup-text a:hover { text-shadow: var(--glow-amber); }
