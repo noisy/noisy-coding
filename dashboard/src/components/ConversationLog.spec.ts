@@ -86,6 +86,22 @@ describe("ConversationLog", () => {
     expect(texts).toEqual(["utterance 2", "utterance 1"]);
   });
 
+  it("keeps a replayed card in its chronological slot while it re-synthesizes", async () => {
+    // Voice change + replay: the card re-enters the pipeline, but it is
+    // history being re-heard — it must not sink below newer played cards
+    // and jump back when done.
+    const three = { ...utterance(3, "claude"), committed_at: 30 };
+    const four = { ...utterance(4, "claude"), committed_at: 40 };
+    const wrapper = mount(ConversationLog, { props: { utterances: [three, four] } });
+
+    await wrapper.setProps({
+      utterances: [{ ...three, status: "synthesizing (Grok TTS)…" }, four],
+    });
+
+    const texts = wrapper.findAll(".txt").map((n) => n.text());
+    expect(texts).toEqual(["utterance 3", "utterance 4"]);
+  });
+
   it("shows an empty-state line without utterances", () => {
     const wrapper = mount(ConversationLog, { props: { utterances: [] } });
 

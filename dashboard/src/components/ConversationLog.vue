@@ -65,9 +65,20 @@ const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
 // the busy row AS the line itself, then everything still waiting its turn.
 // A card never renders below a zone it outranks, so a PLAYING reply can't
 // dive under the user's AWAITING transcripts.
+//
+// Done is STICKY: a replayed card re-enters the pipeline (synthesizing →
+// ready → playing), but it is history being re-heard, not future work — it
+// must keep its chronological slot instead of sinking below newer cards
+// and jumping back when finished. Keyed by id:started_at because a daemon
+// restart reuses ids from 1.
+const everDone = new Set<string>();
 function zoneOf(u: Utterance): "done" | "active" | "pending" {
   if (u.role === "system") return "done";
-  return timelineZone(u.role, u.status);
+  const zone = timelineZone(u.role, u.status);
+  const key = `${u.id}:${u.started_at}`;
+  if (zone === "done") everDone.add(key);
+  else if (everDone.has(key)) return "done";
+  return zone;
 }
 
 const processed = computed(() => settled.value.filter((u) => zoneOf(u) !== "pending"));
