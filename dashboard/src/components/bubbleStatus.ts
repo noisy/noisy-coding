@@ -27,6 +27,8 @@ const CLAUDE_CHIPS: Record<ClaudeState, StatusChip> = {
   queued: { kind: "work", label: "◌ QUEUED" },
   holding: { kind: "work", label: "◌ HOLDING" },
   synthesizing: { kind: "work", label: "◌ SYNTHESIZING" },
+  // Audio in hand — the clip only waits for the speaker to free up.
+  ready: { kind: "work", label: "✓ READY" },
   playing: { kind: "spoken", label: "▶ PLAYING" },
   played: { kind: "done", label: "✓ PLAYED" },
   unheard: { kind: "off", label: "◌ UNHEARD" },

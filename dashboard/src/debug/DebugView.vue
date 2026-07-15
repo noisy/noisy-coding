@@ -46,9 +46,10 @@ function now() {
 
 // --- event targeting --------------------------------------------------------
 // The daemon's single playback worker takes the OLDEST queued claude card
-// and walks it through holding/synthesizing/playing before touching the
-// next — so lifecycle events land on the worker's current card, or the
-// FIFO head when the worker is free. Never on the newest arrival.
+// and plays it before touching the next — so lifecycle events land on the
+// worker's current card, or the FIFO head when the worker is free. Never
+// on the newest arrival. (The real daemon also prefetches synthesis of
+// queued cards; the sandbox keeps the simpler one-card-at-a-time model.)
 function claudeTarget(): Utterance | undefined {
   const cards = utterances.value.filter((u) => u.role === "claude");
   const working = cards.find((u) =>

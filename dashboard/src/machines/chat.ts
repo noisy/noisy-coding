@@ -31,6 +31,7 @@ export const USER_EVENTS = [
 export const CLAUDE_EVENTS = [
   "HOLD", // user is speaking — playback waits for their turn to end
   "SYNTHESIZE", // TTS rendering started (also re-entry on replay/catch-up)
+  "READY", // prefetch/cache produced the audio — waiting for the speaker
   "PLAY", // first audio reached the speakers
   "PLAYED", // playback finished — or the user hit stop
   "UNHEARD", // parked: voice muted, or daemon restarted mid-flight
@@ -54,6 +55,7 @@ export type ClaudeState =
   | "queued"
   | "holding"
   | "synthesizing"
+  | "ready"
   | "playing"
   | "played"
   | "unheard"
@@ -99,24 +101,34 @@ export const claudeUtteranceMachine = createMachine({
   initial: "queued",
   states: {
     queued: {
-      on: { HOLD: "holding", SYNTHESIZE: "synthesizing", UNHEARD: "unheard" },
+      // READY without synthesizing: the clip came straight from the cache.
+      on: { HOLD: "holding", SYNTHESIZE: "synthesizing", READY: "ready", UNHEARD: "unheard" },
     },
+    // The daemon prefetches: a card can finish synthesizing while an older
+    // clip still owns the speaker, so holding may follow synthesis (turn
+    // gate at playback time) and prefetched audio plays straight from hold.
     holding: {
-      on: { SYNTHESIZE: "synthesizing", UNHEARD: "unheard" },
+      on: { SYNTHESIZE: "synthesizing", PLAY: "playing", UNHEARD: "unheard" },
     },
     synthesizing: {
-      on: { PLAY: "playing", TTS_ERROR: "error", UNHEARD: "unheard" },
+      on: { HOLD: "holding", READY: "ready", PLAY: "playing", TTS_ERROR: "error", UNHEARD: "unheard" },
+    },
+    // Audio in hand, waiting for the speaker to free up (or for the user
+    // to finish talking). Playback errors can still happen past this point.
+    ready: {
+      on: { PLAY: "playing", HOLD: "holding", TTS_ERROR: "error", UNHEARD: "unheard" },
     },
     playing: {
       on: { PLAYED: "played", TTS_ERROR: "error", UNHEARD: "unheard" },
     },
     // Replay adopts the ORIGINAL card and runs it through the pipeline
     // again — including the mute park and the wait-for-user-turn hold.
+    // READY here is the cache hit: no synthesis, straight to waiting.
     played: {
-      on: { SYNTHESIZE: "synthesizing", HOLD: "holding", UNHEARD: "unheard" },
+      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", UNHEARD: "unheard" },
     },
     unheard: {
-      on: { SYNTHESIZE: "synthesizing", HOLD: "holding" },
+      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding" },
     },
     error: { type: "final" },
   },
@@ -141,6 +153,7 @@ const CLAUDE_STATUS_PREFIXES: Array<[string, ClaudeState]> = [
   ["queued — waiting", "holding"], // must precede the bare "queued" prefix
   ["queued", "queued"],
   ["synthesizing", "synthesizing"],
+  ["ready", "ready"],
   ["playing", "playing"],
   ["played", "played"],
   ["unheard", "unheard"],
@@ -171,6 +184,7 @@ const CLAUDE_CANONICAL_STATUS: Record<ClaudeState, string> = {
   queued: "queued",
   holding: "queued — waiting for you to finish",
   synthesizing: "synthesizing (Grok TTS)…",
+  ready: "ready — waiting for the speaker",
   playing: "playing through speakers…",
   played: "played",
   unheard: "unheard — voice muted",
@@ -254,9 +268,10 @@ export function validStatusChange(role: Role, fromStatus: string, toStatus: stri
 // --- cross-machine invariants -------------------------------------------------
 
 /** The daemon has ONE playback worker: it takes the OLDEST queued card and
- * walks it through these states before touching the next. At any moment at
- * most one claude card may sit in a worker state — and lifecycle events
- * always land on the FIFO head, never on the newest arrival. */
+ * plays it before touching the next, so at most one claude card may sit in
+ * holding/playing at any moment. Synthesis is a separate worker that runs
+ * AHEAD of playback (prefetch), so one more card may show synthesizing
+ * while an older one holds the speaker. */
 export const CLAUDE_WORKER_STATES: ReadonlySet<string> = new Set([
   "holding",
   "synthesizing",
@@ -277,10 +292,11 @@ export type TimelineZone = "done" | "active" | "pending";
 /** The chat window's virtual "processed line" (Krzysztof's model): the
  * timeline reads past → present → future, top to bottom. Above the line
  * only things that already HAPPENED (delivered to Claude, played to the
- * user, parked, failed); ON the line the present (the busy row, and any
- * card mid-synthesis/mid-playback just above it); below it only things
- * still WAITING their turn (transcripts awaiting pickup, replies queued
- * behind the speaker). */
+ * user, parked, failed); ON the line the present (the busy row, and the
+ * card actually PLAYING just above it); below it only things still
+ * WAITING their turn (transcripts awaiting pickup, replies queued behind
+ * the speaker — including ones already synthesizing or rendered READY,
+ * which the prefetch pipeline prepares long before their turn comes). */
 export function timelineZone(role: Role, status: string): TimelineZone {
   const state = statusToState(role, status);
   if (role === "user") {
@@ -288,7 +304,12 @@ export function timelineZone(role: Role, status: string): TimelineZone {
     // unknown statuses render as settled history rather than jumping zones.
     return state === "ready" ? "pending" : "done";
   }
-  if (state === "queued" || state === "holding") return "pending";
-  if (state === "synthesizing" || state === "playing") return "active";
+  // Synthesis runs AHEAD of playback (prefetch), so a synthesizing or
+  // ready card is still WAITING its turn — it stays below the line in
+  // creation order. Only the card actually on the speakers is the present;
+  // anything else in the active zone would leapfrog its queue neighbours.
+  if (state === "playing") return "active";
+  if (state === "queued" || state === "holding" || state === "synthesizing" || state === "ready")
+    return "pending";
   return "done";
 }

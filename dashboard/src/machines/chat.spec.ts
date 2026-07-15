@@ -8,6 +8,7 @@ import {
   stateToStatus,
   statusAllows,
   statusToState,
+  timelineZone,
   validStatusChange,
 } from "./chat";
 
@@ -33,6 +34,7 @@ const REAL_CLAUDE_STATUSES: Array<[string, string]> = [
   ["queued", "queued"],
   ["queued — waiting for you to finish", "holding"],
   ["synthesizing (Grok TTS)…", "synthesizing"],
+  ["ready — waiting for the speaker", "ready"],
   ["playing through speakers…", "playing"],
   ["played", "played"],
   ["unheard — voice muted", "unheard"],
@@ -113,6 +115,33 @@ describe("claude lifecycle", () => {
     expect(nextState("claude", "holding", "SYNTHESIZE")).toBe("synthesizing");
   });
 
+  it("supports prefetch: synthesis may finish before the speaker frees", () => {
+    // Synth runs ahead of playback — the turn gate can land AFTER the
+    // render, and prefetched audio plays straight out of the hold.
+    expect(nextState("claude", "synthesizing", "READY")).toBe("ready");
+    expect(nextState("claude", "ready", "PLAY")).toBe("playing");
+    expect(nextState("claude", "ready", "HOLD")).toBe("holding");
+    expect(nextState("claude", "synthesizing", "HOLD")).toBe("holding");
+    expect(nextState("claude", "holding", "PLAY")).toBe("playing");
+  });
+
+  it("keeps prefetched cards below the line until they actually play", () => {
+    // Prefetch renders ahead of the queue — a synthesizing/ready card is
+    // still WAITING, so it must not leapfrog its neighbours into the
+    // active zone (queue order on screen = queue order in the speaker).
+    expect(timelineZone("claude", "queued")).toBe("pending");
+    expect(timelineZone("claude", "synthesizing (Grok TTS)…")).toBe("pending");
+    expect(timelineZone("claude", "ready — waiting for the speaker")).toBe("pending");
+    expect(timelineZone("claude", "playing through speakers…")).toBe("active");
+    expect(timelineZone("claude", "played")).toBe("done");
+  });
+
+  it("skips synthesis entirely on a cache hit", () => {
+    expect(nextState("claude", "queued", "READY")).toBe("ready");
+    expect(nextState("claude", "played", "READY")).toBe("ready"); // replay from cache
+    expect(nextState("claude", "unheard", "READY")).toBe("ready"); // catch-up from cache
+  });
+
   it("re-enters the pipeline on replay and catch-up — mute park and hold included", () => {
     expect(nextState("claude", "played", "SYNTHESIZE")).toBe("synthesizing");
     expect(nextState("claude", "played", "HOLD")).toBe("holding");
@@ -122,7 +151,7 @@ describe("claude lifecycle", () => {
   });
 
   it("parks in-flight speech when muted or after a daemon restart", () => {
-    for (const state of ["queued", "holding", "synthesizing", "playing"]) {
+    for (const state of ["queued", "holding", "synthesizing", "ready", "playing"]) {
       expect(nextState("claude", state, "UNHEARD")).toBe("unheard");
     }
   });
