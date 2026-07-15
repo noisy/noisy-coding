@@ -381,21 +381,27 @@ const LANGUAGES: Record<string, string> = {
       <div class="setup-title">NOISY-CODING · FIRST CONTACT</div>
       <!-- The welcome pitch has done its job the moment a key is submitted:
            from then on the box is a verification panel, and every saved
-           line keeps it on-screen even with seven failing checks. -->
-      <template v-if="!checksRunning && !visibleChecks && !firstContactFailed">
-        <p class="setup-text">
-          Talk to Claude out loud — it hears you, answers through your speakers,
-          and this console shows the whole conversation live. The oscilloscope
-          below is already listening to your mic.
-        </p>
-        <p class="setup-text">
-          All it needs is an xAI API key, and it runs on <b>pennies</b>:
-          listening costs <b>$0.10 per hour</b>, a spoken reply is a fraction of
-          a cent. Create a key at
-          <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
-          and paste it here:
-        </p>
-      </template>
+           line keeps it on-screen even with seven failing checks. It folds
+           away (grid-rows collapse) instead of vanishing in one frame. -->
+      <div
+        class="setup-pitch"
+        :class="{ collapsed: checksRunning || !!visibleChecks || firstContactFailed }"
+      >
+        <div class="setup-pitch-inner">
+          <p class="setup-text">
+            Talk to Claude out loud — it hears you, answers through your speakers,
+            and this console shows the whole conversation live. The oscilloscope
+            below is already listening to your mic.
+          </p>
+          <p class="setup-text">
+            All it needs is an xAI API key, and it runs on <b>pennies</b>:
+            listening costs <b>$0.10 per hour</b>, a spoken reply is a fraction of
+            a cent. Create a key at
+            <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
+            and paste it here:
+          </p>
+        </div>
+      </div>
       <div class="setup-row">
         <input
           v-model="keyInput"
@@ -887,6 +893,14 @@ footer { flex: none; }
 }
 .setup-title { font-size: 13px; letter-spacing: 0.3em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); margin-bottom: 14px; }
 .setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 14px; }
+.setup-pitch {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.45s ease, opacity 0.3s ease;
+}
+.setup-pitch.collapsed { grid-template-rows: 0fr; opacity: 0; }
+.setup-pitch-inner { overflow: hidden; min-height: 0; }
 .setup-error { font-size: 10px; letter-spacing: 0.14em; color: var(--red, #ff5f56); margin: 12px 0 0; }
 .setup-checks { margin-top: 12px; }
 .setup-hint { margin: 12px 0 0; }
