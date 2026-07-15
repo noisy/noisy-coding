@@ -70,6 +70,12 @@ class TabAudioBridge:
         # the ack impossible (holder disconnect), so the playback waiter
         # never blocks on a dead tab.
         self._play_ack = threading.Event()
+        # True only between sending a clip and its ack. The tab acks
+        # "played" on EVERY stop message — even with nothing playing — so a
+        # stop sent to an idle tab would leave a stray ack that ends the
+        # NEXT clip's wait instantly (daemon thinks it played, tab keeps
+        # talking, no STOP button). Guarding the send is the fix.
+        self._play_in_flight = False
 
     # --- lease election -----------------------------------------------------
 
@@ -126,18 +132,24 @@ class TabAudioBridge:
         if ws is None or not self._state.tab_audio_alive:
             return False
         self._play_ack.clear()
-        try:
-            ws.send(json.dumps({"type": "play", "content_type": content_type}))
-            ws.send(audio)
-        except Exception:
-            return False
-        while not self._play_ack.wait(timeout=0.5):
-            with self._lock:
-                holder_changed = self._holder_ws is not ws
-            if holder_changed or not self._state.tab_audio_alive:
-                return False
         with self._lock:
-            return self._holder_ws is ws
+            self._play_in_flight = True
+        try:
+            try:
+                ws.send(json.dumps({"type": "play", "content_type": content_type}))
+                ws.send(audio)
+            except Exception:
+                return False
+            while not self._play_ack.wait(timeout=0.5):
+                with self._lock:
+                    holder_changed = self._holder_ws is not ws
+                if holder_changed or not self._state.tab_audio_alive:
+                    return False
+            with self._lock:
+                return self._holder_ws is ws
+        finally:
+            with self._lock:
+                self._play_in_flight = False
 
     def ack_played(self, connection_id: int, ws=None) -> None:
         """The tab reports its current clip finished (or was stopped)."""
@@ -145,11 +157,15 @@ class TabAudioBridge:
             self._play_ack.set()
 
     def stop_tab_playback(self) -> None:
-        """User hit ⏹ — the tab pauses its clip and acks 'played'."""
+        """User hit ⏹ — the tab pauses its clip and acks 'played'.
+
+        No-op while nothing is mid-flight: the tab acks every stop, and a
+        stray ack would falsely complete the next clip (see _play_in_flight).
+        """
         with self._lock:
             ws = self._holder_ws
-        if ws is None:
-            return
+            if ws is None or not self._play_in_flight:
+                return
         try:
             ws.send(json.dumps({"type": "stop"}))
         except Exception:

@@ -132,11 +132,35 @@ def test_play_through_tab_aborts_when_the_tab_disconnects_mid_clip():
     assert result == [False]
 
 
-def test_stop_tab_playback_tells_the_tab_to_stop():
+def test_stop_tab_playback_tells_the_tab_to_stop_mid_clip():
+    import threading
+    import time
+
+    bridge, _, _ = _bridge()
+    ws = FakeWs()
+    bridge.claim(1, ws)
+
+    player = threading.Thread(
+        target=lambda: bridge.play_through_tab(b"mp3-bytes", "audio/mpeg")
+    )
+    player.start()
+    deadline = time.monotonic() + 2
+    while len(ws.sent) < 2 and time.monotonic() < deadline:
+        time.sleep(0.01)  # clip is in flight once play + audio went out
+    bridge.stop_tab_playback()
+    bridge.ack_played(1, ws)
+    player.join(timeout=3)
+
+    assert '{"type": "stop"}' in ws.sent
+
+
+def test_stop_tab_playback_is_a_noop_while_nothing_plays():
     bridge, _, _ = _bridge()
     ws = FakeWs()
     bridge.claim(1, ws)
 
     bridge.stop_tab_playback()
 
-    assert '{"type": "stop"}' in ws.sent
+    # No stray stop → no stray "played" ack poisoning the NEXT clip's wait
+    # (the tab acks every stop, even with nothing playing).
+    assert ws.sent == []

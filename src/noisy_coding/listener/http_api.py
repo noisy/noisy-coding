@@ -484,20 +484,34 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             if not text:
                 self._respond({"error": "text required"}, status=400)
                 return
+            source_id = int(body.get("source_id", 0))
+            if source_id and speech.replay_in_flight(source_id):
+                # This bubble is already queued/playing — repeated clicks
+                # must not stack replays (nor interrupt the one in flight),
+                # so bail BEFORE the interrupt below can do any damage.
+                self._respond({"skipped": True})
+                return
+            if body.get("interrupt"):
+                # Cut the current utterance short — wherever it is playing:
+                # local player processes AND the browser tab (same pair of
+                # stops as /interrupt, or replay-clicks in browser-output
+                # mode would leave the old clip talking over the new one).
+                # BEFORE submit, so the stop can never race ahead and cut
+                # down the very clip we are about to queue.
+                playback.stop_all_players()
+                live_bridge = tab_audio.bridge()
+                if live_bridge is not None:
+                    live_bridge.stop_tab_playback()
             future = speech.submit(
                 state,
                 text,
                 agent=str(body["agent"]) if body.get("agent") else None,
                 card=bool(body.get("card", True)),
-                source_id=int(body.get("source_id", 0)),
+                source_id=source_id,
             )
             if future is None:
-                # This bubble is already queued/playing — repeated clicks
-                # must not stack replays (nor interrupt the one in flight).
-                self._respond({"skipped": True})
+                self._respond({"skipped": True})  # dedup raced us — same answer
                 return
-            if body.get("interrupt"):
-                playback.stop_all_players()  # cut the current utterance short
             if not body.get("wait", True):
                 self._respond({"queued": True})
                 return
