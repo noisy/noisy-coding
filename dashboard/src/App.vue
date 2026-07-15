@@ -839,8 +839,11 @@ footer { flex: none; }
   inset: 0;
   z-index: 60; /* above scanlines/vignette */
   display: grid;
-  place-items: center;
-  padding: 24px;
+  /* Anchored near the top, NOT vertically centered: the box grows as
+     check verdicts land, and a centered box would re-balance both edges
+     on every row — reading as jumping. Anchored, it only extends down. */
+  place-items: start center;
+  padding: 14vh 24px 24px;
   pointer-events: none; /* the live scopes behind stay hoverable */
   background: radial-gradient(560px 380px at 50% 46%, rgba(2, 6, 12, 0.88), rgba(2, 6, 12, 0.25) 75%, transparent);
 }

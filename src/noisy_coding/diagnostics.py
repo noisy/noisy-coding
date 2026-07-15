@@ -25,6 +25,10 @@ from noisy_coding import tts, tts_stream
 from noisy_coding.listener import stt, stt_stream
 
 CHECK_TIMEOUT_SECONDS = 10.0
+# Presentation pacing (Krzysztof's spec): checks run SEQUENTIALLY and each
+# verdict stays on screen at least this long — a sub-second cascade reads
+# as an unreadable flash, not a verification the user can trust.
+MIN_CHECK_SECONDS = 1.0
 PROBE_TEXT = "ok"  # two paid TTS characters — the cheapest real synthesis
 PROBE_VOICE = "eve"
 PROBE_SAMPLE_RATE = 16_000
@@ -116,14 +120,15 @@ ProgressCallback = Callable[[dict[str, dict]], None]
 
 
 async def run_checks(on_progress: ProgressCallback | None = None) -> dict[str, dict]:
-    """Run every check concurrently; each result stands alone.
+    """Run the checks one by one; each result stands alone.
 
     A failure in one must never be read as "the key is bad" when others
     pass — the caller renders them separately, verbatim.
 
     `on_progress` fires with the full (partial) result map: once up front
     with every check pending, then after each completion — so a UI polling
-    it can show the verdicts landing one by one, as they really do.
+    it shows verdicts landing line by line, top to bottom, at a pace a
+    human can actually follow (MIN_CHECK_SECONDS each).
     """
     checks = dict(CHECKS)
     if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
@@ -135,17 +140,18 @@ async def run_checks(on_progress: ProgressCallback | None = None) -> dict[str, d
         if on_progress:
             on_progress({name: dict(result) for name, result in results.items()})
 
-    async def run_one(name: str, check: Callable[[], Awaitable[None]]) -> None:
+    report()
+    for name, check in checks.items():
         started = time.monotonic()
         try:
             await asyncio.wait_for(check(), timeout=CHECK_TIMEOUT_SECONDS)
             results[name] = {"ok": True, "ms": int((time.monotonic() - started) * 1000)}
         except Exception as error:
             results[name] = {"ok": False, "detail": str(error)[:300]}
+        remaining = MIN_CHECK_SECONDS - (time.monotonic() - started)
+        if remaining > 0:
+            await asyncio.sleep(remaining)
         report()
-
-    report()
-    await asyncio.gather(*(run_one(name, check) for name, check in checks.items()))
     return results
 
 

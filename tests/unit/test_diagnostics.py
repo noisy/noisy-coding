@@ -1,6 +1,15 @@
 import asyncio
+import time
+
+import pytest
 
 from noisy_coding import diagnostics
+
+
+@pytest.fixture(autouse=True)
+def instant_pacing(monkeypatch):
+    """Verdict tests care about results, not the 1 s presentation cadence."""
+    monkeypatch.setattr(diagnostics, "MIN_CHECK_SECONDS", 0)
 
 
 def test_each_check_reports_its_own_verdict(monkeypatch):
@@ -89,3 +98,19 @@ def test_billing_check_runs_only_when_configured(monkeypatch):
 
     monkeypatch.setattr(diagnostics, "_check_billing", fake_billing)
     assert "billing" in diagnostics.run_checks_sync()
+
+
+def test_each_verdict_stays_on_screen_at_least_the_pacing_interval(monkeypatch):
+    async def instant():
+        pass
+
+    monkeypatch.setattr(diagnostics, "MIN_CHECK_SECONDS", 0.1)
+    monkeypatch.setattr(diagnostics, "CHECKS", {"a": instant, "b": instant})
+    stamps = []
+
+    diagnostics.run_checks_sync(lambda _snapshot: stamps.append(time.monotonic()))
+
+    # initial, then one per check — each at least the pacing interval apart.
+    assert len(stamps) == 3
+    assert stamps[1] - stamps[0] >= 0.1
+    assert stamps[2] - stamps[1] >= 0.1
