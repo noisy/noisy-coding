@@ -1,21 +1,47 @@
 import asyncio
 import time
 
-from noisy_coding.listener import speech
+import pytest
+
+from noisy_coding import tts
+from noisy_coding.listener import audio_cache, speech
 from noisy_coding.listener.state import ListenerState
 
 
-def test_playback_queue_serializes_concurrent_speaks(monkeypatch):
+@pytest.fixture
+def batch_pipeline(monkeypatch):
+    """Batch TTS with a fresh in-memory cache — the deterministic pipeline."""
+    monkeypatch.setattr(speech, "_audio_cache", audio_cache.AudioCache(directory=None))
+    monkeypatch.setattr(speech, "_tts_streaming", lambda _state: False)
+    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+
+
+def _install_fake_synth(monkeypatch, calls, delay_s=0.0):
+    async def fake_synthesize(text, voice, language, speed):
+        started = time.monotonic()
+        if delay_s:
+            await asyncio.sleep(delay_s)
+        calls.append({"text": text, "voice": voice, "started": started})
+        return tts.SynthesizedAudio(b"mp3-bytes", "audio/mpeg", 0.0)
+
+    monkeypatch.setattr(speech.tts, "synthesize", fake_synthesize)
+
+
+def _install_fake_play(monkeypatch, intervals, delay_s=0.0):
+    async def fake_play(_state, _audio, _cached, _utterance_id):
+        started = time.monotonic()
+        if delay_s:
+            await asyncio.sleep(delay_s)
+        intervals.append((started, time.monotonic()))
+
+    monkeypatch.setattr(speech, "_play_audio", fake_play)
+
+
+def test_playback_queue_serializes_concurrent_speaks(monkeypatch, batch_pipeline):
     state = ListenerState()
     intervals = []
-
-    async def fake_synthesize_and_play(*_args):
-        start = time.monotonic()
-        await asyncio.sleep(0.1)
-        intervals.append((start, time.monotonic()))
-
-    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
-    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, intervals, delay_s=0.1)
 
     futures = [speech.submit(state, f"utterance {i}") for i in range(2)]
     for future in futures:
@@ -26,14 +52,50 @@ def test_playback_queue_serializes_concurrent_speaks(monkeypatch):
     assert last_start >= first_end
 
 
-def test_utterance_cards_appear_at_enqueue_in_creation_order(monkeypatch):
+def test_next_clip_synthesizes_while_previous_still_plays(monkeypatch, batch_pipeline):
     state = ListenerState()
+    synth_calls = []
+    play_intervals = []
+    _install_fake_synth(monkeypatch, synth_calls, delay_s=0.05)
+    _install_fake_play(monkeypatch, play_intervals, delay_s=0.3)
 
-    async def slow_play(*_args):
-        await asyncio.sleep(0.2)
+    futures = [speech.submit(state, "first"), speech.submit(state, "second")]
+    deadline = time.monotonic() + 2
+    ready_seen = False
+    while not ready_seen and time.monotonic() < deadline:
+        statuses = {u["text"]: u["status"] for u in state.utterances()}
+        ready_seen = statuses.get("second") == "ready — waiting for the speaker"
+        time.sleep(0.01)
+    for future in futures:
+        future.result(timeout=5)
 
-    monkeypatch.setattr(speech, "_synthesize_and_play", slow_play)
-    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+    second_synth_started = synth_calls[1]["started"]
+    first_play_ended = play_intervals[0][1]
+    assert second_synth_started < first_play_ended
+    assert ready_seen  # the prefetched card said READY, not a stale "synthesizing"
+
+
+def test_synthesis_runs_while_the_user_is_still_speaking(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    state.set_recording(True)
+    synth_calls = []
+    _install_fake_synth(monkeypatch, synth_calls)
+    _install_fake_play(monkeypatch, [])
+
+    future = speech.submit(state, "prefetch me")
+    deadline = time.monotonic() + 2
+    while not synth_calls and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert synth_calls  # rendered during the user's turn — only playback waits
+    state.set_recording(False)
+    future.result(timeout=5)
+
+
+def test_utterance_cards_appear_at_enqueue_in_creation_order(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [], delay_s=0.2)
 
     futures = [speech.submit(state, "first"), speech.submit(state, "second")]
     texts = [u["text"] for u in state.utterances() if u["role"] == "claude"]
@@ -43,14 +105,10 @@ def test_utterance_cards_appear_at_enqueue_in_creation_order(monkeypatch):
         future.result(timeout=5)
 
 
-def test_submit_without_card_plays_but_leaves_no_utterance(monkeypatch):
+def test_submit_without_card_plays_but_leaves_no_utterance(monkeypatch, batch_pipeline):
     state = ListenerState()
-
-    async def fake_synthesize_and_play(*_args):
-        pass
-
-    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
-    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [])
 
     voice = speech.submit(state, "replayed message", card=False).result(timeout=5)
 
@@ -58,31 +116,26 @@ def test_submit_without_card_plays_but_leaves_no_utterance(monkeypatch):
     assert state.utterances() == []  # replay must not duplicate the bubble
 
 
-def test_voice_muted_parks_speech_as_unheard(monkeypatch):
+def test_voice_muted_parks_speech_as_unheard(monkeypatch, batch_pipeline):
     state = ListenerState()
     state.set_voice_muted(True)
+    synth_calls = []
     played = []
-
-    async def fake_synthesize_and_play(*_args):
-        played.append(1)
-
-    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
+    _install_fake_synth(monkeypatch, synth_calls)
+    _install_fake_play(monkeypatch, played)
 
     voice = speech.submit(state, "hello there").result(timeout=5)
 
     assert voice  # resolves immediately — blocking speak must not hang
-    assert played == []  # nothing synthesized, nothing played
+    assert synth_calls == []  # deferred = costs nothing until played
+    assert played == []
     assert state.utterances()[0]["status"] == "unheard — voice muted"
 
 
-def test_replay_with_source_walks_the_original_card_to_played(monkeypatch):
+def test_replay_with_source_walks_the_original_card_to_played(monkeypatch, batch_pipeline):
     state = ListenerState()
-
-    async def fake_synthesize_and_play(*_args):
-        pass
-
-    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
-    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [])
     card_id = state.create_utterance("claude", "unheard — voice muted", text="parked")
 
     speech.submit(state, "parked", card=False, source_id=card_id).result(timeout=5)
@@ -91,16 +144,115 @@ def test_replay_with_source_walks_the_original_card_to_played(monkeypatch):
     assert state.utterances()[0]["status"] == "played"
 
 
-def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch):
+def test_replay_plays_from_cache_without_second_synthesis(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    synth_calls = []
+    _install_fake_synth(monkeypatch, synth_calls)
+    _install_fake_play(monkeypatch, [])
+
+    speech.submit(state, "say it once").result(timeout=5)
+    card_id = state.utterances()[0]["id"]
+    speech.submit(state, "say it once", card=False, source_id=card_id).result(timeout=5)
+
+    assert len(synth_calls) == 1  # the replay reused the cached clip
+    assert state.utterances()[0]["status"] == "played"
+
+
+def test_replay_after_voice_change_resynthesizes(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    synth_calls = []
+    _install_fake_synth(monkeypatch, synth_calls)
+    _install_fake_play(monkeypatch, [])
+
+    speech.submit(state, "say it twice").result(timeout=5)
+    card_id = state.utterances()[0]["id"]
+    state.set_character({"voice": "rex"})
+    speech.submit(state, "say it twice", card=False, source_id=card_id).result(timeout=5)
+
+    assert [call["voice"] for call in synth_calls] == ["carina", "rex"]
+
+
+def test_replay_clicks_jump_queued_speech_but_keep_click_order(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    played_ids = []
+
+    async def fake_play(_state, _audio, _cached, utterance_id):
+        played_ids.append(utterance_id)
+        await asyncio.sleep(0.2)
+
+    _install_fake_synth(monkeypatch, [])
+    monkeypatch.setattr(speech, "_play_audio", fake_play)
+    old_a = state.create_utterance("claude", "played", text="old message a")
+    old_b = state.create_utterance("claude", "played", text="old message b")
+
+    fresh = [speech.submit(state, "fresh one"), speech.submit(state, "fresh two")]
+    deadline = time.monotonic() + 2
+    while not played_ids and time.monotonic() < deadline:
+        time.sleep(0.01)  # replay clicks land while "fresh one" is mid-play
+    replays = [
+        speech.submit(state, "old message a", card=False, source_id=old_a),
+        speech.submit(state, "old message b", card=False, source_id=old_b),
+    ]
+    for future in fresh + replays:
+        future.result(timeout=5)
+
+    fresh_one_id = old_b + 1
+    fresh_two_id = old_b + 2
+    assert played_ids == [fresh_one_id, old_a, old_b, fresh_two_id]
+
+
+def test_synthesis_error_lands_the_card_in_error(monkeypatch, batch_pipeline):
+    state = ListenerState()
+
+    async def failing_synthesize(*_args):
+        raise tts.GrokTTSError("Grok TTS request failed with HTTP 500")
+
+    monkeypatch.setattr(speech.tts, "synthesize", failing_synthesize)
+    _install_fake_play(monkeypatch, [])
+
+    future = speech.submit(state, "doomed")
+    with pytest.raises(tts.GrokTTSError):
+        future.result(timeout=5)
+
+    assert state.utterances()[0]["status"] == "error"
+
+
+def test_live_mode_streams_the_head_and_prefetches_the_queue(monkeypatch):
+    state = ListenerState()
+    monkeypatch.setattr(speech, "_audio_cache", audio_cache.AudioCache(directory=None))
+    monkeypatch.setattr(speech, "_tts_streaming", lambda _state: True)
+    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+    synth_calls = []
+    streamed = []
+    _install_fake_synth(monkeypatch, synth_calls)
+    _install_fake_play(monkeypatch, [])
+
+    async def fake_stream_and_play(_state, text, _prepared, _utterance_id, _source_id):
+        await asyncio.sleep(0.2)
+        streamed.append(text)
+
+    monkeypatch.setattr(speech, "_stream_and_play", fake_stream_and_play)
+
+    futures = [speech.submit(state, "head"), speech.submit(state, "queued behind")]
+    for future in futures:
+        future.result(timeout=5)
+
+    assert streamed == ["head"]  # the head streams for the fastest first audio
+    assert [call["text"] for call in synth_calls] == ["queued behind"]  # batch prefetch
+    statuses = [u["status"] for u in state.utterances()]
+    assert statuses == ["played", "played"]
+
+
+def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch, batch_pipeline):
     state = ListenerState()
     state.set_recording(True)
     play_started_at = []
 
-    async def fake_synthesize_and_play(*_args):
+    async def fake_play(_state, _audio, _cached, _utterance_id):
         play_started_at.append(time.monotonic())
 
-    monkeypatch.setattr(speech, "_synthesize_and_play", fake_synthesize_and_play)
-    monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
+    _install_fake_synth(monkeypatch, [])
+    monkeypatch.setattr(speech, "_play_audio", fake_play)
 
     future = speech.submit(state, "hold me")
     time.sleep(0.15)

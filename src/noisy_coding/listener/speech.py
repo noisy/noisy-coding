@@ -1,20 +1,28 @@
 """Render TTS and play it aloud — the daemon's side of speak/announce.
 
-All speech flows through one single-worker executor: the queue itself
-serializes utterances across every agent and MCP server process, which is
-what used to require the cross-agent floor. The worker thread runs the
-async TTS/playback modules via asyncio.run.
+Speech is a two-stage pipeline. The synth stage renders utterances to
+audio AHEAD of playback, so clip N+1 is ready the instant clip N leaves
+the speaker; the playback stage plays strictly in submit order — one voice
+at a time, still gated on the user's turn. Each stage is its own
+single-worker executor and submit() enqueues into both at once, so
+playback order is submit order no matter how synthesis timing lands.
+
+Rendered audio also lands in a bounded cache (see audio_cache): replaying
+a card reuses the bytes instead of paying Grok for the same clip again.
 """
 
 import asyncio
+import itertools
 import os
 import re
 import threading
 import time
-from concurrent.futures import Future, ThreadPoolExecutor
+from collections import deque
+from concurrent.futures import Future
+from dataclasses import dataclass
 
 from noisy_coding import playback, tts, tts_stream
-from noisy_coding.listener import tab_audio
+from noisy_coding.listener import audio_cache, tab_audio
 from noisy_coding.listener import pricing
 from noisy_coding.listener.state import ListenerState
 
@@ -38,9 +46,83 @@ class NoAudioSink(Exception):
     once a tab connects."""
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
-# One worker = one utterance at a time; every speak in the whole system
-# queues here, so two voices can never overlap.
-_playback_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="playback")
+class _SerialWorker:
+    """One daemon thread, strict submit order — with a fast lane.
+
+    Fresh speech appends to the tail; a user's replay click means "play
+    this NOW", so it jumps ahead of everything still queued (but never cuts
+    into the job already running — one voice at a time stays inviolable).
+    Replays keep click order among themselves: a jump lands behind earlier
+    jumps, not in front of them, so CATCH UP replays a backlog in sequence.
+    """
+
+    def __init__(self, name: str) -> None:
+        self._jobs: deque[tuple[int, object, tuple, Future, bool]] = deque()
+        self._cond = threading.Condition()
+        self._current: int | None = None
+        self._stopping = False
+        threading.Thread(target=self._run, name=name, daemon=True).start()
+
+    def submit(self, seq, fn, *args, jump_queue: bool = False) -> Future:
+        future: Future = Future()
+        job = (seq, fn, args, future, jump_queue)
+        with self._cond:
+            if jump_queue:
+                behind_earlier_jumps = 0
+                for queued in self._jobs:
+                    if not queued[4]:
+                        break
+                    behind_earlier_jumps += 1
+                self._jobs.insert(behind_earlier_jumps, job)
+            else:
+                self._jobs.append(job)
+            self._cond.notify()
+        return future
+
+    def _run(self) -> None:
+        while True:
+            with self._cond:
+                while not self._jobs and not self._stopping:
+                    self._cond.wait()
+                if self._stopping:
+                    return
+                seq, fn, args, future, _ = self._jobs.popleft()
+                self._current = seq
+            try:
+                if future.set_running_or_notify_cancel():
+                    try:
+                        future.set_result(fn(*args))
+                    except BaseException as error:  # delivered via future.result()
+                        future.set_exception(error)
+            finally:
+                with self._cond:
+                    self._current = None
+
+    def is_next(self, seq: int) -> bool:
+        """Is `seq` the job this worker runs now, or the very next one?"""
+        with self._cond:
+            if self._current is not None:
+                return self._current == seq
+            return bool(self._jobs) and self._jobs[0][0] == seq
+
+    def shutdown(self) -> None:
+        with self._cond:
+            self._stopping = True
+            self._cond.notify()
+
+
+# One playback worker = one utterance at a time; every speak in the whole
+# system queues here, so two voices can never overlap. The synth worker
+# runs AHEAD of it: while clip N plays, clip N+1 is already rendering, so
+# back-to-back announces play with no dead air between them.
+_synth_worker = _SerialWorker("tts-synth")
+_playback_worker = _SerialWorker("playback")
+
+# Rendered clips by card + render options — replays and catch-ups play
+# these bytes instead of paying Grok for the same audio again.
+_audio_cache = audio_cache.AudioCache()
+
+_queue_seq = itertools.count(1)
 
 # An old message either plays or it doesn't — replays of the same bubble
 # must not stack up in the queue when the user clicks repeatedly. New
@@ -48,6 +130,20 @@ _playback_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="playb
 # only once.
 _pending_replays: set[int] = set()
 _pending_lock = threading.Lock()
+
+
+@dataclass(frozen=True)
+class _PreparedSpeech:
+    """What the synth stage hands the playback stage for one utterance."""
+
+    voice: str
+    language: str
+    speed: float
+    audio: tts.SynthesizedAudio | None = None  # rendered ahead (or cached)
+    cached: bool = False  # bytes came from the cache — nothing was paid
+    stream: bool = False  # render coupled to playback (live TTS at queue head)
+    # audio=None with stream=False means the synth stage skipped rendering
+    # (voice was muted then); the playback stage decides at its turn.
 
 
 def submit(
@@ -88,12 +184,30 @@ def submit(
     # Which card the playback "belongs to" on the dashboard: a replay
     # (card=False) points back at the original bubble via source_id, so the
     # UI can offer STOP on it while it plays.
-    future = _playback_executor.submit(
-        _render_and_play, state, text, agent, utterance_id, source_id or utterance_id
+    canonical_id = source_id or utterance_id
+    seq = next(_queue_seq)
+    # A replay is the user's click: it takes the fast lane in BOTH stages
+    # (synthesis too — its cache lookup must not sit behind pending renders).
+    jump_queue = bool(source_id)
+    synth_future = _synth_worker.submit(
+        seq, _prepare_audio, state, text, agent, utterance_id, canonical_id, seq,
+        jump_queue=jump_queue,
+    )
+    future = _playback_worker.submit(
+        seq, _play_prepared, state, text, agent, utterance_id, canonical_id, synth_future,
+        jump_queue=jump_queue,
     )
     if source_id:
         future.add_done_callback(lambda _f: _discard_pending_replay(source_id))
     return future
+
+
+def replay_in_flight(source_id: int) -> bool:
+    """Whether this bubble already has a replay queued or playing — callers
+    use it to skip BEFORE side effects like interrupt (repeated clicks must
+    not stack replays, nor cut down the one already in flight)."""
+    with _pending_lock:
+        return source_id in _pending_replays
 
 
 def _discard_pending_replay(source_id: int) -> None:
@@ -102,7 +216,8 @@ def _discard_pending_replay(source_id: int) -> None:
 
 
 def shutdown() -> None:
-    _playback_executor.shutdown(wait=False)
+    _synth_worker.shutdown()
+    _playback_worker.shutdown()
 
 
 def _emphasis_to_speech_tags(text: str) -> str:
@@ -163,39 +278,127 @@ def _tts_streaming(state: ListenerState) -> bool:
     return state.tts_mode == "live"
 
 
-def _render_and_play(
+def _next_to_play(seq: int) -> bool:
+    return _playback_worker.is_next(seq)
+
+
+def _cache_key(
+    source_id: int, text: str, voice: str, language: str, speed: float
+) -> str | None:
+    return audio_cache.key(source_id, text, voice, language, speed)
+
+
+def _prepare_audio(
     state: ListenerState,
     text: str,
     agent: str | None,
     utterance_id: int,
     source_id: int,
+    seq: int,
+) -> _PreparedSpeech:
+    """Synth stage: produce audio bytes ahead of playback (synth worker).
+
+    Touches neither the speaker nor the mic, so it is free to run while an
+    earlier clip is still playing or while the user is talking. Everything
+    playback-owned — turn-taking, echo muting, the STOP claim — happens in
+    _play_prepared.
+    """
+    voice, language, speed = resolve_options(state, agent)
+    if state.voice_muted:
+        # Deferred = costs nothing until played: render nothing while the
+        # speaker is muted. _play_prepared parks the card (or renders at
+        # its turn, should the user unmute in the meantime).
+        return _PreparedSpeech(voice, language, speed)
+    cached = _audio_cache.get(_cache_key(source_id, text, voice, language, speed))
+    if cached is not None:
+        audio = tts.SynthesizedAudio(cached, audio_cache.CONTENT_TYPE, 0.0)
+        _mark_ready(state, utterance_id)
+        return _PreparedSpeech(voice, language, speed, audio=audio, cached=True)
+    if _tts_streaming(state) and _next_to_play(seq):
+        # Nothing plays before this one — stream it, audio starts fastest.
+        # Clips queued BEHIND a playing one batch-render right here instead:
+        # ready-to-play the instant the speaker frees, no dead air between.
+        return _PreparedSpeech(voice, language, speed, stream=True)
+    audio = _synthesize_now(state, text, voice, language, speed, utterance_id, source_id)
+    _mark_ready(state, utterance_id)
+    return _PreparedSpeech(voice, language, speed, audio=audio)
+
+
+def _mark_ready(state: ListenerState, utterance_id: int) -> None:
+    """The card's audio is in hand — say so instead of leaving a stale
+    "synthesizing" on a clip that is merely waiting for the speaker.
+    Safe from the synth stage: the playback stage touches this card's
+    status only after the synth future resolves, never concurrently."""
+    state.update_utterance(utterance_id, status="ready — waiting for the speaker")
+
+
+def _charge_synthesis(state: ListenerState, text: str, utterance_id: int) -> None:
+    cost = pricing.tts_cost_usd(len(text))
+    state.add_cost("claude", cost)
+    state.add_usage("tts_chars", len(text))
+    state.update_utterance(utterance_id, cost_usd=cost)
+
+
+def _synthesize_now(
+    state: ListenerState,
+    text: str,
+    voice: str,
+    language: str,
+    speed: float,
+    utterance_id: int,
+    source_id: int,
+) -> tts.SynthesizedAudio:
+    """One paid batch render, cached so this exact clip is never paid twice."""
+    state.update_utterance(utterance_id, status="synthesizing (Grok TTS)…")
+    _charge_synthesis(state, text, utterance_id)
+    synth_started = time.monotonic()
+    audio = asyncio.run(
+        tts.synthesize(_emphasis_to_speech_tags(text), voice, language, speed)
+    )
+    state.set_latency("tts", (time.monotonic() - synth_started) * 1000)
+    _audio_cache.put(_cache_key(source_id, text, voice, language, speed), audio.audio)
+    return audio
+
+
+def _play_prepared(
+    state: ListenerState,
+    text: str,
+    agent: str | None,
+    utterance_id: int,
+    source_id: int,
+    synth_future: Future,
 ) -> str:
-    """Synthesize `text` and play it. Runs on the single playback worker."""
-    resolved_voice, resolved_language, resolved_speed = resolve_options(state, agent)
+    """Playback stage: wait our turn on the speaker, then play.
+
+    Runs on the single playback worker — one voice at a time; fresh speech
+    plays in submit order, replays take the fast lane (see _SerialWorker).
+    """
+    try:
+        prepared = synth_future.result()
+    except Exception as error:
+        _log(f"[speak] error: {error}")
+        state.add_event("speak_error", str(error)[:200])
+        state.update_utterance(utterance_id, status="error")
+        raise
     if state.voice_muted:
         # Speaker muted (user away / wants quiet): park the message as
-        # UNHEARD — no synthesis (deferred = costs nothing until played),
-        # and return at once so agents' blocking speak never hangs on it.
+        # UNHEARD and return at once so agents' blocking speak never
+        # hangs on it. Audio prefetched before the mute landed is
+        # already cached — catching up on this card later is free.
         _log(f"[speak] unheard (voice muted): „{text[:60]}”")
         state.add_event("speak_unheard", f"„{text}”")
         state.update_utterance(utterance_id, status="unheard — voice muted")
-        return resolved_voice
+        return prepared.voice
     _hold_for_user_turn(state, utterance_id)
 
     # The event log keeps the voice (diagnostics); the card does NOT — a
     # replay speaks with the CURRENT voice, so a voice tag on the bubble
     # would go stale the moment the user picks another one.
-    state.add_event("speak", f"[{resolved_voice}] „{text}”")
-    cost = pricing.tts_cost_usd(len(text))
-    state.add_cost("claude", cost)
-    state.add_usage("tts_chars", len(text))
-    state.update_utterance(utterance_id, status="synthesizing (Grok TTS)…", cost_usd=cost)
-
-    speech_text = _emphasis_to_speech_tags(text)
-    _log(f"[speak] playing [{resolved_voice}] ({len(text)} chars) „{text[:60]}”")
+    state.add_event("speak", f"[{prepared.voice}] „{text}”")
+    _log(f"[speak] playing [{prepared.voice}] ({len(text)} chars) „{text[:60]}”")
     playing_since = time.monotonic()
-    # Claim the card BEFORE synthesis: the UI's button must flip to STOP as
-    # soon as this playback is committed, not seconds later when audio starts.
+    # Claim the card the moment its playback is committed: the UI's
+    # button must flip to STOP now, not when audio actually starts.
     state.set_playing_utterance_id(source_id)
     # Mute the listener while we play, or the mic transcribes our own
     # speech — EXCEPT tab-in + tab-out: the browser's echo cancellation
@@ -204,23 +407,30 @@ def _render_and_play(
     aec_covers_echo = (
         state.output_device == "browser" and state.input_device == "browser"
     )
-    if not aec_covers_echo:
-        state.set_paused(True)
-    state.set_claude_speaking(True, agent)
     try:
-        asyncio.run(
-            _synthesize_and_play(
-                state, speech_text, resolved_voice, resolved_language,
-                resolved_speed, utterance_id,
+        audio = prepared.audio
+        if audio is None and not prepared.stream:
+            # The synth stage skipped this one (voice was muted then)
+            # but it is audible now — render at our turn, exactly like
+            # the pre-pipeline flow did.
+            audio = _synthesize_now(
+                state, text, prepared.voice, prepared.language, prepared.speed,
+                utterance_id, source_id,
             )
-        )
+        if not aec_covers_echo:
+            state.set_paused(True)
+        state.set_claude_speaking(True, agent)
+        if prepared.stream:
+            asyncio.run(_stream_and_play(state, text, prepared, utterance_id, source_id))
+        else:
+            asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
         if not aec_covers_echo:  # nothing was muted — no echo tail to wait out
             time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
     except NoAudioSink as error:
         _log(f"[speak] parked unheard — no audio sink ({error})")
         state.add_event("speak_unheard", "no browser tab, no speakers — parked")
         state.update_utterance(utterance_id, status="unheard — no browser tab")
-        return resolved_voice
+        return prepared.voice
     except Exception as error:
         _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
@@ -233,67 +443,83 @@ def _render_and_play(
             state.set_paused(False)
     played_seconds = time.monotonic() - playing_since
     _log(f"[speak] done in {played_seconds:.1f}s")
-    state.add_event("speak_done", f"głos '{resolved_voice}'")
+    state.add_event("speak_done", f"głos '{prepared.voice}'")
     state.update_utterance(
         utterance_id, status="played", duration_s=round(played_seconds, 1)
     )
-    return resolved_voice
+    return prepared.voice
 
 
-async def _synthesize_and_play(
+async def _stream_and_play(
     state: ListenerState,
-    speech_text: str,
-    voice: str,
-    language: str,
-    speed: float,
+    text: str,
+    prepared: _PreparedSpeech,
+    utterance_id: int,
+    source_id: int,
+) -> None:
+    """Live TTS: play audio as Grok generates it — and keep the bytes.
+
+    A finished stream is a complete clip, so replays stay free in live
+    mode too; a stream that errors out caches nothing (partial audio must
+    never be replayed as the full message).
+    """
+    _charge_synthesis(state, text, utterance_id)
+    detail = "streaming from Grok TTS"
+    state.add_event("speak_audio", detail)
+    state.update_utterance(
+        utterance_id, status="playing through speakers…", detail=detail
+    )
+    chunks = bytearray()
+    await tts_stream.speak_streaming(
+        _emphasis_to_speech_tags(text),
+        prepared.voice,
+        prepared.language,
+        prepared.speed,
+        on_first_audio=lambda seconds: state.set_latency("tts", seconds * 1000),
+        on_audio_chunk=chunks.extend,
+    )
+    _audio_cache.put(
+        _cache_key(source_id, text, prepared.voice, prepared.language, prepared.speed),
+        bytes(chunks),
+    )
+
+
+async def _play_audio(
+    state: ListenerState,
+    audio: tts.SynthesizedAudio,
+    cached: bool,
     utterance_id: int,
 ) -> None:
-    if _tts_streaming(state):
-        detail = "streaming from Grok TTS"
-        state.add_event("speak_audio", detail)
+    origin = "cache — no re-synthesis" if cached else "Grok TTS"
+    detail = f"{len(audio.audio) / 1024:.0f} kB MP3 from {origin}"
+    if state.output_device == "browser":
+        live_bridge = tab_audio.bridge()
+        state.add_event("speak_audio", detail + " → browser tab")
         state.update_utterance(
-            utterance_id, status="playing through speakers…", detail=detail
+            utterance_id, status="playing through speakers…",
+            detail="playing in the browser tab",
         )
-        await tts_stream.speak_streaming(
-            speech_text,
-            voice,
-            language,
-            speed,
-            on_first_audio=lambda seconds: state.set_latency("tts", seconds * 1000),
-        )
-    else:
-        synth_started = time.monotonic()
-        audio = await tts.synthesize(speech_text, voice, language, speed)
-        state.set_latency("tts", (time.monotonic() - synth_started) * 1000)
-        detail = f"{len(audio.audio) / 1024:.0f} kB MP3 from Grok TTS"
-        if state.output_device == "browser":
-            live_bridge = tab_audio.bridge()
-            state.add_event("speak_audio", detail + " → browser tab")
-            state.update_utterance(
-                utterance_id, status="playing through speakers…",
-                detail="playing in the browser tab",
-            )
-            if live_bridge is not None and await asyncio.to_thread(
-                live_bridge.play_through_tab, audio.audio, audio.content_type
-            ):
-                return
-            # No live tab took the clip — never lose speech: fall back to
-            # the system speakers and say so in the event log.
-            state.add_event("speak_fallback", "no browser tab — system speakers")
-            state.add_event("speak_audio", detail)
-            state.update_utterance(
-                utterance_id, status="playing through speakers…", detail=detail
-            )
-            try:
-                await playback.play(audio.audio, audio.content_type)
-            except Exception as error:
-                # Hardware-free host (container): there is NOTHING to play
-                # through right now. Park, don't error — the speech is
-                # synthesized and waits for CATCH UP once a tab connects.
-                raise NoAudioSink(str(error)) from error
+        if live_bridge is not None and await asyncio.to_thread(
+            live_bridge.play_through_tab, audio.audio, audio.content_type
+        ):
             return
+        # No live tab took the clip — never lose speech: fall back to
+        # the system speakers and say so in the event log.
+        state.add_event("speak_fallback", "no browser tab — system speakers")
         state.add_event("speak_audio", detail)
         state.update_utterance(
             utterance_id, status="playing through speakers…", detail=detail
         )
-        await playback.play(audio.audio, audio.content_type)
+        try:
+            await playback.play(audio.audio, audio.content_type)
+        except Exception as error:
+            # Hardware-free host (container): there is NOTHING to play
+            # through right now. Park, don't error — the speech is
+            # synthesized and waits for CATCH UP once a tab connects.
+            raise NoAudioSink(str(error)) from error
+        return
+    state.add_event("speak_audio", detail)
+    state.update_utterance(
+        utterance_id, status="playing through speakers…", detail=detail
+    )
+    await playback.play(audio.audio, audio.content_type)

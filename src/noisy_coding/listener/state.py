@@ -353,7 +353,8 @@ class ListenerState:
                 if role == "user" and ("recording" in status or "transcribing" in status):
                     utterance["status"] = "dropped — daemon restart"
                 if role == "claude" and any(
-                    k in status for k in ("queued", "synthesizing", "playing", "waiting")
+                    k in status
+                    for k in ("queued", "synthesizing", "ready", "playing", "waiting")
                 ):
                     utterance["status"] = "unheard — daemon restarted"
                 self._utterances.append(utterance)
