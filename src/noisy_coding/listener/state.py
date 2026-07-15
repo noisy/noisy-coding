@@ -369,7 +369,12 @@ class ListenerState:
                 utterance = dict(item)
                 status = str(utterance.get("status", "")).lower()
                 role = utterance.get("role")
-                if role == "user" and ("recording" in status or "transcribing" in status):
+                if role == "user" and any(
+                    k in status for k in ("recording", "transcribing", "ready")
+                ):
+                    # "ready" too: the transcript queue is in-memory, so an
+                    # awaiting-pickup card can never be delivered by the new
+                    # process — without this it shows AWAITING CLAUDE forever.
                     utterance["status"] = "dropped — daemon restart"
                 if role == "claude" and any(
                     k in status
