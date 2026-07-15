@@ -63,9 +63,11 @@ export function setVoiceMuted(muted: boolean): Promise<void> {
 /** One xAI call site's live verdict — rendered separately from the rest,
  * so a flaky voice endpoint can't masquerade as a bad key. */
 export interface EndpointCheck {
-  ok: boolean;
+  ok?: boolean;
   ms?: number;
   detail?: string;
+  /** Still running — the daemon reports verdicts as they land. */
+  pending?: boolean;
 }
 export type DiagnosticChecks = Record<string, EndpointCheck>;
 

@@ -198,7 +198,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if not credentials.api_key():
                     self._respond({"error": "no API key configured"}, status=400)
                 else:
-                    self._respond({"checks": diagnostics.run_checks_sync()})
+                    self._respond(
+                        {"checks": diagnostics.run_checks_sync(state.set_diagnostic_checks)}
+                    )
             elif url.path == "/utterances":
                 agent = parse_qs(url.query).get("agent", [None])[0]
                 self._respond({"utterances": state.utterances(agent)})
@@ -255,6 +257,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "tab_audio": state.tab_audio_alive,
                         "activity": state.activity,
                         "language": state.language,
+                        "diagnostic_checks": state.diagnostic_checks,
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
                         "active_agent": state.active_agent,
@@ -435,7 +438,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     # (per-check verdicts tell the user exactly that).
                     previous_key = credentials.api_key()
                     credentials.save_api_key(key)
-                    checks = diagnostics.run_checks_sync()
+                    checks = diagnostics.run_checks_sync(state.set_diagnostic_checks)
                     if not checks["api_key"]["ok"]:
                         if previous_key:
                             credentials.save_api_key(previous_key)
@@ -459,6 +462,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     if failed:
                         state.add_event(
                             "credentials_check", "failing: " + ", ".join(failed)
+                        )
+                    else:
+                        # Spoken confirmation doubles as the ultimate TTS
+                        # proof: hearing it means the whole voice path works.
+                        speech.submit(
+                            state,
+                            "New xAI key accepted — every voice check passed. "
+                            "You are hearing the proof right now.",
                         )
                     self._respond(
                         {

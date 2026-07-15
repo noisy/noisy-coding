@@ -112,28 +112,43 @@ CHECKS: dict[str, Callable[[], Awaitable[None]]] = {
 }
 
 
-async def run_checks() -> dict[str, dict]:
+ProgressCallback = Callable[[dict[str, dict]], None]
+
+
+async def run_checks(on_progress: ProgressCallback | None = None) -> dict[str, dict]:
     """Run every check concurrently; each result stands alone.
 
     A failure in one must never be read as "the key is bad" when others
     pass — the caller renders them separately, verbatim.
+
+    `on_progress` fires with the full (partial) result map: once up front
+    with every check pending, then after each completion — so a UI polling
+    it can show the verdicts landing one by one, as they really do.
     """
     checks = dict(CHECKS)
     if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
         checks["billing"] = _check_billing
 
-    async def run_one(check: Callable[[], Awaitable[None]]) -> dict:
+    results: dict[str, dict] = {name: {"pending": True} for name in checks}
+
+    def report() -> None:
+        if on_progress:
+            on_progress({name: dict(result) for name, result in results.items()})
+
+    async def run_one(name: str, check: Callable[[], Awaitable[None]]) -> None:
         started = time.monotonic()
         try:
             await asyncio.wait_for(check(), timeout=CHECK_TIMEOUT_SECONDS)
-            return {"ok": True, "ms": int((time.monotonic() - started) * 1000)}
+            results[name] = {"ok": True, "ms": int((time.monotonic() - started) * 1000)}
         except Exception as error:
-            return {"ok": False, "detail": str(error)[:300]}
+            results[name] = {"ok": False, "detail": str(error)[:300]}
+        report()
 
-    results = await asyncio.gather(*(run_one(check) for check in checks.values()))
-    return dict(zip(checks.keys(), results))
+    report()
+    await asyncio.gather(*(run_one(name, check) for name, check in checks.items()))
+    return results
 
 
-def run_checks_sync() -> dict[str, dict]:
+def run_checks_sync(on_progress: ProgressCallback | None = None) -> dict[str, dict]:
     """run_checks for synchronous callers (the HTTP handler threads)."""
-    return asyncio.run(run_checks())
+    return asyncio.run(run_checks(on_progress))

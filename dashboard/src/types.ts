@@ -30,6 +30,8 @@ export interface DaemonStatus {
   output_device: "system" | "browser";
   /** A browser tab currently holds the audio lease (WS bridge). */
   tab_audio: boolean;
+  /** Live per-endpoint xAI check results — partial while checks run. */
+  diagnostic_checks?: Record<string, { ok?: boolean; ms?: number; detail?: string; pending?: boolean }> | null;
   activity: Record<string, { text: string; at: number }>;
   language: string;
   agents: Record<string, number>;

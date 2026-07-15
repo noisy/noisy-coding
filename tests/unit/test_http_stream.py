@@ -108,7 +108,9 @@ def test_diagnose_returns_the_per_check_breakdown(monkeypatch):
         "tts_stream": {"ok": False, "detail": "HTTP 400 Incorrect API key"},
     }
     monkeypatch.setattr(http_api_module.credentials, "api_key", lambda: "xai-secret")
-    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    monkeypatch.setattr(
+        http_api_module.diagnostics, "run_checks_sync", lambda *_a, **_k: checks
+    )
     state = ListenerState()
     server = start_http_api(state, 0)
     port = server.server_address[1]
@@ -155,12 +157,19 @@ def _fake_key_store(monkeypatch, initial: str = ""):
     return store
 
 
-def test_saving_a_verified_key_reports_the_checks(monkeypatch):
+def test_saving_a_verified_key_reports_the_checks_and_speaks(monkeypatch):
     from noisy_coding.listener import http_api as http_api_module
 
     checks = {"api_key": {"ok": True, "ms": 90}}
     store = _fake_key_store(monkeypatch)
-    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    spoken = []
+    monkeypatch.setattr(
+        http_api_module.diagnostics, "run_checks_sync", lambda *_a, **_k: checks
+    )
+    monkeypatch.setattr(
+        http_api_module.speech, "submit",
+        lambda _state, text, **_k: spoken.append(text),
+    )
     state = ListenerState()
     server = start_http_api(state, 0)
     try:
@@ -172,6 +181,7 @@ def test_saving_a_verified_key_reports_the_checks(monkeypatch):
     assert store["key"] == "xai-new-key"
     assert payload["api_key_set"] is True
     assert payload["checks"] == checks
+    assert spoken and "accepted" in spoken[0]  # audible proof the voice path works
 
 
 def test_a_key_failing_verification_is_never_accepted(monkeypatch):
@@ -179,7 +189,9 @@ def test_a_key_failing_verification_is_never_accepted(monkeypatch):
 
     checks = {"api_key": {"ok": False, "detail": "HTTP 401: invalid key"}}
     store = _fake_key_store(monkeypatch, initial="xai-old-working")
-    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    monkeypatch.setattr(
+        http_api_module.diagnostics, "run_checks_sync", lambda *_a, **_k: checks
+    )
     state = ListenerState()
     server = start_http_api(state, 0)
     try:
@@ -198,7 +210,9 @@ def test_a_rejected_first_key_leaves_the_daemon_unconfigured(monkeypatch):
 
     checks = {"api_key": {"ok": False, "detail": "HTTP 401: invalid key"}}
     store = _fake_key_store(monkeypatch, initial="")
-    monkeypatch.setattr(http_api_module.diagnostics, "run_checks_sync", lambda: checks)
+    monkeypatch.setattr(
+        http_api_module.diagnostics, "run_checks_sync", lambda *_a, **_k: checks
+    )
     state = ListenerState()
     server = start_http_api(state, 0)
     try:

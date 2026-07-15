@@ -81,6 +81,7 @@ class ListenerState:
         self._tts_mode = "live"
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
         self._mic_sensitivity = DEFAULT_MIC_SENSITIVITY
+        self._diagnostic_checks: dict | None = None  # live xAI check results
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
         self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
@@ -158,6 +159,23 @@ class ListenerState:
                 MIN_END_SILENCE_MS, min(MAX_END_SILENCE_MS, int(value))
             )
             return self._end_silence_ms
+
+    def set_diagnostic_checks(self, checks: dict | None) -> None:
+        """Live per-endpoint xAI check results (partial while running) —
+        the dashboard polls these to show verdicts landing one by one."""
+        with self._lock:
+            self._diagnostic_checks = (
+                {name: dict(result) for name, result in checks.items()}
+                if checks is not None
+                else None
+            )
+
+    @property
+    def diagnostic_checks(self) -> dict | None:
+        with self._lock:
+            if self._diagnostic_checks is None:
+                return None
+            return {name: dict(r) for name, r in self._diagnostic_checks.items()}
 
     @property
     def mic_sensitivity(self) -> int:

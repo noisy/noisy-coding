@@ -23,7 +23,7 @@ const CHECK_LABELS: Record<string, string> = {
 const keyFineServiceDegraded = computed(() => {
   if (!props.checks.api_key?.ok) return false;
   return ["tts_batch", "tts_stream", "stt_batch", "stt_stream"].some(
-    (name) => props.checks[name] && !props.checks[name].ok,
+    (name) => props.checks[name]?.ok === false, // completed failures only
   );
 });
 </script>
@@ -31,9 +31,14 @@ const keyFineServiceDegraded = computed(() => {
 <template>
   <div class="checkgrid">
     <div v-for="(check, name) in checks" :key="name" class="checkrow">
-      <span class="check-mark" :class="check.ok ? 'pass' : 'fail'">{{ check.ok ? "✓" : "✗" }}</span>
+      <span
+        class="check-mark"
+        :class="check.pending ? 'pending' : check.ok ? 'pass' : 'fail'"
+      >{{ check.pending ? "◌" : check.ok ? "✓" : "✗" }}</span>
       <span class="check-label">{{ CHECK_LABELS[name] ?? String(name).toUpperCase() }}</span>
-      <span class="check-detail">{{ check.ok ? (check.ms != null ? `${check.ms} ms` : "") : check.detail }}</span>
+      <span class="check-detail">{{
+        check.pending ? "CHECKING…" : check.ok ? (check.ms != null ? `${check.ms} ms` : "") : check.detail
+      }}</span>
     </div>
     <p v-if="keyFineServiceDegraded" class="check-note">
       Your API key is valid, but xAI's voice service is currently
@@ -50,6 +55,8 @@ const keyFineServiceDegraded = computed(() => {
 .check-mark { width: 14px; flex: none; font-size: 11px; }
 .check-mark.pass { color: var(--green); }
 .check-mark.fail { color: var(--red, #ff5f56); }
+.check-mark.pending { color: var(--cyan-dim); animation: checkpulse 1s ease-in-out infinite; }
+@keyframes checkpulse { 50% { opacity: 0.3; } }
 .check-label { width: 190px; flex: none; font-size: 10px; letter-spacing: 0.14em; color: var(--ink); }
 .check-detail { flex: 1; font-size: 9.5px; color: var(--muted); overflow-wrap: anywhere; }
 .check-note {

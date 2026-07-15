@@ -198,7 +198,13 @@ onUnmounted(() => {
 // the SETTINGS view (which swaps in for the comm log).
 const keyInput = ref("");
 const showSettings = ref(false);
-const unconfigured = computed(() => status.value != null && !status.value.api_key_set);
+// The gate must not blink away mid-verification: the daemon stores the
+// candidate key while it live-checks it, so api_key_set flips true for a
+// few seconds even for a key that is about to be rejected.
+const firstContactVerifying = ref(false);
+const unconfigured = computed(
+  () => status.value != null && (!status.value.api_key_set || firstContactVerifying.value),
+);
 // Per-endpoint xAI checks: run automatically on key save, or on demand.
 // Kept here (not in SettingsView) so the panel stays a dumb form — and
 // shared with the first-contact gate, which accepts a key ONLY once the
@@ -225,8 +231,18 @@ const saveKey = async (key: string): Promise<boolean> => {
 async function submitKey() {
   const key = keyInput.value.trim();
   if (key.length < 8) return;
-  if (await saveKey(key)) keyInput.value = "";
+  firstContactVerifying.value = true;
+  try {
+    if (await saveKey(key)) keyInput.value = "";
+  } finally {
+    firstContactVerifying.value = false;
+  }
 }
+// While checks run, the daemon reports verdicts as they land — show those;
+// once the save resolves, its authoritative result takes over.
+const visibleChecks = computed(() =>
+  keyChecks.value ?? (checksRunning.value ? status.value?.diagnostic_checks ?? null : null),
+);
 const runChecks = async () => {
   keyChecks.value = null;
   checksRunning.value = true;
@@ -382,12 +398,9 @@ const LANGUAGES: Record<string, string> = {
       </div>
       <!-- Verify-then-commit: the key is accepted only after the daemon
            confirmed it against the live service — a dead key must fail
-           HERE, not utterances later. -->
-      <p v-if="checksRunning" class="setup-text verifying">
-        Running live checks against xAI — key, speech synthesis, transcription…
-      </p>
+           HERE, not utterances later. Verdicts land row by row, live. -->
       <p v-if="keyError" class="setup-error">✗ {{ keyError.toUpperCase() }}</p>
-      <DiagnosticChecklist v-if="keyChecks" :checks="keyChecks" class="setup-checks" />
+      <DiagnosticChecklist v-if="visibleChecks" :checks="visibleChecks" class="setup-checks" />
     </div>
   </div>
 
@@ -513,7 +526,7 @@ const LANGUAGES: Record<string, string> = {
             :selected-device="status?.input_device ?? ''"
             :output-device="status?.output_device ?? 'system'"
             :cue-prefs="cuePrefs"
-            :checks="keyChecks"
+            :checks="visibleChecks"
             :checks-running="checksRunning"
             @save="saveKey"
             @pick-device="pickMic"
@@ -843,7 +856,6 @@ footer { flex: none; }
 }
 .setup-title { font-size: 13px; letter-spacing: 0.3em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); margin-bottom: 14px; }
 .setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 14px; }
-.setup-text.verifying { color: var(--cyan-dim); margin: 12px 0 0; }
 .setup-error { font-size: 10px; letter-spacing: 0.14em; color: var(--red, #ff5f56); margin: 12px 0 0; }
 .setup-checks { margin-top: 12px; }
 .setup-text b { color: var(--cyan); font-weight: 400; }

@@ -52,6 +52,26 @@ def test_hung_check_fails_by_timeout_instead_of_blocking(monkeypatch):
     assert results["stt_stream"]["ok"] is False
 
 
+def test_progress_reports_verdicts_as_they_land(monkeypatch):
+    async def passing():
+        pass
+
+    async def failing():
+        raise RuntimeError("HTTP 503")
+
+    monkeypatch.setattr(diagnostics, "CHECKS", {"a": passing, "b": failing})
+    snapshots = []
+
+    results = diagnostics.run_checks_sync(snapshots.append)
+
+    # First snapshot: everything pending; later ones fill in one by one.
+    assert snapshots[0] == {"a": {"pending": True}, "b": {"pending": True}}
+    assert len(snapshots) == 3  # initial + one per completed check
+    assert snapshots[-1] == results
+    assert results["a"]["ok"] is True
+    assert results["b"]["ok"] is False
+
+
 def test_billing_check_runs_only_when_configured(monkeypatch):
     async def passing():
         pass
