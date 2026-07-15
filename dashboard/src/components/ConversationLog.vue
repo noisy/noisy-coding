@@ -74,7 +74,8 @@ const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
 const everDone = new Set<string>();
 function zoneOf(u: Utterance): "done" | "active" | "pending" {
   if (u.role === "system") return "done";
-  const zone = timelineZone(u.role, u.status);
+  // Daemon speech rides the claude pipeline — same statuses, same zones.
+  const zone = timelineZone(u.role === "user" ? "user" : "claude", u.status);
   const key = `${u.id}:${u.started_at}`;
   if (zone === "done") everDone.add(key);
   else if (everDone.has(key)) return "done";

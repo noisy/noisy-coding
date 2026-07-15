@@ -4,7 +4,7 @@ import type { StatusKind } from "./bubbleStatus";
 withDefaults(
   defineProps<{
     side: "left" | "right";
-    accent: "amber" | "violet";
+    accent: "amber" | "violet" | "cyan";
     who: string;
     text: string;
     statusKind: StatusKind;
@@ -71,6 +71,7 @@ defineEmits<{ replay: []; cancel: [] }>();
 }
 .msg.accent-amber { --accent: var(--amber); --accent-tint: rgba(255, 180, 84, 0.07); }
 .msg.accent-violet { --accent: var(--violet); --accent-tint: rgba(185, 140, 255, 0.07); }
+.msg.accent-cyan { --accent: var(--cyan); --accent-tint: rgba(63, 216, 255, 0.07); }
 /* A left-anchored bubble grows rightward as live transcription appends
    text — the natural reading direction. The accent edge sits on the
    outer side either way. */
@@ -90,6 +91,7 @@ defineEmits<{ replay: []; cancel: [] }>();
 .who { font-size: 10px; letter-spacing: 0.26em; font-weight: 700; }
 .accent-amber .who { color: var(--amber); text-shadow: var(--glow-amber); }
 .accent-violet .who { color: var(--violet); text-shadow: 0 0 8px rgba(185, 140, 255, 0.5); }
+.accent-cyan .who { color: var(--cyan); text-shadow: 0 0 8px rgba(63, 216, 255, 0.5); }
 .st {
   font-size: 9px;
   letter-spacing: 0.16em;

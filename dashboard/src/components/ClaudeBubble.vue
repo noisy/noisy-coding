@@ -13,6 +13,9 @@ defineEmits<{ replay: [utterance: Utterance] }>();
 
 const chip = computed(() => statusChip(props.utterance.status, "claude"));
 const pending = computed(() => !props.utterance.text);
+// The daemon speaks for itself sometimes (setup confirmations) — same
+// pipeline, but the bubble must never attribute those words to Claude.
+const fromDaemon = computed(() => props.utterance.role === "daemon");
 // Replay = re-entering synthesis; the machine knows which cards allow that
 // (played or parked UNHEARD — mid-synthesis re-queues on its own, an
 // errored card has nothing worth repeating).
@@ -24,8 +27,8 @@ const replayable = computed(
 <template>
   <Bubble
     side="right"
-    accent="violet"
-    who="CLAUDE"
+    :accent="fromDaemon ? 'cyan' : 'violet'"
+    :who="fromDaemon ? 'NOISY-CODING' : 'CLAUDE'"
     :text="utterance.text || 'rendering voice response…'"
     :status-kind="chip.kind"
     :status-label="chip.label"

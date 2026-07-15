@@ -38,6 +38,17 @@ describe("ConversationLog", () => {
     expect(bubbles[1].classes()).toContain("accent-amber");
   });
 
+  it("never attributes the daemon's own speech to Claude", () => {
+    const daemonCard = { ...utterance(1, "claude"), role: "daemon" as const };
+    const wrapper = mount(ConversationLog, {
+      props: { utterances: [daemonCard, utterance(2, "claude")] },
+    });
+
+    const whos = wrapper.findAll(".who").map((n) => n.text());
+    expect(whos).toEqual(["NOISY-CODING", "CLAUDE"]);
+    expect(wrapper.findAll(".msg")[0].classes()).toContain("accent-cyan");
+  });
+
   it("renders system rows as inline annotations, not bubbles", () => {
     const mic = {
       ...utterance(2, "user"), role: "system" as const,

@@ -30,6 +30,7 @@ def test_load_coerces_in_flight_statuses_to_terminal_ones():
             # card would show AWAITING CLAUDE forever.
             {"id": 4, "role": "user", "status": "ready — awaiting pickup", "text": "lost"},
             {"id": 5, "role": "claude", "status": "ready — waiting for the speaker", "text": "y"},
+            {"id": 6, "role": "daemon", "status": "queued", "text": "setup words"},
         ]
     )
 
@@ -39,6 +40,7 @@ def test_load_coerces_in_flight_statuses_to_terminal_ones():
     assert statuses[3] == "delivered to Claude"
     assert statuses[4] == "dropped — daemon restart"
     assert statuses[5] == "unheard — daemon restarted"
+    assert statuses[6] == "unheard — daemon restarted"  # daemon speech too
 
 
 def test_load_tolerates_a_missing_file(tmp_path, monkeypatch):

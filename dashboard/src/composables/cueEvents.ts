@@ -45,8 +45,9 @@ export function detectCues(
       if (before && !before.status.includes("delivered") && status.includes("delivered")) {
         cues.push("delivered");
       }
-    } else if (u.role === "claude" && !before) {
+    } else if ((u.role === "claude" || u.role === "daemon") && !before) {
       // Skip history backfill: only cue cards that appear while running.
+      // Daemon speech (setup confirmations) is an arrival like any other.
       if (previous.size > 0) cues.push(voiceMuted ? "unheard" : "claude");
     }
   }

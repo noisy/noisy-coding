@@ -116,6 +116,18 @@ def test_submit_without_card_plays_but_leaves_no_utterance(monkeypatch, batch_pi
     assert state.utterances() == []  # replay must not duplicate the bubble
 
 
+def test_daemon_speech_is_never_attributed_to_claude(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [])
+
+    speech.submit(state, "setup confirmation", role="daemon").result(timeout=5)
+
+    card = state.utterances()[0]
+    assert card["role"] == "daemon"
+    assert card["status"] == "played"  # same pipeline, different byline
+
+
 def test_voice_muted_parks_speech_as_unheard(monkeypatch, batch_pipeline):
     state = ListenerState()
     state.set_voice_muted(True)

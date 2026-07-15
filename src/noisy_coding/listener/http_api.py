@@ -483,6 +483,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                             state,
                             "New xAI key accepted — every voice check passed, "
                             "and you are hearing the proof right now. " + next_step,
+                            role="daemon",  # noisy-coding speaks for itself here
                         )
                     self._respond(
                         {

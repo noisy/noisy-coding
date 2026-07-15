@@ -394,7 +394,7 @@ class ListenerState:
                     # awaiting-pickup card can never be delivered by the new
                     # process — without this it shows AWAITING CLAUDE forever.
                     utterance["status"] = "dropped — daemon restart"
-                if role == "claude" and any(
+                if role in ("claude", "daemon") and any(
                     k in status
                     for k in ("queued", "synthesizing", "ready", "playing", "waiting")
                 ):

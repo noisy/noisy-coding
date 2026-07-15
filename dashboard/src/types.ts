@@ -41,7 +41,9 @@ export interface DaemonStatus {
 
 export interface Utterance {
   id: number;
-  role: "user" | "claude" | "system";
+  /** daemon = noisy-coding speaking for itself (setup confirmations …) —
+   * same voice pipeline as claude cards, but never attributed to Claude. */
+  role: "user" | "claude" | "system" | "daemon";
   status: string;
   text: string;
   detail: string;

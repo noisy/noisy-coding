@@ -162,6 +162,7 @@ def submit(
     agent: str | None = None,
     card: bool = True,
     source_id: int = 0,
+    role: str = "claude",
 ) -> Future | None:
     """Queue an utterance for playback; resolves to the voice actually used.
 
@@ -176,6 +177,10 @@ def submit(
     card=False plays without a card — replaying an old bubble shouldn't
     duplicate it in the log (utterance_id 0 makes every update a no-op).
     Returns None when this source is already queued/playing (deduped).
+
+    role="daemon" is for noisy-coding speaking for ITSELF (setup
+    confirmations) — same pipeline, but the card is never attributed to
+    Claude. Internal call sites only; /speak never exposes it.
     """
     if source_id:
         with _pending_lock:
@@ -187,7 +192,7 @@ def submit(
     # status walks the normal chain (synthesizing → playing → played), so
     # an UNHEARD card becomes played once caught up on.
     utterance_id = (
-        state.create_utterance("claude", "queued", text=text, agent=agent)
+        state.create_utterance(role, "queued", text=text, agent=agent)
         if card
         else source_id
     )
