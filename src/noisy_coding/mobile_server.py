@@ -57,6 +57,12 @@ def _daemon_post(path: str, body: bytes) -> bytes:
 
 
 class Handler(BaseHTTPRequestHandler):
+    # Unbuffered rfile: /bridge splices the raw socket after the handshake,
+    # and a buffered reader would swallow WS frames that arrive right
+    # behind the Upgrade request (the client's "hello" — losing it costs
+    # the tab its audio lease).
+    rbufsize = 0
+
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
         if path == "/bridge":
