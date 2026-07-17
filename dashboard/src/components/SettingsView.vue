@@ -13,12 +13,14 @@ withDefaults(
     devices?: InputDevice[];
     selectedDevice?: string;
     outputDevice?: string;
+    voicePeAvailable?: boolean;
     cuePrefs?: CuePrefs | null;
     checks?: DiagnosticChecks | null;
     checksRunning?: boolean;
   }>(),
   {
-    devices: () => [], selectedDevice: "", outputDevice: "system", cuePrefs: null,
+    devices: () => [], selectedDevice: "", outputDevice: "system",
+    voicePeAvailable: false, cuePrefs: null,
     checks: null, checksRunning: false,
   },
 );
@@ -84,13 +86,16 @@ function submit() {
         >
           <option value="system">SYSTEM SPEAKERS</option>
           <option value="browser">THIS BROWSER TAB</option>
+          <option v-if="voicePeAvailable" value="voice-pe">VOICE PE SPEAKER</option>
         </select>
       </div>
       <div class="text">
         <p>
           Where Claude's voice plays. THIS BROWSER TAB routes speech through
           this page — pair it with the tab microphone and the browser's echo
-          cancellation lets you interrupt Claude mid-sentence.
+          cancellation lets you interrupt Claude mid-sentence. VOICE PE
+          SPEAKER plays on the Voice PE device (falls back to the system
+          speakers when it is unreachable).
         </p>
       </div>
     </section>

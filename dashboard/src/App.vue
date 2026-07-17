@@ -336,7 +336,9 @@ async function pickMic(name: string) {
 }
 async function pickOutput(value: string) {
   if (value !== "browser") {
-    await setSettings({ output_device: "system" }).catch(swallow);
+    // "system" or "voice-pe" — pass the pick through as-is.
+    const output = value === "voice-pe" ? "voice-pe" : "system";
+    await setSettings({ output_device: output }).catch(swallow);
     dropTabUnlessNeeded();
     return;
   }
@@ -553,6 +555,7 @@ const LANGUAGES: Record<string, string> = {
             :devices="devices"
             :selected-device="status?.input_device ?? ''"
             :output-device="status?.output_device ?? 'system'"
+            :voice-pe-available="!!status?.voice_pe_host"
             :cue-prefs="cuePrefs"
             :checks="visibleChecks"
             :checks-running="checksRunning"

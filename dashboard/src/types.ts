@@ -26,10 +26,14 @@ export interface DaemonStatus {
   detection_mode: "auto" | "ptt";
   ptt_held: boolean;
   input_device: string;
-  /** Where Claude's voice plays: system speakers or the browser tab. */
-  output_device: "system" | "browser";
+  /** Where Claude's voice plays: system speakers, the browser tab, or the Voice PE speaker. */
+  output_device: "system" | "browser" | "voice-pe";
   /** A browser tab currently holds the audio lease (WS bridge). */
   tab_audio: boolean;
+  /** The Voice PE bridge is connected to the speaker right now. */
+  voice_pe?: boolean;
+  /** Configured Voice PE host — empty/absent means no bridge. */
+  voice_pe_host?: string;
   /** Live per-endpoint xAI check results — partial while checks run. */
   diagnostic_checks?: Record<string, { ok?: boolean; ms?: number; detail?: string; pending?: boolean }> | null;
   activity: Record<string, { text: string; at: number }>;
@@ -74,7 +78,7 @@ export interface SettingsPatch {
   smart_turn_mode?: "soft" | "hard";
   detection_mode?: "auto" | "ptt";
   input_device?: string;
-  output_device?: "system" | "browser";
+  output_device?: "system" | "browser" | "voice-pe";
   language?: string;
 }
 
