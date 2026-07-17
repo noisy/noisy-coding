@@ -28,7 +28,7 @@ def _install_fake_synth(monkeypatch, calls, delay_s=0.0):
 
 
 def _install_fake_play(monkeypatch, intervals, delay_s=0.0):
-    async def fake_play(_state, _audio, _cached, _utterance_id):
+    async def fake_play(_state, _audio, _cached, _utterance_id, _follow_up=False):
         started = time.monotonic()
         if delay_s:
             await asyncio.sleep(delay_s)
@@ -207,7 +207,7 @@ def test_replay_clicks_jump_queued_speech_but_keep_click_order(monkeypatch, batc
     state = ListenerState()
     played_ids = []
 
-    async def fake_play(_state, _audio, _cached, utterance_id):
+    async def fake_play(_state, _audio, _cached, utterance_id, _follow_up=False):
         played_ids.append(utterance_id)
         await asyncio.sleep(0.2)
 
@@ -382,7 +382,7 @@ def test_render_waits_for_the_user_to_finish_before_playing(monkeypatch, batch_p
     state.set_recording(True)
     play_started_at = []
 
-    async def fake_play(_state, _audio, _cached, _utterance_id):
+    async def fake_play(_state, _audio, _cached, _utterance_id, _follow_up=False):
         play_started_at.append(time.monotonic())
 
     _install_fake_synth(monkeypatch, [])

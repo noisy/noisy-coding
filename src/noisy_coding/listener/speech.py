@@ -163,6 +163,7 @@ def submit(
     card: bool = True,
     source_id: int = 0,
     role: str = "claude",
+    follow_up: bool = False,
 ) -> Future | None:
     """Queue an utterance for playback; resolves to the voice actually used.
 
@@ -210,6 +211,7 @@ def submit(
     )
     future = _playback_worker.submit(
         seq, _play_prepared, state, text, agent, utterance_id, canonical_id, synth_future,
+        follow_up,
         jump_queue=jump_queue,
     )
     if source_id:
@@ -431,6 +433,7 @@ def _play_prepared(
     utterance_id: int,
     source_id: int,
     synth_future: Future,
+    follow_up: bool = False,
 ) -> str:
     """Playback stage: wait our turn on the speaker, then play.
 
@@ -487,7 +490,9 @@ def _play_prepared(
         if prepared.stream:
             asyncio.run(_stream_and_play(state, text, prepared, utterance_id, source_id))
         else:
-            asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
+            asyncio.run(
+                _play_audio(state, audio, prepared.cached, utterance_id, follow_up)
+            )
         if not aec_covers_echo:  # nothing was muted — no echo tail to wait out
             time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
     except NoAudioSink as error:
@@ -565,6 +570,7 @@ async def _play_audio(
     audio: tts.SynthesizedAudio,
     cached: bool,
     utterance_id: int,
+    follow_up: bool = False,
 ) -> None:
     origin = "cache — no re-synthesis" if cached else "Grok TTS"
     detail = f"{len(audio.audio) / 1024:.0f} kB MP3 from {origin}"
@@ -576,7 +582,8 @@ async def _play_audio(
             detail="playing on the Voice PE speaker",
         )
         if pe_bridge is not None and await asyncio.to_thread(
-            pe_bridge.play_through_speaker, audio.audio, audio.content_type
+            pe_bridge.play_through_speaker, audio.audio, audio.content_type,
+            follow_up and state.input_device == "voice-pe",
         ):
             return
         # The speaker is unreachable — never lose speech: fall back to

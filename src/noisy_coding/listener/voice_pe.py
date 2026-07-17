@@ -129,16 +129,24 @@ class VoicePEBridge:
     def connected(self) -> bool:
         return self._connected.is_set()
 
-    def play_through_speaker(self, audio: bytes, content_type: str) -> bool:
+    def play_through_speaker(
+        self, audio: bytes, content_type: str, follow_up: bool = False
+    ) -> bool:
         """Play one clip on the speaker; block until the device reports the
         announcement finished. False = not connected / failed — the caller
-        falls back to the system speakers, speech is never lost."""
+        falls back to the system speakers, speech is never lost.
+
+        follow_up=True asks the device to open a listen session right after
+        the clip (no wake word, no button) — a spoken QUESTION hands the
+        user their turn, a fire-and-forget announce does not."""
         if not self.connected:
             return False
         token = self._audio_server.publish(audio, content_type)
         url = f"http://{self._lan_ip()}:{self._audio_server.port}/{token}"
         try:
-            future = asyncio.run_coroutine_threadsafe(self._announce(url), self._loop)
+            future = asyncio.run_coroutine_threadsafe(
+                self._announce(url, follow_up), self._loop
+            )
             return future.result(timeout=ANNOUNCE_TIMEOUT_SECONDS + 10)
         except Exception as error:
             _log(f"[voice-pe] announcement failed: {error}")
@@ -262,9 +270,11 @@ class VoicePEBridge:
 
     # --- playback (output) ---------------------------------------------------------
 
-    async def _announce(self, url: str) -> bool:
+    async def _announce(self, url: str, follow_up: bool) -> bool:
         result = await self._client.send_voice_assistant_announcement_await_response(
-            media_id=url, timeout=ANNOUNCE_TIMEOUT_SECONDS
+            media_id=url,
+            timeout=ANNOUNCE_TIMEOUT_SECONDS,
+            start_conversation=follow_up,
         )
         return bool(getattr(result, "success", True))
 

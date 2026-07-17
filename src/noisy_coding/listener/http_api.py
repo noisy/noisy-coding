@@ -613,12 +613,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 pe_bridge = voice_pe.bridge()
                 if pe_bridge is not None:
                     pe_bridge.stop_playback()
+            # A waiting speak is a conversational turn — on the Voice PE
+            # speaker it hands the mic back (listen session, no wake word).
+            # announce (wait=false) and replays never open the mic.
+            follow_up = bool(body.get("follow_up", body.get("wait", True))) and not source_id
             future = speech.submit(
                 state,
                 text,
                 agent=str(body["agent"]) if body.get("agent") else None,
                 card=bool(body.get("card", True)),
                 source_id=source_id,
+                follow_up=follow_up,
             )
             if future is None:
                 self._respond({"skipped": True})  # dedup raced us — same answer
