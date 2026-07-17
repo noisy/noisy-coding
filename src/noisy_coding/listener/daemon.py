@@ -29,6 +29,7 @@ from noisy_coding.listener.http_api import (
 )
 from noisy_coding.listener.state import ListenerState
 from noisy_coding.listener.tab_audio import start_bridge
+from noisy_coding.listener import voice_pe
 from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
 
 STT_LANGUAGE_ENV_VAR = "NOISY_CODING_STT_LANGUAGE"
@@ -227,6 +228,10 @@ def _open_input_stream(
         _log("[mic] input = browser tab (WS bridge)")
         state.create_utterance("system", "", text="MIC → THIS BROWSER TAB")
         return None
+    if selected == "voice-pe":
+        _log("[mic] input = Voice PE speaker (wake word gated)")
+        state.create_utterance("system", "", text="MIC → VOICE PE SPEAKER")
+        return None
     options = {"device": selected} if selected else {}
     try:
         input_stream = sd.InputStream(
@@ -304,8 +309,10 @@ def run(config: VadConfig | None = None) -> None:
             state.set_detection_mode(saved["detection_mode"])
         if "input_device" in saved:
             state.set_input_device(str(saved["input_device"]))
-        if saved.get("output_device") in ("system", "browser"):
+        if saved.get("output_device") in ("system", "browser", "voice-pe"):
             state.set_output_device(saved["output_device"])
+        if "voice_pe_host" in saved:
+            state.set_voice_pe_host(str(saved["voice_pe_host"]))
         if "language" in saved:
             state.set_language(saved["language"])
         if saved.get("active_agent"):
@@ -326,6 +333,10 @@ def run(config: VadConfig | None = None) -> None:
     # Browser-tab audio: a WS bridge one port up feeds the SAME frames
     # queue, so downstream (VAD/STT/PTT) can't tell tab from hardware.
     start_bridge(state, frames, config.frame_samples, port)
+    # Voice PE speaker: same trick over the ESPHome API (when configured).
+    if os.environ.get(voice_pe.HOST_ENV_VAR):
+        state.set_voice_pe_host(os.environ[voice_pe.HOST_ENV_VAR])
+    voice_pe.start_bridge(state, frames, config.frame_samples, state.voice_pe_host)
 
     def on_audio(indata: np.ndarray, *_args: object) -> None:
         frames.put(indata[:, 0].copy())
@@ -342,6 +353,13 @@ def run(config: VadConfig | None = None) -> None:
             api_key_present = False
             key_check_at = 0.0
             last_frame_at = time.monotonic()
+
+            def _notify_voice_pe_closed() -> None:
+                """Utterance closed — end the speaker's wake-word session so
+                it stops streaming and returns to idle."""
+                pe = voice_pe.bridge()
+                if pe is not None and state.input_device == "voice-pe":
+                    pe.notify_utterance_closed()
 
             def reopen_input(reason: str, kind: str = "mic") -> None:
                 nonlocal active_input, active_device, segmenter, stream, last_frame_at
@@ -376,6 +394,7 @@ def run(config: VadConfig | None = None) -> None:
                 nonlocal stream
                 utterance = segmenter.flush()
                 state.set_recording(False)
+                _notify_voice_pe_closed()
                 if stream is not None:
                     seconds = (
                         len(utterance) / config.sample_rate
@@ -413,6 +432,16 @@ def run(config: VadConfig | None = None) -> None:
                             _log("[recording] closed — browser tab lost the audio lease")
                             state.add_event("tab_audio_lost", "tab stopped sending mid-utterance")
                             finalize_open_segment()
+                    elif active_device == "voice-pe":
+                        # The speaker streams only inside a wake-word session;
+                        # silence between sessions is normal. A session cut
+                        # mid-utterance (Wi-Fi drop) closes the segment with
+                        # the audio we hold — the bridge owns reconnecting.
+                        pe = voice_pe.bridge()
+                        if segmenter.is_recording and (pe is None or not pe.connected):
+                            _log("[recording] closed — Voice PE connection lost")
+                            state.add_event("voice_pe_lost", "speaker vanished mid-utterance")
+                            finalize_open_segment()
                     else:
                         reopen_input("no audio frames (stream stalled)", kind="mic_error")
                     continue
@@ -423,8 +452,8 @@ def run(config: VadConfig | None = None) -> None:
                     reopen_input("microphone switched")
                     continue  # this frame may still be the old stream's
                 # Hardware only: a long gap means stale PortAudio buffers
-                # (sleep/wake). A tab hiccup has no hardware to reanimate.
-                if active_device != "browser" and frame_gap > AUDIO_GAP_REOPEN_SECONDS:
+                # (sleep/wake). A tab or speaker hiccup has no hardware to reanimate.
+                if active_device not in ("browser", "voice-pe") and frame_gap > AUDIO_GAP_REOPEN_SECONDS:
                     reopen_input(f"{frame_gap:.0f}s audio gap (sleep/device change?)")
                     continue
                 if now >= key_check_at:
@@ -492,6 +521,7 @@ def run(config: VadConfig | None = None) -> None:
                     )
                     _log(f"[recording] done — {silence_note}")
                     state.add_event("recording_done", silence_note)
+                    _notify_voice_pe_closed()
                     if utterance is None:
                         if stream is not None:
                             # A short clip may still hold real words — let the

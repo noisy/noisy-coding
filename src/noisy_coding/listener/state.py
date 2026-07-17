@@ -58,7 +58,8 @@ class ListenerState:
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
         self._tab_mic = False  # the tab's mic is actually capturing
-        self._output_device = "system"  # where Claude's voice plays: system | browser
+        self._output_device = "system"  # where Claude's voice plays: system | browser | voice-pe
+        self._voice_pe_host = ""  # Voice PE speaker host/IP; "" = no bridge
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
         self._claude_speaking = False  # any agent playing audio right now
@@ -227,9 +228,19 @@ class ListenerState:
 
     def set_output_device(self, name: str) -> str:
         with self._lock:
-            if name in ("system", "browser"):
+            if name in ("system", "browser", "voice-pe"):
                 self._output_device = name
             return self._output_device
+
+    @property
+    def voice_pe_host(self) -> str:
+        with self._lock:
+            return self._voice_pe_host
+
+    def set_voice_pe_host(self, host: str) -> str:
+        with self._lock:
+            self._voice_pe_host = str(host).strip()
+            return self._voice_pe_host
 
     @property
     def detection_mode(self) -> str:

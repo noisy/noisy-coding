@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 from noisy_coding import credentials, diagnostics, playback
 from noisy_coding.config_dir import CONFIG_DIR
-from noisy_coding.listener import pricing, speech, tab_audio
+from noisy_coding.listener import pricing, speech, tab_audio, voice_pe
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
 from noisy_coding.listener.state import ListenerState
 
@@ -152,6 +152,7 @@ def save_settings(state: ListenerState) -> None:
                     "detection_mode": state.detection_mode,
                     "input_device": state.input_device,
                     "output_device": state.output_device,
+                    "voice_pe_host": state.voice_pe_host,
                     "language": state.language,
                     # The user's conscious pick — a restart must not re-run
                     # the first-to-register race and reroute their speech.
@@ -211,9 +212,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # The dashboard tab is a virtual microphone: selectable
                 # always, audible only while a tab holds the audio lease.
                 browser_entry = [{"name": "THIS BROWSER TAB", "default": False, "value": "browser"}]
+                # The Voice PE speaker joins the list once its host is
+                # configured — wake-word gated, so "hearing" starts at
+                # "Hey Jarvis", not at selection.
+                voice_pe_entry = (
+                    [{"name": "VOICE PE SPEAKER", "default": False, "value": "voice-pe"}]
+                    if voice_pe.bridge() is not None
+                    else []
+                )
                 self._respond(
                     {
-                        "devices": list_input_devices() + browser_entry,
+                        "devices": list_input_devices() + browser_entry + voice_pe_entry,
                         "selected": state.input_device,
                     }
                 )
@@ -255,6 +264,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "input_device": state.input_device,
                         "output_device": state.output_device,
                         "tab_audio": state.tab_audio_alive,
+                        "voice_pe": (pe := voice_pe.bridge()) is not None and pe.connected,
+                        "voice_pe_host": state.voice_pe_host,
                         "activity": state.activity,
                         "language": state.language,
                         "diagnostic_checks": state.diagnostic_checks,
@@ -383,6 +394,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     result["input_device"] = state.set_input_device(str(body["input_device"]))
                 if "output_device" in body:
                     result["output_device"] = state.set_output_device(str(body["output_device"]))
+                if "voice_pe_host" in body:
+                    # Takes effect on the next daemon start (the bridge owns
+                    # one connection for the daemon's whole life).
+                    result["voice_pe_host"] = state.set_voice_pe_host(str(body["voice_pe_host"]))
                 if result:
                     save_settings(state)
                     self._respond(result)
@@ -401,6 +416,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 live_bridge = tab_audio.bridge()
                 if live_bridge is not None:
                     live_bridge.stop_tab_playback()
+                pe_bridge = voice_pe.bridge()
+                if pe_bridge is not None:
+                    pe_bridge.stop_playback()
                 self._respond({"stopped": True})
             elif self.path == "/cancel":
                 utterance_id = int(self._read_json_body().get("utterance_id", 0))
@@ -592,6 +610,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 live_bridge = tab_audio.bridge()
                 if live_bridge is not None:
                     live_bridge.stop_tab_playback()
+                pe_bridge = voice_pe.bridge()
+                if pe_bridge is not None:
+                    pe_bridge.stop_playback()
             future = speech.submit(
                 state,
                 text,

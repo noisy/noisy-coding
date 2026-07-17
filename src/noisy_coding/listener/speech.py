@@ -22,7 +22,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 
 from noisy_coding import playback, tts, tts_stream
-from noisy_coding.listener import audio_cache, tab_audio
+from noisy_coding.listener import audio_cache, tab_audio, voice_pe
 from noisy_coding.listener import pricing
 from noisy_coding.listener.state import ListenerState
 
@@ -331,9 +331,9 @@ def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
 
 def _tts_streaming(state: ListenerState) -> bool:
     """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
-    if state.output_device == "browser":
-        # The tab plays one complete clip per message (v1) — streaming
-        # chunks over the bridge is a later iteration.
+    if state.output_device in ("browser", "voice-pe"):
+        # The tab and the Voice PE speaker each play one complete clip per
+        # message (v1) — streaming chunks to them is a later iteration.
         return False
     if os.environ.get(TTS_MODE_ENV_VAR, "").lower() == "live":
         return True
@@ -568,6 +568,31 @@ async def _play_audio(
 ) -> None:
     origin = "cache — no re-synthesis" if cached else "Grok TTS"
     detail = f"{len(audio.audio) / 1024:.0f} kB MP3 from {origin}"
+    if state.output_device == "voice-pe":
+        pe_bridge = voice_pe.bridge()
+        state.add_event("speak_audio", detail + " → Voice PE speaker")
+        state.update_utterance(
+            utterance_id, status="playing through speakers…",
+            detail="playing on the Voice PE speaker",
+        )
+        if pe_bridge is not None and await asyncio.to_thread(
+            pe_bridge.play_through_speaker, audio.audio, audio.content_type
+        ):
+            return
+        # The speaker is unreachable — never lose speech: fall back to
+        # the system speakers and say so in the event log.
+        state.add_event("speak_fallback", "Voice PE unreachable — system speakers")
+        state.add_event("speak_audio", detail)
+        state.update_utterance(
+            utterance_id, status="playing through speakers…", detail=detail
+        )
+        try:
+            await playback.play(audio.audio, audio.content_type)
+        except Exception as error:
+            # Hardware-free host AND no speaker: park as UNHEARD (see the
+            # browser branch below — same reasoning).
+            raise NoAudioSink(str(error)) from error
+        return
     if state.output_device == "browser":
         live_bridge = tab_audio.bridge()
         state.add_event("speak_audio", detail + " → browser tab")
