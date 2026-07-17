@@ -107,9 +107,16 @@ class Handler(BaseHTTPRequestHandler):
         daemon and then pipes raw bytes both ways — the WS protocol itself
         passes through untouched.
         """
+        peer = self.client_address[0]
+        print(f"[bridge] {peer} connecting", flush=True)
         try:
             upstream = socket.create_connection(("127.0.0.1", BRIDGE_PORT), timeout=5)
+            # The connect timeout must not linger: the daemon is silent
+            # until it plays a clip, and a timed-out recv() would tear the
+            # spliced connection down every 5 s.
+            upstream.settimeout(None)
         except OSError:
+            print(f"[bridge] {peer} daemon bridge unreachable", flush=True)
             self._send(502, "application/json", b'{"error":"bridge unreachable"}')
             return
         handshake = [f"GET / HTTP/1.1\r\nHost: 127.0.0.1:{BRIDGE_PORT}\r\n"]
@@ -123,25 +130,29 @@ class Handler(BaseHTTPRequestHandler):
 
         client = self.connection
 
-        def pipe(src: socket.socket, dst: socket.socket) -> None:
+        def pipe(src: socket.socket, dst: socket.socket, label: str) -> None:
+            reason = "eof"
             try:
                 while True:
                     data = src.recv(65536)
                     if not data:
                         break
                     dst.sendall(data)
-            except OSError:
-                pass
+            except OSError as exc:
+                reason = str(exc) or type(exc).__name__
             finally:
+                print(f"[bridge] {peer} {label} closed ({reason})", flush=True)
                 for sock in (src, dst):
                     try:
                         sock.shutdown(socket.SHUT_RDWR)
                     except OSError:
                         pass
 
-        downstream = threading.Thread(target=pipe, args=(upstream, client), daemon=True)
+        downstream = threading.Thread(
+            target=pipe, args=(upstream, client, "daemon→phone"), daemon=True
+        )
         downstream.start()
-        pipe(client, upstream)
+        pipe(client, upstream, "phone→daemon")
         downstream.join()
         self.close_connection = True
 
