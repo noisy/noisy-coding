@@ -117,6 +117,7 @@ class VoicePEBridge:
         self._loop = asyncio.new_event_loop()
         self._client = None
         self._media_player_key: int | None = None
+        self._led_ring_key: int | None = None
         self._connected = threading.Event()
         self._session_active = False
         self._rechunker = FrameRechunker(frame_samples)
@@ -191,6 +192,9 @@ class VoicePEBridge:
         self._media_player_key = next(
             (e.key for e in entities if type(e).__name__ == "MediaPlayerInfo"), None
         )
+        self._led_ring_key = next(
+            (e.key for e in entities if type(e).__name__ == "LightInfo"), None
+        )
         self._client.subscribe_voice_assistant(
             handle_start=self._handle_va_start,
             handle_stop=self._handle_va_stop,
@@ -235,6 +239,11 @@ class VoicePEBridge:
         self._rechunker = FrameRechunker(self._frame_samples)  # clean slate
         _log(f"[voice-pe] wake word '{wake_word_phrase}' — session open")
         self._state.add_event("voice_pe_wake", wake_word_phrase or "")
+        # The firmware's own ring animation ends before the session does —
+        # hold a steady glow for the WHOLE listening window, so "lit" always
+        # means "it hears you" (the LED going dark mid-window confused the
+        # user into aborting good follow-ups).
+        self._set_ring(True)
         self._client.send_voice_assistant_event(
             Event.VOICE_ASSISTANT_RUN_START, None
         )
@@ -254,6 +263,7 @@ class VoicePEBridge:
         # the button, a timeout). Frames simply stop; the daemon's VAD
         # closes the utterance on silence as with any mic.
         self._session_active = False
+        self._set_ring(False)
         _log("[voice-pe] session closed by device")
 
     async def _end_session(self) -> None:
@@ -266,7 +276,28 @@ class VoicePEBridge:
             Event.VOICE_ASSISTANT_STT_END, {"text": ""}
         )
         self._client.send_voice_assistant_event(Event.VOICE_ASSISTANT_RUN_END, None)
+        self._set_ring(False)
         _log("[voice-pe] session closed (utterance complete)")
+
+    LISTENING_RING_RGB = (0.1, 0.6, 1.0)  # calm blue: "I hear you"
+    LISTENING_RING_BRIGHTNESS = 0.5
+
+    def _set_ring(self, listening: bool) -> None:
+        """Steady ring glow while a listen session is open (best effort)."""
+        if self._led_ring_key is None:
+            return
+        try:
+            if listening:
+                self._client.light_command(
+                    self._led_ring_key,
+                    state=True,
+                    brightness=self.LISTENING_RING_BRIGHTNESS,
+                    rgb=self.LISTENING_RING_RGB,
+                )
+            else:
+                self._client.light_command(self._led_ring_key, state=False)
+        except Exception as error:  # cosmetics must never break a session
+            _log(f"[voice-pe] ring command failed: {error}")
 
     # --- playback (output) ---------------------------------------------------------
 
