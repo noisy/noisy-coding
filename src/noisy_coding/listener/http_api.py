@@ -224,7 +224,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self.send_header("Location", "/next/")
                 self.end_headers()
             elif url.path.startswith("/next/"):
-                self._serve_hud_file(url.path[len("/next/"):] or "index.html")
+                relative = url.path[len("/next/"):] or "index.html"
+                # SPA route, not a file: /next/m is the mobile companion.
+                # Only the slash-less form keeps relative assets on /next/.
+                if relative == "m/":
+                    self.send_response(301)
+                    self.send_header("Location", "/next/m")
+                    self.end_headers()
+                    return
+                if relative == "m":
+                    relative = "index.html"
+                self._serve_hud_file(relative)
             elif url.path == "/status":
                 self._respond(
                     {
