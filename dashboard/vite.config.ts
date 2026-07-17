@@ -16,6 +16,9 @@ export default defineConfig({
   plugins: [vue()],
   base: "./", // served from /next/ — assets must resolve relatively
   server: {
+    // Reachable through tunnels (ngrok hostnames change every run).
+    host: true,
+    allowedHosts: true,
     proxy: Object.fromEntries(DAEMON_PATHS.map((path) => [path, DAEMON])),
   },
   test: {

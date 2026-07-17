@@ -3,9 +3,15 @@ import { computed } from "vue";
 import { setMuted, setPtt } from "../api/client";
 import ConversationLog from "../components/ConversationLog.vue";
 import { stateLabel } from "../components/systemState";
+import { useBrowserAudio } from "../composables/useBrowserAudio";
 import { useDaemonState } from "../composables/useDaemonState";
 
 const { status, utterances, offline, viewedAgent } = useDaemonState();
+
+// The phone IS the audio device: one tap grabs the daemon's tab-audio
+// lease (getUserMedia needs a user gesture, so this can't be automatic).
+// Enabling here takes the lease over from any open desktop dashboard tab.
+const audio = useBrowserAudio();
 
 const state = computed(() => stateLabel(status.value, offline.value));
 const agentLabel = computed(() => {
@@ -51,6 +57,9 @@ function pttStop() {
     </main>
 
     <footer class="controls">
+      <button v-if="!audio.micLive.value" class="enable" @click="audio.enable()">
+        {{ audio.error.value ? `⚠ ${audio.error.value} — RETRY` : "🎙 ENABLE PHONE AUDIO" }}
+      </button>
       <button
         v-if="status?.detection_mode === 'ptt'"
         class="ptt"
@@ -149,6 +158,10 @@ function pttStop() {
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+}
+.controls .enable {
+  background: rgba(55, 224, 176, 0.15);
+  border-color: #37e0b0;
 }
 .controls .ptt.held {
   background: rgba(55, 224, 176, 0.25);

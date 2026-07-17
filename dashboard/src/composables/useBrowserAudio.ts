@@ -31,10 +31,21 @@ const HEARTBEAT_MS = 500; // renews the daemon's 2 s lease 4× per period
 const MIN_SEND_SAMPLES_16K = 480;
 
 function bridgeUrl(): string {
-  // The bridge listens one port above the daemon's HTTP API. Served from
-  // the daemon, that's location.port+1; on the Vite dev server (which
-  // proxies HTTP but not this WS) assume the default daemon port.
+  // The mobile companion is reached through a single tunneled port (ngrok),
+  // so its server proxies the bridge on the SAME origin at /bridge — and
+  // https pages must use wss. The Vite dev server is the exception: it
+  // proxies HTTP but not this WS, so talk to the default daemon port.
   const served = Number(window.location.port || "0");
+  const path = window.location.pathname;
+  // /next/m is the daemon serving the mobile page directly — the daemon
+  // has no /bridge proxy, so fall through to the port+1 rule below.
+  const viaMobileServer = /(^|\/)m\/?$/.test(path) && !path.startsWith("/next/");
+  if (viaMobileServer && served !== 5173) {
+    const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${scheme}://${window.location.host}/bridge`;
+  }
+  // The bridge listens one port above the daemon's HTTP API. Served from
+  // the daemon, that's location.port+1; in `vite dev` assume the default.
   const bridgePort = served && served !== 5173 ? served + 1 : 8766;
   return `ws://${window.location.hostname}:${bridgePort}`;
 }

@@ -10,13 +10,18 @@ Run: uv run noisy-coding-mobile   (then: ngrok http 8770)
 """
 
 import os
+import socket
+import threading
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 MOBILE_PORT = int(os.environ.get("NOISY_CODING_MOBILE_PORT", "8770"))
-DAEMON = f"http://127.0.0.1:{os.environ.get('NOISY_CODING_LISTENER_PORT', '8765')}"
+LISTENER_PORT = int(os.environ.get("NOISY_CODING_LISTENER_PORT", "8765"))
+DAEMON = f"http://127.0.0.1:{LISTENER_PORT}"
+# The daemon's tab-audio WS bridge listens one port above its HTTP API.
+BRIDGE_PORT = LISTENER_PORT + 1
 
 DIST_DIR = Path(__file__).resolve().parents[2] / "dashboard" / "dist"
 BUILD_HINT = (
@@ -54,7 +59,9 @@ def _daemon_post(path: str, body: bytes) -> bytes:
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
-        if path in ("/", "/m/"):
+        if path == "/bridge":
+            self._proxy_ws()
+        elif path in ("/", "/m/"):
             self.send_response(301)
             self.send_header("Location", "/m")
             self.end_headers()
@@ -85,6 +92,52 @@ class Handler(BaseHTTPRequestHandler):
             return
         ctype = CONTENT_TYPES.get(target.suffix, "application/octet-stream")
         self._send(200, ctype, target.read_bytes())
+
+    def _proxy_ws(self) -> None:
+        """Splice this connection onto the daemon's tab-audio WS bridge.
+
+        A single tunneled port (ngrok) can't reach the bridge's own port,
+        so /bridge replays the client's Upgrade handshake against the
+        daemon and then pipes raw bytes both ways — the WS protocol itself
+        passes through untouched.
+        """
+        try:
+            upstream = socket.create_connection(("127.0.0.1", BRIDGE_PORT), timeout=5)
+        except OSError:
+            self._send(502, "application/json", b'{"error":"bridge unreachable"}')
+            return
+        handshake = [f"GET / HTTP/1.1\r\nHost: 127.0.0.1:{BRIDGE_PORT}\r\n"]
+        handshake += [
+            f"{name}: {value}\r\n"
+            for name, value in self.headers.items()
+            if name.lower() != "host"
+        ]
+        handshake.append("\r\n")
+        upstream.sendall("".join(handshake).encode("latin-1"))
+
+        client = self.connection
+
+        def pipe(src: socket.socket, dst: socket.socket) -> None:
+            try:
+                while True:
+                    data = src.recv(65536)
+                    if not data:
+                        break
+                    dst.sendall(data)
+            except OSError:
+                pass
+            finally:
+                for sock in (src, dst):
+                    try:
+                        sock.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
+
+        downstream = threading.Thread(target=pipe, args=(upstream, client), daemon=True)
+        downstream.start()
+        pipe(client, upstream)
+        downstream.join()
+        self.close_connection = True
 
     def _proxy(self, call) -> None:
         try:
