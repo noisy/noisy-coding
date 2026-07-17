@@ -1,7 +1,7 @@
 {
   "name": "noisy-coding",
   "description": "Voice coding for Claude Code, Jarvis-style — talk to your agent while it works. Ships the voice hooks and connects to the noisy-coding daemon (Docker or native).",
-  "version": "2.3.0",
+  "version": "2.6.1",
   "author": { "name": "Krzysztof Szumny", "email": "noisy.pl@gmail.com" },
   "homepage": "https://github.com/noisy/noisy-coding"
 }

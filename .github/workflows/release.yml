@@ -10,7 +10,35 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Guard against the drift that let .claude-plugin/plugin.json ship three
+  # releases stale (issue #7): the four version-bearing files must agree with
+  # each other, and — when released from a tag — with the tag itself.
+  verify-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versions match across all files (and the tag)
+        run: |
+          pyproject=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)
+          dashboard=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' dashboard/package.json | head -1)
+          plugin=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
+          echo "pyproject=$pyproject dashboard=$dashboard plugin=$plugin"
+          if [ "$pyproject" != "$dashboard" ] || [ "$pyproject" != "$plugin" ]; then
+            echo "::error::version mismatch across files — run scripts/bump_version.py"
+            exit 1
+          fi
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            if [ "$tag" != "$pyproject" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match version $pyproject"
+              exit 1
+            fi
+          fi
+
   image:
+    needs: verify-version
     runs-on: ubuntu-latest
     permissions:
       contents: read
