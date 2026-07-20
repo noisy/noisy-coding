@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "noisy-coding": {
-      "type": "http",
-      "url": "http://127.0.0.1:8767/mcp"
+      "type": "stdio",
+      "command": "sh",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/mcp_exec.sh"]
     },
     "noisy-coding-dev": {
       "type": "stdio",
