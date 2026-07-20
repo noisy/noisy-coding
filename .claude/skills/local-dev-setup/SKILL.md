@@ -27,12 +27,17 @@ Python code; rebuild (`cd dashboard && npm run build`) after dashboard changes.
 
 ## 2. Session wiring — should already be in place
 
-Both pieces are committed to this repo, so normally there is NOTHING to do:
+- MCP is per contributor machine (LOCAL scope — a committed `.mcp.json`
+  would be auto-loaded by the plugin and leak the dev server to end users):
 
-- `.mcp.json` → `noisy-coding-dev` (stdio, `NOISY_CODING_LISTENER_PORT=7765`);
-  tools appear as `mcp__noisy-coding-dev__*` after the user approves the
-  project server (first session only).
-- `.claude/settings.json` → the five hooks duplicated with local commands
+  ```sh
+  claude mcp add noisy-coding-dev --scope local \
+    --env NOISY_CODING_LISTENER_PORT=7765 -- uv run noisy-coding-mcp
+  ```
+
+  Tools appear as `mcp__noisy-coding-dev__*` after a restart.
+- Hooks are committed to this repo, so normally there is nothing to do:
+  `.claude/settings.json` → the five hooks duplicated with local commands
   (`NOISY_CODING_LISTENER_PORT=7765 python3 hooks/<script>.py`). They run IN
   ADDITION to the global production hooks — that is intended; each set talks
   to its own daemon.

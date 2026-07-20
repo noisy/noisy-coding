@@ -29,14 +29,20 @@ volume — the two never collide, but they also don't share settings.
 
 Two integration points, both scoped to this repo so nothing else changes:
 
-**MCP** — register a separate, unmistakably-named server (stdio, project
+**MCP** — register a separate, unmistakably-named server (stdio, LOCAL
 scope), so an agent can never confuse the two:
 
 ```sh
-claude mcp add noisy-coding-dev --scope project \
+claude mcp add noisy-coding-dev --scope local \
   --env NOISY_CODING_LISTENER_PORT=7765 \
   -- uv run noisy-coding-mcp
 ```
+
+Local scope (per user, per project — stored in `~/.claude.json`) is
+deliberate: the repo root doubles as the PLUGIN root, and any `.mcp.json`
+committed here is auto-loaded by the plugin and shipped to every end user
+(that bug shipped in 2.7.0–2.7.3). One command per contributor machine is
+the price of never leaking the dev server again.
 
 Production stays `noisy-coding`; the dev tools show up as
 `mcp__noisy-coding-dev__*`.

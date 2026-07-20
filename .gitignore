@@ -20,3 +20,4 @@ design-concepts/
 HANDOFF-*.md
 ANALYSIS-*.md
 HANDOFF.md
+node_modules/
