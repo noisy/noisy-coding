@@ -27,7 +27,6 @@ function pick(name: string) {
         <circle cx="7" cy="7" r="2" fill="#3fd8ff" />
       </svg>
       <span class="vname">{{ voice.toUpperCase() || "—" }}</span>
-      <span class="vg">{{ (VOICES[voice] ?? "").toUpperCase() }}</span>
       <span class="arrow">{{ open ? "▴" : "▾" }}</span>
     </div>
     <div v-if="open" class="voicelist">
@@ -42,7 +41,6 @@ function pick(name: string) {
         <span v-if="voiceSpriteStyle(name)" class="thumb" :style="voiceSpriteStyle(name)!" />
         <span v-else class="thumb blank">{{ name[0].toUpperCase() }}</span>
         <span class="name">{{ name.toUpperCase() }}</span>
-        <span class="gender">{{ gender.toUpperCase() }}</span>
       </div>
     </div>
   </div>
@@ -58,17 +56,16 @@ function pick(name: string) {
 }
 .voicecur .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); }
 .voicecur .vname { font-size: 13px; letter-spacing: 0.2em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); }
-.voicecur .vg { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
 .voicecur .arrow { margin-left: auto; color: var(--cyan-dim); font-size: 10px; }
 
-/* ~4 big rows visible (56px each), the rest behind a thin scrollbar. */
+/* ~4 big rows visible (72px each), the rest behind a thin scrollbar. */
 .voicelist {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 20;
-  max-height: 230px;
+  max-height: 292px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
@@ -81,7 +78,7 @@ function pick(name: string) {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 56px;
+  height: 72px;
   padding: 0 12px;
   cursor: pointer;
   border-bottom: 1px solid rgba(63, 216, 255, 0.08);
@@ -91,8 +88,8 @@ function pick(name: string) {
 .row.sel { background: rgba(63, 216, 255, 0.14); }
 .row.sel .name { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .thumb {
-  width: 44px;
-  height: 44px;
+  width: 60px;
+  height: 60px;
   flex: none;
   border: 1px solid var(--line);
   clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
@@ -107,5 +104,4 @@ function pick(name: string) {
 }
 .name { font-size: 12px; letter-spacing: 0.2em; color: var(--muted); }
 .row:hover .name { color: var(--cyan); }
-.gender { margin-left: auto; font-size: 9px; letter-spacing: 0.14em; color: rgba(93, 127, 150, 0.7); }
 </style>
