@@ -170,15 +170,19 @@ button.offline .dot { background: rgba(93, 127, 150, 0.35); }
    the tab (a layout shift under the cursor makes the ✕ unclickable). */
 .dismiss {
   position: absolute;
-  top: 0;
-  right: 2px;
-  padding: 0 3px;
-  font-size: 9px;
-  line-height: 1.4;
-  color: var(--muted);
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  padding: 3px 5px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--amber);
+  background: rgba(4, 12, 20, 0.92);
+  text-shadow: 0 0 6px var(--amber);
   opacity: 0;
   pointer-events: none;
 }
 button:hover .dismiss { opacity: 1; pointer-events: auto; }
-.dismiss:hover { color: var(--amber); }
+.dismiss:hover { color: #fff; text-shadow: 0 0 8px var(--amber); }
 </style>
