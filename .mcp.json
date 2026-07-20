@@ -3,6 +3,17 @@
     "noisy-coding": {
       "type": "http",
       "url": "http://127.0.0.1:8767/mcp"
+    },
+    "noisy-coding-dev": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "noisy-coding-mcp"
+      ],
+      "env": {
+        "NOISY_CODING_LISTENER_PORT": "7765"
+      }
     }
   }
 }

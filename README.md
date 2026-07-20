@@ -177,3 +177,5 @@ Live smoke test (spends API credits, plays audio):
 ```bash
 uv run python scripts/smoke_test.py "Hello from Grok"
 ```
+
+Hacking on noisy-coding itself? See [docs/local-development.md](docs/local-development.md) for running a dev instance next to production.

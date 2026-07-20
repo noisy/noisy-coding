@@ -91,6 +91,12 @@ const levelDb = computed(() =>
   level.value > 0 ? `${(20 * Math.log10(level.value)).toFixed(1)} dB` : "−∞ dB",
 );
 
+// A dev instance is any daemon serving off the production port. The marker
+// is deliberately confined to the logo block — the rest of the theme stays
+// production-identical so prod colors can be tested on a local instance.
+const isDevInstance = window.location.port !== "" && window.location.port !== "8765";
+const instancePort = window.location.port;
+
 const clock = ref("");
 function tickClock() {
   const d = new Date();
@@ -441,7 +447,7 @@ const LANGUAGES: Record<string, string> = {
       <span v-if="browserAudio.error.value" class="taberr">{{ browserAudio.error.value }}</span>
     </button>
     <header>
-      <div class="logo">
+      <div class="logo" :class="{ dev: isDevInstance }">
         <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
           <polygon points="23,2 41,12.5 41,33.5 23,44 5,33.5 5,12.5" fill="none" stroke="#3fd8ff" stroke-width="1.4" opacity="0.9" />
           <polygon points="23,8 36,15.5 36,30.5 23,38 10,30.5 10,15.5" fill="rgba(63,216,255,0.08)" stroke="#3fd8ff" stroke-width="0.7" opacity="0.6" />
@@ -455,6 +461,7 @@ const LANGUAGES: Record<string, string> = {
         <div>
           <div class="title">NOISY-CODING</div>
           <div class="sub">TACTICAL VOICE INTERFACE</div>
+          <div v-if="isDevInstance" class="devbadge">LOCAL DEV · :{{ instancePort }}</div>
         </div>
       </div>
 
@@ -693,6 +700,16 @@ header::after {
 .logo svg { display: block; }
 .logo .title { font-size: 19px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); font-weight: 700; }
 .logo .sub { font-size: 10px; letter-spacing: 0.34em; color: var(--muted); margin-top: 3px; }
+/* Dev-instance marker: recolor the logo and hang a badge under it, nothing else. */
+.logo.dev svg { stroke: #ffb84d; }
+.logo.dev svg polygon, .logo.dev svg line { stroke: #ffb84d; }
+.logo.dev svg polygon[fill^="rgba"] { fill: rgba(255, 184, 77, 0.08); }
+.logo.dev .title { color: #ffb84d; text-shadow: 0 0 12px rgba(255, 184, 77, 0.55); }
+.devbadge {
+  display: inline-block; margin-top: 5px; padding: 2px 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.22em;
+  color: #1a1205; background: #ffb84d; border-radius: 3px;
+}
 .sysstate { margin-left: auto; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
 .clockbox { text-align: right; }
 .clockbox .clock { font-size: 17px; letter-spacing: 0.14em; color: var(--ink); }
