@@ -17,5 +17,8 @@ Update the user's noisy-coding backend. Follow these steps in order and narrate 
      noisy/noisy-coding:latest
    ```
 5. Verify NON-INVASIVELY, exactly like setup does: `curl -s http://127.0.0.1:8765/status` must return JSON with `"api_key_set": true` (the volume survived). Do NOT probe port 8766 with raw TCP.
-6. If the release notes mention hook or plugin changes: plugin users should update the plugin too (`/plugin` → update); installer users should re-run `docker exec -i noisy-coding python3 /app/hooks/install.py --docker`. Only mention this when the notes call for it.
+6. THE CONTAINER IS ONLY HALF THE SYSTEM — always close with the plugin check, never skip it:
+   - Read the installed plugin version (`claude plugin list`) and compare with the version just released. If they differ, UPDATE IT NOW yourself — `claude plugin update noisy-coding@noisy` works from inside the session — and tell the user the one thing you cannot do for them: run `/reload-plugins` (or restart) in every live session, in every Claude profile they use (a second profile needs its own `CLAUDE_CONFIG_DIR=<profile> claude plugin update ...`).
+   - If versions match, say so explicitly ("plugin already current — container was the only half to refresh"), so the user never wonders whether a step is missing.
+   - Installer users (no plugin): re-run `docker exec -i noisy-coding python3 /app/hooks/install.py --docker` instead when the release notes mention hook changes.
 7. Remind the user to reload the dashboard tab (hard refresh — the UI and favicon are served by the new container) and re-click ENABLE TAB AUDIO if the banner reappears.
