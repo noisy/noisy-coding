@@ -1,20 +1,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import VoiceSelector from "./VoiceSelector.vue";
+import { voiceSpriteStyle } from "./voiceSprites";
 
 // The conversation's voice identity: portrait on top (ON AIR rides OVER
 // the image), the voice picker directly beneath. Grew out of the plain
 // Avatar once the selector moved in from the Character Matrix.
-const SPRITE_GRID = 6;
-const SPRITE_CELL: Record<string, number> = {
-  // female
-  ara: 1, carina: 3, eve: 5, iris: 10, luna: 15, celeste: 16, ursa: 29,
-  // male
-  altair: 0, atlas: 2, sal: 4, kepler: 6, rex: 8, cosmo: 9, helios: 14,
-  leo: 12, lux: 13, sirius: 17, castor: 18, naksh: 19, helix: 21,
-  perseus: 22, orion: 23, lumen: 24, rigel: 27, zenith: 31, zagan: 30,
-};
-
 const props = defineProps<{
   voice: string;
   speaking?: boolean;
@@ -22,17 +13,7 @@ const props = defineProps<{
 
 defineEmits<{ change: [voice: string] }>();
 
-const cell = computed(() => SPRITE_CELL[props.voice]);
-const spriteStyle = computed(() => {
-  if (cell.value == null) return null;
-  const col = cell.value % SPRITE_GRID;
-  const row = Math.floor(cell.value / SPRITE_GRID);
-  return {
-    backgroundImage: "url(/avatars.png)",
-    backgroundSize: `${SPRITE_GRID * 100}%`,
-    backgroundPosition: `${(col / (SPRITE_GRID - 1)) * 100}% ${(row / (SPRITE_GRID - 1)) * 100}%`,
-  };
-});
+const spriteStyle = computed(() => voiceSpriteStyle(props.voice));
 
 // Fallback identity for voices without a portrait: deterministic
 // per-voice color + monogram.
