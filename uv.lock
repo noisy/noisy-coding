@@ -345,7 +345,7 @@ wheels = [
 
 [[package]]
 name = "noisy-coding"
-version = "2.7.6"
+version = "2.7.7"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

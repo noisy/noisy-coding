@@ -1,6 +1,6 @@
 [project]
 name = "noisy-coding"
-version = "2.7.6"
+version = "2.7.7"
 description = "Voice coding for Claude Code — talk to your agent while it works (Grok/xAI voice backend)"
 readme = "README.md"
 authors = [
