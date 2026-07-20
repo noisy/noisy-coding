@@ -9,6 +9,7 @@ import AgentTabs from "./components/AgentTabs.vue";
 import Avatar from "./components/Avatar.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
+import ConversationTelemetry from "./components/ConversationTelemetry.vue";
 import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
@@ -42,26 +43,6 @@ const errorCount = computed(() => errors.value.length);
 const { prefs: cuePrefs, enabled: cuesEnabled } = useAudioCues(utterances, status, errorCount);
 const setCue = (name: CueName, value: boolean) => (cuePrefs.value.cues[name] = value);
 
-// Latency traffic lights, calibrated on observed healthy values
-// (STT ≈ 250-450 ms, TTS first-audio/render ≈ 1-1.5 s).
-const LATENCY_BANDS = {
-  stt: { warn: 600, bad: 1200 },
-  tts: { warn: 1500, bad: 3000 },
-} as const;
-function latencyTone(kind: keyof typeof LATENCY_BANDS, ms: number | null | undefined): string {
-  if (ms == null) return "";
-  const bands = LATENCY_BANDS[kind];
-  return ms >= bands.bad ? "bad" : ms >= bands.warn ? "warn" : "ok";
-}
-
-function formatAudioTime(seconds: number): string {
-  if (seconds < 60) return `${seconds.toFixed(0)}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
-  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-}
-function formatChars(chars: number): string {
-  return chars < 10_000 ? `${chars}` : `${(chars / 1000).toFixed(1)}k`;
-}
 function eventTime(ts: number): string {
   const d = new Date(ts * 1000);
   return [d.getHours(), d.getMinutes(), d.getSeconds()]
@@ -617,6 +598,14 @@ const LANGUAGES: Record<string, string> = {
                 @replay="replay"
                 @cancel="cancel"
               />
+              <ConversationTelemetry
+                :stt-latency-ms="status?.stt_latency_ms ?? null"
+                :tts-latency-ms="status?.tts_latency_ms ?? null"
+                :user-cost-usd="status?.session_cost_usd.user ?? 0"
+                :claude-cost-usd="status?.session_cost_usd.claude ?? 0"
+                :stt-seconds="status?.usage.stt_seconds ?? 0"
+                :tts-chars="status?.usage.tts_chars ?? 0"
+              />
             </div>
             <aside class="convo-rail">
               <section class="railbox">
@@ -636,38 +625,6 @@ const LANGUAGES: Record<string, string> = {
                 <SessionRing :utterances="utterances" />
               </section>
             </aside>
-          </div>
-          <div class="telemetry">
-            <div>
-              <div class="k">STT LATENCY</div>
-              <div class="v" :class="latencyTone('stt', status?.stt_latency_ms)">
-                {{ status?.stt_latency_ms != null ? status.stt_latency_ms : "—" }}<small v-if="status?.stt_latency_ms != null"> ms</small>
-              </div>
-            </div>
-            <div>
-              <div class="k">TTS RENDER</div>
-              <div class="v" :class="latencyTone('tts', status?.tts_latency_ms)">
-                {{ status?.tts_latency_ms != null ? status.tts_latency_ms : "—" }}<small v-if="status?.tts_latency_ms != null"> ms</small>
-              </div>
-            </div>
-            <div>
-              <div class="k">YOU · STT</div>
-              <div class="v warn">
-                ${{ (status?.session_cost_usd.user ?? 0).toFixed(4) }}
-                <small>· {{ formatAudioTime(status?.usage.stt_seconds ?? 0) }} AUDIO</small>
-              </div>
-            </div>
-            <div>
-              <div class="k">CLAUDE · TTS</div>
-              <div class="v violet">
-                ${{ (status?.session_cost_usd.claude ?? 0).toFixed(4) }}
-                <small>· {{ formatChars(status?.usage.tts_chars ?? 0) }} CHARS</small>
-              </div>
-            </div>
-            <div>
-              <div class="k">CONVERSATION TOTAL</div>
-              <div class="v">${{ ((status?.session_cost_usd.user ?? 0) + (status?.session_cost_usd.claude ?? 0)).toFixed(4) }}</div>
-            </div>
           </div>
         </HudPanel>
       </div>
@@ -945,24 +902,6 @@ footer { flex: none; }
 /* Sections that need the API sit dimmed behind the first-contact prompt. */
 .locked { opacity: 0.35; pointer-events: none; filter: saturate(0.4); }
 
-.telemetry {
-  display: flex;
-  gap: 0;
-  margin-top: 14px;
-  flex: none;
-  border: 1px solid var(--line);
-  background: rgba(4, 11, 19, 0.9);
-  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
-}
-.telemetry > div { flex: 1; padding: 9px 12px; border-right: 1px solid rgba(63, 216, 255, 0.12); }
-.telemetry > div:last-child { border-right: none; }
-.telemetry .k { font-size: 8.5px; letter-spacing: 0.22em; color: var(--muted); }
-.telemetry .v { font-size: 14px; color: var(--cyan); margin-top: 3px; text-shadow: 0 0 8px rgba(63, 216, 255, 0.35); }
-.telemetry .v small { font-size: 9px; color: var(--muted); }
-.telemetry .v.warn { color: var(--amber); text-shadow: 0 0 8px rgba(255, 180, 84, 0.35); }
-.telemetry .v.violet { color: var(--violet); text-shadow: 0 0 8px rgba(185, 140, 255, 0.35); }
-.telemetry .v.ok { color: var(--green); text-shadow: 0 0 8px rgba(77, 255, 180, 0.35); }
-.telemetry .v.bad { color: var(--red); text-shadow: 0 0 8px rgba(255, 95, 107, 0.45); }
 
 .setup-overlay {
   position: fixed;
