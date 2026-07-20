@@ -707,7 +707,10 @@ footer { flex: none; }
 /* Folder-tab bar: sits on top of the conversation frame, buttons overlap
    its top border by 1px so the viewed tab visually fuses with the window
    below — the frame reads as that tab's window, not a separate panel. */
-.tabsbar { padding: 0 14px; }
+/* The whole bar rises over the page header's bottom line — the tabs
+   straddle the main separator, buying the conversation window that
+   vertical space back. z-index keeps them painting above the line. */
+.tabsbar { padding: 0 14px; margin-top: -54px; position: relative; z-index: 3; }
 .tabsbar :deep(.tabs) {
   margin-bottom: -1px;
   gap: 6px;
