@@ -18,9 +18,12 @@ DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
 DEFAULT_END_SILENCE_MS = 2000
 MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
-# An agent that hasn't drained the queue in this long is treated as gone.
-# Live agents poll far more often than this (PostToolUse + Stop rewake).
-AGENT_TTL_SECONDS = 90
+# An agent whose heartbeat (drain polls every 0.5 s, tool hooks during a
+# turn) has been silent this long is shown OFFLINE — never deleted (#11).
+# Generous on purpose: a brief hiccup must not bounce a tab out of the
+# active group (and thereby scramble its position); the flip back to
+# online is immediate on the first heartbeat.
+AGENT_OFFLINE_AFTER_SECONDS = 30.0
 DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
 # Push-to-talk hold is a LEASE, not a latch: the UI renews it (~2×/s) while
 # the button is physically held, so a crashed page or lost connection can
@@ -54,6 +57,9 @@ class ListenerState:
         # Transcripts are only delivered to the active agent (see drain).
         self._agents: dict[str, float] = {}  # name -> last-seen time
         self._agent_labels: dict[str, str] = {}  # name -> human label (rename title)
+        # name -> when the agent last BECAME online (offline->online edge).
+        # Orders the active tab group: new arrivals join on the right.
+        self._agent_activated: dict[str, float] = {}
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
@@ -461,7 +467,7 @@ class ListenerState:
             # Register/refresh the caller and gate delivery on active agent.
             # No agent registered yet → single-agent mode (everyone drains).
             if agent is not None:
-                self._agents[agent] = time.time()
+                self._touch_agent_locked(agent)
                 if self._active_agent is None:
                     self._active_agent = agent  # first to register wins by default
                 if agent != self._active_agent:
@@ -477,39 +483,65 @@ class ListenerState:
                     )
             return transcripts
 
-    def _prune_stale_agents_locked(self) -> None:
-        # Agents drain the queue constantly (PostToolUse/Stop), refreshing their
-        # last-seen time. One that hasn't polled in AGENT_TTL_SECONDS is gone
-        # (reconnected under a new id, closed, crashed) — drop it so dead tabs
-        # like a renamed "work" don't linger.
-        #
-        # NEVER the active one, though: handing the mic to whichever agent
-        # happens to be next would silently reroute the user's speech
-        # mid-conversation (it happened — P1). The active tab stays visible
-        # even when quiet, its speech queues up, and it resumes seamlessly
-        # on return; switching agents is only ever the user's conscious act.
+    def _touch_agent_locked(self, name: str) -> None:
+        # Heartbeat. An offline->online edge re-stamps activated_at, which
+        # places the tab at the right end of the active group (#11).
         now = time.time()
-        stale = [
-            name
-            for name, seen in self._agents.items()
-            if now - seen > AGENT_TTL_SECONDS and name != self._active_agent
-        ]
-        for name in stale:
-            del self._agents[name]
-            self._agent_labels.pop(name, None)
+        seen = self._agents.get(name)
+        if seen is None or now - seen > AGENT_OFFLINE_AFTER_SECONDS:
+            self._agent_activated[name] = now
+        self._agents[name] = now
 
     @property
     def agents(self) -> dict:
+        # Known agents are never pruned (#11): a silent agent is shown
+        # offline by the dashboard, deleted only by an explicit dismiss.
         with self._lock:
-            self._prune_stale_agents_locked()
             return dict(self._agents)
 
     @property
     def agent_labels(self) -> dict:
         # name -> label; falls back to the name itself when no label was given.
         with self._lock:
-            self._prune_stale_agents_locked()
             return {n: self._agent_labels.get(n, n) for n in self._agents}
+
+    @property
+    def agents_meta(self) -> dict:
+        """Tab data for the dashboard: online state and group ordering keys.
+
+        online: heartbeat within AGENT_OFFLINE_AFTER_SECONDS (hysteresis: the
+        threshold is generous, the return is instant on the next heartbeat).
+        activated_at orders the active group (arrival order); offline_since
+        orders the offline group (most recently ended first).
+        """
+        now = time.time()
+        with self._lock:
+            meta = {}
+            for name, seen in self._agents.items():
+                online = now - seen <= AGENT_OFFLINE_AFTER_SECONDS
+                meta[name] = {
+                    "label": self._agent_labels.get(name, name),
+                    "online": online,
+                    "activated_at": self._agent_activated.get(name, seen),
+                    "offline_since": None if online else seen + AGENT_OFFLINE_AFTER_SECONDS,
+                }
+            return meta
+
+    def dismiss_agent(self, name: str) -> bool:
+        """Drop an agent's tab. Only offline, non-active conversations may go:
+        dismissing the active agent would silently reroute the user's speech,
+        and an online one is still someone's live session."""
+        with self._lock:
+            seen = self._agents.get(name)
+            if seen is None or name == self._active_agent:
+                return False
+            if time.time() - seen <= AGENT_OFFLINE_AFTER_SECONDS:
+                return False
+            del self._agents[name]
+            self._agent_labels.pop(name, None)
+            self._agent_activated.pop(name, None)
+            self._activity.pop(name, None)
+            return True
 
     @property
     def active_agent(self) -> str | None:
@@ -518,7 +550,7 @@ class ListenerState:
 
     def register_agent(self, name: str, label: str = "") -> None:
         with self._lock:
-            self._agents[name] = time.time()
+            self._touch_agent_locked(name)
             if label:
                 # A fallback label (the shortened agent id) must not evict a
                 # real title: hooks re-register on every call, and the ones

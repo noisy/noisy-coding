@@ -2,7 +2,7 @@
 
 import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
-  getCharacter, getEvents, getStatus, getUtterances, setActiveAgent, type DaemonEvent,
+  getCharacter, getEvents, getStatus, getUtterances, setActiveAgent, dismissAgent as apiDismissAgent, type DaemonEvent,
 } from "../api/client";
 import { validStatusChange } from "../machines/chat";
 import type { Character, DaemonStatus, Utterance } from "../types";
@@ -18,6 +18,7 @@ export interface DaemonState {
   viewedAgent: Ref<string | null>;
   errors: Ref<DaemonEvent[]>; // newest last, errors only
   selectAgent: (name: string) => void;
+  dismissAgent: (name: string) => void;
 }
 
 export function useDaemonState(pollMs = 400): DaemonState {
@@ -100,6 +101,13 @@ export function useDaemonState(pollMs = 400): DaemonState {
     setActiveAgent(name).catch(() => {});
   }
 
+  function dismissAgent(name: string) {
+    if (viewedAgent.value === name) viewedAgent.value = null;
+    apiDismissAgent(name)
+      .catch(() => {})
+      .finally(() => tick());
+  }
+
   let timer: ReturnType<typeof setInterval> | undefined;
   onMounted(() => {
     tick();
@@ -107,5 +115,5 @@ export function useDaemonState(pollMs = 400): DaemonState {
   });
   onUnmounted(() => clearInterval(timer));
 
-  return { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent };
+  return { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent };
 }

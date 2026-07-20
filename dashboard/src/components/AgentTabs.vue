@@ -1,30 +1,78 @@
 <script setup lang="ts">
-withDefaults(
+import { computed } from "vue";
+
+export interface AgentMeta {
+  label: string;
+  online: boolean;
+  activated_at: number;
+  offline_since: number | null;
+}
+
+const props = withDefaults(
   defineProps<{
-    agents: Record<string, string>; // id -> human label
+    agents: Record<string, string>; // id -> human label (legacy daemons)
+    meta?: Record<string, AgentMeta> | null; // id -> tab metadata (#11)
     active: string | null; // the agent receiving transcripts
     viewed: string | null; // the tab being displayed
     speaking: string[]; // agents currently playing audio
     unread?: string[]; // agents with activity since you last viewed them
   }>(),
-  { unread: () => [] },
+  { unread: () => [], meta: null },
 );
 
-defineEmits<{ select: [name: string] }>();
+defineEmits<{ select: [name: string]; dismiss: [name: string] }>();
+
+// Two groups: actives first (by arrival into the group — activated_at asc),
+// then offline (most recently ended first — offline_since desc). A daemon
+// without agents_meta yields the legacy flat list, all treated as online.
+const tabs = computed(() => {
+  const names = Object.keys(props.agents);
+  const meta = props.meta ?? {};
+  const entry = (name: string) => ({
+    name,
+    label: meta[name]?.label ?? props.agents[name],
+    online: meta[name]?.online ?? true,
+    activatedAt: meta[name]?.activated_at ?? 0,
+    offlineSince: meta[name]?.offline_since ?? 0,
+  });
+  const all = names.map(entry);
+  const actives = all.filter((t) => t.online).sort((a, b) => a.activatedAt - b.activatedAt);
+  const offline = all.filter((t) => !t.online).sort((a, b) => b.offlineSince - a.offlineSince);
+  return [...actives, ...offline];
+});
 </script>
 
 <template>
-  <nav v-if="Object.keys(agents).length" class="tabs">
+  <nav v-if="tabs.length" class="tabs">
     <button
-      v-for="(label, name) in agents"
-      :key="name"
-      :class="{ live: name === active, viewing: name === viewed, speaking: speaking.includes(name) }"
-      @click="$emit('select', name)"
+      v-for="tab in tabs"
+      :key="tab.name"
+      :class="{
+        live: tab.name === active,
+        viewing: tab.name === viewed,
+        speaking: speaking.includes(tab.name),
+        offline: !tab.online,
+      }"
+      @click="$emit('select', tab.name)"
     >
       <span class="dot" />
-      {{ label }}
-      <span v-if="speaking.includes(name)" class="spk">🔊</span>
-      <span v-if="unread.includes(name) && name !== viewed" class="unread" title="New activity" />
+      {{ tab.label }}
+      <span v-if="speaking.includes(tab.name)" class="spk">🔊</span>
+      <span
+        v-if="unread.includes(tab.name) && tab.name !== viewed"
+        class="unread"
+        title="New activity"
+      />
+      <!-- Dismiss: offline conversations only; overlaid so hover never
+           changes the tab's width. -->
+      <span
+        v-if="!tab.online"
+        class="dismiss"
+        role="button"
+        title="Dismiss this conversation"
+        @click.stop="$emit('dismiss', tab.name)"
+        >✕</span
+      >
     </button>
   </nav>
 </template>
@@ -44,6 +92,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  position: relative;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 button:hover { color: var(--cyan); border-color: var(--cyan-dim); }
@@ -56,6 +105,8 @@ button.viewing {
   text-shadow: 0 0 6px rgba(63, 216, 255, 0.6);
 }
 button.speaking { border-color: var(--violet-dim); }
+button.offline { opacity: 0.45; }
+button.offline .dot { background: rgba(93, 127, 150, 0.35); }
 .spk { filter: drop-shadow(0 0 4px var(--violet)); }
 .unread {
   width: 7px;
@@ -66,4 +117,19 @@ button.speaking { border-color: var(--violet-dim); }
   animation: unread-pulse 1.4s ease-in-out infinite;
 }
 @keyframes unread-pulse { 50% { opacity: 0.4; } }
+/* Overlaid in the top-right corner: appearing on hover must not resize
+   the tab (a layout shift under the cursor makes the ✕ unclickable). */
+.dismiss {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  padding: 0 3px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--muted);
+  opacity: 0;
+  pointer-events: none;
+}
+button:hover .dismiss { opacity: 1; pointer-events: auto; }
+.dismiss:hover { color: var(--amber); }
 </style>

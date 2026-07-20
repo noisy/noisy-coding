@@ -260,6 +260,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "diagnostic_checks": state.diagnostic_checks,
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
+                        "agents_meta": state.agents_meta,
                         "active_agent": state.active_agent,
                     }
                 )
@@ -284,6 +285,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     )
                 else:
                     self._respond({"error": "name required"}, status=400)
+            elif self.path == "/dismiss-agent":
+                name = str(self._read_json_body().get("name", "")).strip()
+                if state.dismiss_agent(name):
+                    state.add_event("agent", f"'{name}' dismissed")
+                    self._respond({"dismissed": name})
+                else:
+                    # Active or still-online conversations cannot be dismissed.
+                    self._respond({"error": "agent is active or online"}, status=409)
             elif self.path == "/active-agent":
                 name = str(self._read_json_body().get("name", "")).strip()
                 active = state.set_active_agent(name)

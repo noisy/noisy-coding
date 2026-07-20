@@ -232,31 +232,75 @@ def test_new_agent_never_steals_the_active_slot():
 
 
 def test_stale_active_agent_keeps_the_mic_and_stays_visible(monkeypatch):
-    monkeypatch.setattr(state_module, "AGENT_TTL_SECONDS", 0.05)
+    monkeypatch.setattr(state_module, "AGENT_OFFLINE_AFTER_SECONDS", 0.05)
     state = ListenerState()
     state.register_agent("mine")
     state.register_agent("other")
     time.sleep(0.1)
     state.drain("other")  # only "other" keeps polling
 
-    agents = state.agents  # triggers the prune
-
     # Switching is the user's conscious act: the quiet active agent stays
     # active AND visible; its speech queues until it returns.
     assert state.active_agent == "mine"
-    assert "mine" in agents
+    assert "mine" in state.agents
     assert state.drain("other") == []  # not their turn — speech is not rerouted
 
 
-def test_stale_non_active_agents_are_pruned(monkeypatch):
-    monkeypatch.setattr(state_module, "AGENT_TTL_SECONDS", 0.05)
+def test_silent_agents_go_offline_but_are_never_deleted(monkeypatch):
+    monkeypatch.setattr(state_module, "AGENT_OFFLINE_AFTER_SECONDS", 0.05)
     state = ListenerState()
     state.register_agent("mine")
     state.register_agent("other")
     time.sleep(0.1)
     state.drain("mine")  # only the active one keeps polling
 
+    meta = state.agents_meta
+    assert "other" in state.agents  # known agents survive silence
+    assert meta["other"]["online"] is False
+    assert meta["other"]["offline_since"] is not None
+    assert meta["mine"]["online"] is True
+
+
+def test_agent_reactivation_restamps_its_arrival_into_the_active_group(monkeypatch):
+    monkeypatch.setattr(state_module, "AGENT_OFFLINE_AFTER_SECONDS", 0.05)
+    state = ListenerState()
+    state.register_agent("early")
+    state.register_agent("late")
+    first_stamp = state.agents_meta["early"]["activated_at"]
+    time.sleep(0.1)  # both go offline
+
+    state.drain("early")  # "early" comes back → rejoins the actives LAST
+
+    meta = state.agents_meta
+    assert meta["early"]["online"] is True
+    assert meta["early"]["activated_at"] > first_stamp
+    assert meta["early"]["activated_at"] > meta["late"]["activated_at"]
+
+
+def test_heartbeat_within_tolerance_keeps_the_activation_stamp():
+    state = ListenerState()
+    state.register_agent("steady")
+    stamp = state.agents_meta["steady"]["activated_at"]
+
+    state.drain("steady")  # normal heartbeat, no offline gap
+
+    assert state.agents_meta["steady"]["activated_at"] == stamp
+
+
+def test_dismiss_removes_only_offline_non_active_agents(monkeypatch):
+    monkeypatch.setattr(state_module, "AGENT_OFFLINE_AFTER_SECONDS", 0.05)
+    state = ListenerState()
+    state.register_agent("mine")
+    state.register_agent("other")
+
+    assert state.dismiss_agent("other") is False  # still online
+    time.sleep(0.1)
+    assert state.dismiss_agent("mine") is False  # active, even when silent
+    assert state.dismiss_agent("ghost") is False  # unknown
+
+    assert state.dismiss_agent("other") is True
     assert "other" not in state.agents
+    assert "mine" in state.agents
 
 
 def test_restore_active_agent_survives_the_first_to_register_race():

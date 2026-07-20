@@ -108,6 +108,10 @@ export function setActiveAgent(name: string): Promise<void> {
   return post("/active-agent", { name });
 }
 
+export function dismissAgent(name: string): Promise<void> {
+  return post("/dismiss-agent", { name });
+}
+
 export function setCharacter(patch: Partial<Character> & { agent?: string }): Promise<void> {
   return post("/character", patch);
 }

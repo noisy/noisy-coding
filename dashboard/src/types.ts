@@ -36,6 +36,11 @@ export interface DaemonStatus {
   language: string;
   agents: Record<string, number>;
   agent_labels: Record<string, string>;
+  /** Tab metadata (#11): online state + ordering keys. Absent on old daemons. */
+  agents_meta?: Record<
+    string,
+    { label: string; online: boolean; activated_at: number; offline_since: number | null }
+  >;
   active_agent: string | null;
 }
 
