@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import vueDevTools from "vite-plugin-vue-devtools";
 
 // Point `vite dev` at another daemon (e.g. the 7765 dev instance) with
 // NOISY_CODING_DAEMON_URL=http://127.0.0.1:7765 npm run dev
@@ -18,7 +19,9 @@ const DAEMON_PATHS = [
 ];
 
 export default defineConfig({
-  plugins: [vue()],
+  // vueDevTools only touches `vite dev`: the floating Vue DevTools panel
+  // (component tree, props, pinia-less state) — never part of the build.
+  plugins: [vue(), vueDevTools()],
   base: "./", // served from /next/ — assets must resolve relatively
   server: {
     proxy: Object.fromEntries(DAEMON_PATHS.map((path) => [path, DAEMON])),
