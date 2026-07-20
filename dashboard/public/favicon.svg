@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 46">
+  <!-- The header logo, favicon-sized: hexagon + waveform. Colors live in
+       these two variables so an instance (or a fork) can retint the icon
+       by editing one line; the dev instance swaps to amber at runtime. -->
+  <rect width="46" height="46" rx="8" fill="#04101a"/>
+  <g stroke="#3fd8ff">
+    <polygon points="23,3 40,12.8 40,33.2 23,43 6,33.2 6,12.8" fill="none" stroke-width="2.4"/>
+    <g stroke-width="3.4" stroke-linecap="round">
+      <line x1="15" y1="19.5" x2="15" y2="26.5"/>
+      <line x1="20.5" y1="15" x2="20.5" y2="31"/>
+      <line x1="26" y1="18" x2="26" y2="28"/>
+      <line x1="31" y1="20.5" x2="31" y2="25.5"/>
+    </g>
+  </g>
+</svg>

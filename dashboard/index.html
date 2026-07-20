@@ -4,6 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>noisy-coding</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // The dev instance gets the amber icon — same signal as its
+      // dashboard badge, visible even on a background tab.
+      if (location.port && location.port !== "8765") {
+        document.querySelector('link[rel="icon"]').href = "/favicon-dev.svg";
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
