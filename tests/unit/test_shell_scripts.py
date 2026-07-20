@@ -100,6 +100,7 @@ def test_mcp_exec_waits_for_the_container_then_execs_stdio(tmp_path):
         'echo "mcp-started"; exit 0',
     )
 
+    env["CLAUDE_CODE_SESSION_ID"] = "session-abc"
     result = run(MCP_EXEC_SH, [], "", env)
 
     assert result.returncode == 0
@@ -109,3 +110,6 @@ def test_mcp_exec_waits_for_the_container_then_execs_stdio(tmp_path):
     # The MCP instance must be forced to stdio (the image env says http).
     assert "NOISY_CODING_MCP_TRANSPORT=stdio" in calls[-1]
     assert "noisy-coding-mcp" in calls[-1]
+    # The session identity must cross the container boundary (#15) — without
+    # it the server guesses by cwd and two tabs steal each other's replies.
+    assert "CLAUDE_CODE_SESSION_ID=session-abc" in calls[-1]

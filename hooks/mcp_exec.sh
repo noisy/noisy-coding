@@ -25,4 +25,9 @@ done
 
 # The image sets NOISY_CODING_MCP_TRANSPORT=http for its long-running
 # server on 8767 — this per-session instance must speak stdio instead.
-exec docker exec -i -e NOISY_CODING_MCP_TRANSPORT=stdio noisy-coding noisy-coding-mcp
+# CLAUDE_CODE_SESSION_ID rides along so the server knows WHICH session it
+# speaks for (#15) — docker exec does not inherit the host environment.
+exec docker exec -i \
+    -e NOISY_CODING_MCP_TRANSPORT=stdio \
+    -e "CLAUDE_CODE_SESSION_ID=${CLAUDE_CODE_SESSION_ID:-}" \
+    noisy-coding noisy-coding-mcp

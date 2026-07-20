@@ -35,13 +35,21 @@ _SESSIONS_MAP = CONFIG_DIR / "sessions.json"
 def _agent_name() -> str:
     """This server's agent id.
 
-    The MCP server can't see the Claude session_id, so: use an explicit
-    NOISY_CODING_AGENT_NAME if set (per-config mode); otherwise look up the
-    per-session id the hooks recorded for this working directory.
+    Resolution order:
+    1. explicit NOISY_CODING_AGENT_NAME (per-config mode);
+    2. CLAUDE_CODE_SESSION_ID — Claude Code exports it to child processes,
+       and the hooks use the very same session id as the agent id, so this
+       is the deterministic identity (#15: the cwd map below is shared by
+       every session in a directory, so two tabs kept stealing each other's
+       voice attributions);
+    3. legacy fallback: the per-cwd id the hooks recorded (old clients).
     """
     env_name = os.environ.get("NOISY_CODING_AGENT_NAME", "").strip()
     if env_name:
         return env_name
+    session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
+    if session_id:
+        return session_id
     try:
         data = json.loads(_SESSIONS_MAP.read_text())
         return str(data.get(os.getcwd(), {}).get("agent", ""))
