@@ -2,14 +2,17 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
-const DAEMON = "http://127.0.0.1:8765";
+// Point `vite dev` at another daemon (e.g. the 7765 dev instance) with
+// NOISY_CODING_DAEMON_URL=http://127.0.0.1:7765 npm run dev
+const DAEMON = process.env.NOISY_CODING_DAEMON_URL ?? "http://127.0.0.1:8765";
 // The client always uses relative URLs: same-origin when the daemon serves
 // the built app at /next, proxied to the daemon in `vite dev`.
 const DAEMON_PATHS = [
   "/status", "/utterances", "/character", "/drain", "/events",
   "/stream", "/pause", "/resume", "/mute", "/mode", "/settings",
   "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
-  "/interrupt", "/voice-mute", "/credentials",
+  "/interrupt", "/voice-mute", "/credentials", "/dismiss-agent",
+  "/reorder-agents",
 ];
 
 export default defineConfig({
