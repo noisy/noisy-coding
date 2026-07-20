@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { VOICES } from "./characterMath";
+import VoiceSelector from "./VoiceSelector.vue";
 
-// PoC voice portraits from the 6×6 sprite sheet in public/avatars.png
-// (34 usable cells; the last two are empty). Cells are assigned by hand:
-// a few are thematic matches (leo→lion, luna→moon, rex→crown, helios→
-// glow, zenith→halo), the rest fill in by gender. Unknown voices fall
-// back to the monogram hexagon.
+// The conversation's voice identity: portrait on top (ON AIR rides OVER
+// the image), the voice picker directly beneath. Grew out of the plain
+// Avatar once the selector moved in from the Character Matrix.
 const SPRITE_GRID = 6;
 const SPRITE_CELL: Record<string, number> = {
   // female
@@ -21,6 +19,8 @@ const props = defineProps<{
   voice: string;
   speaking?: boolean;
 }>();
+
+defineEmits<{ change: [voice: string] }>();
 
 const cell = computed(() => SPRITE_CELL[props.voice]);
 const spriteStyle = computed(() => {
@@ -44,30 +44,28 @@ const hue = computed(() => {
 const color = computed(() => `hsl(${hue.value}, 85%, 62%)`);
 const dim = computed(() => `hsla(${hue.value}, 85%, 62%, 0.12)`);
 const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?"));
-const gender = computed(() => (VOICES[props.voice] ?? "").toUpperCase());
 </script>
 
 <template>
-  <div class="avatar" :class="{ speaking }">
-    <div v-if="spriteStyle" class="portrait" :style="spriteStyle" />
-    <svg v-else viewBox="0 0 92 92" aria-hidden="true" class="fallback">
-      <polygon
-        points="46,4 82,25 82,67 46,88 10,67 10,25"
-        :fill="dim" :stroke="color" stroke-width="2"
-      />
-      <text x="46" y="56" text-anchor="middle" :fill="color" class="mono">{{ monogram }}</text>
-    </svg>
-    <div class="who">
-      <span class="vname" :style="{ color: spriteStyle ? undefined : color }">{{ voice.toUpperCase() || "—" }}</span>
-      <span class="vg">{{ gender }}</span>
+  <div class="persona" :class="{ speaking }">
+    <div class="frame">
+      <div v-if="spriteStyle" class="portrait" :style="spriteStyle" />
+      <svg v-else viewBox="0 0 92 92" aria-hidden="true" class="fallback">
+        <polygon
+          points="46,4 82,25 82,67 46,88 10,67 10,25"
+          :fill="dim" :stroke="color" stroke-width="2"
+        />
+        <text x="46" y="56" text-anchor="middle" :fill="color" class="mono">{{ monogram }}</text>
+      </svg>
       <span v-if="speaking" class="onair">◉ ON AIR</span>
     </div>
+    <VoiceSelector :voice="voice" @change="(v) => $emit('change', v)" />
   </div>
 </template>
 
 <style scoped>
-/* Full-width portrait: the avatar owns the rail column, name below. */
-.avatar { display: flex; flex-direction: column; gap: 10px; }
+.persona { display: flex; flex-direction: column; gap: 10px; }
+.frame { position: relative; }
 .portrait {
   width: 100%;
   aspect-ratio: 1;
@@ -76,18 +74,24 @@ const gender = computed(() => (VOICES[props.voice] ?? "").toUpperCase());
   filter: saturate(1.05);
   box-shadow: 0 0 14px rgba(63, 216, 255, 0.12);
 }
-.avatar.speaking .portrait { box-shadow: 0 0 22px rgba(63, 216, 255, 0.4); }
-.fallback { width: 60%; align-self: center; }
+.persona.speaking .portrait { box-shadow: 0 0 22px rgba(63, 216, 255, 0.4); }
+.fallback { width: 60%; display: block; margin: 0 auto; }
 .mono { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 0.05em; }
-.who { display: flex; align-items: baseline; gap: 10px; }
-.vname { font-size: 15px; font-weight: 700; letter-spacing: 0.26em; color: var(--cyan-hi); }
-.vg { font-size: 9px; letter-spacing: 0.3em; color: var(--muted); }
+/* ON AIR rides OVER the portrait's top edge — there is no room for it
+   under the picture once the selector moved in. */
 .onair {
-  margin-left: auto;
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  padding: 3px 8px;
   font-size: 9px;
+  font-weight: 700;
   letter-spacing: 0.24em;
   color: var(--green, #6dff9e);
+  background: rgba(4, 12, 20, 0.85);
+  border: 1px solid rgba(109, 255, 158, 0.4);
+  text-shadow: 0 0 6px var(--green, #6dff9e);
   animation: onair-pulse 1.2s ease-in-out infinite;
 }
-@keyframes onair-pulse { 50% { opacity: 0.4; } }
+@keyframes onair-pulse { 50% { opacity: 0.45; } }
 </style>

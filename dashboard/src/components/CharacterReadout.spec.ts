@@ -16,10 +16,9 @@ const character: Character = {
 };
 
 describe("CharacterReadout", () => {
-  it("shows the current voice uppercase and the speed", () => {
+  it("shows the speed", () => {
     const wrapper = mount(CharacterReadout, { props: { character } });
 
-    expect(wrapper.find(".vname").text()).toBe("ALTAIR");
     expect(wrapper.find(".sv").text()).toBe("1.10×");
   });
 
@@ -55,18 +54,6 @@ describe("characterMath", () => {
   });
 });
 
-describe("CharacterReadout editing", () => {
-  it("picking a voice from the grid emits a change patch", async () => {
-    const wrapper = mount(CharacterReadout, { props: { character } });
-
-    await wrapper.find(".voicecur").trigger("click");
-    const rex = wrapper.findAll(".voicegrid b").find((b) => b.text() === "REX")!;
-    await rex.trigger("click");
-
-    expect(wrapper.emitted("change")).toEqual([[{ voice: "rex" }]]);
-    expect(wrapper.find(".voicegrid").exists()).toBe(false); // grid closes
-  });
-});
 
 function status(overrides: Partial<DaemonStatus>): DaemonStatus {
   return {

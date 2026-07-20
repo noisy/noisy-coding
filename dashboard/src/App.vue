@@ -6,7 +6,7 @@ import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
-import Avatar from "./components/Avatar.vue";
+import VoicePersona from "./components/VoicePersona.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
 import ConversationTelemetry from "./components/ConversationTelemetry.vue";
@@ -609,10 +609,10 @@ const LANGUAGES: Record<string, string> = {
             </div>
             <aside class="convo-rail">
               <section class="railbox">
-                <div class="railtitle">VOICE</div>
-                <Avatar
+                <VoicePersona
                   :voice="character?.voice ?? ''"
                   :speaking="!!viewedAgent && (status?.speaking_agents ?? []).includes(viewedAgent)"
+                  @change="(v) => changeCharacter({ voice: v })"
                 />
               </section>
               <section class="railbox">

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>noisy-coding</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- One sprite holds every voice portrait — preloading it makes the
+         first avatar (and every voice switch) render instantly. -->
+    <link rel="preload" as="image" href="/avatars.png" />
     <script>
       // The dev instance gets the amber icon — same signal as its
       // dashboard badge, visible even on a background tab.
