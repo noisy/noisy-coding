@@ -567,12 +567,26 @@ class ListenerState:
 
     @property
     def queued_by_agent(self) -> dict:
-        """Waiting transcripts per addressee — feeds the tab WAIT counter."""
+        """Utterances WAITING TO BE HEARD per agent — the tab WAIT counter.
+
+        Counts the agent→user direction (speech queued, synthesizing or
+        parked unheard — everything except the clip playing right now),
+        which is what "messages are waiting" means to the user watching
+        the dashboard. The user→agent transcript queue is a different
+        thing and deliberately not mixed in.
+        """
+        waiting_markers = ("queued", "synthesizing", "waiting", "unheard")
         with self._lock:
             counts: dict[str, int] = {}
-            for transcript in self._transcripts:
-                key = transcript.addressee or (self._active_agent or "")
-                counts[key] = counts.get(key, 0) + 1
+            for utterance in self._utterances:
+                if utterance.get("role") not in ("claude", "daemon"):
+                    continue
+                if utterance["id"] == self._playing_utterance_id:
+                    continue
+                status = str(utterance.get("status", ""))
+                if any(marker in status for marker in waiting_markers):
+                    key = str(utterance.get("agent") or "")
+                    counts[key] = counts.get(key, 0) + 1
             return counts
 
     def reorder_agents(self, order: list[str]) -> None:

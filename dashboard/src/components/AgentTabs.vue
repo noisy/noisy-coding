@@ -106,9 +106,9 @@ function onDrop(target: Tab) {
     >
       <!-- ONE status glyph, fixed slot, priority ladder (option B):
            MUTE (with or without a count) > SPEAKING (green equalizer) >
-           WORKING (violet pulse) > WAIT count (amber) > idle dot.
-           "Who gets the mic" needs no glyph — that's the selected
-           (fused, taller) tab itself. -->
+           WAIT count (amber — messages waiting to be heard beat the mere
+           "working" pulse) > WORKING (violet) > idle dot. "Who gets the
+           mic" needs no glyph — that's the selected (fused, taller) tab. -->
       <span class="statusslot">
         <template v-if="muted.includes(tab.name)">
           <span v-if="(queued[tab.name] ?? 0) > 0" class="mutecount" :title="`Muted — ${queued[tab.name]} waiting`">
@@ -119,10 +119,10 @@ function onDrop(target: Tab) {
         <span v-else-if="speaking.includes(tab.name)" class="eq" aria-label="speaking">
           <i /><i /><i />
         </span>
-        <span v-else-if="thinking.includes(tab.name)" class="dot think" title="Working" />
         <span v-else-if="(queued[tab.name] ?? 0) > 0" class="waitcount" :title="`${queued[tab.name]} waiting`">
           {{ queued[tab.name] }}
         </span>
+        <span v-else-if="thinking.includes(tab.name)" class="dot think" title="Working" />
         <span v-else class="dot" />
       </span>
       {{ tab.label }}
@@ -172,7 +172,6 @@ button.viewing {
   background: rgba(63, 216, 255, 0.08);
   text-shadow: 0 0 6px rgba(63, 216, 255, 0.6);
 }
-button.speaking { border-color: var(--violet-dim); }
 button.offline { opacity: 0.45; }
 button.dragging { opacity: 0.3; border-style: dashed; }
 button.offline .dot { background: rgba(93, 127, 150, 0.35); }

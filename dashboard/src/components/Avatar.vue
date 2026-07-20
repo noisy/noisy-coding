@@ -50,7 +50,7 @@ const gender = computed(() => (VOICES[props.voice] ?? "").toUpperCase());
 <template>
   <div class="avatar" :class="{ speaking }">
     <div v-if="spriteStyle" class="portrait" :style="spriteStyle" />
-    <svg v-else viewBox="0 0 92 92" aria-hidden="true">
+    <svg v-else viewBox="0 0 92 92" aria-hidden="true" class="fallback">
       <polygon
         points="46,4 82,25 82,67 46,88 10,67 10,25"
         :fill="dim" :stroke="color" stroke-width="2"
@@ -66,23 +66,24 @@ const gender = computed(() => (VOICES[props.voice] ?? "").toUpperCase());
 </template>
 
 <style scoped>
-.avatar { display: flex; align-items: center; gap: 14px; }
+/* Full-width portrait: the avatar owns the rail column, name below. */
+.avatar { display: flex; flex-direction: column; gap: 10px; }
 .portrait {
-  width: 96px;
-  height: 96px;
-  flex: none;
+  width: 100%;
+  aspect-ratio: 1;
   border: 1px solid var(--line-strong);
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
   filter: saturate(1.05);
   box-shadow: 0 0 14px rgba(63, 216, 255, 0.12);
 }
-.avatar.speaking .portrait { box-shadow: 0 0 18px rgba(63, 216, 255, 0.4); }
-.avatar svg { width: 84px; flex: none; }
+.avatar.speaking .portrait { box-shadow: 0 0 22px rgba(63, 216, 255, 0.4); }
+.fallback { width: 60%; align-self: center; }
 .mono { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 0.05em; }
-.who { display: flex; flex-direction: column; gap: 4px; }
-.vname { font-size: 14px; font-weight: 700; letter-spacing: 0.26em; color: var(--cyan-hi); }
+.who { display: flex; align-items: baseline; gap: 10px; }
+.vname { font-size: 15px; font-weight: 700; letter-spacing: 0.26em; color: var(--cyan-hi); }
 .vg { font-size: 9px; letter-spacing: 0.3em; color: var(--muted); }
 .onair {
+  margin-left: auto;
   font-size: 9px;
   letter-spacing: 0.24em;
   color: var(--green, #6dff9e);

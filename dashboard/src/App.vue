@@ -760,18 +760,44 @@ footer { flex: none; }
   align-items: flex-end;
 }
 .tabsbar :deep(.tabs button) {
-  border-bottom: none;
+  /* The window's bright top line PASSES UNDER inactive tabs… */
+  border-bottom: 1px solid var(--line-strong);
   padding-top: 8px;
   padding-bottom: 9px;
   clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
 }
 .tabsbar :deep(.tabs button.viewing) {
-  background: var(--panel);
-  border-color: var(--line);
+  /* Glow like the component's own viewing style (cyan tint, bright
+     border), fading into the panel background at the bottom so the
+     fusion seam stays invisible. */
+  /* Ends OPAQUE (--panel-solid): the tab's overlapping bottom pixel must
+     actually cover the window's bright top line, or it ghosts through
+     the translucent panel color. */
+  background: linear-gradient(rgba(63, 216, 255, 0.1), rgba(63, 216, 255, 0.02) 60%, var(--panel-solid));
+  border-color: var(--line-strong);
+  /* …and BREAKS under the selected one, fusing tab and window. */
+  border-bottom-color: transparent;
   /* Taller, never wider: extra height comes from top padding only, so
      sibling tabs don't shift and the text keeps its baseline. */
   padding-top: 14px;
+  position: relative;
+  z-index: 2;
 }
+/* The 1px overlap loses to the panel's own compositing (backdrop-filter),
+   so the gap in the line is painted explicitly: an opaque panel-colored
+   strip under the selected tab, covering the window's bright top border. */
+.tabsbar :deep(.tabs button.viewing)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 3px;
+  background: var(--panel-solid);
+  z-index: 3;
+}
+/* The conversation window's own top edge matches the bright line. */
+.col-mid :deep(.convo-panel) { border-top-color: var(--line-strong); }
 
 /* The conversation frame owns everything conversation-scoped: log on the
    left, the character rail on the right, both INSIDE the panel border and

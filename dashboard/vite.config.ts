@@ -4,7 +4,9 @@ import vue from "@vitejs/plugin-vue";
 
 // Point `vite dev` at another daemon (e.g. the 7765 dev instance) with
 // NOISY_CODING_DAEMON_URL=http://127.0.0.1:7765 npm run dev
-const DAEMON = process.env.NOISY_CODING_DAEMON_URL ?? "http://127.0.0.1:8765";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const env = (globalThis as any).process?.env ?? {};
+const DAEMON = env.NOISY_CODING_DAEMON_URL ?? "http://127.0.0.1:8765";
 // The client always uses relative URLs: same-origin when the daemon serves
 // the built app at /next, proxied to the daemon in `vite dev`.
 const DAEMON_PATHS = [

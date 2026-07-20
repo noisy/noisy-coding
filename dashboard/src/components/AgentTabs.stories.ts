@@ -77,3 +77,79 @@ export const StateMatrix: StoryObj<typeof AgentTabs> = {
       );
   },
 };
+
+/** Tabs sitting ON the conversation window — the folder-tab fusion as it
+ *  looks in the app: the bright top line passes under inactive tabs and
+ *  breaks under the selected one. Replicates App.vue's tabsbar styles
+ *  (they are scoped there), so tune them here first, then port back.
+ */
+export const TabsOnWindow: StoryObj<typeof AgentTabs> = {
+  render: () => {
+    const agents = {
+      release: "release",
+      "character-avatars": "character-avatars",
+      personal: "personal",
+      docs: "docs",
+      "old-thread": "old-thread",
+    };
+    const meta = {
+      release: { label: "release", online: true, activated_at: 1, offline_since: null },
+      "character-avatars": { label: "character-avatars", online: true, activated_at: 2, offline_since: null },
+      personal: { label: "personal", online: true, activated_at: 3, offline_since: null },
+      docs: { label: "docs", online: true, activated_at: 4, offline_since: null },
+      "old-thread": { label: "old-thread", online: false, activated_at: 0, offline_since: 5 },
+    };
+    const css = `
+      .sbw { background: #02060c; padding: 26px; }
+      .sbw .tabswrap { padding: 0 14px; }
+      .sbw .tabswrap .tabs { margin-bottom: -1px; gap: 6px; position: relative; z-index: 1; align-items: flex-end; }
+      .sbw .tabswrap .tabs button { border-bottom: 1px solid var(--line-strong, rgba(64,200,255,0.55)); padding-top: 8px; padding-bottom: 9px; clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); }
+      .sbw .tabswrap .tabs button.viewing {
+        background: linear-gradient(rgba(63,216,255,0.1), rgba(63,216,255,0.02) 60%, #071626);
+        border-color: rgba(64,200,255,0.55);
+        border-bottom-color: transparent;
+        padding-top: 14px;
+        margin-bottom: -1px;
+        position: relative;
+        z-index: 2;
+      }
+      .sbw .window {
+        background: rgba(7, 19, 32, 0.78);
+        border: 1px solid rgba(64, 200, 255, 0.22);
+        border-top-color: rgba(64, 200, 255, 0.55);
+        clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+        padding: 16px;
+        min-height: 180px;
+        display: flex;
+        gap: 16px;
+      }
+      .sbw .fake-log { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+      .sbw .bubble { border: 1px solid rgba(64,200,255,0.22); padding: 10px 12px; font: 10px monospace; color: #8fb2c9; max-width: 70%; }
+      .sbw .bubble.user { align-self: flex-end; border-color: rgba(255,180,84,0.3); }
+      .sbw .fake-rail { width: 170px; border-left: 1px solid rgba(64,200,255,0.22); padding-left: 14px; font: 9px monospace; color: #5d7f96; letter-spacing: 0.2em; }
+    `;
+    return () =>
+      h("div", { class: "sbw" }, [
+        h("style", null, css),
+        h("div", { class: "tabswrap" }, [
+          h(AgentTabs, {
+            agents,
+            meta,
+            active: "release",
+            viewed: "release",
+            speaking: ["character-avatars"],
+            thinking: ["personal"],
+            queued: { docs: 3 },
+          }),
+        ]),
+        h("div", { class: "window" }, [
+          h("div", { class: "fake-log" }, [
+            h("div", { class: "bubble" }, "voice reply lands here…"),
+            h("div", { class: "bubble user" }, "and your speech here"),
+            h("div", { class: "bubble" }, "the selected tab fuses with this frame"),
+          ]),
+          h("div", { class: "fake-rail" }, "AVATAR · CHARACTER · RING"),
+        ]),
+      ]);
+  },
+};

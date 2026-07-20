@@ -1,13 +1,16 @@
 <script setup lang="ts">
-defineProps<{
-  index: string;
-  title: string;
-}>();
+withDefaults(
+  defineProps<{
+    index?: string;
+    title?: string;
+  }>(),
+  { index: "", title: "" },
+);
 </script>
 
 <template>
   <section class="panel">
-    <div class="ptitle"><span class="idx">{{ index }}</span> {{ title }}</div>
+    <div v-if="title" class="ptitle"><span class="idx">{{ index }}</span> {{ title }}</div>
     <slot />
   </section>
 </template>

@@ -45,20 +45,22 @@ describe("AgentTabs", () => {
     expect(b.find(".statusslot").exists()).toBe(true);
   });
 
-  it("shows the amber waiting count only while the agent is idle (priority ladder)", () => {
+  it("waiting count beats working, speaking beats the count", () => {
     const wrapper = mount(AgentTabs, {
       props: {
         agents,
         active: "id-a",
         viewed: "id-a",
         speaking: ["id-b"],
+        thinking: ["id-a"],
         queued: { "id-a": 3, "id-b": 5 },
       },
     });
 
     const [a, b] = wrapper.findAll("button");
-    expect(a.find(".waitcount").text()).toBe("3"); // idle + queued → count
-    expect(b.find(".waitcount").exists()).toBe(false); // speaking hides the count
+    expect(a.find(".waitcount").text()).toBe("3"); // queued outranks working
+    expect(a.find(".dot.think").exists()).toBe(false);
+    expect(b.find(".waitcount").exists()).toBe(false); // speaking still hides it
     expect(b.find(".eq").exists()).toBe(true);
   });
 
