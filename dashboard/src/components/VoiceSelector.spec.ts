@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import VoiceSelector from "./VoiceSelector.vue";
 
 describe("VoiceSelector", () => {
-  it("shows the current voice uppercase with its gender", () => {
+  it("shows the current voice uppercase, without a gender label", () => {
     const wrapper = mount(VoiceSelector, { props: { voice: "altair" } });
 
     expect(wrapper.find(".vname").text()).toBe("ALTAIR");
-    expect(wrapper.find(".vg").text()).toBe("MALE");
+    expect(wrapper.find(".vg").exists()).toBe(false); // gender dropped — the face says it
     expect(wrapper.find(".voicelist").exists()).toBe(false); // collapsed
   });
 
