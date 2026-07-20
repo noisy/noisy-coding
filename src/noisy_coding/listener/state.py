@@ -520,7 +520,13 @@ class ListenerState:
         with self._lock:
             self._agents[name] = time.time()
             if label:
-                self._agent_labels[name] = label
+                # A fallback label (the shortened agent id) must not evict a
+                # real title: hooks re-register on every call, and the ones
+                # that cannot read the transcript would otherwise keep
+                # reverting the tab to the bare hash.
+                is_fallback = label == name or label == name[:8]
+                if not (is_fallback and self._agent_labels.get(name)):
+                    self._agent_labels[name] = label
             if self._active_agent is None:
                 self._active_agent = name
 

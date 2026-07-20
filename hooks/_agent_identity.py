@@ -63,6 +63,10 @@ def identity(hook_input: dict) -> tuple[str, str]:
 
     label = env_name
     if not label:
+        # Set by exec.sh, which reads the transcript host-side: inside the
+        # container the transcript_path below points at a file we can't see.
+        label = os.environ.get("NOISY_CODING_SESSION_TITLE", "").strip()
+    if not label:
         label = _title_from_transcript(hook_input.get("transcript_path", ""))
     if not label:
         label = agent_id[:8] if session_id else agent_id
