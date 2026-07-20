@@ -6,6 +6,7 @@ import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
+import Avatar from "./components/Avatar.vue";
 import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
 import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
@@ -481,6 +482,24 @@ const LANGUAGES: Record<string, string> = {
           <span class="bm-label">{{ status?.muted ? "◉ MIC MUTED" : "MUTE MIC" }}</span>
           <span class="bm-sub">{{ status?.muted ? "TAP TO UNMUTE" : "ONE TAP TO GO SILENT" }}</span>
         </button>
+        <!-- Holding while muted records nothing — lock the button and say
+             why instead of silently eating the press. -->
+        <button
+          v-if="status?.detection_mode === 'ptt'"
+          class="bigmute talk"
+          :class="{ held: status?.ptt_held }"
+          :disabled="status?.muted"
+          @pointerdown="pttPress"
+          @pointerup="stopPtt"
+          @pointercancel="stopPtt"
+        >
+          <span class="bm-label">
+            {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}
+          </span>
+          <span class="bm-sub">
+            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "HOLD THIS OR THE SPACE BAR" }}
+          </span>
+        </button>
         <button class="voicemute" :class="{ muted: status?.voice_muted, locked: unconfigured }" @click="toggleVoiceMute">
           <span class="vm-label">{{ status?.voice_muted ? "◉ CLAUDE MUTED" : "MUTE CLAUDE" }}</span>
           <span class="vm-sub">
@@ -550,6 +569,14 @@ const LANGUAGES: Record<string, string> = {
             </div>
           </div>
         </HudPanel>
+        <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
+             conversation frame — the daemon meters all conversations. -->
+        <HudPanel index="05" title="SYSTEM STATE · COST">
+          <StatusStrip :status="status" :offline="offline" />
+        </HudPanel>
+        <button class="ctl settingsbtn" :class="{ on: showSettings }" @click="showSettings = !showSettings">
+          ⚙ SETTINGS
+        </button>
       </div>
 
       <div class="col-mid" :class="{ locked: unconfigured }">
@@ -586,13 +613,39 @@ const LANGUAGES: Record<string, string> = {
             @dismiss="dismissAgent"
             @reorder="reorderAgents"
           />
-          <ConversationLog
-            :utterances="utterances"
-            :playing-id="status?.playing_utterance_id ?? 0"
-            :activity="status?.activity?.[viewedAgent ?? ''] ?? null"
-            @replay="replay"
-            @cancel="cancel"
-          />
+          <!-- Everything below the tabs is THIS conversation: the log on
+               the left, and the conversation-scoped rail (voice avatar,
+               character, turn timeline) inside the same frame on the
+               right. Global widgets live in the left column instead. -->
+          <div class="convo-body">
+            <div class="convo-main">
+              <ConversationLog
+                :utterances="utterances"
+                :playing-id="status?.playing_utterance_id ?? 0"
+                :activity="status?.activity?.[viewedAgent ?? ''] ?? null"
+                @replay="replay"
+                @cancel="cancel"
+              />
+            </div>
+            <aside class="convo-rail">
+              <section class="railbox">
+                <div class="railtitle">VOICE</div>
+                <Avatar
+                  :voice="character?.voice ?? ''"
+                  :speaking="!!viewedAgent && (status?.speaking_agents ?? []).includes(viewedAgent)"
+                />
+              </section>
+              <section class="railbox">
+                <div class="railtitle">CHARACTER MATRIX</div>
+                <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
+                <p v-else class="todo">NO CHARACTER DATA</p>
+              </section>
+              <section class="railbox">
+                <div class="railtitle">SESSION RING · TURN TIMELINE</div>
+                <SessionRing :utterances="utterances" />
+              </section>
+            </aside>
+          </div>
           <div class="telemetry">
             <div>
               <div class="k">STT LATENCY</div>
@@ -628,39 +681,6 @@ const LANGUAGES: Record<string, string> = {
         </HudPanel>
       </div>
 
-      <div class="col-right" :class="{ locked: unconfigured }">
-        <!-- Holding while muted records nothing — lock the button and say
-             why instead of silently eating the press. -->
-        <button
-          v-if="status?.detection_mode === 'ptt'"
-          class="bigmute talk"
-          :class="{ held: status?.ptt_held }"
-          :disabled="status?.muted"
-          @pointerdown="pttPress"
-          @pointerup="stopPtt"
-          @pointercancel="stopPtt"
-        >
-          <span class="bm-label">
-            {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}
-          </span>
-          <span class="bm-sub">
-            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "HOLD THIS OR THE SPACE BAR" }}
-          </span>
-        </button>
-        <HudPanel index="05" title="CHARACTER MATRIX">
-          <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
-          <p v-else class="todo">NO CHARACTER DATA</p>
-        </HudPanel>
-        <HudPanel index="06" title="SYSTEM STATE · COST">
-          <StatusStrip :status="status" :offline="offline" />
-        </HudPanel>
-        <HudPanel index="07" title="SESSION RING · TURN TIMELINE">
-          <SessionRing :utterances="utterances" />
-        </HudPanel>
-        <button class="ctl settingsbtn" :class="{ on: showSettings }" @click="showSettings = !showSettings">
-          ⚙ SETTINGS
-        </button>
-      </div>
     </div>
 
     <footer>
@@ -722,22 +742,41 @@ header { flex: none; }
 footer { flex: none; }
 .cols {
   display: grid;
-  grid-template-columns: 300px minmax(420px, 1fr) 330px;
+  grid-template-columns: 300px minmax(640px, 1fr);
   gap: 18px;
   margin-top: 14px;
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0; /* let the grid shrink so only the feed scrolls */
 }
-@media (max-width: 1180px) { .cols { grid-template-columns: 1fr 1fr; } .col-mid { order: -1; grid-column: 1 / -1; } }
-@media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
-.col-left,
-.col-right {
+@media (max-width: 1180px) { .cols { grid-template-columns: 1fr; } .col-mid { order: -1; } }
+.col-left {
   min-height: 0;
   overflow-y: auto; /* safety valve on short windows; invisible otherwise */
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
+/* The conversation frame owns everything conversation-scoped: log on the
+   left, the character rail on the right, both INSIDE the panel border and
+   starting below the tabs. */
+.convo-body { display: flex; gap: 16px; flex: 1; min-height: 0; }
+.convo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.convo-rail {
+  width: 300px;
+  flex: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  border-left: 1px solid var(--line);
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (max-width: 980px) { .convo-body { flex-direction: column; } .convo-rail { width: auto; border-left: none; padding-left: 0; } }
+.railbox { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.railbox:last-child { border-bottom: none; }
+.railtitle { font-size: 9px; letter-spacing: 0.26em; color: var(--muted); margin-bottom: 10px; }
 .col-mid {
   min-height: 0;
   display: flex;
