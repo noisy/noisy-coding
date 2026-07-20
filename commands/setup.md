@@ -6,15 +6,16 @@ Set up the noisy-coding voice backend for this user. Follow these steps in order
 
 1. Check Docker: run `docker --version`. If missing, tell the user to install Docker Desktop (or the docker engine on Linux) and stop.
 2. Check whether the backend already runs: `curl -s -m 2 http://127.0.0.1:8765/status`. If it answers, skip to step 4.
-3. Start the backend from the published image (multi-arch, hardware-free — all audio flows through the dashboard page):
+3. Start the backend from the published image (multi-arch, hardware-free — all audio flows through the dashboard page). ALWAYS pull first — `docker run` silently reuses a stale local `latest`, and a version-skewed container breaks the hooks in ways that are miserable to debug:
    ```
+   docker pull noisy/noisy-coding:latest
    docker run -d --name noisy-coding \
      -p 127.0.0.1:8765-8767:8765-8767 \
      -v noisy-coding-config:/root/.config/noisy-coding \
      --restart unless-stopped \
      noisy/noisy-coding:latest
    ```
-   If the container name already exists, `docker start noisy-coding` instead.
+   If the container name already exists, still pull; when the pull brought a new image, recreate the container (`docker rm -f noisy-coding`, then the `docker run` above — the config volume preserves the API key); otherwise just `docker start noisy-coding`.
 4. Verify the services NON-INVASIVELY — exactly like this, no raw TCP probes:
    - `curl -s http://127.0.0.1:8765/status` must return JSON (the daemon),
    - `docker port noisy-coding` must list 8765, 8766 and 8767 (do NOT `nc -z` port 8766 — a bare TCP open on the WebSocket bridge dumps harmless-but-scary handshake tracebacks into the container logs),
