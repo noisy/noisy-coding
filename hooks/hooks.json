@@ -54,8 +54,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh\" stop.py NOISY_CODING_STOP_MODE=rewake",
-            "timeout": 1830,
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh\" stop.py",
+            "timeout": 3630,
             "asyncRewake": true,
             "statusMessage": "Listening for your voice",
             "rewakeSummary": "🎙️ Voice message received"

@@ -38,10 +38,10 @@ def _command(script: str, env: str = "") -> dict:
 
 
 def _entries() -> dict:
-    stop = _command("stop.py", env="NOISY_CODING_STOP_MODE=rewake")
+    stop = _command("stop.py")
     # The rewake poller listens for your voice long after the turn ends —
-    # its timeout must outlive the poll window (30 min + slack).
-    stop["timeout"] = 1830
+    # its timeout must outlive the poll window (60 min + slack).
+    stop["timeout"] = 3630
     stop["asyncRewake"] = True
     stop["statusMessage"] = "Listening for your voice"
     return {

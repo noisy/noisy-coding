@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Stop hook: keep a voice conversation alive across turn boundaries.
 
-When the turn is about to end, wait a moment for the user to speak; if he
-does, block the stop and hand his words to the model. The wait is long only
-when voice was used recently, so keyboard-only sessions end turns instantly.
+Runs as an asyncRewake background hook: the turn ends normally while this
+poller keeps listening for the user's voice; when he speaks, it exits(2)
+with the transcript on stderr, which wakes the model.
 Fails open (silent exit) whenever the listener daemon is not running.
 """
 
@@ -24,14 +24,7 @@ from _agent_identity import identity  # noqa: E402
 
 PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
-VOICE_ACTIVE_WINDOW_SECONDS = 300
-LONG_WAIT_SECONDS = float(os.environ.get("NOISY_CODING_STOP_WAIT_SECONDS", "30"))
-SHORT_WAIT_SECONDS = 2.0
 POLL_INTERVAL_SECONDS = 0.5
-# "sync": block the turn end via stdout JSON while polling (documented path).
-# "rewake": run as an asyncRewake background hook — poll long, then exit(2)
-# with the transcript on stderr to wake the model.
-MODE = os.environ.get("NOISY_CODING_STOP_MODE", "sync")
 REWAKE_WAIT_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "3600"))
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
@@ -61,14 +54,6 @@ def _post_activity(text: str) -> None:
         urllib.request.urlopen(request, timeout=0.3).close()
     except Exception:
         pass
-
-
-def _wait_seconds() -> float:
-    status = _get("/status")
-    voice_recently_used = (
-        time.time() - status.get("last_transcript_at", 0) < VOICE_ACTIVE_WINDOW_SECONDS
-    )
-    return LONG_WAIT_SECONDS if voice_recently_used else SHORT_WAIT_SECONDS
 
 
 def _poll_for_speech(wait_seconds: float) -> str | None:
@@ -122,42 +107,29 @@ def main() -> None:
         Path.home() / ".config" / "noisy-coding" / f"rewake-{AGENT}.lock"
     )
     try:
-        if MODE == "rewake":
-            # Only one background poller may watch the queue: a stale poller
-            # from an earlier turn would steal (and lose) transcripts.
-            REWAKE_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-            lock = open(REWAKE_LOCK_FILE, "w")
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
-                return  # another poller is already on duty
-            spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
-            if spoken:
-                spoken = _collect_continuation(spoken)
-                # Waking the model resumes the turn — relight the activity
-                # line this hook cleared on entry, or the model reasons
-                # with the busy bubble dark until its first tool call.
-                _post_activity("THINKING…")
-                # Experiment: some harness versions surface stdout systemMessage
-                # from async hooks too; harmless if ignored.
-                print(json.dumps({"systemMessage": f"🎙️ Voice: „{spoken}”"}))
-                print(
-                    f"[VOICE] The user said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
-                    file=sys.stderr,
-                )
-                sys.exit(2)
-            return
-        spoken = _poll_for_speech(_wait_seconds())
+        # Only one background poller may watch the queue: a stale poller
+        # from an earlier turn would steal (and lose) transcripts.
+        REWAKE_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+        lock = open(REWAKE_LOCK_FILE, "w")
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return  # another poller is already on duty
+        spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
         if spoken:
-            _post_activity("THINKING…")  # blocked stop = the turn resumes
+            spoken = _collect_continuation(spoken)
+            # Waking the model resumes the turn — relight the activity
+            # line this hook cleared on entry, or the model reasons
+            # with the busy bubble dark until its first tool call.
+            _post_activity("THINKING…")
+            # Experiment: some harness versions surface stdout systemMessage
+            # from async hooks too; harmless if ignored.
+            print(json.dumps({"systemMessage": f"🎙️ Voice: „{spoken}”"}))
             print(
-                json.dumps(
-                    {
-                        "decision": "block",
-                        "reason": f"[VOICE] The user said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
-                    }
-                )
+                f"[VOICE] The user said (spoken): {spoken}\n{VOICE_INSTRUCTION}",
+                file=sys.stderr,
             )
+            sys.exit(2)
     except Exception:
         return
 
