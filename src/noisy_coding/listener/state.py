@@ -565,6 +565,16 @@ class ListenerState:
                 }
             return meta
 
+    @property
+    def queued_by_agent(self) -> dict:
+        """Waiting transcripts per addressee — feeds the tab WAIT counter."""
+        with self._lock:
+            counts: dict[str, int] = {}
+            for transcript in self._transcripts:
+                key = transcript.addressee or (self._active_agent or "")
+                counts[key] = counts.get(key, 0) + 1
+            return counts
+
     def reorder_agents(self, order: list[str]) -> None:
         """Pin a user-chosen tab order (drag & drop). The dashboard sends the
         full resulting order of ONE group; unknown names are ignored."""

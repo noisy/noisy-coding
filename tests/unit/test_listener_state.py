@@ -377,3 +377,19 @@ def test_tab_mic_requires_both_the_flag_and_a_live_lease():
 
     state.release_tab_audio()
     assert state.tab_mic_live is False  # release clears the mic flag too
+
+
+def test_queued_by_agent_counts_waiting_transcripts_per_addressee():
+    state = ListenerState()
+    state.register_agent("a")
+    state.register_agent("b")
+    uid_a = state.create_utterance("user", "recording…")  # active = a
+    state.add_transcript("one for a", uid_a)
+    state.set_active_agent("b")
+    uid_b = state.create_utterance("user", "recording…")
+    state.add_transcript("one for b", uid_b)
+    state.add_transcript("two for b", 0)  # unstamped → active (b)
+
+    assert state.queued_by_agent == {"a": 1, "b": 2}
+    state.drain("b")
+    assert state.queued_by_agent == {"a": 1}

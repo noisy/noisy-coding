@@ -22,35 +22,18 @@ import { useBrowserAudio } from "./composables/useBrowserAudio";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
+const { status, utterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
 
-// Unread badges: an agent has "unread" when its newest utterance id is
-// beyond what was on screen the last time you viewed that tab. Agents seen
-// for the first time start caught-up (old history isn't news).
-const lastSeen = ref<Record<string, number>>({});
-watch(allUtterances, (list) => {
-  const maxByAgent: Record<string, number> = {};
-  for (const u of list) {
-    const agent = u.agent ?? "";
-    maxByAgent[agent] = Math.max(maxByAgent[agent] ?? 0, u.id);
-  }
-  for (const [agent, max] of Object.entries(maxByAgent)) {
-    if (!(agent in lastSeen.value)) lastSeen.value[agent] = max;
-  }
-  const viewed = viewedAgent.value ?? "";
-  if (maxByAgent[viewed] != null) lastSeen.value[viewed] = maxByAgent[viewed];
-});
-const unreadAgents = computed(() => {
-  const viewed = viewedAgent.value ?? "";
-  const unread = new Set<string>();
-  for (const u of allUtterances.value) {
-    const agent = u.agent ?? "";
-    if (agent && agent !== viewed && u.id > (lastSeen.value[agent] ?? Infinity)) {
-      unread.add(agent);
-    }
-  }
-  return [...unread];
+// Agents visibly "working": their live-activity line was updated in the
+// last few seconds (tool running or THINKING between tools).
+const THINKING_FRESH_S = 20;
+const thinkingAgents = computed(() => {
+  const activity = status.value?.activity ?? {};
+  const now = Date.now() / 1000;
+  return Object.entries(activity)
+    .filter(([, a]) => a?.text && now - a.at < THINKING_FRESH_S)
+    .map(([name]) => name);
 });
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
@@ -598,21 +581,29 @@ const LANGUAGES: Record<string, string> = {
             @run-checks="runChecks"
           />
         </HudPanel>
-        <HudPanel v-else index="04" title="COMM LOG · UTTERANCE STREAM">
-          <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
-            ▶ CATCH UP ({{ unheard.length }} UNHEARD)
-          </button>
+        <!-- Tabs live OUTSIDE the conversation frame, protruding above it
+             like folder tabs — the frame reads as "the selected tab's
+             window", and everything inside starts one line higher. -->
+        <div v-if="!showSettings" class="tabsbar">
           <AgentTabs
             :agents="status?.agent_labels ?? {}"
             :meta="status?.agents_meta ?? null"
             :active="status?.active_agent ?? null"
             :viewed="viewedAgent"
             :speaking="status?.speaking_agents ?? []"
-            :unread="unreadAgents"
+            :thinking="thinkingAgents"
+            :queued="status?.queued_by_agent ?? {}"
             @select="selectAgent"
             @dismiss="dismissAgent"
             @reorder="reorderAgents"
           />
+        </div>
+        <!-- No panel title: the tabs above ARE the title, and "utterance
+             stream" meant nothing to normal humans anyway. -->
+        <HudPanel v-if="!showSettings" class="convo-panel">
+          <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
+            ▶ CATCH UP ({{ unheard.length }} UNHEARD)
+          </button>
           <!-- Everything below the tabs is THIS conversation: the log on
                the left, and the conversation-scoped rail (voice avatar,
                character, turn timeline) inside the same frame on the
@@ -756,6 +747,32 @@ footer { flex: none; }
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
+/* Folder-tab bar: sits on top of the conversation frame, buttons overlap
+   its top border by 1px so the viewed tab visually fuses with the window
+   below — the frame reads as that tab's window, not a separate panel. */
+.tabsbar { padding: 0 14px; }
+.tabsbar :deep(.tabs) {
+  margin-bottom: -1px;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+  /* Bottom-aligned row: the taller selected tab grows UPWARD only. */
+  align-items: flex-end;
+}
+.tabsbar :deep(.tabs button) {
+  border-bottom: none;
+  padding-top: 8px;
+  padding-bottom: 9px;
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+}
+.tabsbar :deep(.tabs button.viewing) {
+  background: var(--panel);
+  border-color: var(--line);
+  /* Taller, never wider: extra height comes from top padding only, so
+     sibling tabs don't shift and the text keeps its baseline. */
+  padding-top: 14px;
+}
+
 /* The conversation frame owns everything conversation-scoped: log on the
    left, the character rail on the right, both INSIDE the panel border and
    starting below the tabs. */

@@ -41,6 +41,8 @@ export interface DaemonStatus {
     string,
     { label: string; online: boolean; activated_at: number; offline_since: number | null; manual_pos?: number | null }
   >;
+  /** Waiting (undelivered) transcripts per addressee agent. */
+  queued_by_agent?: Record<string, number>;
   active_agent: string | null;
 }
 

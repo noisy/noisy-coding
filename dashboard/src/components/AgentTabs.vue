@@ -16,9 +16,11 @@ const props = withDefaults(
     active: string | null; // the agent receiving transcripts
     viewed: string | null; // the tab being displayed
     speaking: string[]; // agents currently playing audio
-    unread?: string[]; // agents with activity since you last viewed them
+    thinking?: string[]; // agents currently working (live activity line)
+    queued?: Record<string, number>; // waiting messages per agent
+    muted?: string[]; // per-conversation mute (future daemon feature)
   }>(),
-  { unread: () => [], meta: null },
+  { thinking: () => [], queued: () => ({}), muted: () => [], meta: null },
 );
 
 const emit = defineEmits<{
@@ -91,7 +93,6 @@ function onDrop(target: Tab) {
       :key="tab.name"
       draggable="true"
       :class="{
-        live: tab.name === active,
         viewing: tab.name === viewed,
         speaking: speaking.includes(tab.name),
         offline: !tab.online,
@@ -103,14 +104,28 @@ function onDrop(target: Tab) {
       @dragover.prevent
       @drop.prevent="onDrop(tab)"
     >
-      <span class="dot" />
+      <!-- ONE status glyph, fixed slot, priority ladder (option B):
+           MUTE (with or without a count) > SPEAKING (green equalizer) >
+           WORKING (violet pulse) > WAIT count (amber) > idle dot.
+           "Who gets the mic" needs no glyph — that's the selected
+           (fused, taller) tab itself. -->
+      <span class="statusslot">
+        <template v-if="muted.includes(tab.name)">
+          <span v-if="(queued[tab.name] ?? 0) > 0" class="mutecount" :title="`Muted — ${queued[tab.name]} waiting`">
+            {{ queued[tab.name] }}
+          </span>
+          <span v-else class="mutering" title="Muted" />
+        </template>
+        <span v-else-if="speaking.includes(tab.name)" class="eq" aria-label="speaking">
+          <i /><i /><i />
+        </span>
+        <span v-else-if="thinking.includes(tab.name)" class="dot think" title="Working" />
+        <span v-else-if="(queued[tab.name] ?? 0) > 0" class="waitcount" :title="`${queued[tab.name]} waiting`">
+          {{ queued[tab.name] }}
+        </span>
+        <span v-else class="dot" />
+      </span>
       {{ tab.label }}
-      <span v-if="speaking.includes(tab.name)" class="spk">🔊</span>
-      <span
-        v-if="unread.includes(tab.name) && tab.name !== viewed"
-        class="unread"
-        title="New activity"
-      />
       <!-- Dismiss: offline conversations only; overlaid so hover never
            changes the tab's width. -->
       <span
@@ -145,7 +160,12 @@ button {
 }
 button:hover { color: var(--cyan); border-color: var(--cyan-dim); }
 button .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(93, 127, 150, 0.5); }
-button.live .dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+button .dot.think {
+  background: var(--violet, #b48cff);
+  box-shadow: 0 0 6px var(--violet, #b48cff);
+  animation: think-pulse 1.2s ease-in-out infinite;
+}
+@keyframes think-pulse { 50% { opacity: 0.35; } }
 button.viewing {
   color: var(--cyan-hi);
   border-color: var(--line-strong);
@@ -156,16 +176,71 @@ button.speaking { border-color: var(--violet-dim); }
 button.offline { opacity: 0.45; }
 button.dragging { opacity: 0.3; border-style: dashed; }
 button.offline .dot { background: rgba(93, 127, 150, 0.35); }
-.spk { filter: drop-shadow(0 0 4px var(--violet)); }
-.unread {
+/* Fixed-size status slot on the left: idle dot, thinking pulse or the
+   speaking equalizer all render inside the same box, so the tab never
+   changes size when the state does. */
+.statusslot {
+  width: 13px;
+  height: 10px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 100%; }
+.eq i {
+  width: 3px;
+  background: var(--green, #6dff9e);
+  box-shadow: 0 0 5px var(--green, #6dff9e);
+  transform-origin: bottom;
+  animation: eq-bounce 0.8s ease-in-out infinite;
+}
+.eq i:nth-child(1) { height: 50%; }
+.eq i:nth-child(2) { height: 100%; animation-delay: 0.2s; }
+.eq i:nth-child(3) { height: 70%; animation-delay: 0.4s; }
+@keyframes eq-bounce { 50% { transform: scaleY(0.45); } }
+.waitcount {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--amber, #ffb454);
+  text-shadow: 0 0 6px var(--amber, #ffb454);
+}
+/* Muted with a backlog: dimmed amber under a hairline slash — warm
+   enough to keep reminding, quiet enough to respect the mute. */
+.mutecount {
+  position: relative;
+  padding: 0 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a8834a;
+}
+.mutecount::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  width: calc(100% + 2px);
+  height: 1px;
+  background: rgba(93, 127, 150, 0.9);
+  transform: rotate(-35deg);
+}
+.mutering {
+  position: relative;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--amber);
-  box-shadow: 0 0 8px var(--amber);
-  animation: unread-pulse 1.4s ease-in-out infinite;
+  border: 1px solid rgba(93, 127, 150, 0.9);
 }
-@keyframes unread-pulse { 50% { opacity: 0.4; } }
+.mutering::after {
+  content: "";
+  position: absolute;
+  left: 2.5px;
+  top: -3px;
+  width: 1.5px;
+  height: 12px;
+  background: rgba(93, 127, 150, 0.9);
+  transform: rotate(45deg);
+}
 /* Overlaid in the top-right corner: appearing on hover must not resize
    the tab (a layout shift under the cursor makes the ✕ unclickable). */
 .dismiss {

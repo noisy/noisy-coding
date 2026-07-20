@@ -24,25 +24,61 @@ describe("AgentTabs", () => {
     expect(wrapper.emitted("select")).toEqual([["id-b"]]);
   });
 
-  it("marks live, viewing and speaking states", () => {
+  it("marks viewing, speaking and thinking states in the fixed status slot", () => {
     const wrapper = mount(AgentTabs, {
-      props: { agents, active: "id-b", viewed: "id-a", speaking: ["id-b"] },
+      props: {
+        agents,
+        active: "id-b",
+        viewed: "id-a",
+        speaking: ["id-b"],
+        thinking: ["id-a"],
+      },
     });
 
     const [a, b] = wrapper.findAll("button");
     expect(a.classes()).toContain("viewing");
-    expect(b.classes()).toContain("live");
-    expect(b.find(".spk").exists()).toBe(true);
+    expect(b.find(".eq").exists()).toBe(true); // speaking = green equalizer
+    expect(a.find(".eq").exists()).toBe(false);
+    expect(a.find(".dot.think").exists()).toBe(true); // working = violet pulse
+    // The slot always exists, so state changes never resize the tab.
+    expect(a.find(".statusslot").exists()).toBe(true);
+    expect(b.find(".statusslot").exists()).toBe(true);
   });
 
-  it("shows an unread dot only on background tabs with activity", () => {
+  it("shows the amber waiting count only while the agent is idle (priority ladder)", () => {
     const wrapper = mount(AgentTabs, {
-      props: { agents, active: "id-a", viewed: "id-a", speaking: [], unread: ["id-a", "id-b"] },
+      props: {
+        agents,
+        active: "id-a",
+        viewed: "id-a",
+        speaking: ["id-b"],
+        queued: { "id-a": 3, "id-b": 5 },
+      },
     });
 
     const [a, b] = wrapper.findAll("button");
-    expect(a.find(".unread").exists()).toBe(false); // viewed tab never nags
-    expect(b.find(".unread").exists()).toBe(true);
+    expect(a.find(".waitcount").text()).toBe("3"); // idle + queued → count
+    expect(b.find(".waitcount").exists()).toBe(false); // speaking hides the count
+    expect(b.find(".eq").exists()).toBe(true);
+  });
+
+  it("mute always wins and carries its own dimmed count", () => {
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents,
+        active: "id-a",
+        viewed: "id-a",
+        speaking: ["id-a", "id-b"],
+        muted: ["id-a", "id-b"],
+        queued: { "id-b": 7 },
+      },
+    });
+
+    const [a, b] = wrapper.findAll("button");
+    expect(a.find(".mutering").exists()).toBe(true); // muted, empty queue
+    expect(a.find(".eq").exists()).toBe(false); // mute beats speaking
+    expect(b.find(".mutecount").text()).toBe("7"); // muted with backlog
+    expect(b.find(".eq").exists()).toBe(false);
   });
 
   it("renders nothing without agents", () => {

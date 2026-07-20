@@ -264,6 +264,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
                         "agents_meta": state.agents_meta,
+                        "queued_by_agent": state.queued_by_agent,
                         "active_agent": state.active_agent,
                     }
                 )
