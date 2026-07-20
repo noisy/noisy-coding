@@ -16,6 +16,8 @@ function pick(name: string) {
 </script>
 
 <template>
+  <!-- The unfolded grid OVERLAYS whatever sits below (z-axis) instead of
+       pushing it down — the rail's height must not jump. -->
   <div class="voiceselector">
     <div class="voicecur" @click="open = !open">
       <span class="lbl">VOICE</span>
@@ -40,6 +42,7 @@ function pick(name: string) {
 </template>
 
 <style scoped>
+.voiceselector { position: relative; }
 .voicecur {
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--line-strong); padding: 7px 12px;
@@ -51,7 +54,21 @@ function pick(name: string) {
 .voicecur .vg { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
 .voicecur .arrow { margin-left: auto; color: var(--cyan-dim); font-size: 10px; }
 
-.voicegrid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.voicegrid {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 10px;
+  background: var(--panel-solid, #071626);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
 .voicegrid b {
   font-weight: 400; font-size: 9px; letter-spacing: 0.12em; color: var(--muted);
   border: 1px solid rgba(63, 216, 255, 0.15); padding: 3px 8px; cursor: pointer;
