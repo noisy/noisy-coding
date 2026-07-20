@@ -179,7 +179,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/debug":
                 # The chat-window sandbox — same SPA bundle, routed client-side.
                 self._serve_hud_file("index.html")
-            elif url.path.startswith("/assets/"):
+            elif url.path.startswith("/assets/") or url.path in (
+                "/favicon.svg",
+                "/favicon-dev.svg",
+            ):
                 self._serve_hud_file(url.path[1:])
             elif url.path == "/drain":
                 agent = parse_qs(url.query).get("agent", [None])[0]
