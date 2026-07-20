@@ -41,6 +41,10 @@ class Transcript:
     text: str
     timestamp: float
     utterance_id: int = 0
+    # Which agent this speech was addressed TO — the agent active when the
+    # utterance STARTED (#17). Switching tabs while a sentence is finishing
+    # or transcribing must not reroute it. Empty = legacy/unstamped.
+    addressee: str = ""
 
 
 UTTERANCE_LOG_SIZE = 100
@@ -439,8 +443,24 @@ class ListenerState:
     def add_transcript(self, text: str, utterance_id: int = 0) -> None:
         with self._lock:
             now = time.time()
+            # Address the transcript to the agent stamped on its utterance
+            # card — that card was created at RECORDING START, so this is
+            # "who the user started talking to" (#17), not whoever's tab is
+            # active by the time transcription finishes.
+            addressee = ""
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    addressee = str(utterance.get("agent") or "")
+                    break
+            if not addressee:
+                addressee = self._active_agent or ""
             self._transcripts.append(
-                Transcript(text=text, timestamp=now, utterance_id=utterance_id)
+                Transcript(
+                    text=text,
+                    timestamp=now,
+                    utterance_id=utterance_id,
+                    addressee=addressee,
+                )
             )
             self._last_transcript_at = now
             self._add_event_locked("transcript", text)
@@ -468,15 +488,28 @@ class ListenerState:
 
     def drain(self, agent: str | None = None) -> list[Transcript]:
         with self._lock:
-            # Register/refresh the caller and gate delivery on active agent.
-            # No agent registered yet → single-agent mode (everyone drains).
+            # Register/refresh the caller. No agent given → single-agent
+            # mode (everyone drains everything).
             if agent is not None:
                 self._touch_agent_locked(agent)
                 if self._active_agent is None:
                     self._active_agent = agent  # first to register wins by default
-                if agent != self._active_agent:
-                    return []  # not your turn — the active agent gets the speech
-            transcripts, self._transcripts = self._transcripts, []
+                # Deliver by ADDRESSEE (stamped at recording start, #17).
+                # Unstamped transcripts keep the old rule: active agent only.
+                transcripts = [
+                    t
+                    for t in self._transcripts
+                    if t.addressee == agent
+                    or (not t.addressee and agent == self._active_agent)
+                ]
+                if not transcripts:
+                    return []
+                delivered_ids = {id(t) for t in transcripts}
+                self._transcripts = [
+                    t for t in self._transcripts if id(t) not in delivered_ids
+                ]
+            else:
+                transcripts, self._transcripts = self._transcripts, []
             if transcripts:
                 self._add_event_locked(
                     "delivered", " ".join(t.text for t in transcripts)

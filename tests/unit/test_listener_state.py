@@ -287,6 +287,36 @@ def test_heartbeat_within_tolerance_keeps_the_activation_stamp():
     assert state.agents_meta["steady"]["activated_at"] == stamp
 
 
+def test_transcript_follows_the_agent_the_user_started_talking_to():
+    # Recording starts with A active; the user switches to B before the
+    # transcription lands (#17). The speech belongs to A: B must not see
+    # it, and A gets it even though A is no longer active.
+    state = ListenerState()
+    state.register_agent("a")
+    state.register_agent("b")
+    assert state.active_agent == "a"
+    utterance_id = state.create_utterance("user", "recording…")
+
+    state.set_active_agent("b")
+    state.add_transcript("meant for a", utterance_id)
+
+    assert state.drain("b") == []
+    delivered = state.drain("a")
+    assert [t.text for t in delivered] == ["meant for a"]
+    assert state.drain("a") == []  # delivered once
+
+
+def test_unstamped_transcript_keeps_the_active_agent_rule():
+    state = ListenerState()
+    state.register_agent("a")
+    state.register_agent("b")
+
+    state.add_transcript("no card", utterance_id=0)  # falls back to active=a
+
+    assert state.drain("b") == []
+    assert [t.text for t in state.drain("a")] == ["no card"]
+
+
 def test_reorder_pins_manual_positions_for_known_agents_only():
     state = ListenerState()
     state.register_agent("a")
