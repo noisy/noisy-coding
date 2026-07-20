@@ -21,7 +21,7 @@ import { useBrowserAudio } from "./composables/useBrowserAudio";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent } =
+const { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
 
 // Unread badges: an agent has "unread" when its newest utterance id is
@@ -584,6 +584,7 @@ const LANGUAGES: Record<string, string> = {
             :unread="unreadAgents"
             @select="selectAgent"
             @dismiss="dismissAgent"
+            @reorder="reorderAgents"
           />
           <ConversationLog
             :utterances="utterances"

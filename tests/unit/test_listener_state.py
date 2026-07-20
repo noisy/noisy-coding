@@ -287,6 +287,19 @@ def test_heartbeat_within_tolerance_keeps_the_activation_stamp():
     assert state.agents_meta["steady"]["activated_at"] == stamp
 
 
+def test_reorder_pins_manual_positions_for_known_agents_only():
+    state = ListenerState()
+    state.register_agent("a")
+    state.register_agent("b")
+
+    state.reorder_agents(["b", "ghost", "a"])
+
+    meta = state.agents_meta
+    assert meta["b"]["manual_pos"] == 0
+    assert meta["a"]["manual_pos"] == 2
+    assert "ghost" not in state.agents
+
+
 def test_dismiss_removes_only_offline_non_active_agents(monkeypatch):
     monkeypatch.setattr(state_module, "AGENT_OFFLINE_AFTER_SECONDS", 0.05)
     state = ListenerState()

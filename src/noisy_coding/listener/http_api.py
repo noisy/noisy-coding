@@ -293,6 +293,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 else:
                     # Active or still-online conversations cannot be dismissed.
                     self._respond({"error": "agent is active or online"}, status=409)
+            elif self.path == "/reorder-agents":
+                order = self._read_json_body().get("order")
+                if isinstance(order, list):
+                    state.reorder_agents([str(n) for n in order])
+                    self._respond({"reordered": True})
+                else:
+                    self._respond({"error": "order must be a list"}, status=400)
             elif self.path == "/active-agent":
                 name = str(self._read_json_body().get("name", "")).strip()
                 active = state.set_active_agent(name)

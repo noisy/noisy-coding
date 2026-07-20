@@ -39,7 +39,7 @@ export interface DaemonStatus {
   /** Tab metadata (#11): online state + ordering keys. Absent on old daemons. */
   agents_meta?: Record<
     string,
-    { label: string; online: boolean; activated_at: number; offline_since: number | null }
+    { label: string; online: boolean; activated_at: number; offline_since: number | null; manual_pos?: number | null }
   >;
   active_agent: string | null;
 }

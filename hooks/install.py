@@ -44,6 +44,9 @@ def _entries() -> dict:
     stop["timeout"] = 3630
     stop["asyncRewake"] = True
     stop["statusMessage"] = "Listening for your voice"
+    # Shown in the console when the poller wakes the model — without it the
+    # harness prints a cryptic default ("Stop hook feedback").
+    stop["rewakeSummary"] = "🎙️ Voice message received"
     return {
         "UserPromptSubmit": [{"hooks": [_command("user_prompt_submit.py")]}],
         "PreToolUse": [

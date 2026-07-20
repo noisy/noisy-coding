@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 export interface AgentMeta {
   label: string;
   online: boolean;
   activated_at: number;
   offline_since: number | null;
+  manual_pos?: number | null;
 }
 
 const props = withDefaults(
@@ -20,26 +21,67 @@ const props = withDefaults(
   { unread: () => [], meta: null },
 );
 
-defineEmits<{ select: [name: string]; dismiss: [name: string] }>();
+const emit = defineEmits<{
+  select: [name: string];
+  dismiss: [name: string];
+  reorder: [names: string[]];
+}>();
+
+interface Tab {
+  name: string;
+  label: string;
+  online: boolean;
+  activatedAt: number;
+  offlineSince: number;
+  manualPos: number | null;
+}
+
+// Within each group, user-pinned tabs (drag & drop) come first in pinned
+// order; the rest follow the group's natural order.
+function groupSort(tabsIn: Tab[], natural: (a: Tab, b: Tab) => number): Tab[] {
+  return [...tabsIn].sort((a, b) => {
+    if (a.manualPos != null && b.manualPos != null) return a.manualPos - b.manualPos;
+    if (a.manualPos != null) return -1;
+    if (b.manualPos != null) return 1;
+    return natural(a, b);
+  });
+}
 
 // Two groups: actives first (by arrival into the group — activated_at asc),
 // then offline (most recently ended first — offline_since desc). A daemon
 // without agents_meta yields the legacy flat list, all treated as online.
-const tabs = computed(() => {
-  const names = Object.keys(props.agents);
+const groups = computed(() => {
   const meta = props.meta ?? {};
-  const entry = (name: string) => ({
+  const all: Tab[] = Object.keys(props.agents).map((name) => ({
     name,
     label: meta[name]?.label ?? props.agents[name],
     online: meta[name]?.online ?? true,
     activatedAt: meta[name]?.activated_at ?? 0,
     offlineSince: meta[name]?.offline_since ?? 0,
-  });
-  const all = names.map(entry);
-  const actives = all.filter((t) => t.online).sort((a, b) => a.activatedAt - b.activatedAt);
-  const offline = all.filter((t) => !t.online).sort((a, b) => b.offlineSince - a.offlineSince);
-  return [...actives, ...offline];
+    manualPos: meta[name]?.manual_pos ?? null,
+  }));
+  return {
+    actives: groupSort(all.filter((t) => t.online), (a, b) => a.activatedAt - b.activatedAt),
+    offline: groupSort(all.filter((t) => !t.online), (a, b) => b.offlineSince - a.offlineSince),
+  };
 });
+const tabs = computed(() => [...groups.value.actives, ...groups.value.offline]);
+
+// Drag & drop within a group only: dropping an active tab onto an offline
+// one (or vice versa) is ignored — group membership is liveness, not choice.
+const dragging = ref<string | null>(null);
+function onDrop(target: Tab) {
+  const name = dragging.value;
+  dragging.value = null;
+  if (!name || name === target.name) return;
+  const group = target.online ? groups.value.actives : groups.value.offline;
+  const names = group.map((t) => t.name);
+  const from = names.indexOf(name);
+  if (from === -1) return; // cross-group drop
+  names.splice(from, 1);
+  names.splice(names.indexOf(target.name) + (from <= names.indexOf(target.name) ? 1 : 0), 0, name);
+  emit("reorder", names);
+}
 </script>
 
 <template>
@@ -47,13 +89,19 @@ const tabs = computed(() => {
     <button
       v-for="tab in tabs"
       :key="tab.name"
+      draggable="true"
       :class="{
         live: tab.name === active,
         viewing: tab.name === viewed,
         speaking: speaking.includes(tab.name),
         offline: !tab.online,
+        dragging: tab.name === dragging,
       }"
       @click="$emit('select', tab.name)"
+      @dragstart="dragging = tab.name"
+      @dragend="dragging = null"
+      @dragover.prevent
+      @drop.prevent="onDrop(tab)"
     >
       <span class="dot" />
       {{ tab.label }}
@@ -106,6 +154,7 @@ button.viewing {
 }
 button.speaking { border-color: var(--violet-dim); }
 button.offline { opacity: 0.45; }
+button.dragging { opacity: 0.3; border-style: dashed; }
 button.offline .dot { background: rgba(93, 127, 150, 0.35); }
 .spk { filter: drop-shadow(0 0 4px var(--violet)); }
 .unread {

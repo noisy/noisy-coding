@@ -60,6 +60,10 @@ class ListenerState:
         # name -> when the agent last BECAME online (offline->online edge).
         # Orders the active tab group: new arrivals join on the right.
         self._agent_activated: dict[str, float] = {}
+        # name -> user-pinned position (drag & drop). Within each tab group,
+        # pinned agents come first in pinned order; unpinned follow in the
+        # group's natural order.
+        self._agent_manual_pos: dict[str, int] = {}
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
@@ -524,8 +528,17 @@ class ListenerState:
                     "online": online,
                     "activated_at": self._agent_activated.get(name, seen),
                     "offline_since": None if online else seen + AGENT_OFFLINE_AFTER_SECONDS,
+                    "manual_pos": self._agent_manual_pos.get(name),
                 }
             return meta
+
+    def reorder_agents(self, order: list[str]) -> None:
+        """Pin a user-chosen tab order (drag & drop). The dashboard sends the
+        full resulting order of ONE group; unknown names are ignored."""
+        with self._lock:
+            for position, name in enumerate(order):
+                if name in self._agents:
+                    self._agent_manual_pos[name] = position
 
     def dismiss_agent(self, name: str) -> bool:
         """Drop an agent's tab. Only offline, non-active conversations may go:
@@ -540,6 +553,7 @@ class ListenerState:
             del self._agents[name]
             self._agent_labels.pop(name, None)
             self._agent_activated.pop(name, None)
+            self._agent_manual_pos.pop(name, None)
             self._activity.pop(name, None)
             return True
 

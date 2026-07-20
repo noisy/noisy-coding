@@ -97,6 +97,51 @@ describe("AgentTabs", () => {
     expect(wrapper.emitted("select")).toBeUndefined(); // ✕ must not also select
   });
 
+  it("puts user-pinned tabs first within their group, in pinned order", () => {
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { a: "a", b: "b", c: "c" },
+        meta: {
+          a: { label: "a", online: true, activated_at: 1, offline_since: null, manual_pos: null },
+          b: { label: "b", online: true, activated_at: 2, offline_since: null, manual_pos: 1 },
+          c: { label: "c", online: true, activated_at: 3, offline_since: null, manual_pos: 0 },
+        },
+        active: "a",
+        viewed: "a",
+        speaking: [],
+      },
+    });
+
+    const labels = wrapper.findAll("button").map((b) => b.text());
+    expect(labels).toEqual(["c", "b", "a"]);
+  });
+
+  it("emits the group's new order after a drag within the group", async () => {
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { a: "a", b: "b", dead: "dead" },
+        meta: {
+          a: { label: "a", online: true, activated_at: 1, offline_since: null, manual_pos: null },
+          b: { label: "b", online: true, activated_at: 2, offline_since: null, manual_pos: null },
+          dead: { label: "dead", online: false, activated_at: 0, offline_since: 9, manual_pos: null },
+        },
+        active: "a",
+        viewed: "a",
+        speaking: [],
+      },
+    });
+
+    const [a, b, dead] = wrapper.findAll("button");
+    await a.trigger("dragstart");
+    await b.trigger("drop");
+    expect(wrapper.emitted("reorder")).toEqual([[["b", "a"]]]);
+
+    // Dropping an active tab onto the offline group is ignored.
+    await a.trigger("dragstart");
+    await dead.trigger("drop");
+    expect(wrapper.emitted("reorder")).toHaveLength(1);
+  });
+
   it("treats agents without meta as online (legacy daemon)", () => {
     const wrapper = mount(AgentTabs, {
       props: { agents, active: "id-a", viewed: "id-a", speaking: [] },
