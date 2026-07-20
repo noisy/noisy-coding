@@ -5,13 +5,14 @@ description: What to tell the user right after publishing a noisy-coding release
 
 # After a production release: tell the user exactly how to refresh
 
-Every release ends with the same user question: *"co muszę teraz zrobić?"*
+Every release ends with the same user question: *"what do I do now?"*
 Sometimes it is one step, sometimes three — never make the user derive it.
 After the image lands on Docker Hub (verify — don't announce before the
 build is green), ALWAYS deliver:
 
 1. **aloud**: one sentence naming the release and how many steps it costs
-   ("dwa siedem siedem — jedna komenda, tylko kontener");
+   ("2.7.7 — one command, container only"); speak the user's language, the
+   examples here are just templates;
 2. **in the console**: a numbered checklist of ONLY the required steps, in
    order, with nothing optional mixed in.
 
@@ -45,7 +46,9 @@ Compose the checklist from the rows that apply. Common shapes:
 ## Example console block (2.7.7, image-only)
 
 ```
-Po release 2.7.7 — do odświeżenia:
-1. /noisy-coding:update  (dowolny produkcyjny wątek; pluginów nie ruszasz)
-Gotowe — fix był tylko w obrazie.
+After release 2.7.7 — to refresh:
+1. /noisy-coding:update  (any production thread; plugins untouched)
+Done — the fix lived in the image only.
 ```
+
+(Render the actual checklist in the user's language; this is the shape.)
