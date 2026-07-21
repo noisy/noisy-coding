@@ -220,8 +220,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond_html(DASHBOARD_HTML)
             elif url.path == "/legacy":
                 self._respond_html(DASHBOARD_HTML)
-            elif url.path == "/debug":
-                # The chat-window sandbox — same SPA bundle, routed client-side.
+            elif url.path == "/debug" or url.path == "/logs":
+                # SPA sandboxes — same bundle, routed client-side. /debug is
+                # the chat-window state sandbox; /logs streams the event log
+                # (incl. #16 nudge decisions) for a screen the user can watch.
                 self._serve_hud_file("index.html")
             elif url.path.startswith("/assets/") or (
                 "/" not in url.path[1:]
@@ -311,6 +313,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "output_device": state.output_device,
                         "tab_audio": state.tab_audio_alive,
                         "activity": state.activity,
+                        "nudge_clocks": state.nudge_clocks(),
                         "language": state.language,
                         "diagnostic_checks": state.diagnostic_checks,
                         "agents": state.agents,

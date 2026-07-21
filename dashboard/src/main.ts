@@ -1,9 +1,16 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import DebugView from "./debug/DebugView.vue";
+import LogsView from "./logs/LogsView.vue";
 import "./styles/hud.css";
 
-// /debug is the chat-window sandbox: hand-clicked state transitions drive
-// the real components, with an event log for bug reports.
-const root = window.location.pathname.startsWith("/debug") ? DebugView : App;
-createApp(root).mount("#app");
+// Client-side view routing on pathname:
+// /debug — chat-window sandbox (hand-clicked state transitions).
+// /logs  — live daemon event stream (incl. #16 nudge decisions).
+function rootView() {
+  const path = window.location.pathname;
+  if (path.startsWith("/debug")) return DebugView;
+  if (path.startsWith("/logs")) return LogsView;
+  return App;
+}
+createApp(rootView()).mount("#app");

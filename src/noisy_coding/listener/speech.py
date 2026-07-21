@@ -456,6 +456,13 @@ def _play_prepared(
         return prepared.voice
     _hold_for_user_turn(state, utterance_id)
 
+    # This is the real "the agent spoke aloud" moment — reset its
+    # narration-nudge silence clock here, in-process (#16). The clock used to
+    # be reset only in the HTTP /event handler, which this playback path never
+    # crosses, so speaking never actually reset it. An unheard (muted)
+    # utterance returned above without reaching here — nothing was said, so
+    # the clock correctly keeps running.
+    state.note_agent_spoke(agent)
     # The event log keeps the voice (diagnostics); the card does NOT — a
     # replay speaks with the CURRENT voice, so a voice tag on the bubble
     # would go stale the moment the user picks another one.

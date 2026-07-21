@@ -37,6 +37,36 @@ def _install_fake_play(monkeypatch, intervals, delay_s=0.0):
     monkeypatch.setattr(speech, "_play_audio", fake_play)
 
 
+def test_playing_an_utterance_resets_the_narration_nudge_clock(monkeypatch, batch_pipeline):
+    """A spoken utterance must reset the #16 silence clock. Regression guard:
+    the reset used to live only in the HTTP /event handler, which the real
+    playback path never crosses, so speaking never reset the clock."""
+    state = ListenerState()
+    state.register_agent("a")
+    # Pin the clock's start far in the past so any reset is unmistakable.
+    state._agent_last_spoke["a"] = time.time() - 10_000
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [])
+
+    speech.submit(state, "hello", agent="a").result(timeout=5)
+
+    assert state.nudge_clocks()["a"]["silence"] < 5  # clock was reset on play
+
+
+def test_muted_utterance_does_not_reset_the_narration_nudge_clock(monkeypatch, batch_pipeline):
+    """Nothing was said aloud — the silence clock must keep running."""
+    state = ListenerState()
+    state.register_agent("a")
+    state._agent_last_spoke["a"] = time.time() - 10_000
+    state.set_voice_muted(True)
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [])
+
+    speech.submit(state, "hello", agent="a").result(timeout=5)
+
+    assert state.nudge_clocks()["a"]["silence"] > 5_000  # unheard — not reset
+
+
 def test_playback_queue_serializes_concurrent_speaks(monkeypatch, batch_pipeline):
     state = ListenerState()
     intervals = []

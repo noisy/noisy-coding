@@ -81,6 +81,10 @@ class ListenerState:
         # nudged it, so one silence stretch gets exactly one nudge.
         self._agent_last_spoke: dict[str, float] = {}
         self._agent_last_nudge: dict[str, float] = {}
+        # When we last LOGGED an idle-skip for a stretch, so the /logs view
+        # gets one "waiting on user" line per stretch — NOT the nudge budget,
+        # so an agent that resumes work mid-stretch still earns its nudge.
+        self._agent_last_idle_log: dict[str, float] = {}
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
@@ -641,6 +645,7 @@ class ListenerState:
             key = agent or self._active_agent
             if key:
                 self._agent_last_spoke[key] = time.time()
+                self._add_event_locked("nudge", f"clock reset — '{key}' spoke")
 
     @staticmethod
     def _nudge_threshold_seconds(chatty: int) -> float | None:
@@ -655,6 +660,30 @@ class ListenerState:
                 fraction = (chatty - lo_c) / (hi_c - lo_c)
                 return lo_s + (hi_s - lo_s) * fraction
         return anchors[-1][1]
+
+    def nudge_clocks(self) -> dict[str, dict]:
+        """Read-only snapshot of every known agent's silence clock, for the
+        dashboard's live counter (#16). Pure: mutates nothing, so it is safe
+        to call on every /status poll. Per agent: how long it's been silent,
+        its chatty budget (None = nudging off), and whether its activity line
+        is fresh enough to be nudge-eligible right now."""
+        now = time.time()
+        with self._lock:
+            clocks: dict[str, dict] = {}
+            for agent in self._agent_activated:
+                character = self._characters.get(agent, self._characters[""])
+                chatty = int(character.get("chatty", 50))
+                started = self._agent_last_spoke.get(
+                    agent, self._agent_activated.get(agent, now)
+                )
+                activity = self._activity.get(agent)
+                fresh = bool(activity) and now - activity.get("at", 0) <= NUDGE_ACTIVITY_FRESH_SECONDS
+                clocks[agent] = {
+                    "silence": round(now - started, 1),
+                    "threshold": self._nudge_threshold_seconds(chatty),
+                    "fresh": fresh,
+                }
+            return clocks
 
     def pop_due_nudge(self, agent: str) -> str | None:
         """A [SYSTEM] narration reminder, when this agent has earned one.
@@ -672,19 +701,42 @@ class ListenerState:
             threshold = self._nudge_threshold_seconds(chatty)
             if threshold is None:
                 return None
-            activity = self._activity.get(agent)
-            if not activity or now - activity.get("at", 0) > NUDGE_ACTIVITY_FRESH_SECONDS:
-                return None  # idle or between turns — never nag a waiting agent
             silence_started = self._agent_last_spoke.get(
                 agent, self._agent_activated.get(agent, now)
             )
             silence = now - silence_started
+            # Below budget: the common every-poll case. Stay silent in the
+            # event log — only decisions AT/PAST the budget are worth logging.
             if silence < threshold:
                 return None
-            if self._agent_last_nudge.get(agent, 0) > silence_started:
+            # Past budget from here: log the outcome exactly once per silence
+            # stretch (dedup on the same guard the nudge itself uses), so the
+            # /logs view shows WHY a due nudge did or didn't fire without the
+            # 0.5s stop-hook poll flooding it.
+            already_nudged = self._agent_last_nudge.get(agent, 0) > silence_started
+            activity = self._activity.get(agent)
+            is_fresh = bool(activity) and now - activity.get("at", 0) <= NUDGE_ACTIVITY_FRESH_SECONDS
+            if not is_fresh:
+                # Log the idle-skip once per stretch, but do NOT spend the
+                # nudge budget — resuming work later in this stretch must
+                # still fire a real nudge.
+                if self._agent_last_idle_log.get(agent, 0) <= silence_started:
+                    self._agent_last_idle_log[agent] = now
+                    self._add_event_locked(
+                        "nudge",
+                        f"skipped — idle {round(silence)}s (activity stale/absent), "
+                        f"waiting on user",
+                    )
+                return None  # idle or between turns — never nag a waiting agent
+            if already_nudged:
                 return None  # this stretch was already nudged once
             self._agent_last_nudge[agent] = now
             minutes = max(1, round(silence / 60))
+            self._add_event_locked(
+                "nudge",
+                f"SENT — silent {round(silence)}s ≥ {round(threshold)}s "
+                f"budget (chatty {chatty})",
+            )
             # chatty decides WHEN to speak up; brevity decides HOW LONG the
             # update gets to be — a 10-minute stretch may deserve more than
             # one line when the user runs low brevity.
@@ -720,6 +772,7 @@ class ListenerState:
             self._muted_agents.discard(name)
             self._agent_last_spoke.pop(name, None)
             self._agent_last_nudge.pop(name, None)
+            self._agent_last_idle_log.pop(name, None)
             self._activity.pop(name, None)
             return True
 

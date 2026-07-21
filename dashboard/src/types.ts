@@ -33,6 +33,10 @@ export interface DaemonStatus {
   /** Live per-endpoint xAI check results — partial while checks run. */
   diagnostic_checks?: Record<string, { ok?: boolean; ms?: number; detail?: string; pending?: boolean }> | null;
   activity: Record<string, { text: string; at: number }>;
+  /** #16 narration-nudge silence clocks, per agent: how long it has been
+   * silent, its chatty budget (null = nudging off), and whether it's
+   * currently nudge-eligible (activity line fresh). */
+  nudge_clocks?: Record<string, { silence: number; threshold: number | null; fresh: boolean }>;
   language: string;
   agents: Record<string, number>;
   agent_labels: Record<string, string>;
