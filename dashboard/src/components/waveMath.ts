@@ -3,7 +3,7 @@
 /** Amplitude scale for a given mic level: silence stays a faint line,
  * speech breathes up to full swing. */
 export function amplitudeFor(level: number): number {
-  const clamped = Math.max(0, Math.min(1, level));
+  const clamped = Math.max(0, Math.min(1, level * 1.3));
   return 0.15 + 0.85 * clamped;
 }
 

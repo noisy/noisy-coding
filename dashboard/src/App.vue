@@ -60,7 +60,6 @@ const levelDb = computed(() =>
 // is deliberately confined to the logo block — the rest of the theme stays
 // production-identical so prod colors can be tested on a local instance.
 const isDevInstance = window.location.port !== "" && window.location.port !== "8765";
-const instancePort = window.location.port;
 
 const clock = ref("");
 function tickClock() {
@@ -429,33 +428,6 @@ const LANGUAGES: Record<string, string> = {
       🎙 ENABLE TAB AUDIO — this tab is your {{ tabAudioRoles }}; click once to activate
       <span v-if="browserAudio.error.value" class="taberr">{{ browserAudio.error.value }}</span>
     </button>
-    <header>
-      <div class="logo" :class="{ dev: isDevInstance }">
-        <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
-          <polygon points="23,2 41,12.5 41,33.5 23,44 5,33.5 5,12.5" fill="none" stroke="#3fd8ff" stroke-width="1.4" opacity="0.9" />
-          <polygon points="23,8 36,15.5 36,30.5 23,38 10,30.5 10,15.5" fill="rgba(63,216,255,0.08)" stroke="#3fd8ff" stroke-width="0.7" opacity="0.6" />
-          <g stroke="#3fd8ff" stroke-width="2" stroke-linecap="round">
-            <line x1="17" y1="20" x2="17" y2="26" />
-            <line x1="21" y1="16" x2="21" y2="30" />
-            <line x1="25" y1="19" x2="25" y2="27" />
-            <line x1="29" y1="21" x2="29" y2="25" />
-          </g>
-        </svg>
-        <div>
-          <div class="title">NOISY-CODING</div>
-          <div class="sub">TACTICAL VOICE INTERFACE</div>
-          <div v-if="isDevInstance" class="devbadge">LOCAL DEV · :{{ instancePort }}</div>
-        </div>
-      </div>
-
-      <div class="sysstate">
-        <div class="clockbox">
-          <div class="clock">{{ clock }}</div>
-          <div class="date">{{ today }}</div>
-        </div>
-      </div>
-    </header>
-
     <div class="cols">
       <div class="col-left">
         <!-- Panic-sized mute: quick muting must not require aiming at a
@@ -482,13 +454,7 @@ const LANGUAGES: Record<string, string> = {
             {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "HOLD THIS OR THE SPACE BAR" }}
           </span>
         </button>
-        <button class="voicemute" :class="{ muted: status?.voice_muted, locked: unconfigured }" @click="toggleVoiceMute">
-          <span class="vm-label">{{ status?.voice_muted ? "◉ CLAUDE MUTED" : "MUTE CLAUDE" }}</span>
-          <span class="vm-sub">
-            {{ status?.voice_muted ? `${unheard.length} UNHEARD — PARKING SILENTLY` : "PARK SPEECH WHILE AWAY" }}
-          </span>
-        </button>
-        <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE">
+        <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE" class="oscpanel">
           <Oscilloscope :level="level" />
           <div class="dbrow">
             <span class="lbl">LEVEL</span>
@@ -562,6 +528,37 @@ const LANGUAGES: Record<string, string> = {
       </div>
 
       <div class="col-mid" :class="{ locked: unconfigured }">
+        <header class="topbar">
+          <div class="topbar-logobox">
+            <div class="logo" :class="{ dev: isDevInstance }">
+              <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+                <polygon points="23,2 41,12.5 41,33.5 23,44 5,33.5 5,12.5" fill="none" stroke="#3fd8ff" stroke-width="1.4" opacity="0.9" />
+                <polygon points="23,8 36,15.5 36,30.5 23,38 10,30.5 10,15.5" fill="rgba(63,216,255,0.08)" stroke="#3fd8ff" stroke-width="0.7" opacity="0.6" />
+                <g stroke="#3fd8ff" stroke-width="2" stroke-linecap="round">
+                  <line x1="17" y1="20" x2="17" y2="26" />
+                  <line x1="21" y1="16" x2="21" y2="30" />
+                  <line x1="25" y1="19" x2="25" y2="27" />
+                  <line x1="29" y1="21" x2="29" y2="25" />
+                </g>
+              </svg>
+              <div>
+                <div class="title">NOISY-CODING</div>
+                <div class="sub">TACTICAL VOICE INTERFACE</div>
+                <div v-if="isDevInstance" class="devbadge">LOCAL</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sysstate">
+            <button
+              class="voicemute header-mute"
+              :class="{ muted: status?.voice_muted, locked: unconfigured }"
+              @click="toggleVoiceMute"
+            >
+              <span class="vm-label">{{ status?.voice_muted ? "◉ ALL MUTED" : "MUTE ALL CLAUDE AGENTS" }}</span>
+            </button>
+          </div>
+        </header>
         <HudPanel v-if="showSettings" index="08" title="SETTINGS">
           <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
           <SettingsView
@@ -671,26 +668,28 @@ const LANGUAGES: Record<string, string> = {
 </template>
 
 <style scoped>
-header {
+.topbar {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 0;
+  min-height: 96px;
+  margin-bottom: 18px;
+  position: relative;
+  flex: none;
+}
+.topbar-logobox { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.logo {
   display: flex;
   align-items: center;
-  gap: 22px;
-  flex-wrap: wrap;
-  padding: 10px 18px 14px;
-  border-bottom: 1px solid var(--line);
+  gap: 14px;
+  /* Raised by the active tab's height so it reads as sitting above the
+     tab row — offset via `top`, not margin, so it doesn't pull the
+     conversation window (which sits below, unrelated to this box) up too. */
   position: relative;
+  top: -18px;
 }
-header::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  height: 1px;
-  width: 220px;
-  background: linear-gradient(90deg, var(--cyan), transparent);
-  box-shadow: 0 0 8px var(--cyan);
-}
-.logo { display: flex; align-items: center; gap: 14px; }
+.logo > div { position: relative; }
 .logo svg { display: block; }
 .logo .title { font-size: 19px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); font-weight: 700; }
 .logo .sub { font-size: 10px; letter-spacing: 0.34em; color: var(--muted); margin-top: 3px; }
@@ -700,16 +699,16 @@ header::after {
 .logo.dev svg polygon[fill^="rgba"] { fill: rgba(255, 184, 77, 0.08); }
 .logo.dev .title { color: #ffb84d; text-shadow: 0 0 12px rgba(255, 184, 77, 0.55); }
 .devbadge {
-  display: inline-block; margin-top: 5px; padding: 2px 8px;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.22em;
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: 12px; padding: 2px 8px; white-space: nowrap;
+  font-size: 36px; font-weight: 700; letter-spacing: 0.22em;
   color: #1a1205; background: #ffb84d; border-radius: 3px;
 }
-.sysstate { margin-left: auto; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
-.clockbox { text-align: right; }
+.sysstate { width: 316px; flex: none; display: flex; align-items: stretch; }
+.clockbox { text-align: right; align-self: center; }
 .clockbox .clock { font-size: 17px; letter-spacing: 0.14em; color: var(--ink); }
 .clockbox .date { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); margin-top: 3px; }
 
-header { flex: none; }
 footer { flex: none; }
 .cols {
   display: grid;
@@ -723,17 +722,29 @@ footer { flex: none; }
 @media (max-width: 1180px) { .cols { grid-template-columns: 1fr; } .col-mid { order: -1; } }
 .col-left {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto; /* safety valve on short windows; invisible otherwise */
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
+.col-left > * { flex: none; }
+.col-left .oscpanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.col-left .oscpanel :deep(.scope-canvas) { flex: 1; min-height: 0; }
+.col-left .oscpanel .dbrow { flex: none; }
+.col-left .settingsbtn { margin-top: auto; }
 /* Folder-tab bar: sits on top of the conversation frame, buttons overlap
    its top border by 1px so the viewed tab visually fuses with the window
    below — the frame reads as that tab's window, not a separate panel. */
 /* The whole bar rises over the page header's bottom line — the tabs
    straddle the main separator, buying the conversation window that
    vertical space back. z-index keeps them painting above the line. */
-.tabsbar { padding: 0 14px; margin-top: -50px; position: relative; z-index: 3; }
+.tabsbar { padding: 0 14px; margin-top: -36px; position: relative; z-index: 3; }
 .tabsbar :deep(.tabs) {
   margin-bottom: -1px;
   gap: 6px;
@@ -899,6 +910,15 @@ footer { flex: none; }
 }
 .voicemute.muted .vm-label { animation: blink 1.6s step-end infinite; }
 .voicemute.muted .vm-sub { color: rgba(255, 95, 107, 0.7); }
+.header-mute {
+  width: 100%;
+  flex: none;
+  align-self: stretch;
+  min-height: 96px;
+  margin-bottom: 0;
+  padding: 6px 14px;
+}
+.header-mute .vm-label { font-size: 15px; }
 
 /* Must be unmissable when you come back to the desk: green (nothing else
    in the HUD is a green button), tall, glowing and gently pulsing. */

@@ -4,7 +4,7 @@ import { amplitudeFor, sizeCanvas } from "./waveMath";
 
 const props = defineProps<{ level: number }>();
 
-const HEIGHT = 110;
+const MIN_HEIGHT = 70;
 const canvas = ref<HTMLCanvasElement | null>(null);
 
 // Smooth the level so the wave breathes instead of jittering per frame.
@@ -22,7 +22,8 @@ function drawWave(t: number) {
   if (!canvas.value) return;
   smoothed += (target - smoothed) * 0.3;
   const amp = amplitudeFor(smoothed);
-  const [ctx, W, H] = sizeCanvas(canvas.value, HEIGHT);
+  const cssHeight = Math.max(MIN_HEIGHT, canvas.value.clientHeight);
+  const [ctx, W, H] = sizeCanvas(canvas.value, cssHeight);
   ctx.clearRect(0, 0, W, H);
   ctx.strokeStyle = "rgba(63,216,255,0.15)";
   ctx.lineWidth = 1;
@@ -69,5 +70,9 @@ onUnmounted(() => cancelAnimationFrame(raf));
 </script>
 
 <template>
-  <canvas ref="canvas" :height="HEIGHT" />
+  <canvas ref="canvas" class="scope-canvas" />
 </template>
+
+<style scoped>
+.scope-canvas { display: block; width: 100%; height: 100%; min-height: 70px; }
+</style>
