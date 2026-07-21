@@ -223,12 +223,15 @@ button.offline .dot { background: rgba(93, 127, 150, 0.35); }
   background: rgba(93, 127, 150, 0.9);
   transform: rotate(-35deg);
 }
+/* Red like every other mute signal (MUTE MIC, the muted persona) — grey
+   read as "inactive" rather than "silenced". */
 .mutering {
   position: relative;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  border: 1px solid rgba(93, 127, 150, 0.9);
+  border: 1px solid rgba(255, 95, 107, 0.9);
+  box-shadow: 0 0 5px rgba(255, 95, 107, 0.4);
 }
 .mutering::after {
   content: "";
@@ -237,7 +240,7 @@ button.offline .dot { background: rgba(93, 127, 150, 0.35); }
   top: -3px;
   width: 1.5px;
   height: 12px;
-  background: rgba(93, 127, 150, 0.9);
+  background: rgba(255, 95, 107, 0.9);
   transform: rotate(45deg);
 }
 /* Overlaid in the top-right corner: appearing on hover must not resize
