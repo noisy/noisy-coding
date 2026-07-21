@@ -590,15 +590,17 @@ const LANGUAGES: Record<string, string> = {
         <!-- No panel title: the tabs above ARE the title, and "utterance
              stream" meant nothing to normal humans anyway. -->
         <HudPanel v-if="!showSettings" class="convo-panel">
-          <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
-            ▶ CATCH UP ({{ unheard.length }} UNHEARD)
-          </button>
           <!-- Everything below the tabs is THIS conversation: the log on
                the left, and the conversation-scoped rail (voice avatar,
                character, turn timeline) inside the same frame on the
                right. Global widgets live in the left column instead. -->
           <div class="convo-body">
             <div class="convo-main">
+              <!-- Catch-up spans the bubbles column only, like telemetry —
+                   never the rail. -->
+              <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
+                ▶ CATCH UP ({{ unheard.length }} UNHEARD)
+              </button>
               <ConversationLog
                 :utterances="utterances"
                 :playing-id="status?.playing_utterance_id ?? 0"
