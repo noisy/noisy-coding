@@ -454,7 +454,7 @@ const LANGUAGES: Record<string, string> = {
             {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "HOLD THIS OR THE SPACE BAR" }}
           </span>
         </button>
-        <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE" class="oscpanel">
+        <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE" class="flexpanel">
           <Oscilloscope :level="level" />
           <div class="dbrow">
             <span class="lbl">LEVEL</span>
@@ -462,7 +462,7 @@ const LANGUAGES: Record<string, string> = {
             <span class="val">{{ levelDb }}</span>
           </div>
         </HudPanel>
-        <HudPanel index="02" title="AUDIO SPECTRUM">
+        <HudPanel index="02" title="AUDIO SPECTRUM" class="flexpanel">
           <SpectrumBars :level="level" />
         </HudPanel>
         <HudPanel index="03" title="CONTROLS" :class="{ locked: unconfigured }">
@@ -729,14 +729,15 @@ footer { flex: none; }
   scrollbar-color: var(--line-strong) transparent;
 }
 .col-left > * { flex: none; }
-.col-left .oscpanel {
+.col-left .flexpanel {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.col-left .oscpanel :deep(.scope-canvas) { flex: 1; min-height: 0; }
-.col-left .oscpanel .dbrow { flex: none; }
+.col-left .flexpanel :deep(.scope-canvas),
+.col-left .flexpanel :deep(.spectrum-canvas) { flex: 1; min-height: 0; }
+.col-left .flexpanel .dbrow { flex: none; }
 .col-left .settingsbtn { margin-top: auto; }
 /* Folder-tab bar: sits on top of the conversation frame, buttons overlap
    its top border by 1px so the viewed tab visually fuses with the window

@@ -4,7 +4,7 @@ import { amplitudeFor, sizeCanvas } from "./waveMath";
 
 const props = defineProps<{ level: number }>();
 
-const HEIGHT = 90;
+const MIN_HEIGHT = 90;
 const BARS = 36;
 const canvas = ref<HTMLCanvasElement | null>(null);
 
@@ -22,7 +22,8 @@ function drawSpectrum(t: number) {
   if (!canvas.value) return;
   smoothed += (target - smoothed) * 0.3;
   const amp = amplitudeFor(smoothed);
-  const [ctx, W, H] = sizeCanvas(canvas.value, HEIGHT);
+  const cssHeight = Math.max(MIN_HEIGHT, canvas.value.clientHeight);
+  const [ctx, W, H] = sizeCanvas(canvas.value, cssHeight);
   ctx.clearRect(0, 0, W, H);
   const bw = W / BARS;
   for (let i = 0; i < BARS; i++) {
@@ -61,5 +62,9 @@ onUnmounted(() => cancelAnimationFrame(raf));
 </script>
 
 <template>
-  <canvas ref="canvas" :height="HEIGHT" />
+  <canvas ref="canvas" class="spectrum-canvas" />
 </template>
+
+<style scoped>
+.spectrum-canvas { display: block; width: 100%; height: 100%; min-height: 90px; }
+</style>
