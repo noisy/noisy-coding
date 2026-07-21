@@ -509,9 +509,12 @@ def _play_prepared(
     played_seconds = time.monotonic() - playing_since
     _log(f"[speak] done in {played_seconds:.1f}s")
     state.add_event("speak_done", f"głos '{prepared.voice}'")
-    state.update_utterance(
-        utterance_id, status="played", duration_s=round(played_seconds, 1)
-    )
+    # A mute mid-clip kills the player and parks the card as unheard —
+    # the cut-short clip must not be relabeled "played" here.
+    if not state.utterance_is_unheard(utterance_id):
+        state.update_utterance(
+            utterance_id, status="played", duration_s=round(played_seconds, 1)
+        )
     return prepared.voice
 
 

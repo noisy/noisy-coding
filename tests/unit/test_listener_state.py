@@ -392,3 +392,38 @@ def test_queued_by_agent_counts_speech_waiting_to_be_heard():
     state.set_playing_utterance_id(playing)  # the live clip isn't "waiting"
 
     assert state.queued_by_agent == {"a": 1, "b": 2}
+
+
+def test_mute_mid_clip_parks_the_playing_utterance_as_unheard():
+    state = ListenerState()
+    state.register_agent("a")
+    playing = state.create_utterance("claude", "playing…", agent="a")
+    state.set_playing_utterance_id(playing)
+
+    interrupted = state.interrupt_playing_as_unheard("voice muted")
+
+    assert interrupted == playing
+    assert state.utterance_is_unheard(playing) is True
+    assert state.playing_utterance_id == 0
+    # The play pipeline consults this flag and must NOT relabel it played.
+
+
+def test_agent_mute_only_interrupts_that_conversations_clip():
+    state = ListenerState()
+    state.register_agent("a")
+    state.register_agent("b")
+    playing = state.create_utterance("claude", "playing…", agent="a")
+    state.set_playing_utterance_id(playing)
+
+    # Muting the OTHER conversation must not touch a's clip.
+    assert state.interrupt_playing_as_unheard("conversation muted", agent="b") == 0
+    assert state.utterance_is_unheard(playing) is False
+    assert state.playing_utterance_id == playing
+
+    assert state.interrupt_playing_as_unheard("conversation muted", agent="a") == playing
+    assert state.utterance_is_unheard(playing) is True
+
+
+def test_interrupt_with_nothing_playing_is_a_noop():
+    state = ListenerState()
+    assert state.interrupt_playing_as_unheard("voice muted") == 0

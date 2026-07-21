@@ -303,6 +303,15 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 name = str(body.get("agent", "")).strip()
                 if name:
                     muted = state.set_agent_muted(name, bool(body.get("muted", True)))
+                    if name in muted and state.interrupt_playing_as_unheard(
+                        "conversation muted", agent=name
+                    ):
+                        # Muting THIS conversation while its clip plays:
+                        # instant silence, the clip parks unheard.
+                        playback.stop_all_players()
+                        live_bridge = tab_audio.bridge()
+                        if live_bridge is not None:
+                            live_bridge.stop_tab_playback()
                     state.add_event("agent", f"'{name}' {'muted' if name in muted else 'unmuted'}")
                     self._respond({"muted_agents": muted})
                 else:
@@ -528,6 +537,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/voice-mute":
                 muted = bool(self._read_json_body().get("muted", True))
                 state.set_voice_muted(muted)
+                if muted:
+                    # Mute means silence NOW: kill the playing clip and park
+                    # it unheard (cut short ≠ played; catch-up replays it).
+                    if state.interrupt_playing_as_unheard("voice muted"):
+                        playback.stop_all_players()
+                        live_bridge = tab_audio.bridge()
+                        if live_bridge is not None:
+                            live_bridge.stop_tab_playback()
                 state.add_event("voice_muted" if muted else "voice_unmuted")
                 self._respond({"voice_muted": muted})
             elif self.path == "/mute":

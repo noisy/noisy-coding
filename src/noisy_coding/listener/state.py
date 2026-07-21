@@ -711,6 +711,37 @@ class ListenerState:
         with self._lock:
             return self._playing_utterance_id
 
+    def interrupt_playing_as_unheard(self, reason: str, agent: str | None = None) -> int:
+        """Mute pressed mid-clip: park the playing utterance as UNHEARD.
+
+        The clip was cut short, so it must not read "played" — catch-up
+        should replay it in full. With `agent` given, only fires when the
+        playing clip belongs to that conversation (agent-less clips count
+        as the active one). Returns the interrupted id, 0 if none.
+        """
+        with self._lock:
+            utterance_id = self._playing_utterance_id
+            if not utterance_id:
+                return 0
+            for utterance in self._utterances:
+                if utterance["id"] != utterance_id:
+                    continue
+                owner = utterance.get("agent") or self._active_agent
+                if agent is not None and owner != agent:
+                    return 0
+                utterance["status"] = f"unheard — {reason}"
+                utterance["updated_at"] = time.time()
+                break
+            self._playing_utterance_id = 0
+            return utterance_id
+
+    def utterance_is_unheard(self, utterance_id: int) -> bool:
+        with self._lock:
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    return "unheard" in str(utterance.get("status", ""))
+            return False
+
     def set_playing_utterance_id(self, utterance_id: int) -> None:
         with self._lock:
             self._playing_utterance_id = utterance_id
