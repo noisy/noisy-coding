@@ -98,3 +98,19 @@ def test_next_shows_build_hint_when_dist_missing(tmp_path, monkeypatch):
         assert b"npm run build" in response.read()
     finally:
         server.shutdown()
+
+
+def test_root_level_static_files_are_served_by_extension(hud_server, tmp_path):
+    # The avatars sprite (and favicons) live at the dist ROOT, not under
+    # /assets/ — the daemon must serve them (it 404'd the sprite once).
+    (tmp_path / "dist" / "avatars.png").write_bytes(b"\x89PNG fake")
+
+    response = _get(hud_server, "/avatars.png")
+
+    assert response.status == 200
+    assert response.getheader("Content-Type") == "image/png"
+
+
+def test_root_level_static_denies_unknown_extensions_and_traversal(hud_server):
+    assert _get(hud_server, "/secret.txt").status == 404  # extension not allowlisted
+    assert _get(hud_server, "/..%2fsecret.png").status == 404  # traversal blocked

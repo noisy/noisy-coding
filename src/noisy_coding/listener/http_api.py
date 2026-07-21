@@ -223,10 +223,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/debug":
                 # The chat-window sandbox — same SPA bundle, routed client-side.
                 self._serve_hud_file("index.html")
-            elif url.path.startswith("/assets/") or url.path in (
-                "/favicon.svg",
-                "/favicon-dev.svg",
+            elif url.path.startswith("/assets/") or (
+                "/" not in url.path[1:]
+                and Path(url.path).suffix in STATIC_CONTENT_TYPES
             ):
+                # Root-level static files (favicons, the avatars sprite, and
+                # whatever public/ grows next) — extension-allowlisted, and
+                # _serve_hud_file guards against path traversal.
                 self._serve_hud_file(url.path[1:])
             elif url.path == "/drain":
                 agent = parse_qs(url.query).get("agent", [None])[0]
