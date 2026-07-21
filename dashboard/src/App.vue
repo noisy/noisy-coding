@@ -648,8 +648,10 @@ const LANGUAGES: Record<string, string> = {
       <span v-if="lastError" class="lasterr" :title="`${errors.length} error(s) this session`">
         ⚠ {{ eventTime(lastError.ts) }} {{ lastError.kind.toUpperCase() }} · {{ lastError.detail }}
       </span>
-      <span style="margin-left: auto">{{ offline ? "◈ LINK DOWN" : lastError ? "◈ DEGRADED — SEE LAST ERROR" : "◈ ALL SYSTEMS NOMINAL" }}</span>
-      <VersionBadge :daemon-version="status?.version" />
+      <!-- Right edge order: version second-from-corner, system status in
+           the corner itself. -->
+      <VersionBadge style="margin-left: auto" :daemon-version="status?.version" />
+      <span>{{ offline ? "◈ LINK DOWN" : lastError ? "◈ DEGRADED — SEE LAST ERROR" : "◈ ALL SYSTEMS NOMINAL" }}</span>
     </footer>
   </div>
 </template>
