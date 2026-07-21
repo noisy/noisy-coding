@@ -43,7 +43,7 @@ const segments = computed<Segment[]>(() => {
     const y2 = CY + Math.sin(a2) * R;
     out.push({
       d: `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2}`,
-      color: u.role === "user" ? "#ffb454" : "#b98cff",
+      color: u.role === "user" ? "#ffb454" : "var(--violet)",
     });
     angle = a2 + GAP;
   }
@@ -88,13 +88,13 @@ const ticks = [0, 90, 180, 270].map((deg) => {
 <template>
   <div class="ringbox">
     <svg viewBox="0 0 220 220" aria-label="Conversation timeline ring">
-      <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="rgba(185,140,255,0.15)" stroke-width="1" />
+      <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="color-mix(in srgb, var(--violet) 15%, transparent)" stroke-width="1" />
       <g class="reticle">
-        <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="rgba(185,140,255,0.4)"
+        <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="color-mix(in srgb, var(--violet) 40%, transparent)"
                 stroke-width="1" stroke-dasharray="4 34" />
-        <line v-for="(t, i) in ticks" :key="i" v-bind="t" stroke="rgba(185,140,255,0.5)" stroke-width="1.4" />
+        <line v-for="(t, i) in ticks" :key="i" v-bind="t" stroke="color-mix(in srgb, var(--violet) 50%, transparent)" stroke-width="1.4" />
       </g>
-      <circle :cx="CX" :cy="CY" :r="R - 14" fill="none" stroke="rgba(185,140,255,0.12)" stroke-width="1" />
+      <circle :cx="CX" :cy="CY" :r="R - 14" fill="none" stroke="color-mix(in srgb, var(--violet) 12%, transparent)" stroke-width="1" />
       <path
         v-for="(seg, i) in segments"
         :key="i"
@@ -106,8 +106,8 @@ const ticks = [0, 90, 180, 270].map((deg) => {
         opacity="0.9"
         :style="{ filter: `drop-shadow(0 0 3px ${seg.color})` }"
       />
-      <circle v-if="nowMarker" :cx="nowMarker.x" :cy="nowMarker.y" r="4.5" fill="#b98cff"
-              style="filter: drop-shadow(0 0 5px #b98cff)" />
+      <circle v-if="nowMarker" :cx="nowMarker.x" :cy="nowMarker.y" r="4.5" fill="var(--violet)"
+              style="filter: drop-shadow(0 0 5px var(--violet))" />
     </svg>
     <div class="ringcenter">
       <div class="rc1">{{ turns.length }}</div>

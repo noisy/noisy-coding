@@ -34,8 +34,8 @@ function pick(name: string) {
     <div class="voicecur" @click="open = !open">
       <span class="lbl">VOICE</span>
       <svg width="14" height="14" viewBox="0 0 14 14">
-        <circle cx="7" cy="7" r="5.5" fill="none" stroke="#b98cff" stroke-width="1" />
-        <circle cx="7" cy="7" r="2" fill="#b98cff" />
+        <circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--violet)" stroke-width="1" />
+        <circle cx="7" cy="7" r="2" fill="var(--violet)" />
       </svg>
       <span class="vname">{{ voice.toUpperCase() || "—" }}</span>
       <span class="arrow">{{ open ? "▴" : "▾" }}</span>
@@ -62,7 +62,7 @@ function pick(name: string) {
 .voicecur {
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--line-strong); padding: 7px 12px;
-  background: rgba(185, 140, 255, 0.06); cursor: pointer;
+  background: color-mix(in srgb, var(--violet) 6%, transparent); cursor: pointer;
   clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
 }
 .voicecur .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); }
@@ -93,12 +93,12 @@ function pick(name: string) {
   /* Thumbs sit flush with the selector's left edge — no left padding. */
   padding: 0 12px 0 0;
   cursor: pointer;
-  border-bottom: 1px solid rgba(185, 140, 255, 0.08);
+  border-bottom: 1px solid color-mix(in srgb, var(--violet) 8%, transparent);
 }
 .row:last-child { border-bottom: none; }
-.row:hover { background: rgba(185, 140, 255, 0.08); }
-.row.sel { background: rgba(185, 140, 255, 0.14); }
-.row.sel .name { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(185, 140, 255, 0.6); }
+.row:hover { background: color-mix(in srgb, var(--violet) 8%, transparent); }
+.row.sel { background: color-mix(in srgb, var(--violet) 14%, transparent); }
+.row.sel .name { color: var(--cyan-hi); text-shadow: 0 0 6px color-mix(in srgb, var(--violet) 60%, transparent); }
 .thumb {
   width: var(--thumb);
   height: var(--thumb);

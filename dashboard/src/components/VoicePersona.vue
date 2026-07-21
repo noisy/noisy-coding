@@ -69,9 +69,9 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   border: 1px solid var(--line-strong);
   clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
   filter: saturate(1.05);
-  box-shadow: 0 0 14px rgba(185, 140, 255, 0.12);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--violet) 12%, transparent);
 }
-.persona.speaking .portrait { box-shadow: 0 0 22px rgba(185, 140, 255, 0.4); }
+.persona.speaking .portrait { box-shadow: 0 0 22px color-mix(in srgb, var(--violet) 40%, transparent); }
 /* Muted conversation: red — the same alarm language as the MUTE MIC
    button on the left. The portrait dims under a red-tinted frame. */
 .persona.muted .portrait,
@@ -102,7 +102,7 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   /* Legible at rest, not just when armed: bright cyan-white on a solid
      dark backdrop — it sits on top of colorful portraits. */
   color: var(--cyan-hi, #9aeeff);
-  text-shadow: 0 0 8px rgba(185, 140, 255, 0.5);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--violet) 50%, transparent);
   background: rgba(2, 8, 14, 0.82);
   border: 1px solid var(--line-strong);
   cursor: pointer;

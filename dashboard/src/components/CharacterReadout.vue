@@ -29,7 +29,7 @@ const gauges = computed(() =>
       ["humor", "HUMOR", "dry ↔ playful", "#3fd8ff"],
       ["honesty", "HONESTY", "dipl ↔ blunt", "#4dffb4"],
       ["brevity", "BREVITY", "detail ↔ terse", "#ffb454"],
-      ["chatty", "CHATTY", "rare ↔ frequent", "#b98cff"],
+      ["chatty", "CHATTY", "rare ↔ frequent", "var(--violet)"],
     ] as const
   ).map(([key, label, scale, color]) => {
     const value = shown.value[key];
@@ -101,7 +101,7 @@ function speedUp() {
           @pointerup="traitUp(g.key)"
         >
           <g transform="rotate(130 40 40)">
-            <circle cx="40" cy="40" :r="GAUGE_R" fill="none" stroke="rgba(185,140,255,0.12)"
+            <circle cx="40" cy="40" :r="GAUGE_R" fill="none" stroke="color-mix(in srgb, var(--violet) 12%, transparent)"
                     stroke-width="5" :stroke-dasharray="trackDash" stroke-linecap="round" />
             <circle cx="40" cy="40" :r="GAUGE_R" fill="none" :stroke="g.color" stroke-width="5"
                     :stroke-dasharray="g.dash" stroke-linecap="round"
@@ -124,7 +124,7 @@ function speedUp() {
           @pointermove="speedMove"
           @pointerup="speedUp"
         >
-          <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(185,140,255,0.15)" stroke-width="4" />
+          <circle cx="30" cy="30" r="24" fill="none" stroke="color-mix(in srgb, var(--violet) 15%, transparent)" stroke-width="4" />
           <circle cx="30" cy="30" r="24" fill="none" stroke="#ffb454" stroke-width="4"
                   :stroke-dasharray="speedDash" stroke-linecap="round"
                   transform="rotate(-215 30 30)"

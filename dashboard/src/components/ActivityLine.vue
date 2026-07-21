@@ -61,9 +61,9 @@ const label = computed(() => {
   font-size: 9.5px;
   letter-spacing: 0.14em;
   color: var(--muted);
-  border: 1px dashed rgba(185, 140, 255, 0.35);
+  border: 1px dashed color-mix(in srgb, var(--violet) 35%, transparent);
   border-left: 2px solid var(--violet-dim);
-  background: rgba(185, 140, 255, 0.04);
+  background: color-mix(in srgb, var(--violet) 4%, transparent);
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
 }
 .pulse {
@@ -76,7 +76,7 @@ const label = computed(() => {
   animation: act-pulse 1.2s ease-in-out infinite;
 }
 .txt {
-  color: rgba(185, 140, 255, 0.75);
+  color: color-mix(in srgb, var(--violet) 75%, transparent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

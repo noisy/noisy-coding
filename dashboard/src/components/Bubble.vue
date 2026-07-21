@@ -70,7 +70,7 @@ defineEmits<{ replay: []; cancel: [] }>();
   max-width: 88%;
 }
 .msg.accent-amber { --accent: var(--amber); --accent-tint: rgba(255, 180, 84, 0.07); }
-.msg.accent-violet { --accent: var(--violet); --accent-tint: rgba(185, 140, 255, 0.07); }
+.msg.accent-violet { --accent: var(--violet); --accent-tint: color-mix(in srgb, var(--violet) 7%, transparent); }
 .msg.accent-cyan { --accent: var(--cyan); --accent-tint: rgba(63, 216, 255, 0.07); }
 /* A left-anchored bubble grows rightward as live transcription appends
    text — the natural reading direction. The accent edge sits on the
@@ -90,7 +90,7 @@ defineEmits<{ replay: []; cancel: [] }>();
 .mhead { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
 .who { font-size: 10px; letter-spacing: 0.26em; font-weight: 700; }
 .accent-amber .who { color: var(--amber); text-shadow: var(--glow-amber); }
-.accent-violet .who { color: var(--violet); text-shadow: 0 0 8px rgba(185, 140, 255, 0.5); }
+.accent-violet .who { color: var(--violet); text-shadow: 0 0 8px color-mix(in srgb, var(--violet) 50%, transparent); }
 .accent-cyan .who { color: var(--cyan); text-shadow: 0 0 8px rgba(63, 216, 255, 0.5); }
 .st {
   font-size: 9px;
@@ -102,7 +102,7 @@ defineEmits<{ replay: []; cancel: [] }>();
 .st.done { color: var(--green); border-color: rgba(77, 255, 180, 0.4); }
 .st.work { color: var(--cyan); border-color: rgba(63, 216, 255, 0.4); }
 .st.rec { color: var(--amber); border-color: rgba(255, 180, 84, 0.5); animation: blink 0.9s step-end infinite; }
-.st.spoken { color: var(--violet); border-color: rgba(185, 140, 255, 0.45); }
+.st.spoken { color: var(--violet); border-color: color-mix(in srgb, var(--violet) 45%, transparent); }
 .st.fail { color: var(--red); border-color: rgba(255, 95, 107, 0.45); }
 .st.off { color: var(--muted); border-color: rgba(93, 127, 150, 0.4); }
 @keyframes blink { 50% { opacity: 0.35; } }

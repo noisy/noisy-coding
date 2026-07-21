@@ -84,7 +84,7 @@ function formatChars(chars: number): string {
 .telemetry .v { font-size: 14px; color: var(--cyan); margin-top: 3px; text-shadow: 0 0 8px rgba(63, 216, 255, 0.35); }
 .telemetry .v small { font-size: 9px; color: var(--muted); }
 .telemetry .v.warn { color: var(--amber); text-shadow: 0 0 8px rgba(255, 180, 84, 0.35); }
-.telemetry .v.violet { color: var(--violet); text-shadow: 0 0 8px rgba(185, 140, 255, 0.35); }
+.telemetry .v.violet { color: var(--violet); text-shadow: 0 0 8px color-mix(in srgb, var(--violet) 35%, transparent); }
 .telemetry .v.ok { color: var(--green); text-shadow: 0 0 8px rgba(77, 255, 180, 0.35); }
 .telemetry .v.bad { color: var(--red); text-shadow: 0 0 8px rgba(255, 95, 107, 0.45); }
 </style>

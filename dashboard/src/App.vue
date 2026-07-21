@@ -61,22 +61,6 @@ const levelDb = computed(() =>
 // production-identical so prod colors can be tested on a local instance.
 const isDevInstance = window.location.port !== "" && window.location.port !== "8765";
 
-const clock = ref("");
-function tickClock() {
-  const d = new Date();
-  clock.value = [d.getHours(), d.getMinutes(), d.getSeconds()]
-    .map((n) => String(n).padStart(2, "0"))
-    .join(":");
-}
-let clockTimer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => {
-  tickClock();
-  clockTimer = setInterval(tickClock, 1000);
-});
-onUnmounted(() => clearInterval(clockTimer));
-
-const today = new Date().toISOString().slice(0, 10);
-
 // Controls: fire the POST, then let the next 400 ms poll reflect reality —
 // no optimistic local state to get out of sync.
 const swallow = () => {};
@@ -708,9 +692,6 @@ const LANGUAGES: Record<string, string> = {
   color: #1a1205; background: #ffb84d; border-radius: 3px;
 }
 .sysstate { width: 316px; flex: none; display: flex; align-items: stretch; }
-.clockbox { text-align: right; align-self: center; }
-.clockbox .clock { font-size: 17px; letter-spacing: 0.14em; color: var(--ink); }
-.clockbox .date { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); margin-top: 3px; }
 
 footer { flex: none; }
 .cols {
@@ -810,7 +791,7 @@ footer { flex: none; }
   scrollbar-color: var(--line-strong) transparent;
   border-left: 1px solid var(--line);
   padding-left: 16px;
-  background: rgba(185, 140, 255, 0.06);
+  background: color-mix(in srgb, var(--violet) 6%, transparent);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -822,8 +803,8 @@ footer { flex: none; }
   --cyan-hi: var(--violet-hi);
   --cyan-dim: var(--violet-dim);
   --glow-cyan: var(--glow-violet);
-  --line: rgba(185, 140, 255, 0.22);
-  --line-strong: rgba(185, 140, 255, 0.55);
+  --line: color-mix(in srgb, var(--violet) 22%, transparent);
+  --line-strong: color-mix(in srgb, var(--violet) 55%, transparent);
 }
 @media (max-width: 980px) { .convo-body { flex-direction: column; } .convo-rail { width: auto; border-left: none; padding-left: 0; } }
 .railbox { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
@@ -911,13 +892,13 @@ footer { flex: none; }
   align-content: center;
   gap: 4px;
   color: var(--violet);
-  background: rgba(185, 140, 255, 0.06);
-  border: 1px solid rgba(185, 140, 255, 0.4);
+  background: color-mix(in srgb, var(--violet) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--violet) 40%, transparent);
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
 .voicemute .vm-label { font-size: 12px; letter-spacing: 0.26em; }
 .voicemute .vm-sub { font-size: 8px; letter-spacing: 0.2em; color: var(--muted); }
-.voicemute:hover { border-color: var(--violet); background: rgba(185, 140, 255, 0.12); }
+.voicemute:hover { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 12%, transparent); }
 .voicemute.muted {
   color: var(--red);
   border-color: rgba(255, 95, 107, 0.6);
