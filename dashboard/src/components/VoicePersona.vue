@@ -114,7 +114,8 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   text-shadow: 0 0 10px rgba(255, 95, 107, 0.7);
   animation: mute-blink 1.6s step-end infinite;
 }
-@keyframes mute-blink { 50% { opacity: 0.45; } }
+/* The dim phase stays clearly readable — a pulse, not a blackout. */
+@keyframes mute-blink { 50% { opacity: 0.72; } }
 .fallback { width: 60%; display: block; margin: 0 auto; }
 .mono { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 0.05em; }
 /* ON AIR rides OVER the portrait, pinned to its top-right corner. */
