@@ -9,6 +9,17 @@ import { voiceSpriteStyle } from "./voiceSprites";
 const props = defineProps<{ voice: string }>();
 const emit = defineEmits<{ change: [voice: string] }>();
 
+// The whole list geometry hangs off these two numbers — tune here, not
+// in the CSS below.
+const THUMB_PX = 80;
+const VISIBLE_ROWS = 7;
+const ROW_PX = THUMB_PX + 12; // thumb + breathing room
+const listStyle = {
+  "--thumb": `${THUMB_PX}px`,
+  "--row": `${ROW_PX}px`,
+  maxHeight: `${VISIBLE_ROWS * ROW_PX}px`,
+};
+
 const open = ref(false);
 function pick(name: string) {
   open.value = false;
@@ -29,7 +40,7 @@ function pick(name: string) {
       <span class="vname">{{ voice.toUpperCase() || "—" }}</span>
       <span class="arrow">{{ open ? "▴" : "▾" }}</span>
     </div>
-    <div v-if="open" class="voicelist">
+    <div v-if="open" class="voicelist" :style="listStyle">
       <div
         v-for="(gender, name) in VOICES"
         :key="name"
@@ -58,14 +69,13 @@ function pick(name: string) {
 .voicecur .vname { font-size: 13px; letter-spacing: 0.2em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); }
 .voicecur .arrow { margin-left: auto; color: var(--cyan-dim); font-size: 10px; }
 
-/* ~6 big rows visible (80px each), the rest behind a thin scrollbar. */
+/* VISIBLE_ROWS rows visible (script constants), the rest scroll. */
 .voicelist {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 20;
-  max-height: 484px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
@@ -78,8 +88,9 @@ function pick(name: string) {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 80px;
-  padding: 0 12px;
+  height: var(--row);
+  /* Thumbs sit flush with the selector's left edge — no left padding. */
+  padding: 0 12px 0 0;
   cursor: pointer;
   border-bottom: 1px solid rgba(63, 216, 255, 0.08);
 }
@@ -88,8 +99,8 @@ function pick(name: string) {
 .row.sel { background: rgba(63, 216, 255, 0.14); }
 .row.sel .name { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .thumb {
-  width: 66px;
-  height: 66px;
+  width: var(--thumb);
+  height: var(--thumb);
   flex: none;
   border: 1px solid var(--line);
   clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
