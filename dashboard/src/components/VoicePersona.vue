@@ -69,10 +69,14 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 /* Muted conversation: red — the same alarm language as the MUTE MIC
    button on the left. The portrait dims under a red-tinted frame. */
 .persona.muted .portrait,
-.persona.muted .fallback { filter: grayscale(0.7) brightness(0.65); }
+.persona.muted .fallback {
+  /* Red, not reddish-grey: desaturate, then rotate what's left toward
+     red and let a strong red wash flood the frame. */
+  filter: grayscale(0.85) brightness(0.7) sepia(0.6) hue-rotate(-45deg) saturate(2.2);
+}
 .persona.muted .portrait {
-  border-color: rgba(255, 95, 107, 0.65);
-  box-shadow: 0 0 16px rgba(255, 95, 107, 0.25), inset 0 0 40px rgba(255, 95, 107, 0.12);
+  border-color: rgba(255, 95, 107, 0.85);
+  box-shadow: 0 0 22px rgba(255, 95, 107, 0.45), inset 0 0 70px rgba(255, 95, 107, 0.3);
 }
 .mutebtn {
   position: absolute;
