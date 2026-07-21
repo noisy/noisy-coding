@@ -102,6 +102,7 @@ function pick(name: string) {
 .thumb {
   width: var(--thumb);
   height: var(--thumb);
+  box-sizing: border-box; /* border inside — the box is EXACTLY --thumb */
   flex: none;
   border: 1px solid var(--line);
   clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
