@@ -90,6 +90,11 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   bottom: 0;
   left: 0;
   padding: 11px 18px;
+  /* Constant footprint: sized for the longer MUTED label, so toggling
+     never changes the button's width. */
+  min-width: 122px;
+  box-sizing: border-box;
+  text-align: center;
   font-family: var(--mono);
   font-size: 21px;
   font-weight: 700;
