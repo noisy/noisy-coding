@@ -16,6 +16,7 @@
   --amber: #ffb454;
   --amber-dim: rgba(255, 180, 84, 0.45);
   --violet: #b98cff;
+  --violet-hi: #d9c2ff;
   --violet-dim: rgba(185, 140, 255, 0.45);
   --green: #4dffb4;
   --red: #ff5f6b;
@@ -24,6 +25,7 @@
   --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   --glow-cyan: 0 0 6px rgba(63, 216, 255, 0.9), 0 0 18px rgba(63, 216, 255, 0.35);
   --glow-amber: 0 0 6px rgba(255, 180, 84, 0.9), 0 0 18px rgba(255, 180, 84, 0.3);
+  --glow-violet: 0 0 6px rgba(185, 140, 255, 0.9), 0 0 18px rgba(185, 140, 255, 0.35);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }

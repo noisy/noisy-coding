@@ -807,9 +807,20 @@ footer { flex: none; }
   scrollbar-color: var(--line-strong) transparent;
   border-left: 1px solid var(--line);
   padding-left: 16px;
+  background: rgba(185, 140, 255, 0.06);
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Experiment: recolor this column's accent from cyan to violet — the
+     rail is "Claude's persona" territory, matching the header's violet
+     mute-all button. Custom properties cascade to every child component
+     (VoicePersona, CharacterReadout, SessionRing) that reads var(--cyan*). */
+  --cyan: var(--violet);
+  --cyan-hi: var(--violet-hi);
+  --cyan-dim: var(--violet-dim);
+  --glow-cyan: var(--glow-violet);
+  --line: rgba(185, 140, 255, 0.22);
+  --line-strong: rgba(185, 140, 255, 0.55);
 }
 @media (max-width: 980px) { .convo-body { flex-direction: column; } .convo-rail { width: auto; border-left: none; padding-left: 0; } }
 .railbox { border-bottom: 1px solid var(--line); padding-bottom: 12px; }

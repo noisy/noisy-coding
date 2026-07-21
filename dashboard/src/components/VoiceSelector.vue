@@ -11,7 +11,7 @@ const emit = defineEmits<{ change: [voice: string] }>();
 
 // The whole list geometry hangs off these two numbers — tune here, not
 // in the CSS below.
-const THUMB_PX = 80;
+const THUMB_PX = 76;
 const VISIBLE_ROWS = 7;
 const ROW_PX = THUMB_PX; // row = thumb, no breathing around the portrait
 const listStyle = {
@@ -34,8 +34,8 @@ function pick(name: string) {
     <div class="voicecur" @click="open = !open">
       <span class="lbl">VOICE</span>
       <svg width="14" height="14" viewBox="0 0 14 14">
-        <circle cx="7" cy="7" r="5.5" fill="none" stroke="#3fd8ff" stroke-width="1" />
-        <circle cx="7" cy="7" r="2" fill="#3fd8ff" />
+        <circle cx="7" cy="7" r="5.5" fill="none" stroke="#b98cff" stroke-width="1" />
+        <circle cx="7" cy="7" r="2" fill="#b98cff" />
       </svg>
       <span class="vname">{{ voice.toUpperCase() || "—" }}</span>
       <span class="arrow">{{ open ? "▴" : "▾" }}</span>
@@ -62,7 +62,7 @@ function pick(name: string) {
 .voicecur {
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--line-strong); padding: 7px 12px;
-  background: rgba(63, 216, 255, 0.06); cursor: pointer;
+  background: rgba(185, 140, 255, 0.06); cursor: pointer;
   clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
 }
 .voicecur .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); }
@@ -93,12 +93,12 @@ function pick(name: string) {
   /* Thumbs sit flush with the selector's left edge — no left padding. */
   padding: 0 12px 0 0;
   cursor: pointer;
-  border-bottom: 1px solid rgba(63, 216, 255, 0.08);
+  border-bottom: 1px solid rgba(185, 140, 255, 0.08);
 }
 .row:last-child { border-bottom: none; }
-.row:hover { background: rgba(63, 216, 255, 0.08); }
-.row.sel { background: rgba(63, 216, 255, 0.14); }
-.row.sel .name { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.row:hover { background: rgba(185, 140, 255, 0.08); }
+.row.sel { background: rgba(185, 140, 255, 0.14); }
+.row.sel .name { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(185, 140, 255, 0.6); }
 .thumb {
   width: var(--thumb);
   height: var(--thumb);

@@ -88,13 +88,13 @@ const ticks = [0, 90, 180, 270].map((deg) => {
 <template>
   <div class="ringbox">
     <svg viewBox="0 0 220 220" aria-label="Conversation timeline ring">
-      <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="rgba(63,216,255,0.15)" stroke-width="1" />
+      <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="rgba(185,140,255,0.15)" stroke-width="1" />
       <g class="reticle">
-        <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="rgba(63,216,255,0.4)"
+        <circle :cx="CX" :cy="CY" :r="R + 16" fill="none" stroke="rgba(185,140,255,0.4)"
                 stroke-width="1" stroke-dasharray="4 34" />
-        <line v-for="(t, i) in ticks" :key="i" v-bind="t" stroke="rgba(63,216,255,0.5)" stroke-width="1.4" />
+        <line v-for="(t, i) in ticks" :key="i" v-bind="t" stroke="rgba(185,140,255,0.5)" stroke-width="1.4" />
       </g>
-      <circle :cx="CX" :cy="CY" :r="R - 14" fill="none" stroke="rgba(63,216,255,0.12)" stroke-width="1" />
+      <circle :cx="CX" :cy="CY" :r="R - 14" fill="none" stroke="rgba(185,140,255,0.12)" stroke-width="1" />
       <path
         v-for="(seg, i) in segments"
         :key="i"
@@ -106,8 +106,8 @@ const ticks = [0, 90, 180, 270].map((deg) => {
         opacity="0.9"
         :style="{ filter: `drop-shadow(0 0 3px ${seg.color})` }"
       />
-      <circle v-if="nowMarker" :cx="nowMarker.x" :cy="nowMarker.y" r="4.5" fill="#3fd8ff"
-              style="filter: drop-shadow(0 0 5px #3fd8ff)" />
+      <circle v-if="nowMarker" :cx="nowMarker.x" :cy="nowMarker.y" r="4.5" fill="#b98cff"
+              style="filter: drop-shadow(0 0 5px #b98cff)" />
     </svg>
     <div class="ringcenter">
       <div class="rc1">{{ turns.length }}</div>
