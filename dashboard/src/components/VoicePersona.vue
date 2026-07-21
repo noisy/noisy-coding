@@ -89,7 +89,7 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   /* Flush with the portrait's bottom-left corner — no floating offset. */
   bottom: 0;
   left: 0;
-  padding: 14px 24px;
+  padding: 11px 18px;
   font-family: var(--mono);
   font-size: 21px;
   font-weight: 700;
