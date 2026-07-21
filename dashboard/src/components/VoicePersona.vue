@@ -58,10 +58,10 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 .persona.speaking .portrait { box-shadow: 0 0 22px rgba(63, 216, 255, 0.4); }
 .fallback { width: 60%; display: block; margin: 0 auto; }
 .mono { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 0.05em; }
-/* ON AIR rides OVER the portrait, pinned to its bottom-right corner. */
+/* ON AIR rides OVER the portrait, pinned to its top-right corner. */
 .onair {
   position: absolute;
-  bottom: 10px;
+  top: 8px;
   right: 12px;
   padding: 3px 8px;
   font-size: 9px;
