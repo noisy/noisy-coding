@@ -17,6 +17,7 @@ import SessionRing from "./components/SessionRing.vue";
 import SettingsView from "./components/SettingsView.vue";
 import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
+import VersionBadge from "./components/VersionBadge.vue";
 import type { CueName } from "./composables/cueEvents";
 import { useAudioCues } from "./composables/useAudioCues";
 import { useBrowserAudio } from "./composables/useBrowserAudio";
@@ -648,6 +649,7 @@ const LANGUAGES: Record<string, string> = {
         ⚠ {{ eventTime(lastError.ts) }} {{ lastError.kind.toUpperCase() }} · {{ lastError.detail }}
       </span>
       <span style="margin-left: auto">{{ offline ? "◈ LINK DOWN" : lastError ? "◈ DEGRADED — SEE LAST ERROR" : "◈ ALL SYSTEMS NOMINAL" }}</span>
+      <VersionBadge :daemon-version="status?.version" />
     </footer>
   </div>
 </template>

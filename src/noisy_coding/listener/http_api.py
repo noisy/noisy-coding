@@ -17,6 +17,13 @@ from noisy_coding.listener import pricing, speech, tab_audio
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
 from noisy_coding.listener.state import ListenerState
 
+try:
+    from importlib.metadata import version as _pkg_version
+
+    DAEMON_VERSION = _pkg_version("noisy-coding")
+except Exception:  # editable installs before metadata exists
+    DAEMON_VERSION = "dev"
+
 DEFAULT_PORT = 8765
 # Bind address. Loopback by default; a Docker container must bind 0.0.0.0
 # or the published port can't reach it (set NOISY_CODING_BIND=0.0.0.0 there).
@@ -266,6 +273,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "agents_meta": state.agents_meta,
                         "queued_by_agent": state.queued_by_agent,
                         "muted_agents": state.muted_agents,
+                        "version": DAEMON_VERSION,
                         "active_agent": state.active_agent,
                     }
                 )

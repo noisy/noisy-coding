@@ -1,0 +1,48 @@
+import { mount } from "@vue/test-utils";
+import { describe, expect, it } from "vitest";
+import VersionBadge from "./VersionBadge.vue";
+
+describe("VersionBadge", () => {
+  it("shows one quiet version when UI and daemon agree", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.8.0", daemonVersion: "2.8.0" },
+    });
+
+    expect(wrapper.find(".ver").text()).toBe("v2.8.0");
+    expect(wrapper.find(".verskew").exists()).toBe(false);
+  });
+
+  it("tells the user to hard-refresh when the daemon is newer", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.7.7", daemonVersion: "2.8.0" },
+    });
+
+    expect(wrapper.find(".verskew").text()).toContain("HARD-REFRESH");
+  });
+
+  it("tells the user to update the container when the UI is newer", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.8.0", daemonVersion: "2.7.7" },
+    });
+
+    expect(wrapper.find(".verskew").text()).toContain("UPDATE THE CONTAINER");
+  });
+
+  it("compares numerically, not lexicographically (2.10.0 > 2.8.0)", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.8.0", daemonVersion: "2.10.0" },
+    });
+
+    expect(wrapper.find(".verskew").text()).toContain("HARD-REFRESH");
+  });
+
+  it("stays quiet without a daemon version or on a dev install", () => {
+    for (const daemonVersion of [null, "dev"]) {
+      const wrapper = mount(VersionBadge, {
+        props: { uiVersion: "2.8.0", daemonVersion },
+      });
+      expect(wrapper.find(".verskew").exists()).toBe(false);
+      expect(wrapper.find(".ver").text()).toBe("v2.8.0");
+    }
+  });
+});

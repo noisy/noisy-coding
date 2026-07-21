@@ -1,0 +1,34 @@
+import type { Meta, StoryObj } from "@storybook/vue3";
+import VersionBadge from "./VersionBadge.vue";
+
+const meta: Meta<typeof VersionBadge> = {
+  component: VersionBadge,
+  title: "HUD/VersionBadge",
+  decorators: [
+    () => ({
+      template:
+        '<div style="background:#02060c;padding:16px;font:10px monospace;"><story /></div>',
+    }),
+  ],
+};
+export default meta;
+
+/** UI and daemon agree — one quiet version number. */
+export const InSync: StoryObj<typeof VersionBadge> = {
+  args: { uiVersion: "2.8.0", daemonVersion: "2.8.0" },
+};
+
+/** Daemon is newer → the browser cached an old UI build; hard-refresh. */
+export const UiStale: StoryObj<typeof VersionBadge> = {
+  args: { uiVersion: "2.7.7", daemonVersion: "2.8.0" },
+};
+
+/** UI is newer → the container runs an old release; update it. */
+export const DaemonStale: StoryObj<typeof VersionBadge> = {
+  args: { uiVersion: "2.8.0", daemonVersion: "2.7.7" },
+};
+
+/** Daemon not polled yet (or dev install without metadata) — no verdict. */
+export const Unknown: StoryObj<typeof VersionBadge> = {
+  args: { uiVersion: "2.8.0", daemonVersion: null },
+};

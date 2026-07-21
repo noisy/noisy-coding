@@ -21,3 +21,5 @@ HANDOFF-*.md
 ANALYSIS-*.md
 HANDOFF.md
 node_modules/
+# Local working drafts — they keep sneaking into commits by accident.
+issues-drafts/

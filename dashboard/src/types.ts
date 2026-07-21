@@ -46,6 +46,8 @@ export interface DaemonStatus {
   /** Conversations whose speech parks as unheard (per-tab mute). */
   muted_agents?: string[];
   active_agent: string | null;
+  /** Daemon package version, for the footer skew check. */
+  version?: string;
 }
 
 export interface Utterance {
