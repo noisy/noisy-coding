@@ -636,7 +636,7 @@ const LANGUAGES: Record<string, string> = {
                 />
               </section>
               <section class="railbox">
-                <div class="railtitle">CHARACTER MATRIX</div>
+                <div class="railtitle">CHARACTER SETTINGS</div>
                 <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
                 <p v-else class="todo">NO CHARACTER DATA</p>
               </section>

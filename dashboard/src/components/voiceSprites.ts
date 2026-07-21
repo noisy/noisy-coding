@@ -24,5 +24,6 @@ export function voiceSpriteStyle(voice: string): Record<string, string> | null {
     backgroundImage: "url(/avatars.png)",
     backgroundSize: `${SPRITE_GRID * 100}%`,
     backgroundPosition: `${(col / (SPRITE_GRID - 1)) * 100}% ${(row / (SPRITE_GRID - 1)) * 100}%`,
+    transform: "scaleX(-1)",
   };
 }
