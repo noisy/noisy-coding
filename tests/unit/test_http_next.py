@@ -114,3 +114,16 @@ def test_root_level_static_files_are_served_by_extension(hud_server, tmp_path):
 def test_root_level_static_denies_unknown_extensions_and_traversal(hud_server):
     assert _get(hud_server, "/secret.txt").status == 404  # extension not allowlisted
     assert _get(hud_server, "/..%2fsecret.png").status == 404  # traversal blocked
+
+
+def test_cache_policy_html_revalidates_assets_are_immutable(hud_server, tmp_path):
+    # #21: a heuristically-cached index.html kept referencing the previous
+    # build's hashed assets — half-old, half-new UI after updates.
+    (tmp_path / "dist" / "avatars.png").write_bytes(b"\x89PNG fake")
+
+    assert _get(hud_server, "/").getheader("Cache-Control") == "no-cache"
+    assert (
+        _get(hud_server, "/assets/app.js").getheader("Cache-Control")
+        == "public, max-age=31536000, immutable"
+    )
+    assert _get(hud_server, "/avatars.png").getheader("Cache-Control") == "public, max-age=3600"

@@ -637,6 +637,18 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 "Content-Type",
                 STATIC_CONTENT_TYPES.get(target.suffix, "application/octet-stream"),
             )
+            # Cache policy (#21): the HTML entry point must revalidate on
+            # every load or a heuristically-cached index keeps pointing at
+            # the PREVIOUS build's hashed assets (half-old, half-new UI
+            # after an update). Vite's content-hashed /assets/ are safe to
+            # cache forever; unhashed root statics (sprite, favicons) get
+            # a modest hour.
+            if target.suffix == ".html":
+                self.send_header("Cache-Control", "no-cache")
+            elif "assets" in target.parts:
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+            else:
+                self.send_header("Cache-Control", "public, max-age=3600")
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
