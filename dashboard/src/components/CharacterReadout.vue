@@ -1,15 +1,37 @@
 <script setup lang="ts">
+/** The character-matrix editor: four radial trait dials (humor, honesty,
+ * brevity, chatty) plus a speech-rate dial.
+ *
+ * The dials read as CONTROLS, not readouts, and a value is easy to hit:
+ *  - the circle is 6 equal 60° wedges; the bottom wedge is a decorative gap
+ *    (clicking it means 0), the other 5 form a 300° arc whose 6 boundaries
+ *    are exactly the trait stops 0/20/40/60/80/100 (see characterMath);
+ *  - clicking anywhere in a wedge selects that wedge's upper boundary, and a
+ *    glowing handle dot marks the current value, so the ring affords dragging;
+ *  - the semantic word ("warm", "frank") sits under the number, so the dial
+ *    shows what the setting MEANS, not just a figure.
+ * Glow and per-trait colour follow the dashboard design language.
+ */
 import { computed, ref, watch } from "vue";
 import type { Character } from "../types";
-import { pointerAngleDeg, speedFromAngle, traitValueFromAngle } from "./characterMath";
+import {
+  pointerAngleDeg,
+  SEG_ARC_START_DEG,
+  SEG_ARC_SWEEP_DEG,
+  segStopAngle,
+  segTraitFromAngle,
+  speedFromAngle,
+  TRAIT_STOPS,
+  traitWord,
+} from "./characterMath";
 
 const props = defineProps<{ character: Character }>();
 const emit = defineEmits<{ change: [patch: Partial<Character>] }>();
 
 type Trait = "humor" | "honesty" | "brevity" | "chatty";
 
-// Editing preview: values follow the pointer instantly; the daemon's
-// answer (next poll) becomes the truth and clears the preview.
+// Editing preview: values follow the pointer instantly; the daemon's answer
+// (next poll) becomes the truth and clears the preview.
 const preview = ref<Partial<Character>>({});
 watch(
   () => props.character,
@@ -19,37 +41,52 @@ watch(
 );
 const shown = computed<Character>(() => ({ ...props.character, ...preview.value }));
 
+// Geometry — named constants flow into the SVG (design language: "I hoped
+// this was one variable" should be true). The arc is the 5 visible wedges of
+// the 6-wedge segmented model (300°); the bottom 60° is the decorative gap.
 const GAUGE_R = 30;
+const CENTER = 40;
 const CIRCUMFERENCE = 2 * Math.PI * GAUGE_R;
-const SWEEP = 0.78; // 280° arc, like the prototype
+const SWEEP = SEG_ARC_SWEEP_DEG / 360;
+const trackDash = `${CIRCUMFERENCE * SWEEP} ${CIRCUMFERENCE}`;
+// The track circle is drawn from its 0° in the SVG frame, so rotate the <g>
+// to put the arc's leading edge (value 0) at SEG_ARC_START_DEG.
+const ARC_ROTATION = SEG_ARC_START_DEG;
+
+// A stop's point on the arc — uses the shared segStopAngle so ticks and
+// handle land exactly on the boundaries the click logic selects.
+function pointAt(value: number) {
+  const angle = (segStopAngle(value) * Math.PI) / 180;
+  return { x: CENTER + GAUGE_R * Math.cos(angle), y: CENTER + GAUGE_R * Math.sin(angle) };
+}
 
 const gauges = computed(() =>
   (
     [
-      ["humor", "HUMOR", "dry ↔ playful", "#3fd8ff"],
-      ["honesty", "HONESTY", "dipl ↔ blunt", "#4dffb4"],
-      ["brevity", "BREVITY", "detail ↔ terse", "#ffb454"],
-      ["chatty", "CHATTY", "rare ↔ frequent", "var(--violet)"],
+      ["humor", "HUMOR", "var(--cyan)"],
+      ["honesty", "HONESTY", "var(--green)"],
+      ["brevity", "BREVITY", "var(--amber)"],
+      ["chatty", "CHATTY", "var(--violet)"],
     ] as const
-  ).map(([key, label, scale, color]) => {
+  ).map(([key, label, color]) => {
     const value = shown.value[key];
     return {
       key: key as Trait,
       label,
-      scale,
       value,
+      word: traitWord(key, value),
       color,
       dash: `${(CIRCUMFERENCE * SWEEP * value) / 100} ${CIRCUMFERENCE}`,
+      handle: pointAt(value),
+      ticks: TRAIT_STOPS.map((s) => ({ s, ...pointAt(s) })),
     };
   }),
 );
 
-const trackDash = `${CIRCUMFERENCE * SWEEP} ${CIRCUMFERENCE}`;
-
+const speedFraction = computed(() => Math.max(0, Math.min(1, (shown.value.speed - 0.7) / 0.8)));
 const speedDash = computed(() => {
-  const fraction = Math.max(0, Math.min(1, (shown.value.speed - 0.7) / 0.8));
   const c = 2 * Math.PI * 24;
-  return `${(c * 250 * fraction) / 360} ${c}`;
+  return `${(c * 250 * speedFraction.value) / 360} ${c}`;
 });
 
 function angleFromEvent(event: PointerEvent): number {
@@ -62,11 +99,11 @@ function angleFromEvent(event: PointerEvent): number {
 
 function traitDown(trait: Trait, event: PointerEvent) {
   (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-  preview.value = { ...preview.value, [trait]: traitValueFromAngle(angleFromEvent(event)) };
+  preview.value = { ...preview.value, [trait]: segTraitFromAngle(angleFromEvent(event)) };
 }
 function traitMove(trait: Trait, event: PointerEvent) {
   if (event.buttons & 1) {
-    preview.value = { ...preview.value, [trait]: traitValueFromAngle(angleFromEvent(event)) };
+    preview.value = { ...preview.value, [trait]: segTraitFromAngle(angleFromEvent(event)) };
   }
 }
 function traitUp(trait: Trait) {
@@ -86,7 +123,6 @@ function speedMove(event: PointerEvent) {
 function speedUp() {
   if (preview.value.speed != null) emit("change", { speed: preview.value.speed });
 }
-
 </script>
 
 <template>
@@ -100,17 +136,34 @@ function speedUp() {
           @pointermove="traitMove(g.key, $event)"
           @pointerup="traitUp(g.key)"
         >
-          <g transform="rotate(130 40 40)">
-            <circle cx="40" cy="40" :r="GAUGE_R" fill="none" stroke="color-mix(in srgb, var(--violet) 12%, transparent)"
-                    stroke-width="5" :stroke-dasharray="trackDash" stroke-linecap="round" />
-            <circle cx="40" cy="40" :r="GAUGE_R" fill="none" :stroke="g.color" stroke-width="5"
-                    :stroke-dasharray="g.dash" stroke-linecap="round"
-                    :style="{ filter: `drop-shadow(0 0 4px ${g.color})` }" />
+          <!-- the two arcs are drawn from the SVG's 0° and rotated to the
+               arc's leading edge; ticks + handle use absolute points. -->
+          <g :transform="`rotate(${ARC_ROTATION} 40 40)`">
+            <circle
+              cx="40" cy="40" :r="GAUGE_R" fill="none"
+              stroke="color-mix(in srgb, var(--violet) 12%, transparent)"
+              stroke-width="5" :stroke-dasharray="trackDash" stroke-linecap="round"
+            />
+            <circle
+              cx="40" cy="40" :r="GAUGE_R" fill="none" :stroke="g.color" stroke-width="5"
+              :stroke-dasharray="g.dash" stroke-linecap="round"
+              :style="{ filter: `drop-shadow(0 0 4px ${g.color})` }"
+            />
           </g>
+          <!-- stop ticks: the 6 boundaries where the value can land -->
+          <circle
+            v-for="t in g.ticks" :key="t.s" :cx="t.x" :cy="t.y" r="1.7"
+            :fill="t.s <= g.value ? 'var(--panel-solid)' : 'color-mix(in srgb, var(--cyan) 55%, transparent)'"
+            :stroke="t.s <= g.value ? g.color : 'none'" stroke-width="1"
+          />
+          <!-- the handle: says 'grab me' -->
+          <circle :cx="g.handle.x" :cy="g.handle.y" r="4.2" :fill="g.color"
+                  stroke="var(--panel-solid)" stroke-width="1.5"
+                  :style="{ filter: `drop-shadow(0 0 5px ${g.color})` }" />
         </svg>
         <span class="gv">{{ g.value }}</span>
         <div class="gl">{{ g.label }}</div>
-        <div class="gs">{{ g.scale }}</div>
+        <div class="gw" :style="{ color: g.color }">{{ g.word }}</div>
       </div>
     </div>
 
@@ -144,14 +197,17 @@ function speedUp() {
 .gauges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .gauge { text-align: center; position: relative; }
 .gauge svg { width: 100%; max-width: 74px; }
-.dial { cursor: crosshair; touch-action: none; }
+.dial { cursor: pointer; touch-action: none; }
 .gauge .gv {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -66%);
-  font-size: 13px; color: var(--cyan-hi); text-shadow: var(--glow-cyan);
+  position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 14px; color: var(--cyan-hi); text-shadow: var(--glow-cyan);
   pointer-events: none;
 }
-.gauge .gl { font-size: 8.5px; letter-spacing: 0.18em; color: var(--muted); margin-top: 2px; }
-.gauge .gs { font-size: 7.5px; letter-spacing: 0.06em; color: rgba(93, 127, 150, 0.7); margin-top: 2px; }
+.gauge .gl {
+  font-size: 11px; letter-spacing: 0.12em; color: var(--cyan-hi);
+  margin-top: 4px; font-weight: 600;
+}
+.gauge .gw { font-size: 10.5px; letter-spacing: 0.02em; margin-top: 2px; min-height: 13px; }
 
 .charline { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .charline .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); width: 78px; flex: none; }

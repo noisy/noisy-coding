@@ -9,7 +9,7 @@ export const Character: StoryObj = {
   render: () => ({
     components: { CharacterReadout },
     setup: () => ({
-      character: { humor: 65, honesty: 80, brevity: 40, chatty: 25, voice: "altair", speed: 1.15 },
+      character: { humor: 60, honesty: 80, brevity: 40, chatty: 100, voice: "altair", speed: 1.15 },
     }),
     template: `<div style="max-width:330px"><CharacterReadout :character="character" /></div>`,
   }),

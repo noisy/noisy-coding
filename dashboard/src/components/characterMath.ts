@@ -26,6 +26,56 @@ export function traitValueFromAngle(angleDeg: number): number {
   return Math.round(sweepFraction(angleDeg, TRAIT_START_DEG, TRAIT_SWEEP_DEG) * 100);
 }
 
+// Traits are set in coarse steps, not a continuous 0–100: fine granularity
+// was never meaningful (the character-matrix semantics move in ~20-point
+// bands) and snapping makes a value easy to hit by eye. Six stops.
+export const TRAIT_STEP = 20;
+export const TRAIT_STOPS = [0, 20, 40, 60, 80, 100] as const;
+
+// ── Segmented dial geometry ─────────────────────────────────────────────
+// The full circle is 6 equal 60° wedges. The BOTTOM wedge is a decorative
+// gap (clicking it means 0); the other 5 wedges form a 300° arc whose 6
+// boundaries are exactly the 6 trait stops. Value grows clockwise: 0 at the
+// gap's leading edge, 100 at its trailing edge.
+export const SEG_COUNT = 6; // wedges around the circle (1 decorative)
+export const SEG_DEG = 360 / SEG_COUNT; // 60°
+export const SEG_ARC_START_DEG = 120; // leading boundary (value 0), screen deg
+export const SEG_ARC_SWEEP_DEG = SEG_DEG * (SEG_COUNT - 1); // 300° visible
+
+/** The screen angle of trait stop `value` (0..100) on the segmented arc. */
+export function segStopAngle(value: number): number {
+  return (SEG_ARC_START_DEG + (value / 100) * SEG_ARC_SWEEP_DEG) % 360;
+}
+
+/** Which trait stop a click at `angleDeg` selects on the segmented dial.
+ *
+ * A click anywhere inside a wedge selects that wedge — i.e. its UPPER
+ * boundary value (clicking between 40 and 60 gives 60). A click in the
+ * decorative bottom wedge gives 0. No snapping subtlety, no tolerance —
+ * just "which of the 6 wedges is this angle in". */
+export function segTraitFromAngle(angleDeg: number): number {
+  const along = (angleDeg - SEG_ARC_START_DEG + 360) % 360; // 0..360 from stop 0
+  if (along >= SEG_ARC_SWEEP_DEG) return 0; // inside the decorative bottom gap
+  const wedge = Math.floor(along / SEG_DEG); // 0..4
+  return (wedge + 1) * TRAIT_STEP; // upper boundary: 20,40,60,80,100
+}
+
+// One word per stop, so the dial shows what the number MEANS (see the
+// character-matrix skill). Index = value / 20 (0,20,…,100 → 0..5).
+export const TRAIT_WORDS: Record<string, readonly [string, string, string, string, string, string]> = {
+  humor: ["sterile", "dry", "warm", "playful", "witty", "absurd"],
+  honesty: ["courtier", "soft", "diplomatic", "frank", "candid", "no filter"],
+  brevity: ["lecture", "generous", "balanced", "tight", "terse", "clicks"],
+  chatty: ["silent", "milestones", "colleague", "aloud", "narrating", "commentary"],
+};
+
+/** The semantic word for a trait at a given (snapped) value. */
+export function traitWord(trait: string, value: number): string {
+  const words = TRAIT_WORDS[trait];
+  if (!words) return String(value);
+  return words[Math.round(value / TRAIT_STEP)] ?? String(value);
+}
+
 export function speedFromAngle(angleDeg: number): number {
   const raw = SPEED_MIN + sweepFraction(angleDeg, SPEED_START_DEG, SPEED_SWEEP_DEG) * (SPEED_MAX - SPEED_MIN);
   return Math.round(raw * 20) / 20; // 0.05 steps
