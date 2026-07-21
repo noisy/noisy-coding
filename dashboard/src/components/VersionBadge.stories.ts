@@ -34,6 +34,11 @@ export const DaemonStale: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.8.0", daemonVersion: "2.7.7" },
 };
 
+/** A newer release is published — calm green invitation to update. */
+export const UpdateAvailable: StoryObj<typeof VersionBadge> = {
+  args: { uiVersion: "2.8.0", daemonVersion: "2.8.0", latestVersion: "2.9.0" },
+};
+
 /** Daemon not polled yet (or dev install without metadata) — no verdict. */
 export const Unknown: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.8.0", daemonVersion: null },

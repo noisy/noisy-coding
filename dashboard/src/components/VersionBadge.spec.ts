@@ -50,6 +50,32 @@ describe("VersionBadge", () => {
     expect(wrapper.find(".verskew").text()).toContain("HARD-REFRESH");
   });
 
+  it("announces a newer published release in calm green", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.8.0", daemonVersion: "2.8.0", latestVersion: "2.9.0" },
+    });
+
+    expect(wrapper.find(".verupdate").text()).toContain("NEW v2.9.0");
+    expect(wrapper.find(".verskew").exists()).toBe(false);
+  });
+
+  it("skew outranks the update announcement — fix inconsistency first", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.7.7", daemonVersion: "2.8.0", latestVersion: "2.9.0" },
+    });
+
+    expect(wrapper.find(".verskew").exists()).toBe(true);
+    expect(wrapper.find(".verupdate").exists()).toBe(false);
+  });
+
+  it("stays quiet when the latest release is what we already run", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.8.0", daemonVersion: "2.8.0", latestVersion: "2.8.0" },
+    });
+
+    expect(wrapper.find(".ver").text()).toBe("v2.8.0");
+  });
+
   it("stays quiet without a daemon version or on a dev install", () => {
     for (const daemonVersion of [null, "dev"]) {
       const wrapper = mount(VersionBadge, {

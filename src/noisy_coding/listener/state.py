@@ -593,6 +593,16 @@ class ListenerState:
             return counts
 
     @property
+    def latest_version(self) -> str | None:
+        """Newest published release, refreshed by the background check."""
+        with self._lock:
+            return getattr(self, "_latest_version", None)
+
+    def set_latest_version(self, version: str) -> None:
+        with self._lock:
+            self._latest_version = version
+
+    @property
     def muted_agents(self) -> list:
         with self._lock:
             return sorted(self._muted_agents)

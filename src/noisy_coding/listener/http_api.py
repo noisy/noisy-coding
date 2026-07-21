@@ -24,6 +24,43 @@ try:
 except Exception:  # editable installs before metadata exists
     DAEMON_VERSION = "dev"
 
+# Where releases are announced: the version field of the plugin manifest on
+# main — updated by scripts/bump_version.py the moment a release lands.
+LATEST_VERSION_URL = (
+    "https://raw.githubusercontent.com/noisy/noisy-coding/main/.claude-plugin/plugin.json"
+)
+LATEST_CHECK_INTERVAL_SECONDS = 6 * 3600
+_latest_checked_at = 0.0
+_latest_check_lock = threading.Lock()
+
+
+def _maybe_refresh_latest_version(state: ListenerState) -> None:
+    """Kick a background fetch of the newest release version, rate-limited.
+
+    Piggybacks on /status polls: cheap check of a timestamp, and the actual
+    network call runs in a daemon thread so a slow GitHub never delays the
+    dashboard. Failures are silent — the badge just keeps the last answer.
+    """
+    global _latest_checked_at
+    with _latest_check_lock:
+        if time.time() - _latest_checked_at < LATEST_CHECK_INTERVAL_SECONDS:
+            return
+        _latest_checked_at = time.time()
+
+    def fetch() -> None:
+        try:
+            import urllib.request
+
+            with urllib.request.urlopen(LATEST_VERSION_URL, timeout=10) as response:
+                version = json.load(response).get("version")
+            if isinstance(version, str) and version:
+                state.set_latest_version(version)
+        except Exception:
+            pass
+
+    threading.Thread(target=fetch, daemon=True).start()
+
+
 DEFAULT_PORT = 8765
 # Bind address. Loopback by default; a Docker container must bind 0.0.0.0
 # or the published port can't reach it (set NOISY_CODING_BIND=0.0.0.0 there).
@@ -236,6 +273,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path.startswith("/next/"):
                 self._serve_hud_file(url.path[len("/next/"):] or "index.html")
             elif url.path == "/status":
+                _maybe_refresh_latest_version(state)
                 self._respond(
                     {
                         "listening": not state.paused,
@@ -274,6 +312,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "queued_by_agent": state.queued_by_agent,
                         "muted_agents": state.muted_agents,
                         "version": DAEMON_VERSION,
+                        "latest_version": state.latest_version,
                         "active_agent": state.active_agent,
                     }
                 )

@@ -11,11 +11,30 @@ const props = withDefaults(
     daemonVersion?: string | null;
     /** UI build version; injectable for tests, defaults to the baked-in one. */
     uiVersion?: string;
+    /** Newest published release (daemon checks GitHub periodically). */
+    latestVersion?: string | null;
     /** Platform override for tests/stories; defaults to the browser's own. */
     platform?: "mac" | "windows" | "linux";
   }>(),
-  { daemonVersion: null, uiVersion: () => __APP_VERSION__, platform: undefined },
+  {
+    daemonVersion: null,
+    latestVersion: null,
+    uiVersion: () => __APP_VERSION__,
+    platform: undefined,
+  },
 );
+
+function newer(a: string, b: string): boolean {
+  return a.localeCompare(b, undefined, { numeric: true }) > 0;
+}
+
+// A published release newer than what's running (skew has priority — fix
+// the inconsistency first, then upgrade).
+const updateAvailable = computed(() => {
+  const latest = props.latestVersion;
+  if (!latest || skew.value) return null;
+  return newer(latest, props.uiVersion) ? latest : null;
+});
 
 function detectPlatform(): "mac" | "windows" | "linux" {
   const ua = navigator.userAgent;
@@ -33,8 +52,7 @@ const skew = computed(() => {
   const daemon = props.daemonVersion;
   // "dev" = editable install without package metadata — nothing to compare.
   if (!daemon || daemon === "dev" || daemon === props.uiVersion) return null;
-  const daemonNewer =
-    daemon.localeCompare(props.uiVersion, undefined, { numeric: true }) > 0;
+  const daemonNewer = newer(daemon, props.uiVersion);
   const keys = HARD_REFRESH_KEYS[props.platform ?? detectPlatform()];
   return daemonNewer
     ? { action: `HARD-REFRESH THIS TAB (${keys})`, hint: "The browser cached an older UI build." }
@@ -46,11 +64,24 @@ const skew = computed(() => {
   <span v-if="skew" class="verskew" :title="skew.hint">
     ⚠ UI v{{ uiVersion }} ≠ DAEMON v{{ daemonVersion }} — {{ skew.action }}
   </span>
+  <span
+    v-else-if="updateAvailable"
+    class="verupdate"
+    title="A newer release is published — run /noisy-coding:update"
+  >
+    v{{ uiVersion }} · NEW v{{ updateAvailable }} AVAILABLE
+  </span>
   <span v-else class="ver" :title="`UI and daemon both v${uiVersion}`">v{{ uiVersion }}</span>
 </template>
 
 <style scoped>
 .ver { color: var(--muted); letter-spacing: 0.14em; }
+/* Good news, not an alarm: steady green, no blinking. */
+.verupdate {
+  color: var(--green, #4dffb4);
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 8px rgba(77, 255, 180, 0.35);
+}
 .verskew {
   color: var(--amber, #ffb454);
   letter-spacing: 0.1em;

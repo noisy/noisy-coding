@@ -48,6 +48,8 @@ export interface DaemonStatus {
   active_agent: string | null;
   /** Daemon package version, for the footer skew check. */
   version?: string;
+  /** Newest published release, from the daemon's periodic GitHub check. */
+  latest_version?: string | null;
 }
 
 export interface Utterance {
