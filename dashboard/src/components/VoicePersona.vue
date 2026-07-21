@@ -68,8 +68,8 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   font-weight: 700;
   letter-spacing: 0.24em;
   color: var(--green, #6dff9e);
-  background: rgba(4, 12, 20, 0.85);
-  border: 1px solid rgba(109, 255, 158, 0.4);
+  background: rgba(4, 12, 20, 0.72);
+  border: 1px solid rgba(109, 255, 158, 0.18);
   text-shadow: 0 0 6px var(--green, #6dff9e);
   animation: onair-pulse 1.2s ease-in-out infinite;
 }
