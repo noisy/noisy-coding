@@ -18,9 +18,15 @@ export const InSync: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.8.0", daemonVersion: "2.8.0" },
 };
 
-/** Daemon is newer → the browser cached an old UI build; hard-refresh. */
+/** Daemon is newer → the browser cached an old UI build; hard-refresh.
+ *  The shortcut matches the platform (⌘⇧R / Ctrl+Shift+R). */
 export const UiStale: StoryObj<typeof VersionBadge> = {
-  args: { uiVersion: "2.7.7", daemonVersion: "2.8.0" },
+  args: { uiVersion: "2.7.7", daemonVersion: "2.8.0", platform: "mac" },
+};
+
+/** Same skew on Windows/Linux — Ctrl+Shift+R wording. */
+export const UiStaleWindows: StoryObj<typeof VersionBadge> = {
+  args: { uiVersion: "2.7.7", daemonVersion: "2.8.0", platform: "windows" },
 };
 
 /** UI is newer → the container runs an old release; update it. */

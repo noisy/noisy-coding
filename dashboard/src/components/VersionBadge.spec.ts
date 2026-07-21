@@ -20,6 +20,20 @@ describe("VersionBadge", () => {
     expect(wrapper.find(".verskew").text()).toContain("HARD-REFRESH");
   });
 
+  it("names the platform's own hard-refresh shortcut", () => {
+    const cases = [
+      { platform: "mac" as const, keys: "⌘⇧R" },
+      { platform: "windows" as const, keys: "Ctrl+Shift+R" },
+      { platform: "linux" as const, keys: "Ctrl+Shift+R" },
+    ];
+    for (const { platform, keys } of cases) {
+      const wrapper = mount(VersionBadge, {
+        props: { uiVersion: "2.7.7", daemonVersion: "2.8.0", platform },
+      });
+      expect(wrapper.find(".verskew").text()).toContain(keys);
+    }
+  });
+
   it("tells the user to update the container when the UI is newer", () => {
     const wrapper = mount(VersionBadge, {
       props: { uiVersion: "2.8.0", daemonVersion: "2.7.7" },
