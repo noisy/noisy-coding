@@ -555,7 +555,8 @@ const LANGUAGES: Record<string, string> = {
               :class="{ muted: status?.voice_muted, locked: unconfigured }"
               @click="toggleVoiceMute"
             >
-              <span class="vm-label">{{ status?.voice_muted ? "◉ ALL MUTED" : "MUTE ALL CLAUDE AGENTS" }}</span>
+              <span class="vm-label">{{ status?.voice_muted ? "◉ ALL MUTED" : "MUTE ALL AGENTS" }}</span>
+              <span class="vm-sub">{{ status?.voice_muted ? "TAP TO UNMUTE" : "SILENT NOW, CATCH UP LATER" }}</span>
             </button>
           </div>
         </header>
@@ -688,6 +689,8 @@ const LANGUAGES: Record<string, string> = {
      conversation window (which sits below, unrelated to this box) up too. */
   position: relative;
   top: -18px;
+  transform: scale(1.3);
+  transform-origin: center;
 }
 .logo > div { position: relative; }
 .logo svg { display: block; }
@@ -930,7 +933,8 @@ footer { flex: none; }
   margin-bottom: 0;
   padding: 6px 14px;
 }
-.header-mute .vm-label { font-size: 15px; }
+.header-mute .vm-label { font-size: 19px; letter-spacing: 0.3em; }
+.header-mute .vm-sub { font-size: 9px; letter-spacing: 0.24em; }
 
 /* Must be unmissable when you come back to the desk: green (nothing else
    in the HUD is a green button), tall, glowing and gently pulsing. */
