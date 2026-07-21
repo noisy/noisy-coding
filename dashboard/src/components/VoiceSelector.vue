@@ -13,7 +13,7 @@ const emit = defineEmits<{ change: [voice: string] }>();
 // in the CSS below.
 const THUMB_PX = 80;
 const VISIBLE_ROWS = 7;
-const ROW_PX = THUMB_PX + 12; // thumb + breathing room
+const ROW_PX = THUMB_PX; // row = thumb, no breathing around the portrait
 const listStyle = {
   "--thumb": `${THUMB_PX}px`,
   "--row": `${ROW_PX}px`,
@@ -89,6 +89,7 @@ function pick(name: string) {
   align-items: center;
   gap: 12px;
   height: var(--row);
+  box-sizing: border-box; /* the 1px separator lives INSIDE the row height */
   /* Thumbs sit flush with the selector's left edge — no left padding. */
   padding: 0 12px 0 0;
   cursor: pointer;
