@@ -1,20 +1,52 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import CharacterReadout from "./CharacterReadout.vue";
+import HudPanel from "./HudPanel.vue";
 import StatusStrip from "./StatusStrip.vue";
 
-const meta: Meta = { title: "HUD/Readouts" };
+const meta: Meta = { title: "HUD/Character Settings" };
 export default meta;
 
-export const Character: StoryObj = {
+const character = { humor: 60, honesty: 80, brevity: 40, chatty: 100, voice: "altair", speed: 1.15 };
+
+// The editor on its own.
+export const Content: StoryObj = {
   render: () => ({
     components: { CharacterReadout },
-    setup: () => ({
-      character: { humor: 60, honesty: 80, brevity: 40, chatty: 100, voice: "altair", speed: 1.15 },
-    }),
+    setup: () => ({ character }),
     template: `<div style="max-width:330px"><CharacterReadout :character="character" /></div>`,
   }),
 };
 
+// As it actually sits on the dashboard — inside a titled HudPanel.
+export const InPanel: StoryObj = {
+  render: () => ({
+    components: { CharacterReadout, HudPanel },
+    setup: () => ({ character }),
+    template: `
+      <div style="max-width:330px">
+        <HudPanel index="04" title="CHARACTER SETTINGS">
+          <CharacterReadout :character="character" />
+        </HudPanel>
+      </div>`,
+  }),
+};
+
+// Inside the persona rail, which recolors --cyan → --violet. Regression
+// guard: humor must stay BLUE here (it used to turn violet). If humor and
+// chatty look identical, the fix regressed.
+export const InPersonaRail: StoryObj = {
+  name: "in persona rail (--cyan → --violet)",
+  render: () => ({
+    components: { CharacterReadout },
+    setup: () => ({ character }),
+    template: `
+      <div style="max-width:330px; --cyan: var(--violet); --cyan-hi: var(--violet-hi); --cyan-dim: var(--violet-dim); --glow-cyan: var(--glow-violet); background: color-mix(in srgb, var(--violet) 6%, transparent); padding:14px">
+        <CharacterReadout :character="character" />
+      </div>`,
+  }),
+};
+
+// StatusStrip lives here too (it shares the readout look); kept as a story.
 export const Status: StoryObj = {
   render: () => ({
     components: { StatusStrip },

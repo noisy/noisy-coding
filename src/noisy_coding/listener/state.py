@@ -12,7 +12,11 @@ from noisy_coding.listener.vad import (
 )
 
 EVENT_LOG_SIZE = 300
-DEFAULT_CHARACTER = {"humor": 50, "honesty": 50, "brevity": 50, "chatty": 50}
+# On the segmented dials values land on 20-point stops, so the defaults sit
+# on a stop too (50 fell between ticks). Sensible starting persona rather than
+# everything mid-scale: a little humour, fairly frank, fairly brief, moderately
+# chatty — nothing maxed out.
+DEFAULT_CHARACTER = {"humor": 20, "honesty": 60, "brevity": 60, "chatty": 40}
 DEFAULT_VOICE = "carina"
 DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
