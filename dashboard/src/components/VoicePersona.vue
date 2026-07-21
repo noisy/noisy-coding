@@ -76,11 +76,12 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 }
 .mutebtn {
   position: absolute;
-  bottom: 10px;
-  left: 12px;
-  padding: 4px 9px;
+  /* Flush with the portrait's bottom-left corner — no floating offset. */
+  bottom: 0;
+  left: 0;
+  padding: 9px 16px;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--muted);
