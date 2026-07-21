@@ -77,7 +77,7 @@ describe("AgentTabs", () => {
     });
 
     const [a, b] = wrapper.findAll("button");
-    expect(a.find(".mutering").exists()).toBe(true); // muted, empty queue
+    expect(a.find(".mutespk").exists()).toBe(true); // muted, empty queue → red speaker
     expect(a.find(".eq").exists()).toBe(false); // mute beats speaking
     expect(b.find(".mutecount").text()).toBe("7"); // muted with backlog
     expect(b.find(".eq").exists()).toBe(false);

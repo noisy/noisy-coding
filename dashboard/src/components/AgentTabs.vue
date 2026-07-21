@@ -114,7 +114,11 @@ function onDrop(target: Tab) {
           <span v-if="(queued[tab.name] ?? 0) > 0" class="mutecount" :title="`Muted — ${queued[tab.name]} waiting`">
             {{ queued[tab.name] }}
           </span>
-          <span v-else class="mutering" title="Muted" />
+          <svg v-else class="mutespk" viewBox="0 0 14 14" title="Muted" aria-label="muted">
+            <path d="M2 5.2 L5 5.2 L8.2 2.6 L8.2 11.4 L5 8.8 L2 8.8 Z" fill="currentColor" />
+            <line x1="10" y1="5" x2="13" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            <line x1="13" y1="5" x2="10" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
         </template>
         <span v-else-if="speaking.includes(tab.name)" class="eq" aria-label="speaking">
           <i /><i /><i />
@@ -204,44 +208,23 @@ button.offline .dot { background: rgba(93, 127, 150, 0.35); }
   color: var(--amber, #ffb454);
   text-shadow: 0 0 6px var(--amber, #ffb454);
 }
-/* Muted with a backlog: dimmed amber under a hairline slash — warm
-   enough to keep reminding, quiet enough to respect the mute. */
+/* Muted with a backlog: the count itself goes red and blinks — no
+   strikethrough; red already says "silenced" and the pulse nags. */
 .mutecount {
-  position: relative;
   padding: 0 2px;
   font-size: 10px;
   font-weight: 700;
-  color: #a8834a;
+  color: var(--red, #ff5f6b);
+  text-shadow: 0 0 6px rgba(255, 95, 107, 0.6);
+  animation: mute-nag 1.6s step-end infinite;
 }
-.mutecount::after {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 50%;
-  width: calc(100% + 2px);
-  height: 1px;
-  background: rgba(93, 127, 150, 0.9);
-  transform: rotate(-35deg);
-}
-/* Red like every other mute signal (MUTE MIC, the muted persona) — grey
-   read as "inactive" rather than "silenced". */
-.mutering {
-  position: relative;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 95, 107, 0.9);
-  box-shadow: 0 0 5px rgba(255, 95, 107, 0.4);
-}
-.mutering::after {
-  content: "";
-  position: absolute;
-  left: 2.5px;
-  top: -3px;
-  width: 1.5px;
-  height: 12px;
-  background: rgba(255, 95, 107, 0.9);
-  transform: rotate(45deg);
+@keyframes mute-nag { 50% { opacity: 0.45; } }
+/* Muted, empty queue: a red crossed-out speaker. */
+.mutespk {
+  width: 13px;
+  height: 13px;
+  color: var(--red, #ff5f6b);
+  filter: drop-shadow(0 0 4px rgba(255, 95, 107, 0.5));
 }
 /* Overlaid in the top-right corner: appearing on hover must not resize
    the tab (a layout shift under the cursor makes the ✕ unclickable). */
