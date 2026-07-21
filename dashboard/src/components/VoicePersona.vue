@@ -112,10 +112,15 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
      button (same 1.6s step-end cadence). */
   background: rgba(0, 0, 0, 0.55);
   text-shadow: 0 0 10px rgba(255, 95, 107, 0.7);
+  /* Only the LABEL pulses — the plate stays rock solid. */
   animation: mute-blink 1.6s step-end infinite;
 }
-/* The dim phase stays clearly readable — a pulse, not a blackout. */
-@keyframes mute-blink { 50% { opacity: 0.72; } }
+@keyframes mute-blink {
+  50% {
+    color: rgba(255, 95, 107, 0.55);
+    text-shadow: 0 0 6px rgba(255, 95, 107, 0.3);
+  }
+}
 .fallback { width: 60%; display: block; margin: 0 auto; }
 .mono { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 0.05em; }
 /* ON AIR rides OVER the portrait, pinned to its top-right corner. */
