@@ -44,6 +44,15 @@ Python code; rebuild (`cd dashboard && npm run build`) after dashboard changes.
 
 If either is missing, restore it from `docs/local-development.md` §2.
 
+## Verify against the DAEMON, not just Vite
+
+Vite serves `public/` and its own module graph, masking daemon-side
+gaps: the avatars sprite worked on :5173 for hours while the container
+404'd it (the daemon's static route didn't know the file). Any change
+involving static files, routes or daemon-served behavior must be checked
+on the daemon port (7765 dev / 8765 prod build) — ideally with a
+headless-Chrome screenshot — before calling it done.
+
 ## 3. Sanity checks / gotchas
 
 - Speak through dev with `mcp__noisy-coding-dev__speak`, through production
