@@ -50,6 +50,15 @@ describe("VersionBadge", () => {
     expect(wrapper.find(".verskew").text()).toContain("HARD-REFRESH");
   });
 
+  it("on a dev instance a stale daemon asks for a restart, not a container update", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "2.9.0", daemonVersion: "2.8.0", devInstance: true },
+    });
+
+    expect(wrapper.find(".verskew").text()).toContain("RESTART THE DEV DAEMON");
+    expect(wrapper.find(".verskew").text()).not.toContain("UPDATE THE CONTAINER");
+  });
+
   it("announces a newer published release in calm green", () => {
     const wrapper = mount(VersionBadge, {
       props: { uiVersion: "2.8.0", daemonVersion: "2.8.0", latestVersion: "2.9.0" },

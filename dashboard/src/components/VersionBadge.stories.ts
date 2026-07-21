@@ -34,6 +34,12 @@ export const DaemonStale: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.8.0", daemonVersion: "2.7.7" },
 };
 
+/** Stale daemon on a LOCAL DEV instance — the fix is a restart, not a
+ *  container update. */
+export const DaemonStaleDev: StoryObj<typeof VersionBadge> = {
+  args: { uiVersion: "2.9.0", daemonVersion: "2.8.0", devInstance: true },
+};
+
 /** A newer release is published — calm green invitation to update. */
 export const UpdateAvailable: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.8.0", daemonVersion: "2.8.0", latestVersion: "2.9.0" },

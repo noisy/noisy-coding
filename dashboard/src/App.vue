@@ -650,7 +650,7 @@ const LANGUAGES: Record<string, string> = {
       </span>
       <!-- Right edge order: version second-from-corner, system status in
            the corner itself. -->
-      <VersionBadge style="margin-left: auto" :daemon-version="status?.version" :latest-version="status?.latest_version" />
+      <VersionBadge style="margin-left: auto" :daemon-version="status?.version" :latest-version="status?.latest_version" :dev-instance="isDevInstance" />
       <span>{{ offline ? "◈ LINK DOWN" : lastError ? "◈ DEGRADED — SEE LAST ERROR" : "◈ ALL SYSTEMS NOMINAL" }}</span>
     </footer>
   </div>

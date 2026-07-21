@@ -15,12 +15,16 @@ const props = withDefaults(
     latestVersion?: string | null;
     /** Platform override for tests/stories; defaults to the browser's own. */
     platform?: "mac" | "windows" | "linux";
+    /** LOCAL DEV instance: the stale-daemon fix is a restart, not a
+     *  container update. */
+    devInstance?: boolean;
   }>(),
   {
     daemonVersion: null,
     latestVersion: null,
     uiVersion: () => __APP_VERSION__,
     platform: undefined,
+    devInstance: false,
   },
 );
 
@@ -54,8 +58,12 @@ const skew = computed(() => {
   if (!daemon || daemon === "dev" || daemon === props.uiVersion) return null;
   const daemonNewer = newer(daemon, props.uiVersion);
   const keys = HARD_REFRESH_KEYS[props.platform ?? detectPlatform()];
-  return daemonNewer
-    ? { action: `HARD-REFRESH THIS TAB (${keys})`, hint: "The browser cached an older UI build." }
+  if (daemonNewer) {
+    return { action: `HARD-REFRESH THIS TAB (${keys})`, hint: "The browser cached an older UI build." }
+  }
+  // Stale daemon: the fix depends on which daemon this is.
+  return props.devInstance
+    ? { action: "RESTART THE DEV DAEMON (scripts/dev_daemon.sh)", hint: "The local dev daemon started before the version bump." }
     : { action: "UPDATE THE CONTAINER (/noisy-coding:update)", hint: "The daemon runs an older release." };
 });
 </script>
