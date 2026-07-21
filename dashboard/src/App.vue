@@ -119,11 +119,16 @@ const unheard = computed(() =>
   utterances.value.filter((u) => u.role === "claude" && u.status.includes("unheard")),
 );
 const toggleVoiceMute = () => setVoiceMuted(!status.value?.voice_muted).catch(swallow);
-// Catch up: unmute FIRST (or the replays would park as unheard again),
-// then queue every parked message in arrival order — the playback queue
+// Catch up: unmute FIRST (or the replays would park as unheard again) —
+// BOTH the global voice mute and this conversation's own mute — then
+// queue every parked message in arrival order; the playback queue
 // serializes them, each stoppable with its ⏹.
 async function catchUp() {
   await setVoiceMuted(false).catch(swallow);
+  const agent = viewedAgent.value;
+  if (agent && (status.value?.muted_agents ?? []).includes(agent)) {
+    await setAgentMuted(agent, false).catch(swallow);
+  }
   [...unheard.value]
     .sort((a, b) => (a.committed_at || a.started_at) - (b.committed_at || b.started_at))
     .forEach((u) => speakText(replaySpeechText(u.text), u.id).catch(swallow));
