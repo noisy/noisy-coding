@@ -137,12 +137,19 @@ export function cancelTranscript(utteranceId: number): Promise<void> {
 /** Replay a spoken message: no new card in the log, the user's click
  * outranks whatever is playing, and source_id ties the playback back to
  * the original bubble (so it can offer STOP while playing). */
-export function speakText(text: string, sourceId: number, agent?: string): Promise<void> {
+export function speakText(
+  text: string,
+  sourceId: number,
+  agent?: string,
+  options?: { interrupt?: boolean },
+): Promise<void> {
   return post("/speak", {
     text,
     wait: false,
     card: false,
-    interrupt: true,
+    // A single replay outranks whatever is playing; batch replays
+    // (catch-up) must NOT — interrupting would scramble their order.
+    interrupt: options?.interrupt ?? true,
     source_id: sourceId,
     ...(agent ? { agent } : {}),
   });

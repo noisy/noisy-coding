@@ -129,9 +129,15 @@ async function catchUp() {
   if (agent && (status.value?.muted_agents ?? []).includes(agent)) {
     await setAgentMuted(agent, false).catch(swallow);
   }
-  [...unheard.value]
-    .sort((a, b) => (a.committed_at || a.started_at) - (b.committed_at || b.started_at))
-    .forEach((u) => speakText(replaySpeechText(u.text), u.id).catch(swallow));
+  // Sequential awaits + interrupt:false — parallel POSTs can arrive out of
+  // order and an interrupting replay would jump the queue, so a batch
+  // catch-up must do neither (it played last-before-previous once).
+  const parked = [...unheard.value].sort(
+    (a, b) => (a.committed_at || a.started_at) - (b.committed_at || b.started_at),
+  );
+  for (const u of parked) {
+    await speakText(replaySpeechText(u.text), u.id, undefined, { interrupt: false }).catch(swallow);
+  }
 }
 
 // Push-to-talk: while the button (or the space bar) is physically held we
