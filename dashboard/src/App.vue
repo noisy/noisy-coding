@@ -543,7 +543,7 @@ const LANGUAGES: Record<string, string> = {
               </svg>
               <div>
                 <div class="title">NOISY-CODING</div>
-                <div class="sub">TACTICAL VOICE INTERFACE</div>
+                <div class="sub">TALK WITH YOUR AGENT</div>
                 <div v-if="isDevInstance" class="devbadge">LOCAL</div>
               </div>
             </div>
@@ -692,7 +692,7 @@ const LANGUAGES: Record<string, string> = {
 .logo > div { position: relative; }
 .logo svg { display: block; }
 .logo .title { font-size: 19px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); font-weight: 700; }
-.logo .sub { font-size: 10px; letter-spacing: 0.34em; color: var(--muted); margin-top: 3px; }
+.logo .sub { font-size: 10px; letter-spacing: 0.393em; color: var(--muted); margin-top: 3px; }
 /* Dev-instance marker: recolor the logo and hang a badge under it, nothing else. */
 .logo.dev svg { stroke: #ffb84d; }
 .logo.dev svg polygon, .logo.dev svg line { stroke: #ffb84d; }
