@@ -94,9 +94,12 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--muted);
-  background: rgba(4, 12, 20, 0.72);
-  border: 1px solid rgba(93, 127, 150, 0.35);
+  /* Legible at rest, not just when armed: bright cyan-white on a solid
+     dark backdrop — it sits on top of colorful portraits. */
+  color: var(--cyan-hi, #9aeeff);
+  text-shadow: 0 0 8px rgba(63, 216, 255, 0.5);
+  background: rgba(2, 8, 14, 0.82);
+  border: 1px solid var(--line-strong);
   cursor: pointer;
   clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
 }
