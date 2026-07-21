@@ -34,6 +34,14 @@ PTT_LEASE_SECONDS = 2.0
 # renews the lease with every audio/heartbeat message, so a closed or
 # crashed tab frees the device by itself — no timer guessing.
 TAB_AUDIO_LEASE_SECONDS = 2.0
+# Chatty-driven narration nudges (#16): how long an agent may work in
+# silence before the daemon reminds it to say a one-liner. Anchor points,
+# linearly interpolated; chatty 0 disables nudging entirely. The model has
+# no clock — the daemon does.
+CHATTY_NUDGE_ANCHORS = ((25, 600.0), (50, 300.0), (75, 120.0), (100, 75.0))
+# "Actively working" = the live-activity line moved this recently. Nudges
+# never target an idle agent waiting for the user.
+NUDGE_ACTIVITY_FRESH_SECONDS = 30.0
 
 
 @dataclass(frozen=True)
@@ -68,6 +76,11 @@ class ListenerState:
         # pinned agents come first in pinned order; unpinned follow in the
         # group's natural order.
         self._agent_manual_pos: dict[str, int] = {}
+        # Narration nudges (#16): when the agent last spoke (speak/announce
+        # SUBMITTED — intent counts, playback may lag) and when we last
+        # nudged it, so one silence stretch gets exactly one nudge.
+        self._agent_last_spoke: dict[str, float] = {}
+        self._agent_last_nudge: dict[str, float] = {}
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
@@ -622,6 +635,66 @@ class ListenerState:
             key = agent or self._active_agent
             return key in self._muted_agents if key else False
 
+    def note_agent_spoke(self, agent: str | None) -> None:
+        """A speak/announce arrived — reset this agent's silence clock."""
+        with self._lock:
+            key = agent or self._active_agent
+            if key:
+                self._agent_last_spoke[key] = time.time()
+
+    @staticmethod
+    def _nudge_threshold_seconds(chatty: int) -> float | None:
+        """Silence budget for a chatty level; None = never nudge."""
+        if chatty <= 0:
+            return None
+        anchors = CHATTY_NUDGE_ANCHORS
+        if chatty <= anchors[0][0]:
+            return anchors[0][1]
+        for (lo_c, lo_s), (hi_c, hi_s) in zip(anchors, anchors[1:]):
+            if chatty <= hi_c:
+                fraction = (chatty - lo_c) / (hi_c - lo_c)
+                return lo_s + (hi_s - lo_s) * fraction
+        return anchors[-1][1]
+
+    def pop_due_nudge(self, agent: str) -> str | None:
+        """A [SYSTEM] narration reminder, when this agent has earned one.
+
+        Fires only while the agent is ACTIVELY working (fresh activity
+        line), after a silence longer than its chatty budget, and at most
+        once per silence stretch. The model has no sense of elapsed time —
+        this is the daemon lending it a clock (#16).
+        """
+        now = time.time()
+        with self._lock:
+            character = self._characters.get(agent, self._characters[""])
+            chatty = int(character.get("chatty", 50))
+            brevity = int(character.get("brevity", 50))
+            threshold = self._nudge_threshold_seconds(chatty)
+            if threshold is None:
+                return None
+            activity = self._activity.get(agent)
+            if not activity or now - activity.get("at", 0) > NUDGE_ACTIVITY_FRESH_SECONDS:
+                return None  # idle or between turns — never nag a waiting agent
+            silence_started = self._agent_last_spoke.get(
+                agent, self._agent_activated.get(agent, now)
+            )
+            silence = now - silence_started
+            if silence < threshold:
+                return None
+            if self._agent_last_nudge.get(agent, 0) > silence_started:
+                return None  # this stretch was already nudged once
+            self._agent_last_nudge[agent] = now
+            minutes = max(1, round(silence / 60))
+            # chatty decides WHEN to speak up; brevity decides HOW LONG the
+            # update gets to be — a 10-minute stretch may deserve more than
+            # one line when the user runs low brevity.
+            return (
+                f"[SYSTEM] You have been working silently for ~{minutes} min and the "
+                f"user's chatty setting is {chatty}/100 — give a spoken progress "
+                f"update (announce), sized to the user's brevity setting "
+                f"({brevity}/100), then continue working."
+            )
+
     def reorder_agents(self, order: list[str]) -> None:
         """Pin a user-chosen tab order (drag & drop). The dashboard sends the
         full resulting order of ONE group; unknown names are ignored."""
@@ -645,6 +718,8 @@ class ListenerState:
             self._agent_activated.pop(name, None)
             self._agent_manual_pos.pop(name, None)
             self._muted_agents.discard(name)
+            self._agent_last_spoke.pop(name, None)
+            self._agent_last_nudge.pop(name, None)
             self._activity.pop(name, None)
             return True
 

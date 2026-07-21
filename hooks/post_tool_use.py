@@ -69,28 +69,33 @@ def main() -> None:
     drain_url = f"http://127.0.0.1:{PORT}/drain?agent={agent}"
     try:
         with urllib.request.urlopen(drain_url, timeout=0.5) as response:
-            transcripts = json.load(response)["transcripts"]
+            payload = json.load(response)
+            transcripts = payload["transcripts"]
+            # Narration nudge (#16): the daemon's reminder that this agent
+            # has been working silently past its chatty budget.
+            nudge = payload.get("nudge")
     except Exception:
         return
-    if not transcripts:
+    if not transcripts and not nudge:
         return
 
-    spoken = " ".join(t["text"] for t in transcripts)
-    print(
-        json.dumps(
-            {
-                "systemMessage": f"🎙️ Voice: „{spoken}”",
-                "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
-                    "additionalContext": (
-                        f"[VOICE] The user just said (spoken, while you work): {spoken}\n"
-                        "If this asks you to stop or change course, do so now; "
-                        "otherwise incorporate it and continue."
-                    ),
-                }
-            }
+    context_parts = []
+    output: dict = {}
+    if transcripts:
+        spoken = " ".join(t["text"] for t in transcripts)
+        output["systemMessage"] = f"🎙️ Voice: „{spoken}”"
+        context_parts.append(
+            f"[VOICE] The user just said (spoken, while you work): {spoken}\n"
+            "If this asks you to stop or change course, do so now; "
+            "otherwise incorporate it and continue."
         )
-    )
+    if nudge:
+        context_parts.append(nudge)
+    output["hookSpecificOutput"] = {
+        "hookEventName": "PostToolUse",
+        "additionalContext": "\n\n".join(context_parts),
+    }
+    print(json.dumps(output))
 
 
 if __name__ == "__main__":

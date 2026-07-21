@@ -237,7 +237,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 transcripts = [asdict(t) for t in state.drain(agent)]
                 if state.active_agent != active_before:
                     save_settings(state)  # bootstrap activation must stick too
-                self._respond({"transcripts": transcripts})
+                # Narration nudge (#16): piggybacks on the poll the hooks
+                # already make — the daemon lends the clockless model a
+                # sense of elapsed silence. Old hooks ignore the extra key.
+                nudge = state.pop_due_nudge(agent) if agent else None
+                self._respond({"transcripts": transcripts, "nudge": nudge})
             elif url.path == "/events":
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
@@ -725,6 +729,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             # The speaking agent tags its own utterance so it lands in that
             # agent's history — even if a different agent is active by now.
             agent = body.get("agent") or state.active_agent
+            # Speaking resets the narration-nudge silence clock (#16).
+            state.note_agent_spoke(agent)
             if kind == "speak":
                 utterance_id = state.create_utterance(
                     "claude", "synthesizing (Grok TTS)…", text=detail, agent=agent
