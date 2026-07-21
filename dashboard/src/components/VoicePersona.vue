@@ -39,12 +39,10 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
         />
         <text x="46" y="56" text-anchor="middle" :fill="color" class="mono">{{ monogram }}</text>
       </svg>
-      <span v-if="muted" class="mutedtag">⊘ MUTED</span>
-      <span v-else-if="speaking" class="onair">◉ ON AIR</span>
-    </div>
-    <div class="pickrow">
-      <VoiceSelector class="picker" :voice="voice" @change="(v) => $emit('change', v)" />
-      <!-- Per-conversation mute: this tab's speech parks as unheard. -->
+      <span v-if="speaking && !muted" class="onair">◉ ON AIR</span>
+      <!-- Per-conversation mute lives ON the portrait (bottom-left); its
+           red pressed state doubles as the muted indicator, so no extra
+           MUTED tag is needed. -->
       <button
         class="mutebtn"
         :class="{ on: muted }"
@@ -52,6 +50,7 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
         @click="$emit('toggle-mute')"
       >{{ muted ? "MUTED" : "MUTE" }}</button>
     </div>
+    <VoiceSelector :voice="voice" @change="(v) => $emit('change', v)" />
   </div>
 </template>
 
@@ -75,35 +74,20 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   border-color: rgba(255, 95, 107, 0.65);
   box-shadow: 0 0 16px rgba(255, 95, 107, 0.25), inset 0 0 40px rgba(255, 95, 107, 0.12);
 }
-.mutedtag {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  padding: 3px 8px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  color: var(--red, #ff5f6b);
-  background: rgba(4, 12, 20, 0.72);
-  border: 1px solid rgba(255, 95, 107, 0.4);
-  text-shadow: 0 0 6px rgba(255, 95, 107, 0.5);
-}
-.pickrow { display: flex; gap: 8px; align-items: stretch; }
-.pickrow .picker { flex: 1; min-width: 0; }
 .mutebtn {
-  flex: none;
-  padding: 0 10px;
-  display: grid;
-  place-items: center;
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  padding: 4px 9px;
   font-family: var(--mono);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--muted);
-  background: rgba(63, 216, 255, 0.06);
-  border: 1px solid var(--line-strong);
+  background: rgba(4, 12, 20, 0.72);
+  border: 1px solid rgba(93, 127, 150, 0.35);
   cursor: pointer;
-  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+  clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
 }
 .mutebtn:hover { color: var(--cyan); border-color: var(--cyan-dim); }
 .mutebtn.on {
