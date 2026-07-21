@@ -78,11 +78,11 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 .persona.muted .fallback {
   /* Red, not reddish-grey: desaturate, then rotate what's left toward
      red and let a strong red wash flood the frame. */
-  filter: grayscale(1) brightness(0.75) sepia(0.9) hue-rotate(-50deg) saturate(3.4);
+  filter: grayscale(1) brightness(0.55) sepia(0.9) hue-rotate(-50deg) saturate(3.4);
 }
 .persona.muted .portrait {
   border-color: rgba(255, 95, 107, 0.95);
-  box-shadow: 0 0 28px rgba(255, 95, 107, 0.6), inset 0 0 90px rgba(255, 95, 107, 0.45);
+  box-shadow: 0 0 28px rgba(255, 95, 107, 0.6), inset 0 0 90px rgba(255, 95, 107, 0.05);
 }
 .mutebtn {
   position: absolute;
@@ -104,8 +104,14 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 .mutebtn.on {
   color: var(--red, #ff5f6b);
   border-color: rgba(255, 95, 107, 0.65);
-  background: rgba(255, 95, 107, 0.1);
+  /* Translucent black, not red: the button must stand OFF the red-washed
+     portrait behind it. The label blinks in step with the main MUTE MIC
+     button (same 1.6s step-end cadence). */
+  background: rgba(0, 0, 0, 0.55);
+  text-shadow: 0 0 10px rgba(255, 95, 107, 0.7);
+  animation: mute-blink 1.6s step-end infinite;
 }
+@keyframes mute-blink { 50% { opacity: 0.45; } }
 .fallback { width: 60%; display: block; margin: 0 auto; }
 .mono { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 0.05em; }
 /* ON AIR rides OVER the portrait, pinned to its top-right corner. */
