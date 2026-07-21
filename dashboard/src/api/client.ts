@@ -116,6 +116,10 @@ export function reorderAgents(order: string[]): Promise<void> {
   return post("/reorder-agents", { order });
 }
 
+export function setAgentMuted(agent: string, muted: boolean): Promise<void> {
+  return post("/mute-agent", { agent, muted });
+}
+
 export function setCharacter(patch: Partial<Character> & { agent?: string }): Promise<void> {
   return post("/character", patch);
 }

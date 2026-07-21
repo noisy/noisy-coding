@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -93,6 +93,13 @@ const setSmartTurn = (event: Event) =>
 
 const changeCharacter = (patch: Partial<Character>) =>
   setCharacter({ ...patch, agent: viewedAgent.value ?? undefined }).catch(swallow);
+// Per-conversation mute: toggles the VIEWED tab; the next poll reflects it.
+const toggleAgentMute = () => {
+  const agent = viewedAgent.value;
+  if (!agent) return;
+  const muted = (status.value?.muted_agents ?? []).includes(agent);
+  setAgentMuted(agent, !muted).catch(swallow);
+};
 const setDetection = (mode: "auto" | "ptt") =>
   setSettings({ detection_mode: mode }).catch(swallow);
 // The button toggles: playing this very bubble → stop it (the queue moves
@@ -574,6 +581,7 @@ const LANGUAGES: Record<string, string> = {
             :speaking="status?.speaking_agents ?? []"
             :thinking="thinkingAgents"
             :queued="status?.queued_by_agent ?? {}"
+            :muted="status?.muted_agents ?? []"
             @select="selectAgent"
             @dismiss="dismissAgent"
             @reorder="reorderAgents"
@@ -612,7 +620,9 @@ const LANGUAGES: Record<string, string> = {
                 <VoicePersona
                   :voice="character?.voice ?? ''"
                   :speaking="!!viewedAgent && (status?.speaking_agents ?? []).includes(viewedAgent)"
+                  :muted="!!viewedAgent && (status?.muted_agents ?? []).includes(viewedAgent)"
                   @change="(v) => changeCharacter({ voice: v })"
+                  @toggle-mute="toggleAgentMute"
                 />
               </section>
               <section class="railbox">

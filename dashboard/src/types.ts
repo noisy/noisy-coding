@@ -43,6 +43,8 @@ export interface DaemonStatus {
   >;
   /** Waiting (undelivered) transcripts per addressee agent. */
   queued_by_agent?: Record<string, number>;
+  /** Conversations whose speech parks as unheard (per-tab mute). */
+  muted_agents?: string[];
   active_agent: string | null;
 }
 

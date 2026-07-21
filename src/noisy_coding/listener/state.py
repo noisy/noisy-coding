@@ -75,6 +75,9 @@ class ListenerState:
         self._output_device = "system"  # where Claude's voice plays: system | browser
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
+        # Per-conversation mute: these agents' speech parks as UNHEARD
+        # while everyone else keeps talking (#per-tab-mute).
+        self._muted_agents: set[str] = set()
         self._claude_speaking = False  # any agent playing audio right now
         self._speaking_agents: set[str] = set()  # which agents are speaking now
         self._recording = False
@@ -589,6 +592,26 @@ class ListenerState:
                     counts[key] = counts.get(key, 0) + 1
             return counts
 
+    @property
+    def muted_agents(self) -> list:
+        with self._lock:
+            return sorted(self._muted_agents)
+
+    def set_agent_muted(self, agent: str, muted: bool) -> list:
+        with self._lock:
+            if muted:
+                self._muted_agents.add(agent)
+            else:
+                self._muted_agents.discard(agent)
+            return sorted(self._muted_agents)
+
+    def agent_muted(self, agent: str | None) -> bool:
+        """Whether this agent's speech should park. Utterances without an
+        agent belong to the active conversation — judge them by it."""
+        with self._lock:
+            key = agent or self._active_agent
+            return key in self._muted_agents if key else False
+
     def reorder_agents(self, order: list[str]) -> None:
         """Pin a user-chosen tab order (drag & drop). The dashboard sends the
         full resulting order of ONE group; unknown names are ignored."""
@@ -611,6 +634,7 @@ class ListenerState:
             self._agent_labels.pop(name, None)
             self._agent_activated.pop(name, None)
             self._agent_manual_pos.pop(name, None)
+            self._muted_agents.discard(name)
             self._activity.pop(name, None)
             return True
 

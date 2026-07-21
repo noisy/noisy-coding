@@ -366,7 +366,7 @@ def _prepare_audio(
     _play_prepared.
     """
     voice, language, speed = resolve_options(state, agent)
-    if state.voice_muted:
+    if state.voice_muted or state.agent_muted(agent):
         # Deferred = costs nothing until played: render nothing while the
         # speaker is muted. _play_prepared parks the card (or renders at
         # its turn, should the user unmute in the meantime).
@@ -444,14 +444,15 @@ def _play_prepared(
         state.add_event("speak_error", str(error)[:200])
         state.update_utterance(utterance_id, **_error_card_fields(error))
         raise
-    if state.voice_muted:
-        # Speaker muted (user away / wants quiet): park the message as
+    if state.voice_muted or state.agent_muted(agent):
+        # Speaker muted globally or this conversation muted: park as
         # UNHEARD and return at once so agents' blocking speak never
         # hangs on it. Audio prefetched before the mute landed is
         # already cached — catching up on this card later is free.
         _log(f"[speak] unheard (voice muted): „{text[:60]}”")
         state.add_event("speak_unheard", f"„{text}”")
-        state.update_utterance(utterance_id, status="unheard — voice muted")
+        reason = "voice muted" if state.voice_muted else "conversation muted"
+        state.update_utterance(utterance_id, status=f"unheard — {reason}")
         return prepared.voice
     _hold_for_user_turn(state, utterance_id)
 

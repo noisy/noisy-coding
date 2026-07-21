@@ -265,6 +265,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "agent_labels": state.agent_labels,
                         "agents_meta": state.agents_meta,
                         "queued_by_agent": state.queued_by_agent,
+                        "muted_agents": state.muted_agents,
                         "active_agent": state.active_agent,
                     }
                 )
@@ -297,6 +298,15 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 else:
                     # Active or still-online conversations cannot be dismissed.
                     self._respond({"error": "agent is active or online"}, status=409)
+            elif self.path == "/mute-agent":
+                body = self._read_json_body()
+                name = str(body.get("agent", "")).strip()
+                if name:
+                    muted = state.set_agent_muted(name, bool(body.get("muted", True)))
+                    state.add_event("agent", f"'{name}' {'muted' if name in muted else 'unmuted'}")
+                    self._respond({"muted_agents": muted})
+                else:
+                    self._respond({"error": "agent required"}, status=400)
             elif self.path == "/reorder-agents":
                 order = self._read_json_body().get("order")
                 if isinstance(order, list):

@@ -9,9 +9,10 @@ import { voiceSpriteStyle } from "./voiceSprites";
 const props = defineProps<{
   voice: string;
   speaking?: boolean;
+  muted?: boolean;
 }>();
 
-defineEmits<{ change: [voice: string] }>();
+defineEmits<{ change: [voice: string]; "toggle-mute": [] }>();
 
 const spriteStyle = computed(() => voiceSpriteStyle(props.voice));
 
@@ -28,7 +29,7 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 </script>
 
 <template>
-  <div class="persona" :class="{ speaking }">
+  <div class="persona" :class="{ speaking, muted }">
     <div class="frame">
       <div v-if="spriteStyle" class="portrait" :style="spriteStyle" />
       <svg v-else viewBox="0 0 92 92" aria-hidden="true" class="fallback">
@@ -38,9 +39,19 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
         />
         <text x="46" y="56" text-anchor="middle" :fill="color" class="mono">{{ monogram }}</text>
       </svg>
-      <span v-if="speaking" class="onair">◉ ON AIR</span>
+      <span v-if="muted" class="mutedtag">⊘ MUTED</span>
+      <span v-else-if="speaking" class="onair">◉ ON AIR</span>
     </div>
-    <VoiceSelector :voice="voice" @change="(v) => $emit('change', v)" />
+    <div class="pickrow">
+      <VoiceSelector class="picker" :voice="voice" @change="(v) => $emit('change', v)" />
+      <!-- Per-conversation mute: this tab's speech parks as unheard. -->
+      <button
+        class="mutebtn"
+        :class="{ on: muted }"
+        :title="muted ? 'Unmute this conversation' : 'Mute this conversation'"
+        @click="$emit('toggle-mute')"
+      >{{ muted ? "MUTED" : "MUTE" }}</button>
+    </div>
   </div>
 </template>
 
@@ -56,6 +67,50 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
   box-shadow: 0 0 14px rgba(63, 216, 255, 0.12);
 }
 .persona.speaking .portrait { box-shadow: 0 0 22px rgba(63, 216, 255, 0.4); }
+/* Muted conversation: red — the same alarm language as the MUTE MIC
+   button on the left. The portrait dims under a red-tinted frame. */
+.persona.muted .portrait,
+.persona.muted .fallback { filter: grayscale(0.7) brightness(0.65); }
+.persona.muted .portrait {
+  border-color: rgba(255, 95, 107, 0.65);
+  box-shadow: 0 0 16px rgba(255, 95, 107, 0.25), inset 0 0 40px rgba(255, 95, 107, 0.12);
+}
+.mutedtag {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--red, #ff5f6b);
+  background: rgba(4, 12, 20, 0.72);
+  border: 1px solid rgba(255, 95, 107, 0.4);
+  text-shadow: 0 0 6px rgba(255, 95, 107, 0.5);
+}
+.pickrow { display: flex; gap: 8px; align-items: stretch; }
+.pickrow .picker { flex: 1; min-width: 0; }
+.mutebtn {
+  flex: none;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  background: rgba(63, 216, 255, 0.06);
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+}
+.mutebtn:hover { color: var(--cyan); border-color: var(--cyan-dim); }
+.mutebtn.on {
+  color: var(--red, #ff5f6b);
+  border-color: rgba(255, 95, 107, 0.65);
+  background: rgba(255, 95, 107, 0.1);
+}
 .fallback { width: 60%; display: block; margin: 0 auto; }
 .mono { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 0.05em; }
 /* ON AIR rides OVER the portrait, pinned to its top-right corner. */
