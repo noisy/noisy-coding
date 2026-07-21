@@ -30,7 +30,13 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 
 <template>
   <div class="persona" :class="{ speaking, muted }">
-    <div class="frame">
+    <!-- The whole portrait is a mute toggle — a big target for the quick
+         reflex click; the corner button stays as the labeled affordance. -->
+    <div
+      class="frame"
+      :title="muted ? 'Unmute this conversation' : 'Mute this conversation'"
+      @click="$emit('toggle-mute')"
+    >
       <div v-if="spriteStyle" class="portrait" :style="spriteStyle" />
       <svg v-else viewBox="0 0 92 92" aria-hidden="true" class="fallback">
         <polygon
@@ -47,7 +53,7 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
         class="mutebtn"
         :class="{ on: muted }"
         :title="muted ? 'Unmute this conversation' : 'Mute this conversation'"
-        @click="$emit('toggle-mute')"
+        @click.stop="$emit('toggle-mute')"
       >{{ muted ? "MUTED" : "MUTE" }}</button>
     </div>
     <VoiceSelector :voice="voice" @change="(v) => $emit('change', v)" />
@@ -56,7 +62,7 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 
 <style scoped>
 .persona { display: flex; flex-direction: column; gap: 10px; }
-.frame { position: relative; }
+.frame { position: relative; cursor: pointer; }
 .portrait {
   width: 100%;
   aspect-ratio: 1;
@@ -72,11 +78,11 @@ const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?
 .persona.muted .fallback {
   /* Red, not reddish-grey: desaturate, then rotate what's left toward
      red and let a strong red wash flood the frame. */
-  filter: grayscale(0.85) brightness(0.7) sepia(0.6) hue-rotate(-45deg) saturate(2.2);
+  filter: grayscale(1) brightness(0.75) sepia(0.9) hue-rotate(-50deg) saturate(3.4);
 }
 .persona.muted .portrait {
-  border-color: rgba(255, 95, 107, 0.85);
-  box-shadow: 0 0 22px rgba(255, 95, 107, 0.45), inset 0 0 70px rgba(255, 95, 107, 0.3);
+  border-color: rgba(255, 95, 107, 0.95);
+  box-shadow: 0 0 28px rgba(255, 95, 107, 0.6), inset 0 0 90px rgba(255, 95, 107, 0.45);
 }
 .mutebtn {
   position: absolute;
