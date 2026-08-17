@@ -50,6 +50,17 @@ def _agent_name() -> str:
     session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
     if session_id:
         return session_id
+    return _cwd_agent()
+
+
+def _cwd_agent() -> str:
+    """The conversation id the HOOKS registered for this directory.
+
+    This is the id that actually owns a dashboard tab. When a subagent team
+    spawns, the env-derived id above points at the TEAM session (#22) — the
+    daemon uses this value as the fallback to reattach speech to the real
+    conversation.
+    """
     try:
         data = json.loads(_SESSIONS_MAP.read_text())
         return str(data.get(os.getcwd(), {}).get("agent", ""))
@@ -71,6 +82,13 @@ async def _daemon_speak(body: dict) -> dict | None:
     agent = _agent_name()
     if agent:
         body["agent"] = agent
+    # #22: let the daemon reattach misattributed speech — when `agent` turns
+    # out not to be a registered conversation (subagent/team session id),
+    # the daemon falls back to the hooks' id and tags the utterance with a
+    # speaker instead of losing it in a tabless void.
+    fallback = _cwd_agent()
+    if fallback and fallback != agent:
+        body["agent_fallback"] = fallback
     timeout = httpx.Timeout(SPEAK_TIMEOUT_SECONDS, connect=2.0)
     for attempt in (0, 1):
         try:

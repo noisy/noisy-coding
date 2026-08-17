@@ -6,6 +6,7 @@ import subprocess
 import sys
 import threading
 import time
+import zlib
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,6 +33,46 @@ LATEST_VERSION_URL = (
 LATEST_CHECK_INTERVAL_SECONDS = 6 * 3600
 _latest_checked_at = 0.0
 _latest_check_lock = threading.Lock()
+
+
+# #22: subagent speech reattachment. A speak call may claim a session id
+# that owns no dashboard tab (a subagent/team session); the MCP server also
+# sends the id the hooks registered for that directory. The rule: a subagent
+# is not a conversation — it is a PARTICIPANT in one. Reattach the utterance
+# to the registered conversation and tag it with a speaker so the UI can
+# render it as its own persona.
+#
+# Each unknown session id gets a stable voice from this pool (hash-picked,
+# never the parent's current voice), so a given subagent keeps one voice and
+# one portrait for its whole life.
+SUBAGENT_VOICE_POOL = (
+    "ara", "carina", "eve", "iris", "luna", "celeste",
+    "altair", "atlas", "kepler", "rex", "cosmo", "helios", "leo", "sirius",
+)
+
+
+def _subagent_voice(session_id: str, parent_voice: str) -> str:
+    pool = [v for v in SUBAGENT_VOICE_POOL if v != parent_voice]
+    # crc32, not hash(): stable across daemon restarts (PYTHONHASHSEED).
+    return pool[zlib.crc32(session_id.encode()) % len(pool)]
+
+
+def _resolve_speaker(
+    state: ListenerState, body: dict
+) -> tuple[str | None, str | None, str | None]:
+    """(agent, speaker, voice_override) for an incoming /speak body."""
+    agent = str(body["agent"]) if body.get("agent") else None
+    fallback = str(body.get("agent_fallback") or "").strip() or None
+    if not agent or agent in state.agents:
+        return agent, None, None
+    if fallback and fallback in state.agents:
+        voice = _subagent_voice(agent, state.character(fallback).get("voice", ""))
+        return fallback, voice, voice
+    # Neither id is known: make the problem VISIBLE instead of storing
+    # speech no tab will ever show — bugs should be loud (#22).
+    state.register_agent(agent, label=f"orphan {agent[:8]}")
+    state.add_event("agent", f"unknown speaker '{agent[:8]}…' auto-registered")
+    return agent, None, None
 
 
 def _maybe_refresh_latest_version(state: ListenerState) -> None:
@@ -708,12 +749,15 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 live_bridge = tab_audio.bridge()
                 if live_bridge is not None:
                     live_bridge.stop_tab_playback()
+            agent, speaker, voice_override = _resolve_speaker(state, body)
             future = speech.submit(
                 state,
                 text,
-                agent=str(body["agent"]) if body.get("agent") else None,
+                agent=agent,
                 card=bool(body.get("card", True)),
                 source_id=source_id,
+                speaker=speaker,
+                voice_override=voice_override,
             )
             if future is None:
                 self._respond({"skipped": True})  # dedup raced us — same answer

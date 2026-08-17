@@ -377,7 +377,13 @@ class ListenerState:
             return [e for e in self._events if e["seq"] > since_seq]
 
     def create_utterance(
-        self, role: str, status: str, text: str = "", agent: str | None = None
+        self,
+        role: str,
+        status: str,
+        text: str = "",
+        agent: str | None = None,
+        speaker: str | None = None,
+        voice: str | None = None,
     ) -> int:
         with self._lock:
             self._utterance_seq += 1
@@ -394,6 +400,11 @@ class ListenerState:
                     # active one by the time it speaks); user speech defaults
                     # to the active agent it was delivered to.
                     "agent": agent if agent is not None else self._active_agent,
+                    # #22: a subagent's speech stays in the parent conversation
+                    # but carries its own persona (name shown in the header +
+                    # the voice whose portrait the bubble renders).
+                    "speaker": speaker or "",
+                    "voice": voice or "",
                     "started_at": time.time(),
                     "updated_at": time.time(),
                     # When the message ENTERED the conversation, iMessage

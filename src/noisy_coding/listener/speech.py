@@ -163,6 +163,8 @@ def submit(
     card: bool = True,
     source_id: int = 0,
     role: str = "claude",
+    speaker: str | None = None,
+    voice_override: str | None = None,
 ) -> Future | None:
     """Queue an utterance for playback; resolves to the voice actually used.
 
@@ -192,7 +194,10 @@ def submit(
     # status walks the normal chain (synthesizing → playing → played), so
     # an UNHEARD card becomes played once caught up on.
     utterance_id = (
-        state.create_utterance(role, "queued", text=text, agent=agent)
+        state.create_utterance(
+            role, "queued", text=text, agent=agent,
+            speaker=speaker, voice=voice_override,
+        )
         if card
         else source_id
     )
@@ -206,6 +211,7 @@ def submit(
     jump_queue = bool(source_id)
     synth_future = _synth_worker.submit(
         seq, _prepare_audio, state, text, agent, utterance_id, canonical_id, seq,
+        voice_override,
         jump_queue=jump_queue,
     )
     future = _playback_worker.submit(
@@ -357,6 +363,7 @@ def _prepare_audio(
     utterance_id: int,
     source_id: int,
     seq: int,
+    voice_override: str | None = None,
 ) -> _PreparedSpeech:
     """Synth stage: produce audio bytes ahead of playback (synth worker).
 
@@ -366,6 +373,8 @@ def _prepare_audio(
     _play_prepared.
     """
     voice, language, speed = resolve_options(state, agent)
+    if voice_override:
+        voice = voice_override  # a subagent's own persona (#22)
     if state.voice_muted or state.agent_muted(agent):
         # Deferred = costs nothing until played: render nothing while the
         # speaker is muted. _play_prepared parks the card (or renders at
