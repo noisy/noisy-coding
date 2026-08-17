@@ -72,6 +72,13 @@ export interface Utterance {
   committed_at: number;
   /** Real audio duration in seconds (absent for older/mid-flight cards). */
   duration_s?: number;
+  /** Who inside the conversation actually said this (#22): empty/absent =
+   * the main agent; a subagent's speech carries its identity here while the
+   * utterance still belongs to the parent conversation's tab. */
+  speaker?: string;
+  /** Voice this utterance was (or will be) spoken with — drives the
+   * portrait tile next to subagent bubbles. */
+  voice?: string;
 }
 
 export interface Character {

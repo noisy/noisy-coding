@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { StatusKind } from "./bubbleStatus";
+import { voiceSpriteStyle } from "./voiceSprites";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     side: "left" | "right";
     accent: "amber" | "violet" | "cyan";
@@ -17,6 +19,9 @@ withDefaults(
     replayable?: boolean;
     cancelable?: boolean;
     playing?: boolean;
+    /** Voice name — when it maps to a portrait in the avatars sprite, the
+     * bubble grows a portrait column (same artwork as the voice picker). */
+    voice?: string;
   }>(),
   {
     cost: "—",
@@ -30,10 +35,17 @@ withDefaults(
 );
 
 defineEmits<{ replay: []; cancel: [] }>();
+
+// Voice portrait (the same artwork as the voice picker) rendered INSIDE
+// the bubble as a left column. No portrait, no column - a monogram tile
+// was tried and rejected in design review.
+const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : null));
 </script>
 
 <template>
-  <div class="msg" :class="[`side-${side}`, `accent-${accent}`]">
+  <div class="msg" :class="[`side-${side}`, `accent-${accent}`, { withportrait: !!portrait }]">
+    <span v-if="portrait" class="portrait" :style="portrait" aria-hidden="true" />
+    <div class="mbody">
     <div class="mhead">
       <span class="who">{{ who }}</span>
       <span class="st" :class="statusKind">{{ statusLabel }}</span>
@@ -58,10 +70,24 @@ defineEmits<{ replay: []; cancel: [] }>();
       <span>{{ detail }}</span>
       <span class="cost">{{ cost }}</span>
     </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* Voice portrait as a left column inside the bubble - as tall as the
+   content allows, small margins, same artwork as the voice picker. */
+.msg.withportrait { display: flex; gap: 12px; align-items: stretch; }
+.msg.withportrait .mbody { min-width: 0; flex: 1; }
+.portrait {
+  flex: none;
+  align-self: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--accent);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
 .msg {
   position: relative;
   border: 1px solid var(--line);

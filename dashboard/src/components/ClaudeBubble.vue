@@ -16,6 +16,17 @@ const pending = computed(() => !props.utterance.text);
 // The daemon speaks for itself sometimes (setup confirmations) — same
 // pipeline, but the bubble must never attribute those words to Claude.
 const fromDaemon = computed(() => props.utterance.role === "daemon");
+// A subagent's speech (#22) stays in the parent conversation but is never
+// attributed to the main agent: its own name, its own accent.
+const speaker = computed(() => (props.utterance.speaker || "").trim());
+const who = computed(() => {
+  if (fromDaemon.value) return "NOISY-CODING";
+  if (speaker.value) return `${speaker.value.toUpperCase()} · SUBAGENT`;
+  return "CLAUDE";
+});
+// Amber is reserved for the USER's side of the dialogue — a subagent stays
+// in Claude's violet family and is distinguished by the header + avatar.
+const accent = computed(() => (fromDaemon.value ? ("cyan" as const) : ("violet" as const)));
 // Replay = re-entering synthesis; the machine knows which cards allow that
 // (played or parked UNHEARD — mid-synthesis re-queues on its own, an
 // errored card has nothing worth repeating).
@@ -27,8 +38,9 @@ const replayable = computed(
 <template>
   <Bubble
     side="right"
-    :accent="fromDaemon ? 'cyan' : 'violet'"
-    :who="fromDaemon ? 'NOISY-CODING' : 'CLAUDE'"
+    :accent="accent"
+    :who="who"
+    :voice="utterance.voice"
     :text="utterance.text || 'rendering voice response…'"
     :status-kind="chip.kind"
     :status-label="chip.label"

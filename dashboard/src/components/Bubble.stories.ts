@@ -65,3 +65,40 @@ export const ClaudePlayed: StoryObj = {
     template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
   }),
 };
+
+
+export const SubagentPortraitLuna: StoryObj = {
+  render: () => ({
+    components: { ClaudeBubble },
+    setup: () => ({
+      u: utterance({
+        role: "claude",
+        status: "played",
+        speaker: "researcher",
+        voice: "luna",
+        text: "Findings: three of the five endpoints lack rate limiting.",
+        detail: "streaming from Grok TTS",
+        cost_usd: 0.0034,
+      }),
+    }),
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
+  }),
+};
+
+export const SubagentPortraitAltair: StoryObj = {
+  render: () => ({
+    components: { ClaudeBubble },
+    setup: () => ({
+      u: utterance({
+        role: "claude",
+        status: "played",
+        speaker: "reviewer",
+        voice: "altair",
+        text: "Review done - two blocking comments, rest is clean.",
+        detail: "streaming from Grok TTS",
+        cost_usd: 0.0029,
+      }),
+    }),
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
+  }),
+};

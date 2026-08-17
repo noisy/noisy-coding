@@ -25,3 +25,22 @@ export const Feed: StoryObj<typeof ConversationLog> = {
     template: `<div style="max-width:760px"><ConversationLog v-bind="args" /></div>`,
   }),
 };
+
+// #22: a subagent's speech stays in the parent conversation's feed, but is
+// clearly NOT the main agent - own name, own accent. This story is the
+// design surface for that decoration.
+const subagentFeed: Utterance[] = [
+  { id: 1, role: "user", status: "delivered to Claude", text: "Spawn a researcher and summarize the findings aloud.", detail: "STT 0.8 s · 5.2 s AUDIO", cost_usd: 0.0004, agent: null, started_at: now - 200, updated_at: now - 195, committed_at: now - 200 },
+  { id: 2, role: "claude", status: "played", voice: "lux", text: "On it - the researcher will report back in a moment.", detail: "TTS 1.2 s · 6.0 s AUDIO", cost_usd: 0.0021, agent: null, started_at: now - 180, updated_at: now - 170, committed_at: now - 180 },
+  { id: 3, role: "claude", status: "played", speaker: "researcher", voice: "luna", text: "Findings: three of the five endpoints lack rate limiting - details on screen.", detail: "TTS 1.5 s · 9.4 s AUDIO", cost_usd: 0.0034, agent: null, started_at: now - 120, updated_at: now - 110, committed_at: now - 120 },
+  { id: 4, role: "claude", status: "played", voice: "lux", text: "That matches my read - I suggest we fix the auth endpoint first.", detail: "TTS 1.1 s · 7.2 s AUDIO", cost_usd: 0.0025, agent: null, started_at: now - 60, updated_at: now - 50, committed_at: now - 60 },
+];
+
+export const WithSubagent: StoryObj<typeof ConversationLog> = {
+  args: { utterances: subagentFeed },
+  render: (args) => ({
+    components: { ConversationLog },
+    setup: () => ({ args }),
+    template: `<div style="max-width:760px"><ConversationLog v-bind="args" /></div>`,
+  }),
+};
