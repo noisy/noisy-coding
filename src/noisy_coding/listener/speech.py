@@ -193,10 +193,16 @@ def submit(
     # A replay (card=False) adopts the ORIGINAL card via source_id: its
     # status walks the normal chain (synthesizing → playing → played), so
     # an UNHEARD card becomes played once caught up on.
+    # Every card records the voice it will be spoken with — the dashboard
+    # renders that voice's portrait next to the bubble. The final say still
+    # belongs to _prepare_audio (same resolution, later in time).
+    card_voice = voice_override or (
+        resolve_options(state, agent)[0] if role in ("claude", "daemon") else None
+    )
     utterance_id = (
         state.create_utterance(
             role, "queued", text=text, agent=agent,
-            speaker=speaker, voice=voice_override,
+            speaker=speaker, voice=card_voice,
         )
         if card
         else source_id
