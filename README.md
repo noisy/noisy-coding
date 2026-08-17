@@ -8,6 +8,7 @@ It's your voice that's noisy, not your code.
 [![CI](https://github.com/noisy/noisy-coding/actions/workflows/ci.yml/badge.svg)](https://github.com/noisy/noisy-coding/actions/workflows/ci.yml)
 [![Last commit](https://img.shields.io/github/last-commit/noisy/noisy-coding)](https://github.com/noisy/noisy-coding/commits/main)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Glama score](https://glama.ai/mcp/servers/noisy/noisy-coding/badges/score.svg)](https://glama.ai/mcp/servers/noisy/noisy-coding)
 
 Claude speaks short summaries aloud. An always-on listener turns your
 speech into messages Claude receives **mid-task, without stopping it** —
