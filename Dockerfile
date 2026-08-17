@@ -23,6 +23,10 @@ RUN npm run build
 # --- stage 2: runtime ---
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
+# Required by the official MCP registry: ties this image to the registry
+# entry io.github.noisy/noisy-coding (ownership proof at publish time).
+LABEL io.modelcontextprotocol.server.name="io.github.noisy/noisy-coding"
+
 # libportaudio2: sounddevice imports it even when no device ever opens.
 # The default (hardware-free) image ships NO players — audio flows through
 # the dashboard tab, and speech with no tab parks as UNHEARD. mpv + Pulse
