@@ -60,18 +60,31 @@ def _subagent_voice(session_id: str, parent_voice: str) -> str:
 def _resolve_speaker(
     state: ListenerState, body: dict
 ) -> tuple[str | None, str | None, str | None]:
-    """(agent, speaker, voice_override) for an incoming /speak body."""
+    """(agent, speaker, voice_override) for an incoming /speak body.
+
+    Two independent subagent signals compose here:
+    - an explicit `speaker` name (a same-session subagent introducing
+      itself, e.g. "researcher") — keeps the agent id, gains a persona;
+    - a claimed id that owns no tab (a team/subagent SESSION) — reattached
+      to `agent_fallback`; named by its `speaker` if sent, else by the
+      voice persona it was dealt.
+    """
     agent = str(body["agent"]) if body.get("agent") else None
-    fallback = str(body.get("agent_fallback") or "").strip() or None
-    if not agent or agent in state.agents:
-        return agent, None, None
-    if fallback and fallback in state.agents:
-        voice = _subagent_voice(agent, state.character(fallback).get("voice", ""))
-        return fallback, voice, voice
-    # Neither id is known: make the problem VISIBLE instead of storing
-    # speech no tab will ever show — bugs should be loud (#22).
-    state.register_agent(agent, label=f"orphan {agent[:8]}")
-    state.add_event("agent", f"unknown speaker '{agent[:8]}…' auto-registered")
+    name = str(body.get("speaker") or "").strip() or None
+    if agent and agent not in state.agents:
+        fallback = str(body.get("agent_fallback") or "").strip() or None
+        if fallback and fallback in state.agents:
+            seed = name or agent
+            voice = _subagent_voice(seed, state.character(fallback).get("voice", ""))
+            return fallback, name or voice, voice
+        # Neither id is known: make the problem VISIBLE instead of storing
+        # speech no tab will ever show — bugs should be loud (#22).
+        state.register_agent(agent, label=f"orphan {agent[:8]}")
+        state.add_event("agent", f"unknown speaker '{agent[:8]}…' auto-registered")
+        return agent, name, None
+    if name:
+        voice = _subagent_voice(name, state.character(agent).get("voice", ""))
+        return agent, name, voice
     return agent, None, None
 
 

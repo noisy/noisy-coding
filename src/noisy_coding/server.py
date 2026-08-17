@@ -113,7 +113,7 @@ def _speak_result_message(result: dict | None) -> str | None:
 
 
 @mcp.tool()
-async def speak(text: str, interrupt: bool = False) -> str:
+async def speak(text: str, interrupt: bool = False, speaker: str = "") -> str:
     """Speak a short message aloud to the user through their speakers.
 
     Use this to deliver a spoken TL;DR alongside (not instead of) your written
@@ -137,8 +137,16 @@ async def speak(text: str, interrupt: bool = False) -> str:
             inline speech tags like [pause] or [laugh] and wrapping tags like
             <soft>text</soft>.
         interrupt: Cut off any utterance currently playing and speak now.
+        speaker: ONLY for subagents. If you are a subagent (Task/Agent tool),
+            pass your role name here (e.g. "researcher") — the dashboard
+            shows the message under that name with its own portrait, and the
+            daemon gives you a stable voice distinct from the main agent's.
+            The main agent must leave this empty.
     """
-    result = await _daemon_speak({"text": text, "interrupt": interrupt, "wait": True})
+    body: dict = {"text": text, "interrupt": interrupt, "wait": True}
+    if speaker.strip():
+        body["speaker"] = speaker.strip()
+    result = await _daemon_speak(body)
     failure = _speak_result_message(result)
     if failure:
         return failure
