@@ -6,11 +6,11 @@
     "url": "https://github.com/noisy/noisy-coding",
     "source": "github"
   },
-  "version": "2.13.2",
+  "version": "2.13.3",
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "docker.io/noisy/noisy-coding:2.13.2",
+      "identifier": "docker.io/noisy/noisy-coding:2.13.3",
       "transport": {
         "type": "streamable-http",
         "url": "http://127.0.0.1:8767/mcp"
