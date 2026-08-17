@@ -37,14 +37,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends libportaudio2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src/ src/
 # Hooks live in the image too: the Claude Code plugin invokes them with
 # `docker exec`, so the HOST needs no python at all (Windows included).
 COPY hooks/ hooks/
-# Editable install keeps sources under /app, so the daemon finds the built
-# HUD at /app/dashboard/dist (same repo layout as a dev checkout).
-RUN uv pip install --system -e .
+# Install FROM THE LOCKFILE (--frozen): two builds of the same tag must get
+# identical dependencies — a fresh resolve here is how an upstream major
+# release once broke the published image. Editable project install keeps
+# sources under /app, so the daemon finds the built HUD at
+# /app/dashboard/dist (same repo layout as a dev checkout).
+RUN uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
+    && uv pip install --system -r /tmp/requirements.txt \
+    && uv pip install --system --no-deps -e .
 COPY --from=hud /build/dist/ dashboard/dist/
 
 # Published ports can't reach loopback-only servers inside a container.
