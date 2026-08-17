@@ -81,7 +81,7 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
 .msg.withportrait .mbody { min-width: 0; flex: 1; }
 .portrait {
   flex: none;
-  align-self: center;
+  align-self: flex-start; /* long messages: pin to the top, don't float mid-text */
   width: 64px;
   height: 64px;
   border: 1px solid var(--accent);
