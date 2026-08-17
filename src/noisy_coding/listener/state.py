@@ -499,9 +499,31 @@ class ListenerState:
             )
             self._last_transcript_at = now
             self._add_event_locked("transcript", text)
+            # Speaking into a dead tab must be LOUD, not a silent queue: if
+            # the addressee's session has stopped draining (offline), say so
+            # on the card. The transcript itself stays queued — a session
+            # that reconnects still receives it and the card flips to
+            # delivered (the invariant: the reply appears where the question
+            # was asked, or the user is told immediately that it cannot).
+            addressee_online = True
+            if addressee:
+                seen = self._agents.get(addressee)
+                addressee_online = (
+                    seen is not None and now - seen <= AGENT_OFFLINE_AFTER_SECONDS
+                )
+            status = (
+                "ready — awaiting pickup"
+                if addressee_online
+                else "undelivered — no listener on this tab (session offline)"
+            )
+            if not addressee_online:
+                self._add_event_locked(
+                    "no_listener",
+                    f"utterance {utterance_id} addressed to an offline session",
+                )
             self._update_utterance_locked(
                 utterance_id,
-                status="ready — awaiting pickup",
+                status=status,
                 text=text,
                 committed_at=now,
             )

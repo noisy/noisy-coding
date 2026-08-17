@@ -26,6 +26,7 @@ export const USER_EVENTS = [
   "EMPTY", // transcription came back without speech
   "DROP", // too short / mic changed / daemon restarted mid-flight
   "STT_ERROR",
+  "NO_LISTENER", // addressee session offline - queued with nobody draining
 ] as const;
 
 export const CLAUDE_EVENTS = [
@@ -49,7 +50,8 @@ export type UserState =
   | "empty"
   | "dropped"
   | "error"
-  | "cancelled";
+  | "cancelled"
+  | "undelivered";
 
 export type ClaudeState =
   | "queued"
@@ -86,6 +88,15 @@ export const userUtteranceMachine = createMachine({
       on: {
         DELIVER: "delivered",
         CANCEL: "cancelled", // recall is legal ONLY while awaiting pickup
+        NO_LISTENER: "undelivered", // addressee session went offline
+      },
+    },
+    // Still queued, but nobody is draining this tab: loud, cancellable,
+    // and it flips to delivered if the session reconnects.
+    undelivered: {
+      on: {
+        DELIVER: "delivered",
+        CANCEL: "cancelled",
       },
     },
     delivered: { type: "final" },
@@ -152,6 +163,7 @@ const USER_STATUS_PREFIXES: Array<[string, UserState]> = [
   ["delivered", "delivered"],
   ["empty", "empty"],
   ["dropped", "dropped"],
+  ["undelivered", "undelivered"],
   ["transcription error", "error"],
   ["cancelled", "cancelled"],
 ];
@@ -185,6 +197,7 @@ const USER_CANONICAL_STATUS: Record<UserState, string> = {
   dropped: "dropped — too short",
   error: "transcription error",
   cancelled: "cancelled by you",
+  undelivered: "undelivered — no listener on this tab (session offline)",
 };
 
 const CLAUDE_CANONICAL_STATUS: Record<ClaudeState, string> = {
@@ -309,7 +322,7 @@ export function timelineZone(role: Role, status: string): TimelineZone {
   if (role === "user") {
     // recording/transcribing never ask (they live in the composer slot);
     // unknown statuses render as settled history rather than jumping zones.
-    return state === "ready" ? "pending" : "done";
+    return state === "ready" || state === "undelivered" ? "pending" : "done";
   }
   // Synthesis runs AHEAD of playback (prefetch), so a synthesizing or
   // ready card is still WAITING its turn — it stays below the line in

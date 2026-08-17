@@ -21,6 +21,8 @@ const USER_CHIPS: Record<UserState, StatusChip> = {
   dropped: { kind: "fail", label: "✕ DROPPED" },
   error: { kind: "fail", label: "✕ ERROR" },
   cancelled: { kind: "off", label: "✕ CANCELLED" },
+  // Loud by design: the user spoke into a tab whose session is offline.
+  undelivered: { kind: "fail", label: "✕ NO LISTENER" },
 };
 
 const CLAUDE_CHIPS: Record<ClaudeState, StatusChip> = {
