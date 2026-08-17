@@ -22,7 +22,9 @@ const DAEMON_PATHS = [
 export default defineConfig({
   // vueDevTools only touches `vite dev`: the floating Vue DevTools panel
   // (component tree, props, pinia-less state) — never part of the build.
-  plugins: [vue(), vueDevTools()],
+  // Its vite-plugin-inspect dependency breaks Storybook's vite server
+  // ("Can not found environment context for client"), so skip it there.
+  plugins: env.STORYBOOK ? [vue()] : [vue(), vueDevTools()],
   // The UI carries its own build-time version; the daemon reports its own
   // in /status — the footer compares the two and flags a skew.
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
