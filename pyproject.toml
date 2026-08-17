@@ -8,17 +8,15 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    # Major-version ceilings everywhere: the Docker build installs from
-    # pyproject (`uv pip install -e .`), NOT from uv.lock, so an unpinned
-    # dependency can silently jump a major in a rebuild. That is exactly how
-    # mcp 2.0.0 (which removed mcp.server.fastmcp) crash-looped the v2.13.0
-    # image (#29). Raise a ceiling deliberately, with a test run — never via
-    # a surprise resolver upgrade.
-    "httpx>=0.28.1,<1",
-    "mcp[cli]>=1.28.1,<2",
-    "numpy>=2.5.1,<3",
-    "sounddevice>=0.5.5,<0.6",
-    "websockets>=16.0,<17",
+    # Exact pins: the Docker build installs from pyproject, NOT from
+    # uv.lock, so anything looser can change between two builds of the same
+    # tag. Upgrades are a deliberate edit here, followed by `uv lock` and
+    # the test suite — never a surprise from the resolver.
+    "httpx==0.28.1",
+    "mcp[cli]==1.28.1",
+    "numpy==2.5.1",
+    "sounddevice==0.5.5",
+    "websockets==16.0",
 ]
 
 [project.scripts]
