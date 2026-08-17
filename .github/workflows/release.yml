@@ -78,3 +78,25 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: noisy/noisy-coding
           short-description: "Voice coding for Claude Code — talk to your agent while it works"
+
+  # A GitHub Release used to be created by hand and was forgettable — now a
+  # draft appears automatically for every version tag. It ships with
+  # generated notes; polishing the title/notes and publishing stays a human
+  # step on purpose (release names here carry personality).
+  github-release:
+    needs: verify-version
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
+    steps:
+      - name: Draft the release unless one already exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists — nothing to do"
+          else
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
+              --draft --generate-notes --title "$GITHUB_REF_NAME"
+          fi
