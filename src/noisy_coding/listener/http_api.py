@@ -77,9 +77,13 @@ def _resolve_speaker(
             seed = name or agent
             voice = _subagent_voice(seed, state.character(fallback).get("voice", ""))
             return fallback, name or voice, voice
-        # Neither id is known: make the problem VISIBLE instead of storing
-        # speech no tab will ever show — bugs should be loud (#22).
-        state.register_agent(agent, label=f"orphan {agent[:8]}")
+        # Neither id is known: register a visible tab instead of storing
+        # speech no tab will ever show — bugs should be loud (#22). The
+        # label is the FALLBACK form (short id) on purpose: this is often
+        # just speak racing ahead of the hooks in a brand-new session, and
+        # the hooks' later re-register with a real title must win. The
+        # event row below stays as the loud part.
+        state.register_agent(agent, label=agent[:8])
         state.add_event("agent", f"unknown speaker '{agent[:8]}…' auto-registered")
         return agent, name, None
     if name:
