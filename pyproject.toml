@@ -8,10 +8,9 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    # Exact pins: the Docker build installs from pyproject, NOT from
-    # uv.lock, so anything looser can change between two builds of the same
-    # tag. Upgrades are a deliberate edit here, followed by `uv lock` and
-    # the test suite — never a surprise from the resolver.
+    # Exact pins, belt-and-suspenders with the lockfile-driven Docker
+    # install: upgrades are a deliberate edit here, followed by `uv lock`
+    # and the test suite — never a surprise from the resolver.
     "httpx==0.28.1",
     "mcp[cli]==1.28.1",
     "numpy==2.5.1",
