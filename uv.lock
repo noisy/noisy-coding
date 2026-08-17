@@ -345,7 +345,7 @@ wheels = [
 
 [[package]]
 name = "noisy-coding"
-version = "2.13.0"
+version = "2.13.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -366,7 +366,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.28.1" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.28.1,<2" },
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "sounddevice", specifier = ">=0.5.5" },
     { name = "websockets", specifier = ">=16.0" },

@@ -1,6 +1,6 @@
 [project]
 name = "noisy-coding"
-version = "2.13.0"
+version = "2.13.1"
 description = "Voice coding for Claude Code — talk to your agent while it works (Grok/xAI voice backend)"
 readme = "README.md"
 authors = [
@@ -9,7 +9,10 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "httpx>=0.28.1",
-    "mcp[cli]>=1.28.1",
+    # <2: mcp 2.0.0 removed mcp.server.fastmcp (issue #29) — the Docker
+    # build installs from pyproject (not uv.lock), so the ceiling is what
+    # actually protects the image.
+    "mcp[cli]>=1.28.1,<2",
     "numpy>=2.5.1",
     "sounddevice>=0.5.5",
     "websockets>=16.0",
