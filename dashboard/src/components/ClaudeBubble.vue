@@ -6,10 +6,10 @@ import Bubble from "./Bubble.vue";
 import { formatCost, formatTime, statusChip } from "./bubbleStatus";
 
 const props = withDefaults(
-  defineProps<{ utterance: Utterance; playing?: boolean }>(),
-  { playing: false },
+  defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean }>(),
+  { playing: false, paused: false },
 );
-defineEmits<{ replay: [utterance: Utterance] }>();
+defineEmits<{ replay: [utterance: Utterance]; pause: [utterance: Utterance]; skip: [utterance: Utterance] }>();
 
 const chip = computed(() => statusChip(props.utterance.status, "claude"));
 const pending = computed(() => !props.utterance.text);
@@ -50,6 +50,9 @@ const replayable = computed(
     :pending="pending"
     :replayable="replayable"
     :playing="playing"
+    :paused="paused"
     @replay="$emit('replay', utterance)"
+    @pause="$emit('pause', utterance)"
+    @skip="$emit('skip', utterance)"
   />
 </template>

@@ -10,11 +10,17 @@ const props = withDefaults(
   defineProps<{
     utterances: Utterance[];
     playingId?: number;
+    playbackPaused?: boolean;
     activity?: { text: string; at: number } | null;
   }>(),
-  { playingId: 0, activity: null },
+  { playingId: 0, playbackPaused: false, activity: null },
 );
-defineEmits<{ replay: [utterance: Utterance]; cancel: [utterance: Utterance] }>();
+defineEmits<{
+  replay: [utterance: Utterance];
+  cancel: [utterance: Utterance];
+  pause: [utterance: Utterance];
+  skip: [utterance: Utterance];
+}>();
 
 // Noise guard: utterances that never became real speech (empty, dropped)
 // or were recalled would flood the log in a loud room and bury the actual
@@ -154,8 +160,11 @@ watch(
         :key="utterance.id"
         :utterance="utterance"
         :playing="utterance.id === playingId"
+        :paused="playbackPaused"
         @replay="$emit('replay', $event)"
         @cancel="$emit('cancel', $event)"
+        @pause="$emit('pause', $event)"
+        @skip="$emit('skip', $event)"
       />
       <!-- The processed line: everything above already happened, everything
            below still waits its turn. -->

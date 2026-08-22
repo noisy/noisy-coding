@@ -102,3 +102,35 @@ export const SubagentPortraitAltair: StoryObj = {
     template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
   }),
 };
+
+export const ClaudePlaying: StoryObj = {
+  render: () => ({
+    components: { ClaudeBubble },
+    setup: () => ({
+      u: utterance({
+        role: "claude",
+        status: "played",
+        text: "Playback in progress - you can pause me mid-sentence or skip the rest entirely.",
+        detail: "streaming from Grok TTS",
+        cost_usd: 0.0031,
+      }),
+    }),
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" :playing="true" /></div>`,
+  }),
+};
+
+export const ClaudePaused: StoryObj = {
+  render: () => ({
+    components: { ClaudeBubble },
+    setup: () => ({
+      u: utterance({
+        role: "claude",
+        status: "played",
+        text: "Paused mid-utterance - resume picks up right where we stopped.",
+        detail: "streaming from Grok TTS",
+        cost_usd: 0.0031,
+      }),
+    }),
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" :playing="true" :paused="true" /></div>`,
+  }),
+};

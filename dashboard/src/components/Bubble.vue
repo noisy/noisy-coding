@@ -19,6 +19,8 @@ const props = withDefaults(
     replayable?: boolean;
     cancelable?: boolean;
     playing?: boolean;
+    /** Playback is paused mid-utterance (only meaningful while playing). */
+    paused?: boolean;
     /** Voice name — when it maps to a portrait in the avatars sprite, the
      * bubble grows a portrait column (same artwork as the voice picker). */
     voice?: string;
@@ -31,10 +33,11 @@ const props = withDefaults(
     replayable: false,
     cancelable: false,
     playing: false,
+    paused: false,
   },
 );
 
-defineEmits<{ replay: []; cancel: [] }>();
+defineEmits<{ replay: []; cancel: []; pause: []; skip: [] }>();
 
 // Voice portrait (the same artwork as the voice picker) rendered INSIDE
 // the bubble as a left column. No portrait, no column - a monogram tile
@@ -49,13 +52,28 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
     <div class="mhead">
       <span class="who">{{ who }}</span>
       <span class="st" :class="statusKind">{{ statusLabel }}</span>
+      <!-- Idle: one replay affordance. Playing: transport controls -
+           pause/resume toggles in place, skip is a separate, final action
+           (design review: merging them into one button hides "skip" exactly
+           when the listener is overwhelmed and needs it most). -->
       <button
-        v-if="replayable || playing"
+        v-if="replayable && !playing"
         class="replay"
-        :class="{ playing }"
-        :title="playing ? 'Stop playback' : 'Play this message again'"
+        title="Play this message again"
         @click="$emit('replay')"
-      >{{ playing ? "⏹" : "↻ ▶" }}</button>
+      >↻ ▶</button>
+      <template v-if="playing">
+        <button
+          class="replay playing"
+          :title="paused ? 'Resume playback' : 'Pause playback'"
+          @click="$emit('pause')"
+        >{{ paused ? "▶" : "⏸" }}</button>
+        <button
+          class="replay skip"
+          title="Skip the rest of this message"
+          @click="$emit('skip')"
+        >⏭</button>
+      </template>
       <button
         v-if="cancelable"
         class="cancel"
@@ -144,6 +162,8 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
 }
 .replay:hover { color: var(--cyan-hi); border-color: var(--cyan); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
 .replay.playing { color: var(--amber); border-color: var(--amber-dim); text-shadow: var(--glow-amber); }
+.replay.skip { color: var(--cyan-dim); }
+.replay.skip:hover { color: var(--red); border-color: rgba(255, 95, 107, 0.6); text-shadow: 0 0 6px rgba(255, 95, 107, 0.5); }
 .cancel {
   font-family: var(--mono);
   font-size: 9px;

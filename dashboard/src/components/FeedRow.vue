@@ -3,10 +3,16 @@ import type { Utterance } from "../types";
 import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
-withDefaults(defineProps<{ utterance: Utterance; playing?: boolean }>(), {
+withDefaults(defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean }>(), {
   playing: false,
+  paused: false,
 });
-defineEmits<{ replay: [utterance: Utterance]; cancel: [utterance: Utterance] }>();
+defineEmits<{
+  replay: [utterance: Utterance];
+  cancel: [utterance: Utterance];
+  pause: [utterance: Utterance];
+  skip: [utterance: Utterance];
+}>();
 
 function sysTime(epochSeconds: number): string {
   const d = new Date(epochSeconds * 1000);
@@ -30,7 +36,10 @@ function sysTime(epochSeconds: number): string {
     v-else
     :utterance="utterance"
     :playing="playing"
+    :paused="paused"
     @replay="$emit('replay', $event)"
+    @pause="$emit('pause', $event)"
+    @skip="$emit('skip', $event)"
   />
 </template>
 

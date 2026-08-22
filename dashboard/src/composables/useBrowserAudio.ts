@@ -42,6 +42,12 @@ function bridgeUrl(): string {
 export interface BrowserAudio {
   /** The tab holds the audio lease (connected to the bridge). */
   active: Ref<boolean>;
+  /** The current clip is paused mid-playback (transport controls). */
+  playbackPaused: Ref<boolean>;
+  /** Pause the current clip / resume a paused one. No clip: no-op. */
+  pauseToggle: () => void;
+  /** Drop the rest of the current clip and ack it as played. */
+  skip: () => void;
   /** The tab is capturing and streaming its microphone. */
   micLive: Ref<boolean>;
   error: Ref<string>;
@@ -54,6 +60,7 @@ export interface BrowserAudio {
 
 export function useBrowserAudio(): BrowserAudio {
   const active = ref(false);
+  const playbackPaused = ref(false);
   const micLive = ref(false);
   const error = ref("");
   let ws: WebSocket | null = null;
@@ -66,10 +73,32 @@ export function useBrowserAudio(): BrowserAudio {
   let clip: HTMLAudioElement | null = null;
 
   function stopClip() {
+    playbackPaused.value = false;
     if (!clip) return;
     clip.onended = null;
     clip.pause();
     clip = null;
+  }
+
+  // Transport controls (bubble ⏸/⏭). Pausing only stalls the tab's clip -
+  // the daemon keeps waiting for the "played" ack, so its queue holds.
+  // Skip behaves exactly like the daemon's own "stop": drop the clip and
+  // ack, so the playback worker moves on to the next utterance.
+  function pauseToggle() {
+    if (!clip) return;
+    if (clip.paused) {
+      playbackPaused.value = false;
+      clip.play().catch(() => {});
+    } else {
+      clip.pause();
+      playbackPaused.value = true;
+    }
+  }
+
+  function skip() {
+    if (!clip) return;
+    stopClip();
+    if (ws) ackPlayed(ws);
   }
 
   function disable() {
@@ -221,5 +250,5 @@ export function useBrowserAudio(): BrowserAudio {
     }
   }
 
-  return { active, micLive, error, connect, enable, disable };
+  return { active, playbackPaused, pauseToggle, skip, micLive, error, connect, enable, disable };
 }

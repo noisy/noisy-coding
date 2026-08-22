@@ -245,6 +245,9 @@ const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
 const browserAudio = useBrowserAudio();
+// Top-level ref so the template auto-unwraps it (refs nested in a plain
+// object would not).
+const playbackPaused = browserAudio.playbackPaused;
 // The SPEAKER side needs no permission and no gesture — connect the WS
 // lease the moment the page knows the tab is a nominated device, so
 // Claude's first words (the first-contact greeting) can play at once.
@@ -598,9 +601,12 @@ const LANGUAGES: Record<string, string> = {
               <ConversationLog
                 :utterances="utterances"
                 :playing-id="status?.playing_utterance_id ?? 0"
+                :playback-paused="playbackPaused"
                 :activity="status?.activity?.[viewedAgent ?? ''] ?? null"
                 @replay="replay"
                 @cancel="cancel"
+                @pause="browserAudio.pauseToggle"
+                @skip="browserAudio.skip"
               />
               <ConversationTelemetry
                 :stt-latency-ms="status?.stt_latency_ms ?? null"

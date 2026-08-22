@@ -183,9 +183,26 @@ describe("ConversationLog", () => {
       props: { utterances: [utterance(1, "claude"), utterance(2, "claude")], playingId: 2 },
     });
 
+    // Idle bubble: one replay affordance. Playing bubble: transport
+    // controls - pause (⏸) plus skip (⏭), replay hidden while it plays.
     const buttons = wrapper.findAll(".replay");
-    expect(buttons).toHaveLength(2);
-    expect(buttons[1].text()).toBe("⏹");
-    expect(buttons[0].text()).not.toBe("⏹");
+    expect(buttons).toHaveLength(3);
+    expect(buttons[0].text()).toContain("▶");
+    expect(buttons[1].text()).toBe("⏸");
+    expect(buttons[2].text()).toBe("⏭");
+  });
+
+  it("flips pause to resume when playback is paused", () => {
+    const wrapper = mount(ConversationLog, {
+      props: {
+        utterances: [utterance(1, "claude")],
+        playingId: 1,
+        playbackPaused: true,
+      },
+    });
+
+    const buttons = wrapper.findAll(".replay");
+    expect(buttons[0].text()).toBe("▶");
+    expect(buttons[1].text()).toBe("⏭");
   });
 });
