@@ -136,6 +136,15 @@ export function togglePlaybackPause(): Promise<{ paused: boolean }> {
   return postJson<{ paused: boolean }>("/playback-pause", {});
 }
 
+/** Graceful shutdown (#35): schedule (default 30 s), or 0 = right now. */
+export function scheduleShutdown(delaySeconds = 30): Promise<{ shutdown_at: number }> {
+  return postJson<{ shutdown_at: number }>("/shutdown", { delay_seconds: delaySeconds });
+}
+
+export function cancelShutdown(): Promise<void> {
+  return post("/shutdown-cancel", {});
+}
+
 /** Skip the rest of whatever is on the speakers; queued speech continues. */
 export function interruptPlayback(): Promise<void> {
   return post("/interrupt", {});

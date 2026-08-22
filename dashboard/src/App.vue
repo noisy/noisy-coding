@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -342,6 +342,15 @@ async function pickMic(name: string) {
     await setSettings({ input_device: "" }).catch(swallow);
   }
 }
+// Ticking countdown for the shutdown banner (0.5 s poll keeps it honest).
+const nowTick = ref(Date.now());
+setInterval(() => (nowTick.value = Date.now()), 500);
+const shutdownSeconds = computed(() => {
+  const at = status.value?.shutdown_at ?? 0;
+  if (!at) return null;
+  return Math.max(0, Math.ceil(at - nowTick.value / 1000));
+});
+
 const pickPttKey = (mode: "hold" | "toggle", key: string) =>
   setSettings(mode === "hold" ? { ptt_hold_key: key } : { ptt_toggle_key: key }).catch(swallow);
 
@@ -447,6 +456,12 @@ const LANGUAGES: Record<string, string> = {
     <!-- The Docker path preselects the tab as mic/speaker, so the picker
          never fires a change event — and getUserMedia needs a user
          gesture anyway. This banner IS that gesture. -->
+    <!-- Graceful shutdown (#35): impossible to miss, trivial to stop. -->
+    <div v-if="shutdownSeconds !== null" class="shutdown-banner">
+      <span>⚠ DAEMON RESTARTS IN {{ shutdownSeconds }}s — finish your sentence, it will wait for you</span>
+      <button class="ctl small" @click="scheduleShutdown(0).catch(swallow)">RESTART NOW</button>
+      <button class="ctl small" @click="cancelShutdown().catch(swallow)">CANCEL</button>
+    </div>
     <button v-if="tabAudioNeeded" class="tabaudio" @click="enableTabAudio">
       🎙 ENABLE TAB AUDIO — this tab is your {{ tabAudioRoles }}; click once to activate
       <span v-if="browserAudio.error.value" class="taberr">{{ browserAudio.error.value }}</span>
@@ -712,6 +727,17 @@ const LANGUAGES: Record<string, string> = {
 </template>
 
 <style scoped>
+.shutdown-banner {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  background: rgba(255, 95, 107, 0.14);
+  border: 1px solid rgba(255, 95, 107, 0.6);
+  color: var(--red);
+  font-size: 12px; letter-spacing: 0.14em; font-weight: 700;
+  padding: 10px 16px; margin-bottom: 10px;
+  animation: blink 1.2s step-end infinite;
+}
+.shutdown-banner .ctl { animation: none; }
+@keyframes blink { 50% { opacity: 0.75; } }
 .topbar {
   display: flex;
   align-items: stretch;

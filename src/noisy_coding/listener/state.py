@@ -126,6 +126,10 @@ class ListenerState:
         # Global PTT hotkeys (#25): key NAMES from hotkey.KEYCODES, "" = off.
         self._ptt_hold_key = ""
         self._ptt_toggle_key = ""
+        # Graceful shutdown (#35): epoch when the daemon may exit; 0 = no
+        # shutdown scheduled. The countdown lives here so /status can render
+        # the dashboard banner.
+        self._shutdown_at = 0.0
         self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
         self._ptt_last_hold = float("-inf")  # monotonic time of last lease renewal
         self._language = ""  # "" = auto-detect
@@ -422,6 +426,20 @@ class ListenerState:
     def smart_turn_mode(self) -> str:
         with self._lock:
             return self._smart_turn_mode
+
+    @property
+    def shutdown_at(self) -> float:
+        with self._lock:
+            return self._shutdown_at
+
+    def schedule_shutdown(self, delay_seconds: float) -> float:
+        with self._lock:
+            self._shutdown_at = time.time() + max(0.0, delay_seconds)
+            return self._shutdown_at
+
+    def cancel_shutdown(self) -> None:
+        with self._lock:
+            self._shutdown_at = 0.0
 
     @property
     def ptt_hold_key(self) -> str:

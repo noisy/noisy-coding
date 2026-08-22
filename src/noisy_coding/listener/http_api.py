@@ -399,6 +399,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "detection_mode": state.detection_mode,
                         "ptt_hold_key": state.ptt_hold_key,
                         "ptt_toggle_key": state.ptt_toggle_key,
+                        "shutdown_at": state.shutdown_at,
                         "ptt_held": state.ptt_held,
                         "input_device": state.input_device,
                         "output_device": state.output_device,
@@ -615,6 +616,22 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"speaking": speaking})
             elif self.path == "/speak":
                 self._handle_speak()
+            elif self.path == "/shutdown":
+                # Graceful shutdown (#35): agents call this instead of kill.
+                # Default 30 s countdown; the dashboard shows a banner with
+                # CANCEL and RESTART NOW. The watcher (daemon.py) refuses to
+                # die mid-recording.
+                body = self._read_json_body()
+                delay = float(body.get("delay_seconds", 30))
+                at = state.schedule_shutdown(delay)
+                state.add_event(
+                    "agent", f"shutdown scheduled in {int(delay)}s (cancellable)"
+                )
+                self._respond({"shutdown_at": at})
+            elif self.path == "/shutdown-cancel":
+                state.cancel_shutdown()
+                state.add_event("agent", "shutdown cancelled")
+                self._respond({"cancelled": True})
             elif self.path == "/skip-unheard":
                 body = self._read_json_body()
                 agent = str(body.get("agent") or "") or None

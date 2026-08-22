@@ -334,6 +334,24 @@ def run(config: VadConfig | None = None) -> None:
     hotkeys = HotkeyListener(state, _log)
     state.hotkey_listener = hotkeys
     hotkeys.configure(state.ptt_hold_key, state.ptt_toggle_key)
+
+    def _shutdown_watcher() -> None:
+        # Graceful shutdown (#35): exit only past the deadline AND never
+        # mid-recording - an in-flight utterance gets to finish first.
+        import time as _time
+
+        while True:
+            _time.sleep(0.5)
+            at = state.shutdown_at
+            if not at or _time.time() < at:
+                continue
+            if state.recording:
+                continue  # the user is mid-sentence; check again shortly
+            _log("[shutdown] graceful exit (requested via /shutdown)")
+            _save_history(state)
+            os._exit(0)
+
+    threading.Thread(target=_shutdown_watcher, daemon=True).start()
     server = start_http_api(state, port)
     if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
         threading.Thread(target=_poll_credits, args=(state,), daemon=True).start()
