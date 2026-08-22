@@ -12,6 +12,9 @@ const ERROR_LOG_SIZE = 20;
 export interface DaemonState {
   status: Ref<DaemonStatus | null>;
   utterances: Ref<Utterance[]>; // the viewed agent's slice
+  /** Which agent `utterances` was filtered for - set ATOMICALLY with the
+   * list, unlike viewedAgent which can change mid-poll (#33 race). */
+  utterancesFor: Ref<string | null>;
   allUtterances: Ref<Utterance[]>; // every agent — feeds unread badges
   character: Ref<Character | null>;
   offline: Ref<boolean>;
@@ -25,6 +28,7 @@ export interface DaemonState {
 export function useDaemonState(pollMs = 400): DaemonState {
   const status = ref<DaemonStatus | null>(null);
   const utterances = ref<Utterance[]>([]);
+  const utterancesFor = ref<string | null>(null);
   const allUtterances = ref<Utterance[]>([]);
   const character = ref<Character | null>(null);
   const offline = ref(false);
@@ -80,6 +84,7 @@ export function useDaemonState(pollMs = 400): DaemonState {
       utterances.value = agent
         ? all.filter((u) => u.agent === agent || u.role === "system")
         : all;
+      utterancesFor.value = agent ?? null;
       character.value = await getCharacter(agent);
       // Surface system failures (STT/TTS errors) that otherwise die
       // silently in the daemon's event log.
@@ -122,5 +127,5 @@ export function useDaemonState(pollMs = 400): DaemonState {
   });
   onUnmounted(() => clearInterval(timer));
 
-  return { status, utterances, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents };
+  return { status, utterances, utterancesFor, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents };
 }

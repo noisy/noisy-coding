@@ -64,4 +64,28 @@ describe("useAudioCues on tab switch", () => {
     await nextTick();
     expect(playCue).toHaveBeenCalledWith("claude");
   });
+
+  it("stays silent through the in-flight-poll race (#33 third life)", async () => {
+    // Sequence: user clicks a tab; a poll STARTED for the old tab lands
+    // first (list unchanged, marker still old agent), THEN the next poll
+    // delivers the new tab's list together with the new marker. Neither
+    // step may cue - keying on viewedAgent (which flips instantly) did.
+    const utterances = ref<Utterance[]>([utterance(1, "claude")]);
+    const status = ref<DaemonStatus | null>(null);
+    const utterancesFor = ref<string | null>("alpha");
+    useAudioCues(utterances, status, ref(0), utterancesFor);
+
+    utterances.value = [utterance(1, "claude")]; // prime baseline (alpha)
+    await nextTick();
+
+    // late old-tab poll: same list, marker still alpha
+    utterances.value = [utterance(1, "claude")];
+    await nextTick();
+
+    // next poll: beta's list + marker, atomically
+    utterancesFor.value = "beta";
+    utterances.value = [utterance(7, "claude"), utterance(8, "claude")];
+    await nextTick();
+    expect(playCue).not.toHaveBeenCalled();
+  });
 });

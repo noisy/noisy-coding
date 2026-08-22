@@ -48,6 +48,8 @@ export function useAudioCues(
   utterances: Ref<Utterance[]>,
   status: Ref<DaemonStatus | null>,
   errorCount: Ref<number>,
+  /** utterancesFor from useDaemonState - the agent the list was filtered
+   * for, set atomically with it. */
   viewedAgent?: Ref<string | null>,
 ) {
   const prefs = ref<CuePrefs>(loadPrefs());
@@ -70,8 +72,12 @@ export function useAudioCues(
   let previous = snapshotUtterances([]);
   // Tab switches are silent (#33): a view change is the USER navigating,
   // not conversation events - reset the baseline without emitting cues.
-  // The id-swap heuristic in detectCues stays as a fallback, but it misses
-  // switches where the two views share any card (broadcast announces).
+  // KEY SUBTLETY (the bug's third life): the marker must be the agent the
+  // LIST WAS FILTERED FOR (utterancesFor), not the currently viewed agent -
+  // viewedAgent flips instantly on click while an in-flight poll still
+  // delivers the OLD tab's list, which used to poison the baseline and
+  // make the NEXT poll read as fresh messages. System rows shared by every
+  // tab defeat the id-swap fallback, so this marker is the real guard.
   let previousAgent = viewedAgent?.value ?? null;
   watch(utterances, (list) => {
     const agent = viewedAgent?.value ?? null;

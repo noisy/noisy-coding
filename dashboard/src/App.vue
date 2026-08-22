@@ -26,7 +26,7 @@ import { useBrowserAudio } from "./composables/useBrowserAudio";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
+const { status, utterances, utterancesFor, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
 
 // Agents visibly "working": their live-activity line was updated in the
@@ -43,7 +43,7 @@ const thinkingAgents = computed(() => {
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
 const errorCount = computed(() => errors.value.length);
 
-const { prefs: cuePrefs, enabled: cuesEnabled } = useAudioCues(utterances, status, errorCount, viewedAgent);
+const { prefs: cuePrefs, enabled: cuesEnabled } = useAudioCues(utterances, status, errorCount, utterancesFor);
 const setCue = (name: CueName, value: boolean) => (cuePrefs.value.cues[name] = value);
 const setHum = (patch: { recordingHum?: boolean; humNoise?: string; humVolume?: number }) =>
   Object.assign(cuePrefs.value, patch);
