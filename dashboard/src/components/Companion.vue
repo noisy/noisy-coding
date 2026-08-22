@@ -139,10 +139,19 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   flex: 1; min-width: 0;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 6px;
+  /* scrollbar in our idiom: a hair of cyan, only when you look for it */
   scrollbar-width: thin;
+  scrollbar-color: rgba(63, 216, 255, 0.25) transparent;
   /* older messages melt away at the top edge */
   mask-image: linear-gradient(to bottom, transparent, black 22px);
 }
+.thread::-webkit-scrollbar { width: 4px; }
+.thread::-webkit-scrollbar-track { background: transparent; }
+.thread::-webkit-scrollbar-thumb {
+  background: rgba(63, 216, 255, 0.18);
+  border-radius: 2px;
+}
+.thread:hover::-webkit-scrollbar-thumb { background: rgba(63, 216, 255, 0.4); }
 .msgs { display: flex; flex-direction: column; gap: 6px; }
 .msgs .older { opacity: 0.55; }
 .msgs :deep(.msg.side-right), .thread :deep(.msg.side-right) { align-self: flex-end; }

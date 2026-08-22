@@ -61,8 +61,10 @@ const Playground = defineComponent({
     return { mode, feed, liveText, userStarts, userWords, userCommits, claudeReplies, reset, demo };
   },
   template: `
-    <div style="background:#02060c;padding:24px;min-height:340px;font-family:monospace">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+    <div style="background:#02060c;padding:24px;height:480px;font-family:monospace;
+                display:flex;flex-direction:column;justify-content:space-between;
+                border:1px dashed rgba(63,216,255,0.2)">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button @click="demo" style="padding:6px 12px">▶ PLAY DEMO</button>
         <button @click="userStarts">1. user starts (listening)</button>
         <button @click="userWords">2. user words stream in</button>
@@ -70,7 +72,9 @@ const Playground = defineComponent({
         <button @click="claudeReplies">4. claude replies</button>
         <button @click="reset">reset</button>
       </div>
-      <Companion :mode="mode" :feed="feed" :live-text="liveText" voice="rex" :max-height="200" />
+      <div style="align-self:flex-start">
+        <Companion :mode="mode" :feed="feed" :live-text="liveText" voice="rex" :max-height="200" />
+      </div>
     </div>`,
 });
 
@@ -79,7 +83,9 @@ export const Playground_Flow: StoryObj = { render: () => Playground };
 const wrap = (props: Record<string, unknown>) => ({
   components: { Companion },
   setup: () => ({ props }),
-  template: `<div style="background:#02060c;padding:24px;display:inline-block">
+  // pinned like the real widget: bottom-left of the frame, growing upward
+  template: `<div style="background:#02060c;padding:24px;height:360px;display:flex;
+                         align-items:flex-end;border:1px dashed rgba(63,216,255,0.2)">
     <Companion v-bind="props" /></div>`,
 });
 
