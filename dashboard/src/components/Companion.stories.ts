@@ -5,6 +5,14 @@ import Companion, { type CompanionMessage } from "./Companion.vue";
 const meta: Meta = { title: "Companion/PoC" };
 export default meta;
 
+const READY: CompanionMessage = { role: "claude", text: "I'm ready." };
+const FOUR: CompanionMessage[] = [
+  { role: "claude", text: "I'm ready." },
+  { role: "user", text: "let's build the companion widget" },
+  { role: "claude", text: "Storybook first - you pick, then I wire it in." },
+  { role: "user", text: "keep it small, always on top" },
+];
+
 const USER_LINE = "okay so the next thing I want to build is the companion widget";
 const CLAUDE_LINE = "On it - Storybook first, you pick, then I wire it in.";
 
@@ -17,7 +25,7 @@ const Playground = defineComponent({
   components: { Companion },
   setup() {
     const mode = ref<"idle" | "user" | "claude">("idle");
-    const feed = ref<CompanionMessage[]>([]);
+    const feed = ref<CompanionMessage[]>([READY]);
     const liveText = ref("");
     let timers: number[] = [];
     const later = (ms: number, fn: () => void) => {
@@ -41,7 +49,7 @@ const Playground = defineComponent({
       feed.value = [...feed.value, { role: "claude", text: CLAUDE_LINE }];
       later(2600, () => { mode.value = "idle"; });
     };
-    const reset = () => { clear(); mode.value = "idle"; feed.value = []; liveText.value = ""; };
+    const reset = () => { clear(); mode.value = "idle"; feed.value = [READY]; liveText.value = ""; };
     const demo = () => {
       reset();
       userStarts();
@@ -62,7 +70,7 @@ const Playground = defineComponent({
         <button @click="claudeReplies">4. claude replies</button>
         <button @click="reset">reset</button>
       </div>
-      <Companion :mode="mode" :feed="feed" :live-text="liveText" avatar="circle" voice="rex" />
+      <Companion :mode="mode" :feed="feed" :live-text="liveText" voice="rex" :max-height="200" />
     </div>`,
 });
 
@@ -72,34 +80,22 @@ const wrap = (props: Record<string, unknown>) => ({
   components: { Companion },
   setup: () => ({ props }),
   template: `<div style="background:#02060c;padding:24px;display:inline-block">
-    <Companion v-bind="props" avatar="circle" /></div>`,
+    <Companion v-bind="props" /></div>`,
 });
 
+export const MidConversation_Scrolled: StoryObj = {
+  render: () => wrap({ mode: "idle", feed: FOUR, maxHeight: 170 }),
+};
 export const ClaudeSpeaking: StoryObj = {
-  render: () => wrap({
-    mode: "claude",
-    feed: [
-      { role: "user", text: USER_LINE },
-      { role: "claude", text: CLAUDE_LINE },
-    ],
-  }),
+  render: () => wrap({ mode: "claude", feed: FOUR }),
 };
 export const UserTalking_LiveTranscript: StoryObj = {
   render: () => wrap({
     mode: "user",
-    feed: [{ role: "claude", text: CLAUDE_LINE }],
+    feed: FOUR,
     liveText: "and it should stay small in the corner",
   }),
 };
-export const UserTalking_NoWordsYet: StoryObj = {
-  render: () => wrap({ mode: "user", feed: [] }),
-};
-export const IdleWithHistory: StoryObj = {
-  render: () => wrap({
-    mode: "idle",
-    feed: [
-      { role: "user", text: USER_LINE },
-      { role: "claude", text: CLAUDE_LINE },
-    ],
-  }),
+export const ColdStart_ImReady: StoryObj = {
+  render: () => wrap({ mode: "idle", feed: [READY] }),
 };
