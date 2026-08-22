@@ -92,7 +92,8 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
       <span v-else-if="mode === 'user'" class="listening">LISTENING</span>
     </div>
 
-    <!-- Right rail: Claude's head. Lights up while he speaks. -->
+    <!-- Claude's head floats over the thread's bottom-right corner so the
+         scrollbar can live at the widget's true right edge. -->
     <div class="rail right" :class="{ active: mode === 'claude' }">
       <span class="head" :style="portrait" />
     </div>
@@ -105,14 +106,17 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   background: rgba(5, 14, 24, 0.92);
   border: 1px solid rgba(63, 216, 255, 0.25);
   border-radius: 14px;
-  padding: 16px;
+  padding: 16px 4px 16px 16px; /* thread + scrollbar run to the right edge */
   font-family: var(--mono);
   display: flex; gap: 14px; align-items: flex-end;
+  position: relative;
 }
 
 /* --- rails: always there, dim until their side holds the floor ---------- */
 .rail { flex: none; opacity: 0.35; transition: opacity 0.3s ease; }
 .rail.active { opacity: 1; }
+/* the head sits ON TOP of the thread, clear of the edge scrollbar */
+.rail.right { position: absolute; right: 14px; bottom: 16px; z-index: 1; }
 
 .hex { width: 44px; height: 44px; color: var(--amber); display: block; }
 .rail.active .hex { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--amber) 70%, transparent)); }
@@ -139,15 +143,15 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   flex: 1; min-width: 0;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px;
-  /* breathing room between the bubbles and the scrollbar */
-  padding-right: 10px;
+  /* bubbles keep clear of the floating head and the edge scrollbar */
+  padding-right: 62px;
   /* scrollbar in our idiom: a hair of cyan, only when you look for it */
   scrollbar-width: thin;
   scrollbar-color: rgba(63, 216, 255, 0.25) transparent;
   /* older messages melt away at the top edge */
   mask-image: linear-gradient(to bottom, transparent, black 22px);
 }
-.thread::-webkit-scrollbar { width: 4px; }
+.thread::-webkit-scrollbar { width: 3px; }
 .thread::-webkit-scrollbar-track { background: transparent; }
 .thread::-webkit-scrollbar-thumb {
   background: rgba(63, 216, 255, 0.18);
