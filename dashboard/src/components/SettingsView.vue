@@ -28,12 +28,13 @@ withDefaults(
     cuePrefs?: CuePrefs | null;
     pttHoldKey?: string;
     pttToggleKey?: string;
+    pttCancelKey?: string;
     checks?: DiagnosticChecks | null;
     checksRunning?: boolean;
   }>(),
   {
     devices: () => [], selectedDevice: "", outputDevice: "system", cuePrefs: null,
-    pttHoldKey: "", pttToggleKey: "",
+    pttHoldKey: "", pttToggleKey: "", pttCancelKey: "",
     checks: null, checksRunning: false,
   },
 );
@@ -41,7 +42,7 @@ const emit = defineEmits<{
   save: [key: string];
   pickDevice: [name: string];
   pickOutput: [value: string];
-  pickPttKey: [mode: "hold" | "toggle", key: string];
+  pickPttKey: [mode: "hold" | "toggle" | "cancel", key: string];
   refreshDevices: [];
   toggleCue: [name: CueName, value: boolean];
   setHum: [patch: { recordingHum?: boolean; humNoise?: string; humVolume?: number }];
@@ -150,11 +151,24 @@ function submit() {
           <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
         </select>
       </div>
+      <div class="keyrow">
+        <span class="lbl">SCRATCH KEY</span>
+        <select
+          class="keyinput"
+          :value="pttCancelKey"
+          @change="emit('pickPttKey', 'cancel', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">OFF</option>
+          <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
+        </select>
+      </div>
       <div class="text">
         <p>
           System-wide push-to-talk — works no matter which app has focus.
           HOLD opens the mic while the key is down; TOGGLE opens on one press
-          and closes on the next. Needs the mic mode set to PUSH TO TALK and,
+          and closes on the next. SCRATCH aborts the recording in progress in ANY
+          mode — your "forget what I just said" key. PTT keys need the mic
+          mode set to PUSH TO TALK and,
           on first use, the Accessibility permission for the daemon's
           terminal (macOS asks once).
         </p>

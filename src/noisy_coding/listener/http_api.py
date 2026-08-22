@@ -283,6 +283,7 @@ def save_settings(state: ListenerState) -> None:
                     "detection_mode": state.detection_mode,
                     "ptt_hold_key": state.ptt_hold_key,
                     "ptt_toggle_key": state.ptt_toggle_key,
+                    "ptt_cancel_key": state.ptt_cancel_key,
                     "input_device": state.input_device,
                     "output_device": state.output_device,
                     "language": state.language,
@@ -399,6 +400,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "detection_mode": state.detection_mode,
                         "ptt_hold_key": state.ptt_hold_key,
                         "ptt_toggle_key": state.ptt_toggle_key,
+                        "ptt_cancel_key": state.ptt_cancel_key,
                         "shutdown_at": state.shutdown_at,
                         "ptt_held": state.ptt_held,
                         "input_device": state.input_device,
@@ -574,20 +576,23 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if body.get("tts_mode") in ("batch", "live"):
                     state.set_tts_mode(body["tts_mode"])
                     result["tts_mode"] = body["tts_mode"]
-                if "ptt_hold_key" in body or "ptt_toggle_key" in body:
+                if any(k in body for k in ("ptt_hold_key", "ptt_toggle_key", "ptt_cancel_key")):
                     from noisy_coding.listener import hotkey as hotkey_mod
 
                     valid = lambda v: v == "" or v in hotkey_mod.KEYCODES  # noqa: E731
-                    hold = body.get("ptt_hold_key")
-                    toggle = body.get("ptt_toggle_key")
-                    hold = hold if isinstance(hold, str) and valid(hold) else None
-                    toggle = toggle if isinstance(toggle, str) and valid(toggle) else None
-                    new_hold, new_toggle = state.set_ptt_keys(hold, toggle)
+                    keys = {}
+                    for name in ("ptt_hold_key", "ptt_toggle_key", "ptt_cancel_key"):
+                        v = body.get(name)
+                        keys[name] = v if isinstance(v, str) and valid(v) else None
+                    new_hold, new_toggle, new_cancel = state.set_ptt_keys(
+                        keys["ptt_hold_key"], keys["ptt_toggle_key"], keys["ptt_cancel_key"]
+                    )
                     result["ptt_hold_key"] = new_hold
                     result["ptt_toggle_key"] = new_toggle
+                    result["ptt_cancel_key"] = new_cancel
                     listener = getattr(state, "hotkey_listener", None)
                     if listener is not None:
-                        listener.configure(new_hold, new_toggle)
+                        listener.configure(new_hold, new_toggle, new_cancel)
                 if body.get("smart_turn_mode") in ("soft", "hard"):
                     result["smart_turn_mode"] = state.set_smart_turn_mode(
                         body["smart_turn_mode"]
@@ -616,6 +621,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"speaking": speaking})
             elif self.path == "/speak":
                 self._handle_speak()
+            elif self.path == "/abort-recording":
+                # Scratch-my-words: kill the utterance in progress (any mode).
+                state.request_recording_abort()
+                self._respond({"requested": True})
             elif self.path == "/shutdown":
                 # Graceful shutdown (#35): agents call this instead of kill.
                 # Default 5 min countdown; the dashboard shows a banner with

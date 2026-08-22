@@ -38,6 +38,7 @@ LEASE_RENEW_SECONDS = 0.4  # matches the dashboard's heartbeat cadence
 class _PttState(Protocol):
     def refresh_ptt_hold(self) -> None: ...
     def release_ptt(self) -> None: ...
+    def request_recording_abort(self) -> None: ...
 
 
 class HotkeyListener:
@@ -49,6 +50,7 @@ class HotkeyListener:
         self._lock = threading.Lock()
         self._hold_key: int | None = None
         self._toggle_key: int | None = None
+        self._cancel_key: int | None = None
         self._modifier_down: set[int] = set()
         self._engaged = False          # lease currently open (either mode)
         self._toggle_latched = False   # toggle mode: waiting for 2nd press
@@ -58,13 +60,17 @@ class HotkeyListener:
 
     # -- configuration ----------------------------------------------------
 
-    def configure(self, hold_key: str, toggle_key: str) -> None:
+    def configure(self, hold_key: str, toggle_key: str, cancel_key: str = "") -> None:
         """Apply key names from settings; restarts the tap as needed."""
         with self._lock:
             self._hold_key = KEYCODES.get(hold_key)
             self._toggle_key = KEYCODES.get(toggle_key)
+            self._cancel_key = KEYCODES.get(cancel_key)
             self._hold_name, self._toggle_name = hold_key, toggle_key
-            wanted = self._hold_key is not None or self._toggle_key is not None
+            self._cancel_name = cancel_key
+            wanted = any(
+                k is not None for k in (self._hold_key, self._toggle_key, self._cancel_key)
+            )
         self._disengage()
         self._stop_tap()
         if wanted:
@@ -102,6 +108,12 @@ class HotkeyListener:
     # -- the tap -----------------------------------------------------------
 
     def _on_key(self, keycode: int, down: bool) -> None:
+        if keycode == self._cancel_key and down:
+            # Scratch-my-words: abort the recording in ANY mode, and if the
+            # toggle latch is open, close it - the turn is over either way.
+            self._state.request_recording_abort()
+            self._disengage()
+            return
         if keycode == self._hold_key:
             if down:
                 self._engage()
@@ -126,7 +138,8 @@ class HotkeyListener:
             watched_modifiers = {
                 code
                 for name, code in KEYCODES.items()
-                if name in _MODIFIER_KEYS and code in (self._hold_key, self._toggle_key)
+                if name in _MODIFIER_KEYS
+                and code in (self._hold_key, self._toggle_key, self._cancel_key)
             }
 
             def callback(_proxy, event_type, event, _refcon):
@@ -177,7 +190,7 @@ class HotkeyListener:
             self._restart = loop
             self._log(
                 f"hotkey: global PTT armed (hold={self._hold_name or '-'}, "
-                f"toggle={self._toggle_name or '-'})"
+                f"toggle={self._toggle_name or '-'}, cancel={self._cancel_name or '-'})"
             )
             Quartz.CFRunLoopRun()
 

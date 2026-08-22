@@ -55,6 +55,12 @@ export interface BrowserAudio {
   connect: () => Promise<void>;
   /** connect() + microphone capture — the tab as the MIC. */
   enable: () => Promise<void>;
+  /** Tab honesty (#30): drop the capture (and Chrome's red dot) while
+   * muted, keeping the WS lease so the tab stays the nominated device. */
+  suspendMic: () => void;
+  /** Re-acquire the capture after suspendMic. Permission was already
+   * granted, so no user gesture is needed. */
+  resumeMic: () => Promise<void>;
   disable: () => void;
 }
 
@@ -115,6 +121,31 @@ export function useBrowserAudio(): BrowserAudio {
     pendingLength = 0;
     active.value = false;
     micLive.value = false;
+  }
+
+  // #30: mute releases the hardware so the browser's red recording dot
+  // disappears - the tab tells the truth about capture state.
+  let suspended = false;
+
+  function suspendMic() {
+    if (!micLive.value) return;
+    suspended = true;
+    mediaStream?.getTracks().forEach((t) => t.stop());
+    mediaStream = null;
+    audioContext?.close().catch(() => {});
+    audioContext = null;
+    pending = [];
+    pendingLength = 0;
+    micLive.value = false;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "hb", mic: false }));
+    }
+  }
+
+  async function resumeMic(): Promise<void> {
+    if (!suspended || micLive.value) return;
+    suspended = false;
+    await enable();
   }
 
   function ackPlayed(socket: WebSocket) {
@@ -250,5 +281,5 @@ export function useBrowserAudio(): BrowserAudio {
     }
   }
 
-  return { active, playbackPaused, pauseToggle, skip, micLive, error, connect, enable, disable };
+  return { active, playbackPaused, pauseToggle, skip, micLive, error, connect, enable, suspendMic, resumeMic, disable };
 }

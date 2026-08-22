@@ -26,6 +26,7 @@ export interface DaemonStatus {
   detection_mode: "auto" | "ptt";
   ptt_hold_key?: string;
   ptt_toggle_key?: string;
+  ptt_cancel_key?: string;
   shutdown_at?: number;
   ptt_held: boolean;
   input_device: string;
@@ -102,6 +103,7 @@ export interface SettingsPatch {
   detection_mode?: "auto" | "ptt";
   ptt_hold_key?: string;
   ptt_toggle_key?: string;
+  ptt_cancel_key?: string;
   shutdown_at?: number;
   input_device?: string;
   output_device?: "system" | "browser";

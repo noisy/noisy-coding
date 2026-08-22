@@ -310,7 +310,9 @@ def run(config: VadConfig | None = None) -> None:
         if saved.get("detection_mode") in ("auto", "ptt"):
             state.set_detection_mode(saved["detection_mode"])
         state.set_ptt_keys(
-            str(saved.get("ptt_hold_key", "")), str(saved.get("ptt_toggle_key", ""))
+            str(saved.get("ptt_hold_key", "")),
+            str(saved.get("ptt_toggle_key", "")),
+            str(saved.get("ptt_cancel_key", "")),
         )
         if "input_device" in saved:
             state.set_input_device(str(saved["input_device"]))
@@ -333,7 +335,7 @@ def run(config: VadConfig | None = None) -> None:
 
     hotkeys = HotkeyListener(state, _log)
     state.hotkey_listener = hotkeys
-    hotkeys.configure(state.ptt_hold_key, state.ptt_toggle_key)
+    hotkeys.configure(state.ptt_hold_key, state.ptt_toggle_key, state.ptt_cancel_key)
 
     def _shutdown_watcher() -> None:
         # Graceful shutdown (#35): exit only past the deadline AND never
@@ -491,6 +493,20 @@ def run(config: VadConfig | None = None) -> None:
                 # stuck in "transcribing" during first contact.
                 if not api_key_present:
                     state.set_recording(False)
+                    continue
+                # Scratch-my-words: the cancel hotkey (or /abort-recording)
+                # kills the utterance in progress in ANY mode - audio
+                # dropped, card marked cancelled, stream torn down.
+                if state.consume_recording_abort() and segmenter.is_recording:
+                    segmenter.discard()
+                    state.set_recording(False)
+                    if stream is not None:
+                        stream.abort()
+                        stream = None
+                    if current_utterance_id:
+                        state.mark_utterance_cancelled(current_utterance_id)
+                    _log("[recording] scratched by the cancel hotkey")
+                    state.add_event("recording_done", "scratched — cancel hotkey")
                     continue
                 # Push-to-talk: the held button IS the turn signal. Idle =
                 # cold mic (nothing captured); held = the utterance never

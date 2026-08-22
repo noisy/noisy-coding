@@ -16,6 +16,7 @@ import Oscilloscope from "./components/Oscilloscope.vue";
 import SessionRing from "./components/SessionRing.vue";
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
+import { useTabStatus } from "./composables/useTabStatus";
 import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
 import VersionBadge from "./components/VersionBadge.vue";
@@ -252,6 +253,17 @@ const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
 const browserAudio = useBrowserAudio();
+useTabStatus(status);
+// Tab honesty (#30): mute releases the capture (Chrome's red dot goes
+// away), unmute re-acquires it - permission is already granted, so no
+// gesture is needed on the way back.
+watch(
+  () => status.value?.muted ?? false,
+  (muted) => {
+    if (muted) browserAudio.suspendMic();
+    else browserAudio.resumeMic().catch(swallow);
+  },
+);
 // Playback lives in ONE of two places: the browser tab (output=browser)
 // or a daemon-side system player (output=system). The transport buttons
 // drive both - whichever holds the clip reacts, the other no-ops.
@@ -356,8 +368,14 @@ const shutdownLabel = computed(() => {
   return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s}s`;
 });
 
-const pickPttKey = (mode: "hold" | "toggle", key: string) =>
-  setSettings(mode === "hold" ? { ptt_hold_key: key } : { ptt_toggle_key: key }).catch(swallow);
+const pickPttKey = (mode: "hold" | "toggle" | "cancel", key: string) =>
+  setSettings(
+    mode === "hold"
+      ? { ptt_hold_key: key }
+      : mode === "toggle"
+        ? { ptt_toggle_key: key }
+        : { ptt_cancel_key: key },
+  ).catch(swallow);
 
 async function pickOutput(value: string) {
   if (value !== "browser") {
@@ -617,6 +635,7 @@ const LANGUAGES: Record<string, string> = {
             :cue-prefs="cuePrefs"
             :ptt-hold-key="status?.ptt_hold_key ?? ''"
             :ptt-toggle-key="status?.ptt_toggle_key ?? ''"
+            :ptt-cancel-key="status?.ptt_cancel_key ?? ''"
             :checks="visibleChecks"
             :checks-running="checksRunning"
             @save="saveKey"

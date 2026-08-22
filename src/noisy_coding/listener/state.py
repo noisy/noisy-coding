@@ -126,6 +126,10 @@ class ListenerState:
         # Global PTT hotkeys (#25): key NAMES from hotkey.KEYCODES, "" = off.
         self._ptt_hold_key = ""
         self._ptt_toggle_key = ""
+        self._ptt_cancel_key = ""
+        # Scratch-my-words (#30 follow-up): set by the cancel hotkey or the
+        # /abort-recording endpoint, consumed by the audio loop.
+        self._recording_abort_requested = False
         # Graceful shutdown (#35): epoch when the daemon may exit; 0 = no
         # shutdown scheduled. The countdown lives here so /status can render
         # the dashboard banner.
@@ -451,13 +455,32 @@ class ListenerState:
         with self._lock:
             return self._ptt_toggle_key
 
-    def set_ptt_keys(self, hold: str | None, toggle: str | None) -> tuple[str, str]:
+    @property
+    def ptt_cancel_key(self) -> str:
+        with self._lock:
+            return self._ptt_cancel_key
+
+    def set_ptt_keys(
+        self, hold: str | None, toggle: str | None, cancel: str | None = None
+    ) -> tuple[str, str, str]:
         with self._lock:
             if hold is not None:
                 self._ptt_hold_key = hold
             if toggle is not None:
                 self._ptt_toggle_key = toggle
-            return self._ptt_hold_key, self._ptt_toggle_key
+            if cancel is not None:
+                self._ptt_cancel_key = cancel
+            return self._ptt_hold_key, self._ptt_toggle_key, self._ptt_cancel_key
+
+    def request_recording_abort(self) -> None:
+        with self._lock:
+            self._recording_abort_requested = True
+
+    def consume_recording_abort(self) -> bool:
+        with self._lock:
+            was = self._recording_abort_requested
+            self._recording_abort_requested = False
+            return was
 
     def set_smart_turn_mode(self, mode: str) -> str:
         with self._lock:
@@ -657,6 +680,13 @@ class ListenerState:
                 text=text,
                 committed_at=now,
             )
+
+    def mark_utterance_cancelled(self, utterance_id: int) -> None:
+        """Scratch-my-words: the in-progress card ends as 'cancelled by
+        you' - same wording as a recall, it IS the same user intent."""
+        with self._lock:
+            self._add_event_locked("cancelled", f"utterance {utterance_id} scratched")
+            self._update_utterance_locked(utterance_id, status="cancelled by you")
 
     def cancel_transcript(self, utterance_id: int) -> bool:
         """Drop a queued transcript before it reaches Claude.

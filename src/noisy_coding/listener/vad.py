@@ -77,6 +77,16 @@ class UtteranceSegmenter:
         """Force the utterance in progress to close on the next frame."""
         self._close_requested = True
 
+    def discard(self) -> bool:
+        """Scratch the utterance in progress: drop its audio, deliver
+        nothing. The user's 'forget what I just said' - any mode. Returns
+        whether something was actually discarded."""
+        if not self.is_recording:
+            return False
+        self._recording = []
+        self._close_requested = False
+        return True
+
     def flush(self) -> np.ndarray | None:
         """Close the utterance in progress RIGHT NOW and return its audio.
 
