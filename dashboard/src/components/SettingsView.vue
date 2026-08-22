@@ -8,6 +8,7 @@ const tab = ref<(typeof TABS)[number]>("AUDIO");
 
 // Mirrors KEYCODES in listener/hotkey.py - keys that never type characters.
 const PTT_KEYS = [
+  "escape",
   "F13", "F14", "F15", "F16", "F17", "F18", "F19",
   "F6", "F7", "F8", "right_cmd", "right_option", "right_ctrl",
 ];

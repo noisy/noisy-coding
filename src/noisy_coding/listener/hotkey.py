@@ -28,6 +28,9 @@ KEYCODES: dict[str, int] = {
     "F17": 64, "F18": 79, "F19": 80,
     "F6": 97, "F7": 98, "F8": 100,
     "right_cmd": 54, "right_option": 61, "right_ctrl": 62,
+    # escape types nothing, and scratch is a no-op unless recording - so a
+    # global Escape binding is side-effect-free in other apps.
+    "escape": 53,
 }
 # Modifier keys never emit keyDown/keyUp - only flagsChanged.
 _MODIFIER_KEYS = {"right_cmd", "right_option", "right_ctrl"}
