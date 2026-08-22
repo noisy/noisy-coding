@@ -347,8 +347,12 @@ def run(config: VadConfig | None = None) -> None:
             at = state.shutdown_at
             if not at or _time.time() < at:
                 continue
-            if state.recording:
-                continue  # the user is mid-sentence; check again shortly
+            if state.recording or state.claude_speaking:
+                # Mid-sentence speech is safe in BOTH directions: the
+                # user's recording finishes, and Claude's clip on the
+                # speakers plays out (a killed clip would resurrect as a
+                # duplicate via the MCP retry).
+                continue
             _log("[shutdown] graceful exit (requested via /shutdown)")
             _save_history(state)
             os._exit(0)
