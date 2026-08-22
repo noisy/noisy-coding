@@ -42,6 +42,16 @@ const portrait = computed(() => {
 });
 const bars = [42, 78, 55, 96, 63, 84, 47];
 
+/* A wide invisible "grab zone" along the right edge: the hairline thumb
+ * grows to full size when the pointer is within GRAB_ZONE_PX of the edge,
+ * not just on the 6px bar itself (too thin to target). */
+const GRAB_ZONE_PX = 44;
+const nearScroll = ref(false);
+function trackPointer(e: MouseEvent): void {
+  const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  nearScroll.value = box.right - e.clientX <= GRAB_ZONE_PX;
+}
+
 const scroller = ref<HTMLElement | null>(null);
 async function stickToBottom(): Promise<void> {
   await nextTick();
@@ -52,7 +62,7 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
 </script>
 
 <template>
-  <div class="companion">
+  <div class="companion" @mousemove="trackPointer" @mouseleave="nearScroll = false">
     <!-- Left rail: the user's indicator. Lights up while they talk. -->
     <div class="rail left" :class="{ active: mode === 'user' }">
       <svg viewBox="0 0 100 100" class="hex">
@@ -67,7 +77,7 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
     </div>
 
     <!-- The thread: pixel-clamped, scrollable, pinned to the newest. -->
-    <div ref="scroller" class="thread" :style="{ maxHeight: maxHeight + 'px' }">
+    <div ref="scroller" class="thread" :class="{ nearscroll: nearScroll }" :style="{ maxHeight: maxHeight + 'px' }">
       <transition-group name="arrive" tag="div" class="msgs">
         <Bubble
           v-for="(m, i) in feed"
@@ -163,7 +173,7 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   border-left: 4.5px solid transparent;
   border-radius: 3px;
 }
-.thread::-webkit-scrollbar-thumb:hover,
+.thread.nearscroll::-webkit-scrollbar-thumb,
 .thread::-webkit-scrollbar-thumb:active {
   border-left-width: 0;
   background: rgba(63, 216, 255, 0.5);
