@@ -264,6 +264,15 @@ const pausePlayback = async () => {
     /* daemon unreachable - the tab side already did what it could */
   }
 };
+// A new clip means the pause belonged to the previous one - reset, or the
+// playing bubble would show a resume icon for audio that is running.
+watch(
+  () => status.value?.playing_utterance_id ?? 0,
+  () => {
+    daemonPaused.value = false;
+  },
+);
+
 const skipPlayback = () => {
   browserAudio.skip();
   daemonPaused.value = false;
@@ -331,6 +340,9 @@ async function pickMic(name: string) {
     await setSettings({ input_device: "" }).catch(swallow);
   }
 }
+const pickPttKey = (mode: "hold" | "toggle", key: string) =>
+  setSettings(mode === "hold" ? { ptt_hold_key: key } : { ptt_toggle_key: key }).catch(swallow);
+
 async function pickOutput(value: string) {
   if (value !== "browser") {
     await setSettings({ output_device: "system" }).catch(swallow);
@@ -577,11 +589,14 @@ const LANGUAGES: Record<string, string> = {
             :selected-device="status?.input_device ?? ''"
             :output-device="status?.output_device ?? 'system'"
             :cue-prefs="cuePrefs"
+            :ptt-hold-key="status?.ptt_hold_key ?? ''"
+            :ptt-toggle-key="status?.ptt_toggle_key ?? ''"
             :checks="visibleChecks"
             :checks-running="checksRunning"
             @save="saveKey"
             @pick-device="pickMic"
             @pick-output="pickOutput"
+            @pick-ptt-key="pickPttKey"
             @refresh-devices="loadDevices"
             @toggle-cue="setCue"
             @run-checks="runChecks"

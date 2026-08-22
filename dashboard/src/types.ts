@@ -24,6 +24,8 @@ export interface DaemonStatus {
   smart_turn: number;
   smart_turn_mode: "soft" | "hard";
   detection_mode: "auto" | "ptt";
+  ptt_hold_key?: string;
+  ptt_toggle_key?: string;
   ptt_held: boolean;
   input_device: string;
   /** Where Claude's voice plays: system speakers or the browser tab. */
@@ -97,6 +99,8 @@ export interface SettingsPatch {
   smart_turn?: number;
   smart_turn_mode?: "soft" | "hard";
   detection_mode?: "auto" | "ptt";
+  ptt_hold_key?: string;
+  ptt_toggle_key?: string;
   input_device?: string;
   output_device?: "system" | "browser";
   language?: string;

@@ -123,6 +123,9 @@ class ListenerState:
         self._diagnostic_checks: dict | None = None  # live xAI check results
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
+        # Global PTT hotkeys (#25): key NAMES from hotkey.KEYCODES, "" = off.
+        self._ptt_hold_key = ""
+        self._ptt_toggle_key = ""
         self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
         self._ptt_last_hold = float("-inf")  # monotonic time of last lease renewal
         self._language = ""  # "" = auto-detect
@@ -131,6 +134,11 @@ class ListenerState:
         # key "" holds the character used in single-agent mode (no agents
         # registered) and as the template for a newly seen agent.
         self._characters: dict[str, dict] = {"": self._default_character()}
+        # Voice CLAIMS for named speakers: {speaker_name: voice}. A claim is
+        # exclusive - two speakers sharing one voice are indistinguishable by
+        # ear, which is the whole point of handing them different ones.
+        self._voice_claims: dict[str, str] = {}
+        self._voice_claims_dirty = False
 
     @staticmethod
     def _default_character() -> dict:
@@ -168,6 +176,92 @@ class ListenerState:
     def all_characters(self) -> dict:
         with self._lock:
             return {k: dict(v) for k, v in self._characters.items()}
+
+    # --- voice claims ----------------------------------------------------
+    #
+    # A named speaker (subagent persona, chat viewer) must keep ONE voice for
+    # its whole life, and no two speakers may share one. Hashing the name
+    # alone gives the first property but not the second: over a pool of N
+    # voices, two of ~sqrt(N) speakers collide about half the time. So the
+    # hash only picks a STARTING POINT and the claim ledger decides.
+
+    def _taken_voices(self) -> set[str]:
+        """Voices that are spoken for - claimed, or in use by a LIVE agent.
+
+        Liveness matters: character buckets outlive the sessions that made
+        them, and a session that ended months ago must not go on denying its
+        voice to someone here now. Only claims are permanent; an agent holds
+        a voice for exactly as long as it is around to speak with it. The
+        shared "" bucket always counts - that is the voice in use right now.
+        """
+        now = time.time()
+        live = {""} | {
+            name
+            for name, seen in self._agents.items()
+            if now - seen <= AGENT_OFFLINE_AFTER_SECONDS
+        }
+        taken = set(self._voice_claims.values())
+        taken.update(
+            char.get("voice", "")
+            for name, char in self._characters.items()
+            if name in live
+        )
+        return taken
+
+    def take_voice_claims_dirty(self) -> bool:
+        """True once after the ledger changes - lets the caller persist it."""
+        with self._lock:
+            dirty, self._voice_claims_dirty = self._voice_claims_dirty, False
+            return dirty
+
+    def voice_claims(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self._voice_claims)
+
+    def load_voice_claims(self, claims: dict) -> None:
+        """Restore claims from disk, keeping the ledger self-consistent."""
+        with self._lock:
+            seen: set[str] = set()
+            for name, voice in claims.items():
+                if isinstance(voice, str) and voice.isalpha() and voice not in seen:
+                    self._voice_claims[str(name)] = voice.lower()
+                    seen.add(voice.lower())
+
+    def claim_voice(self, name: str, pool: tuple[str, ...], hash_pick) -> str:
+        """The voice for `name`, claiming a free one on first sight.
+
+        Stable: a name already in the ledger always gets the same answer.
+        Exclusive while the pool holds out; once every voice is claimed the
+        ledger stops being able to help and we fall back to the plain hash,
+        because a duplicate voice still beats no voice at all.
+        """
+        with self._lock:
+            claimed = self._voice_claims.get(name)
+            if claimed:
+                return claimed
+            free = [v for v in pool if v not in self._taken_voices()]
+            voice = hash_pick(name, tuple(free)) if free else hash_pick(name, pool)
+            self._voice_claims[name] = voice
+            self._voice_claims_dirty = True
+            return voice
+
+    def set_voice_claim(self, name: str, voice: str, pool: tuple[str, ...]) -> str:
+        """Move `name` onto `voice` by request. Returns the outcome.
+
+        "ok" | "unknown" (not a voice we can hand out) | "taken" (someone
+        else holds it - first come, first served, no stealing).
+        """
+        voice = str(voice).strip().lower()
+        with self._lock:
+            if voice not in pool:
+                return "unknown"
+            if self._voice_claims.get(name) == voice:
+                return "ok"
+            if voice in self._taken_voices():
+                return "taken"
+            self._voice_claims[name] = voice
+            self._voice_claims_dirty = True
+            return "ok"
 
     @property
     def mode(self) -> str:
@@ -328,6 +422,24 @@ class ListenerState:
     def smart_turn_mode(self) -> str:
         with self._lock:
             return self._smart_turn_mode
+
+    @property
+    def ptt_hold_key(self) -> str:
+        with self._lock:
+            return self._ptt_hold_key
+
+    @property
+    def ptt_toggle_key(self) -> str:
+        with self._lock:
+            return self._ptt_toggle_key
+
+    def set_ptt_keys(self, hold: str | None, toggle: str | None) -> tuple[str, str]:
+        with self._lock:
+            if hold is not None:
+                self._ptt_hold_key = hold
+            if toggle is not None:
+                self._ptt_toggle_key = toggle
+            return self._ptt_hold_key, self._ptt_toggle_key
 
     def set_smart_turn_mode(self, mode: str) -> str:
         with self._lock:

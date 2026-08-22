@@ -46,15 +46,26 @@ _latest_check_lock = threading.Lock()
 # never the parent's current voice), so a given subagent keeps one voice and
 # one portrait for its whole life.
 SUBAGENT_VOICE_POOL = (
-    "ara", "carina", "eve", "iris", "luna", "celeste",
+    "ara", "carina", "eve", "iris", "luna", "celeste", "ursa", "liora", "aurora",
     "altair", "atlas", "kepler", "rex", "cosmo", "helios", "leo", "sirius",
+    "castor", "helix", "lumen", "lux", "naksh", "orion", "perseus", "rigel",
+    "sal", "zagan", "zenith",
 )
 
 
-def _subagent_voice(session_id: str, parent_voice: str) -> str:
-    pool = [v for v in SUBAGENT_VOICE_POOL if v != parent_voice]
+def _hash_pick(seed: str, pool: tuple[str, ...]) -> str:
     # crc32, not hash(): stable across daemon restarts (PYTHONHASHSEED).
-    return pool[zlib.crc32(session_id.encode()) % len(pool)]
+    return pool[zlib.crc32(seed.encode()) % len(pool)]
+
+
+def _subagent_voice(state: ListenerState, session_id: str, parent_voice: str) -> str:
+    """A stable, unshared voice for a named speaker.
+
+    The hash alone only guarantees stability; the claim ledger in state adds
+    exclusivity, so two speakers never end up indistinguishable by ear.
+    """
+    pool = tuple(v for v in SUBAGENT_VOICE_POOL if v != parent_voice)
+    return state.claim_voice(session_id, pool, _hash_pick)
 
 
 def _resolve_speaker(
@@ -75,7 +86,7 @@ def _resolve_speaker(
         fallback = str(body.get("agent_fallback") or "").strip() or None
         if fallback and fallback in state.agents:
             seed = name or agent
-            voice = _subagent_voice(seed, state.character(fallback).get("voice", ""))
+            voice = _subagent_voice(state, seed, state.character(fallback).get("voice", ""))
             return fallback, name or voice, voice
         # Neither id is known: register a visible tab instead of storing
         # speech no tab will ever show — bugs should be loud (#22). The
@@ -87,7 +98,7 @@ def _resolve_speaker(
         state.add_event("agent", f"unknown speaker '{agent[:8]}…' auto-registered")
         return agent, name, None
     if name:
-        voice = _subagent_voice(name, state.character(agent).get("voice", ""))
+        voice = _subagent_voice(state, name, state.character(agent).get("voice", ""))
         return agent, name, voice
     return agent, None, None
 
@@ -145,12 +156,13 @@ BUILD_HINT_HTML = """<!doctype html><meta charset="utf-8">
 </body>"""
 PORT_ENV_VAR = "NOISY_CODING_LISTENER_PORT"
 CHARACTER_FILE = CONFIG_DIR / "character.json"
+VOICE_CLAIMS_FILE = CONFIG_DIR / "voice-claims.json"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
 
 # Grok voice genders (matches the dashboard's voice list). The agent's
 # Polish grammar must agree with the voice it speaks with.
-FEMALE_VOICES = {"ara", "carina", "celeste", "eve", "iris", "luna", "ursa"}
+FEMALE_VOICES = {"ara", "aurora", "carina", "celeste", "eve", "iris", "liora", "luna", "ursa"}
 
 
 def _voice_gender(voice: str) -> str:
@@ -210,6 +222,15 @@ def save_characters(state: ListenerState) -> None:
         pass
 
 
+def save_voice_claims(state: ListenerState) -> None:
+    """Persist the claim ledger - a voice a viewer earned outlives a restart."""
+    try:
+        VOICE_CLAIMS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        VOICE_CLAIMS_FILE.write_text(json.dumps(state.voice_claims()))
+    except OSError:
+        pass
+
+
 INTRO_FLAG = CONFIG_DIR / "intro-done"
 
 
@@ -252,6 +273,8 @@ def save_settings(state: ListenerState) -> None:
                     "tts_mode": state.tts_mode,
                     "smart_turn_mode": state.smart_turn_mode,
                     "detection_mode": state.detection_mode,
+                    "ptt_hold_key": state.ptt_hold_key,
+                    "ptt_toggle_key": state.ptt_toggle_key,
                     "input_device": state.input_device,
                     "output_device": state.output_device,
                     "language": state.language,
@@ -366,6 +389,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "smart_turn": state.smart_turn,
                         "smart_turn_mode": state.smart_turn_mode,
                         "detection_mode": state.detection_mode,
+                        "ptt_hold_key": state.ptt_hold_key,
+                        "ptt_toggle_key": state.ptt_toggle_key,
                         "ptt_held": state.ptt_held,
                         "input_device": state.input_device,
                         "output_device": state.output_device,
@@ -495,8 +520,27 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # voice information.
                 body = self._read_json_body()
                 voice = str(body.get("voice_id", "")).strip().lower()
+                speaker = str(body.get("speaker") or "").strip()
                 if not voice.isalpha():
                     self._respond({"error": "voice_id must be a voice name"}, status=400)
+                elif speaker:
+                    # Moving a named speaker's voice, not the agent's own.
+                    # The ledger arbitrates: first come, first served.
+                    outcome = state.set_voice_claim(speaker, voice, SUBAGENT_VOICE_POOL)
+                    if outcome == "ok":
+                        save_voice_claims(state)
+                        state.add_event("voice", f"'{speaker}' now speaks as '{voice}'")
+                        self._respond({"voice": voice, "speaker": speaker})
+                    elif outcome == "taken":
+                        holder = next(
+                            (n for n, v in state.voice_claims().items() if v == voice), ""
+                        )
+                        self._respond(
+                            {"error": f"'{voice}' is already taken", "held_by": holder},
+                            status=409,
+                        )
+                    else:
+                        self._respond({"error": f"no such voice '{voice}'"}, status=400)
                 else:
                     agent = str(body["agent"]) if body.get("agent") else None
                     before_voice = state.character(agent)["voice"]
@@ -521,6 +565,20 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if body.get("tts_mode") in ("batch", "live"):
                     state.set_tts_mode(body["tts_mode"])
                     result["tts_mode"] = body["tts_mode"]
+                if "ptt_hold_key" in body or "ptt_toggle_key" in body:
+                    from noisy_coding.listener import hotkey as hotkey_mod
+
+                    valid = lambda v: v == "" or v in hotkey_mod.KEYCODES  # noqa: E731
+                    hold = body.get("ptt_hold_key")
+                    toggle = body.get("ptt_toggle_key")
+                    hold = hold if isinstance(hold, str) and valid(hold) else None
+                    toggle = toggle if isinstance(toggle, str) and valid(toggle) else None
+                    new_hold, new_toggle = state.set_ptt_keys(hold, toggle)
+                    result["ptt_hold_key"] = new_hold
+                    result["ptt_toggle_key"] = new_toggle
+                    listener = getattr(state, "hotkey_listener", None)
+                    if listener is not None:
+                        listener.configure(new_hold, new_toggle)
                 if body.get("smart_turn_mode") in ("soft", "hard"):
                     result["smart_turn_mode"] = state.set_smart_turn_mode(
                         body["smart_turn_mode"]
@@ -778,6 +836,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if live_bridge is not None:
                     live_bridge.stop_tab_playback()
             agent, speaker, voice_override = _resolve_speaker(state, body)
+            if state.take_voice_claims_dirty():
+                save_voice_claims(state)
             future = speech.submit(
                 state,
                 text,

@@ -16,6 +16,9 @@ dependencies = [
     "numpy==2.5.1",
     "sounddevice==0.5.5",
     "websockets==16.0",
+    # Global push-to-talk hotkey (#25): a CGEventTap needs the Quartz
+    # bindings - macOS only, the Docker/Linux daemon runs without it.
+    "pyobjc-framework-Quartz==12.1; sys_platform == 'darwin'",
 ]
 
 [project.scripts]

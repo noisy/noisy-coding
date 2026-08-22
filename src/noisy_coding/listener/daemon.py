@@ -22,6 +22,7 @@ import json
 
 from noisy_coding.listener.http_api import (
     CHARACTER_FILE,
+    VOICE_CLAIMS_FILE,
     DEFAULT_PORT,
     PORT_ENV_VAR,
     SETTINGS_FILE,
@@ -284,6 +285,12 @@ def run(config: VadConfig | None = None) -> None:
             state.set_character(saved_chars)
     except (OSError, ValueError, AttributeError):
         pass
+    # A voice a speaker earned is theirs across restarts too - the ledger is
+    # only meaningful if it outlives the process that wrote it.
+    try:
+        state.load_voice_claims(json.loads(VOICE_CLAIMS_FILE.read_text()))
+    except (OSError, ValueError, AttributeError):
+        pass
     # Saved tuning (pause-split, smart_turn, mode) survives restarts and
     # overrides the env default for mode, since it reflects newer intent.
     try:
@@ -302,6 +309,9 @@ def run(config: VadConfig | None = None) -> None:
             state.set_smart_turn_mode(saved["smart_turn_mode"])
         if saved.get("detection_mode") in ("auto", "ptt"):
             state.set_detection_mode(saved["detection_mode"])
+        state.set_ptt_keys(
+            str(saved.get("ptt_hold_key", "")), str(saved.get("ptt_toggle_key", ""))
+        )
         if "input_device" in saved:
             state.set_input_device(str(saved["input_device"]))
         if saved.get("output_device") in ("system", "browser"):
@@ -317,6 +327,13 @@ def run(config: VadConfig | None = None) -> None:
         pass
     _load_history(state)
     threading.Thread(target=_history_saver, args=(state,), daemon=True).start()
+    # Global PTT hotkeys (#25): armed only when a key is configured. The
+    # listener hangs off the state so the /settings endpoint can rearm it.
+    from noisy_coding.listener.hotkey import HotkeyListener
+
+    hotkeys = HotkeyListener(state, _log)
+    state.hotkey_listener = hotkeys
+    hotkeys.configure(state.ptt_hold_key, state.ptt_toggle_key)
     server = start_http_api(state, port)
     if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
         threading.Thread(target=_poll_credits, args=(state,), daemon=True).start()

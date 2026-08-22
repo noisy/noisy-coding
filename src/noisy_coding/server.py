@@ -171,7 +171,7 @@ async def announce(text: str) -> str:
 
 
 @mcp.tool()
-async def change_voice(voice_id: str) -> str:
+async def change_voice(voice_id: str, speaker: str = "") -> str:
     """Deliberately switch this agent's speaking voice from now on.
 
     Updates your character in the listener daemon: the dashboard shows the
@@ -179,9 +179,18 @@ async def change_voice(voice_id: str) -> str:
     across restarts). Use list_voices to see the options. Speak itself
     carries no voice information — this call is the only way to change how
     you sound, so use it consciously (e.g. when the user asks for it).
+
+    Args:
+        voice_id: Which voice to switch to.
+        speaker: Move a named SPEAKER's voice instead of your own — the
+            personas you address with speak(speaker=...). A voice already
+            held by someone else is refused rather than duplicated, so two
+            speakers never become indistinguishable by ear.
     """
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
     body: dict = {"voice_id": voice_id}
+    if speaker.strip():
+        body["speaker"] = speaker.strip()
     agent = _agent_name()
     if agent:
         body["agent"] = agent

@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import { ref } from "vue";
+
+// Mirrors KEYCODES in listener/hotkey.py - keys that never type characters.
+const PTT_KEYS = [
+  "F13", "F14", "F15", "F16", "F17", "F18", "F19",
+  "F6", "F7", "F8", "right_cmd", "right_option", "right_ctrl",
+];
 import type { DiagnosticChecks } from "../api/client";
 import type { InputDevice } from "../types";
 import { CUE_LABELS, type CuePrefs } from "../composables/useAudioCues";
@@ -14,11 +20,14 @@ withDefaults(
     selectedDevice?: string;
     outputDevice?: string;
     cuePrefs?: CuePrefs | null;
+    pttHoldKey?: string;
+    pttToggleKey?: string;
     checks?: DiagnosticChecks | null;
     checksRunning?: boolean;
   }>(),
   {
     devices: () => [], selectedDevice: "", outputDevice: "system", cuePrefs: null,
+    pttHoldKey: "", pttToggleKey: "",
     checks: null, checksRunning: false,
   },
 );
@@ -26,6 +35,7 @@ const emit = defineEmits<{
   save: [key: string];
   pickDevice: [name: string];
   pickOutput: [value: string];
+  pickPttKey: [mode: "hold" | "toggle", key: string];
   refreshDevices: [];
   toggleCue: [name: CueName, value: boolean];
   runChecks: [];
@@ -91,6 +101,40 @@ function submit() {
           Where Claude's voice plays. THIS BROWSER TAB routes speech through
           this page — pair it with the tab microphone and the browser's echo
           cancellation lets you interrupt Claude mid-sentence.
+        </p>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="keyrow">
+        <span class="lbl">HOLD-TO-TALK KEY</span>
+        <select
+          class="keyinput"
+          :value="pttHoldKey"
+          @change="emit('pickPttKey', 'hold', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">OFF</option>
+          <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
+        </select>
+      </div>
+      <div class="keyrow">
+        <span class="lbl">TOGGLE-TO-TALK KEY</span>
+        <select
+          class="keyinput"
+          :value="pttToggleKey"
+          @change="emit('pickPttKey', 'toggle', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">OFF</option>
+          <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
+        </select>
+      </div>
+      <div class="text">
+        <p>
+          System-wide push-to-talk — works no matter which app has focus.
+          HOLD opens the mic while the key is down; TOGGLE opens on one press
+          and closes on the next. Needs the mic mode set to PUSH TO TALK and,
+          on first use, the Accessibility permission for the daemon's
+          terminal (macOS asks once).
         </p>
       </div>
     </section>
