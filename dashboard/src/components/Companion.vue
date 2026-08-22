@@ -116,7 +116,7 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
 .rail { flex: none; opacity: 0.35; transition: opacity 0.3s ease; }
 .rail.active { opacity: 1; }
 /* the head sits ON TOP of the thread, clear of the edge scrollbar */
-.rail.right { position: absolute; right: 14px; bottom: 16px; z-index: 1; }
+.rail.right { position: absolute; right: 22px; bottom: 16px; z-index: 1; }
 
 .hex { width: 44px; height: 44px; color: var(--amber); display: block; }
 .rail.active .hex { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--amber) 70%, transparent)); }
@@ -144,20 +144,22 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px;
   /* bubbles keep clear of the floating head and the edge scrollbar */
-  padding-right: 62px;
+  padding-right: 70px;
   /* scrollbar in our idiom: a hair of cyan, only when you look for it */
   scrollbar-width: thin;
   scrollbar-color: rgba(63, 216, 255, 0.25) transparent;
   /* older messages melt away at the top edge */
   mask-image: linear-gradient(to bottom, transparent, black 22px);
 }
-.thread::-webkit-scrollbar { width: 3px; }
+/* hairline at rest, widens under the pointer */
+.thread::-webkit-scrollbar { width: 1.5px; }
+.thread:hover::-webkit-scrollbar { width: 5px; }
 .thread::-webkit-scrollbar-track { background: transparent; }
 .thread::-webkit-scrollbar-thumb {
-  background: rgba(63, 216, 255, 0.18);
-  border-radius: 2px;
+  background: rgba(63, 216, 255, 0.15);
+  border-radius: 3px;
 }
-.thread:hover::-webkit-scrollbar-thumb { background: rgba(63, 216, 255, 0.4); }
+.thread:hover::-webkit-scrollbar-thumb { background: rgba(63, 216, 255, 0.45); }
 .msgs { display: flex; flex-direction: column; gap: 12px; }
 .msgs .older { opacity: 0.55; }
 .msgs :deep(.msg.side-right), .thread :deep(.msg.side-right) { align-self: flex-end; }
