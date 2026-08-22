@@ -151,15 +151,23 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   /* older messages melt away at the top edge */
   mask-image: linear-gradient(to bottom, transparent, black 22px);
 }
-/* hairline at rest, widens under the pointer */
-.thread::-webkit-scrollbar { width: 1.5px; }
-.thread:hover::-webkit-scrollbar { width: 5px; }
+/* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
+   hairline (transparent border + padding-box clip) and fills the gutter
+   only when the pointer is actually on the scrollbar - grab-ready, but
+   invisible-ish for the scroll-wheel case. */
+.thread::-webkit-scrollbar { width: 6px; }
 .thread::-webkit-scrollbar-track { background: transparent; }
 .thread::-webkit-scrollbar-thumb {
-  background: rgba(63, 216, 255, 0.15);
+  background: rgba(63, 216, 255, 0.2);
+  background-clip: padding-box;
+  border-left: 4.5px solid transparent;
   border-radius: 3px;
 }
-.thread:hover::-webkit-scrollbar-thumb { background: rgba(63, 216, 255, 0.45); }
+.thread::-webkit-scrollbar-thumb:hover,
+.thread::-webkit-scrollbar-thumb:active {
+  border-left-width: 0;
+  background: rgba(63, 216, 255, 0.5);
+}
 .msgs { display: flex; flex-direction: column; gap: 12px; }
 .msgs .older { opacity: 0.55; }
 .msgs :deep(.msg.side-right), .thread :deep(.msg.side-right) { align-self: flex-end; }
