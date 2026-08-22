@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -107,6 +107,10 @@ const toggleVoiceMute = () => setVoiceMuted(!status.value?.voice_muted).catch(sw
 // BOTH the global voice mute and this conversation's own mute — then
 // queue every parked message in arrival order; the playback queue
 // serializes them, each stoppable with its ⏹.
+// Skip-all: the mirror of catch-up - settle the parked queue unplayed.
+// One daemon call; the next status poll empties the counter.
+const skipAll = () => skipUnheard(viewedAgent.value ?? undefined).catch(swallow);
+
 async function catchUp() {
   await setVoiceMuted(false).catch(swallow);
   const agent = viewedAgent.value;
@@ -612,9 +616,17 @@ const LANGUAGES: Record<string, string> = {
             <div class="convo-main">
               <!-- Catch-up spans the bubbles column only, like telemetry —
                    never the rail. -->
-              <button v-if="unheard.length" class="ctl catchup" @click="catchUp">
-                ▶ CATCH UP ({{ unheard.length }} UNHEARD)
-              </button>
+              <!-- Catch-up stays the loud green invitation; skip-all is the
+                   quiet grey escape hatch beside it (it throws words away,
+                   so it earns the boring color and the smaller hitbox). -->
+              <div v-if="unheard.length" class="catchup-row">
+                <button class="ctl catchup" @click="catchUp">
+                  ▶ CATCH UP ({{ unheard.length }} UNHEARD)
+                </button>
+                <button class="ctl skipall" title="Dismiss all unheard messages without playing them" @click="skipAll">
+                  ⏭ SKIP ALL
+                </button>
+              </div>
               <ConversationLog
                 :utterances="utterances"
                 :playing-id="status?.playing_utterance_id ?? 0"
@@ -946,6 +958,22 @@ footer { flex: none; }
 
 /* Must be unmissable when you come back to the desk: green (nothing else
    in the HUD is a green button), tall, glowing and gently pulsing. */
+.catchup-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.catchup-row .ctl.catchup { flex: 4; margin-bottom: 0; }
+.ctl.skipall {
+  flex: 1;
+  min-height: 44px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+  border-color: rgba(255, 180, 84, 0.5);
+  background: rgba(255, 180, 84, 0.08);
+}
+.ctl.skipall:hover {
+  color: var(--red);
+  border-color: rgba(255, 95, 107, 0.6);
+  text-shadow: 0 0 6px rgba(255, 95, 107, 0.5);
+}
 .ctl.catchup {
   width: 100%;
   margin-bottom: 12px;

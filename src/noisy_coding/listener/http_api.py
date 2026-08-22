@@ -549,6 +549,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"speaking": speaking})
             elif self.path == "/speak":
                 self._handle_speak()
+            elif self.path == "/skip-unheard":
+                body = self._read_json_body()
+                agent = str(body.get("agent") or "") or None
+                count = state.skip_unheard(agent)
+                if count:
+                    state.add_event("agent", f"skipped {count} unheard message(s)")
+                self._respond({"skipped": count})
+            elif self.path == "/playback-pause":
+                # Transport pause: freezes the system player in place; the
+                # tab player (browser output) pauses itself client-side.
+                self._respond({"paused": playback.toggle_pause()})
             elif self.path == "/interrupt":
                 # Stop whatever is on the speakers; queued speech continues.
                 playback.stop_all_players()

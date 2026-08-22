@@ -34,6 +34,7 @@ const CLAUDE_CHIPS: Record<ClaudeState, StatusChip> = {
   playing: { kind: "spoken", label: "▶ PLAYING" },
   played: { kind: "done", label: "✓ PLAYED" },
   unheard: { kind: "off", label: "◌ UNHEARD" },
+  skipped: { kind: "off", label: "⏭ SKIPPED" },
   error: { kind: "fail", label: "✕ ERROR" },
 };
 

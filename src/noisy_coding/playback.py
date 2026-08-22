@@ -1,6 +1,7 @@
 """Play synthesized audio through the local speakers."""
 
 import asyncio
+import signal
 import shutil
 import sys
 import tempfile
@@ -30,10 +31,40 @@ def unregister_player(process: asyncio.subprocess.Process) -> None:
     _active_players.discard(process)
 
 
-def stop_all_players() -> None:
-    """Terminate every playing audio process (used by interrupt=True)."""
+# Transport pause (dashboard ⏸): the player process is frozen in place
+# with SIGSTOP, so resume continues the very sample it stopped on. State
+# is daemon-global - there is at most one thing on the speakers anyway.
+_paused = False
+
+
+def toggle_pause() -> bool:
+    """Freeze/unfreeze the current player; returns the new paused state.
+
+    No active player: reports unpaused - nothing to freeze, and a stale
+    "paused" flag would wedge the NEXT clip's UI.
+    """
+    global _paused
+    want_paused = not _paused
+    signalled = False
     for process in list(_active_players):
         try:
+            process.send_signal(signal.SIGSTOP if want_paused else signal.SIGCONT)
+            signalled = True
+        except ProcessLookupError:
+            _active_players.discard(process)
+    _paused = want_paused if signalled else False
+    return _paused
+
+
+def stop_all_players() -> None:
+    """Terminate every playing audio process (used by interrupt=True)."""
+    global _paused
+    _paused = False
+    for process in list(_active_players):
+        try:
+            # A SIGSTOPped process still dies to SIGKILL, but wake it first
+            # so its communicate() unblocks promptly.
+            process.send_signal(signal.SIGCONT)
             process.kill()
         except ProcessLookupError:
             pass

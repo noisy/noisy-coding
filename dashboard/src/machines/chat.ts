@@ -36,6 +36,7 @@ export const CLAUDE_EVENTS = [
   "PLAY", // first audio reached the speakers
   "PLAYED", // playback finished — or the user hit stop
   "UNHEARD", // parked: voice muted, or daemon restarted mid-flight
+  "SKIP", // skip-all: the user dismissed the parked queue unplayed
   "TTS_ERROR",
 ] as const;
 
@@ -61,6 +62,7 @@ export type ClaudeState =
   | "playing"
   | "played"
   | "unheard"
+  | "skipped"
   | "error";
 
 export const userUtteranceMachine = createMachine({
@@ -139,6 +141,11 @@ export const claudeUtteranceMachine = createMachine({
       on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", UNHEARD: "unheard" },
     },
     unheard: {
+      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", SKIP: "skipped" },
+    },
+    // Skip-all: parked words dismissed unplayed. Terminal like played,
+    // but replay (SYNTHESIZE) still works - the text is still worth hearing.
+    skipped: {
       on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding" },
     },
     // Not terminal: speech failures are frequently transient (dropped
@@ -176,6 +183,7 @@ const CLAUDE_STATUS_PREFIXES: Array<[string, ClaudeState]> = [
   ["playing", "playing"],
   ["played", "played"],
   ["unheard", "unheard"],
+  ["skipped", "skipped"],
   ["error", "error"],
 ];
 
@@ -208,6 +216,7 @@ const CLAUDE_CANONICAL_STATUS: Record<ClaudeState, string> = {
   playing: "playing through speakers…",
   played: "played",
   unheard: "unheard — voice muted",
+  skipped: "skipped — dismissed by you",
   error: "error",
 };
 

@@ -910,6 +910,31 @@ class ListenerState:
             self._playing_utterance_id = 0
             return utterance_id
 
+    def skip_unheard(self, agent: str | None = None) -> int:
+        """Skip-all: settle every parked UNHEARD card without playing it.
+
+        The user's explicit "I don't want to hear these" - the words stay
+        readable in the log, but the catch-up counter empties. Only the
+        given conversation (default: the active one) is touched. Returns
+        how many cards were settled.
+        """
+        with self._lock:
+            target = agent or self._active_agent
+            skipped = 0
+            for utterance in self._utterances:
+                if utterance.get("role") not in ("claude", "daemon"):
+                    continue
+                owner = utterance.get("agent") or self._active_agent
+                if owner != target:
+                    continue
+                if "unheard" in str(utterance.get("status", "")):
+                    utterance["status"] = "skipped — dismissed by you"
+                    utterance["updated_at"] = time.time()
+                    skipped += 1
+            # History persistence is the daemon's periodic save - the
+            # status flip above is picked up on its next tick.
+            return skipped
+
     def utterance_is_unheard(self, utterance_id: int) -> bool:
         with self._lock:
             for utterance in self._utterances:

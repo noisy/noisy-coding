@@ -141,6 +141,12 @@ export function interruptPlayback(): Promise<void> {
   return post("/interrupt", {});
 }
 
+/** Skip-all: settle every parked UNHEARD card of the conversation without
+ * playing it. Returns how many cards were dismissed. */
+export function skipUnheard(agent?: string): Promise<{ skipped: number }> {
+  return postJson<{ skipped: number }>("/skip-unheard", agent ? { agent } : {});
+}
+
 /** Recall a transcript that still waits in the queue (AWAITING CLAUDE). */
 export function cancelTranscript(utteranceId: number): Promise<void> {
   return post("/cancel", { utterance_id: utteranceId });
