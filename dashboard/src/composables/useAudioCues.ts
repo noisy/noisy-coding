@@ -4,13 +4,15 @@
 import { computed, ref, watch, type Ref } from "vue";
 import type { DaemonStatus, Utterance } from "../types";
 import { detectCues, snapshotUtterances, type CueName } from "./cueEvents";
-import { playCue } from "./cueSounds";
+import { playCue, startRecordingHum, stopRecordingHum } from "./cueSounds";
 
 const STORAGE_KEY = "noisy-coding.audio-cues";
 
 export interface CuePrefs {
   enabled: boolean;
   cues: Record<CueName, boolean>;
+  /** Barely-audible drone while the mic is capturing (all modes). */
+  recordingHum?: boolean;
 }
 
 export const CUE_LABELS: Record<CueName, string> = {
@@ -25,6 +27,7 @@ function defaultPrefs(): CuePrefs {
   return {
     enabled: true, // on by default — the cues carry real state changes
     cues: { committed: true, delivered: true, claude: true, unheard: true, error: true },
+    recordingHum: true,
   };
 }
 
@@ -82,6 +85,13 @@ export function useAudioCues(
   watch(errorCount, (next, before) => {
     if (next > before) play("error");
   });
+
+  // The hum tracks the daemon's recording flag - one source of truth for
+  // every mode (auto VAD, hold, toggle). Stops the moment capture ends.
+  watch(
+    () => (status.value?.recording ?? false) && prefs.value.enabled && (prefs.value.recordingHum ?? true),
+    (on) => (on ? startRecordingHum() : stopRecordingHum()),
+  );
 
   const enabled = computed({
     get: () => prefs.value.enabled,

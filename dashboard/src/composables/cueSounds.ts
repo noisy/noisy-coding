@@ -56,3 +56,50 @@ export function playCue(cue: CueName): void {
     oscillator.stop(start + tone.at + tone.duration + 0.02);
   }
 }
+
+/* --- recording hum ------------------------------------------------------
+The "mic is live" indicator you can hear: a barely-there two-note drone
+(a soft fifth, slowly breathing) that starts when recording starts and
+stops the instant it ends. Continuous by design - a glance-free answer to
+"is it capturing?" in every mode: hold, toggle and auto. */
+
+let hum: { oscillators: OscillatorNode[]; gain: GainNode; lfo: OscillatorNode } | null = null;
+
+export function startRecordingHum(): void {
+  const ctx = audioContext();
+  if (!ctx || hum) return;
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0, ctx.currentTime);
+  master.gain.linearRampToValueAtTime(0.012, ctx.currentTime + 0.25); // whisper
+  // A soft fifth (A3 + E4), slightly detuned so it shimmers instead of
+  // beeping; a slow LFO makes it "breathe" so the ear doesn't tune it out
+  // entirely - present, never annoying.
+  const oscillators = [220, 330.5].map((freq) => {
+    const oscillator = ctx.createOscillator();
+    oscillator.type = "sine";
+    oscillator.frequency.value = freq;
+    oscillator.connect(master);
+    oscillator.start();
+    return oscillator;
+  });
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.value = 0.35;
+  lfoGain.gain.value = 0.004;
+  lfo.connect(lfoGain).connect(master.gain);
+  lfo.start();
+  master.connect(ctx.destination);
+  hum = { oscillators, gain: master, lfo };
+}
+
+export function stopRecordingHum(): void {
+  const ctx = audioContext();
+  if (!ctx || !hum) return;
+  const { oscillators, gain, lfo } = hum;
+  hum = null;
+  gain.gain.cancelScheduledValues(ctx.currentTime);
+  gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.12);
+  for (const oscillator of oscillators) oscillator.stop(ctx.currentTime + 0.15);
+  lfo.stop(ctx.currentTime + 0.15);
+}
