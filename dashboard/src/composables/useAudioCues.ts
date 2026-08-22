@@ -86,10 +86,18 @@ export function useAudioCues(
     if (next > before) play("error");
   });
 
-  // The hum tracks the daemon's recording flag - one source of truth for
-  // every mode (auto VAD, hold, toggle). Stops the moment capture ends.
+  // The hum means "the system can hear you", not "you are talking": in
+  // push-to-talk (hold or toggle) it starts the moment the lease opens,
+  // before any word is spoken; in auto mode arming and recording coincide,
+  // so it tracks the recording flag there. Muted always wins.
+  const micArmed = () => {
+    const s = status.value;
+    if (!s || s.muted) return false;
+    if (s.detection_mode === "ptt") return s.ptt_held || s.recording;
+    return s.recording;
+  };
   watch(
-    () => (status.value?.recording ?? false) && prefs.value.enabled && (prefs.value.recordingHum ?? true),
+    () => micArmed() && prefs.value.enabled && (prefs.value.recordingHum ?? true),
     (on) => (on ? startRecordingHum() : stopRecordingHum()),
   );
 
