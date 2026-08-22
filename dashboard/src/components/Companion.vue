@@ -145,9 +145,9 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   display: flex; flex-direction: column; gap: 12px;
   /* bubbles keep clear of the floating head and the edge scrollbar */
   padding-right: 70px;
-  /* scrollbar in our idiom: a hair of cyan, only when you look for it */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(63, 216, 255, 0.25) transparent;
+  /* NOTE: no scrollbar-width/scrollbar-color here - when set, Chrome
+     switches to native scrollbars and IGNORES the ::-webkit-scrollbar
+     hairline below. Webkit styles alone cover our Chrome-based use. */
   /* older messages melt away at the top edge */
   mask-image: linear-gradient(to bottom, transparent, black 22px);
 }
