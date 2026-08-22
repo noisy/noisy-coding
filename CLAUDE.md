@@ -32,3 +32,10 @@ step agents keep forgetting: **auto-generated release notes only list PRs
 and miss direct commits - always write real notes** (highlights for
 humans) and publish with `gh release edit vX.Y.Z --notes-file ... --draft=false`,
 then verify the GitHub release and the Docker image manifest.
+
+## Frontend changes
+
+New UI (a widget, banner, layout, any new look) is designed in Storybook
+FIRST - present several variants (3-5) as *.stories.ts and let Krzysztof
+pick before wiring anything into the app. Only trivially-derivative
+changes (same pattern as an existing element) may skip this.
