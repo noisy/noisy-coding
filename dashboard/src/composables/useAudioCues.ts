@@ -28,7 +28,9 @@ export const CUE_LABELS: Record<CueName, string> = {
 function defaultPrefs(): CuePrefs {
   return {
     enabled: true, // on by default — the cues carry real state changes
-    cues: { committed: true, delivered: true, claude: true, unheard: true, error: true },
+    // "claude" defaults OFF: the message announces itself by SPEAKING -
+    // a blip on top is redundant (muted arrivals have their own cue).
+    cues: { committed: true, delivered: true, claude: false, unheard: true, error: true },
     recordingHum: true,
     humNoise: "pink" as HumNoise,
     humVolume: HUM_DEFAULT_VOLUME,
