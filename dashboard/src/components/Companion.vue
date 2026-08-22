@@ -105,9 +105,9 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   background: rgba(5, 14, 24, 0.92);
   border: 1px solid rgba(63, 216, 255, 0.25);
   border-radius: 14px;
-  padding: 12px;
+  padding: 16px;
   font-family: var(--mono);
-  display: flex; gap: 10px; align-items: flex-end;
+  display: flex; gap: 14px; align-items: flex-end;
 }
 
 /* --- rails: always there, dim until their side holds the floor ---------- */
@@ -138,7 +138,9 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
 .thread {
   flex: 1; min-width: 0;
   overflow-y: auto;
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 12px;
+  /* breathing room between the bubbles and the scrollbar */
+  padding-right: 10px;
   /* scrollbar in our idiom: a hair of cyan, only when you look for it */
   scrollbar-width: thin;
   scrollbar-color: rgba(63, 216, 255, 0.25) transparent;
@@ -152,7 +154,7 @@ watch(() => [props.feed.length, props.liveText], stickToBottom, { immediate: tru
   border-radius: 2px;
 }
 .thread:hover::-webkit-scrollbar-thumb { background: rgba(63, 216, 255, 0.4); }
-.msgs { display: flex; flex-direction: column; gap: 6px; }
+.msgs { display: flex; flex-direction: column; gap: 12px; }
 .msgs .older { opacity: 0.55; }
 .msgs :deep(.msg.side-right), .thread :deep(.msg.side-right) { align-self: flex-end; }
 .msgs :deep(.msg.side-left), .thread :deep(.msg.side-left) { align-self: flex-start; }
