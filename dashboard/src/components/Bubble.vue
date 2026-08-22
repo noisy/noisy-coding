@@ -25,6 +25,9 @@ const props = withDefaults(
      * any named persona speaking through it (viewers, subagents) - a
      * clearly different surface so guests never read as Claude's words. */
     variant?: "agent" | "guest";
+    /** Companion mode (#28): text only - no header, no footer, tighter
+     * padding. The SAME component everywhere a message renders. */
+    compact?: boolean;
     /** Voice name — when it maps to a portrait in the avatars sprite, the
      * bubble grows a portrait column (same artwork as the voice picker). */
     voice?: string;
@@ -39,6 +42,7 @@ const props = withDefaults(
     playing: false,
     paused: false,
     variant: "agent",
+    compact: false,
   },
 );
 
@@ -54,7 +58,7 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
   <div class="msg" :class="[`side-${side}`, `accent-${accent}`, `variant-${variant}`, { withportrait: !!portrait }]">
     <span v-if="portrait" class="portrait" :style="portrait" aria-hidden="true" />
     <div class="mbody">
-    <div class="mhead">
+    <div v-if="!compact" class="mhead">
       <span class="who">{{ who }}</span>
       <span class="st" :class="statusKind">{{ statusLabel }}</span>
       <!-- Idle: one replay affordance. Playing: transport controls -
@@ -89,7 +93,7 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
       <span class="tm">{{ time }}</span>
     </div>
     <div class="txt" :class="{ pending }">{{ text }}<span v-if="live" class="caret" /></div>
-    <div class="mfoot">
+    <div v-if="!compact" class="mfoot">
       <span>{{ detail }}</span>
       <span class="cost">{{ cost }}</span>
     </div>
@@ -152,6 +156,8 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
   border-right: 2px solid var(--accent);
   background: linear-gradient(270deg, var(--accent-tint), rgba(5, 14, 24, 0.85) 40%);
 }
+.msg.compact { padding: 7px 11px; max-width: 100%; }
+.msg.compact .txt { font-size: 12px; }
 .mhead { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
 .who { font-size: 10px; letter-spacing: 0.26em; font-weight: 700; }
 .accent-amber .who { color: var(--amber); text-shadow: var(--glow-amber); }
