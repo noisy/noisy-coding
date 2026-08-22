@@ -96,7 +96,15 @@ def _resolve_speaker(
         # event row below stays as the loud part.
         state.register_agent(agent, label=agent[:8])
         state.add_event("agent", f"unknown speaker '{agent[:8]}…' auto-registered")
-        return agent, name, None
+        # A NAMED speaker keeps its persona voice even on this emergency
+        # path - otherwise every viewer collapses onto the agent's default
+        # voice in the window right after a daemon restart (handoff OPEN 1).
+        voice = (
+            _subagent_voice(state, name, state.character(agent).get("voice", ""))
+            if name
+            else None
+        )
+        return agent, name, voice
     if name:
         voice = _subagent_voice(state, name, state.character(agent).get("voice", ""))
         return agent, name, voice
