@@ -15,6 +15,7 @@ import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import SessionRing from "./components/SessionRing.vue";
 import SettingsView from "./components/SettingsView.vue";
+import ShutdownBanner from "./components/ShutdownBanner.vue";
 import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
 import VersionBadge from "./components/VersionBadge.vue";
@@ -460,12 +461,14 @@ const LANGUAGES: Record<string, string> = {
     <!-- The Docker path preselects the tab as mic/speaker, so the picker
          never fires a change event — and getUserMedia needs a user
          gesture anyway. This banner IS that gesture. -->
-    <!-- Graceful shutdown (#35): impossible to miss, trivial to stop. -->
-    <div v-if="shutdownSeconds !== null" class="shutdown-banner">
-      <span>⚠ DAEMON RESTARTS IN {{ shutdownLabel }} — finish your sentence, it will wait for you</span>
-      <button class="ctl small" @click="scheduleShutdown(0).catch(swallow)">RESTART NOW</button>
-      <button class="ctl small" @click="cancelShutdown().catch(swallow)">CANCEL</button>
-    </div>
+    <!-- Graceful shutdown (#35): D5 bar picked in Storybook. -->
+    <ShutdownBanner
+      v-if="shutdownSeconds !== null"
+      class="shutdown-bar"
+      :label="shutdownLabel"
+      @restart-now="scheduleShutdown(0).catch(swallow)"
+      @cancel="cancelShutdown().catch(swallow)"
+    />
     <button v-if="tabAudioNeeded" class="tabaudio" @click="enableTabAudio">
       🎙 ENABLE TAB AUDIO — this tab is your {{ tabAudioRoles }}; click once to activate
       <span v-if="browserAudio.error.value" class="taberr">{{ browserAudio.error.value }}</span>
