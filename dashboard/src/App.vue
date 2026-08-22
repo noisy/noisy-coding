@@ -472,7 +472,9 @@ const LANGUAGES: Record<string, string> = {
             {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}
           </span>
           <span class="bm-sub">
-            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST" : status?.ptt_held ? "RELEASE TO SEND" : "HOLD THIS OR THE SPACE BAR" }}
+            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST"
+               : status?.ptt_held ? (status?.ptt_toggle_key ? `LIVE — ${status.ptt_toggle_key.toUpperCase()} OR TAP HERE TO END` : "RELEASE TO SEND")
+               : "HOLD THIS OR THE SPACE BAR" }}
           </span>
         </button>
         <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE" class="flexpanel">

@@ -474,3 +474,110 @@ def test_nudge_never_targets_idle_or_quiet_chatty_agents():
     state.set_character({"chatty": 100}, agent="idle")
     state._agent_activated["idle"] -= 10_000
     assert state.pop_due_nudge("idle") is None  # no fresh activity line
+
+
+# --- voice claims -------------------------------------------------------
+#
+# The bug these cover: a pure hash gives every speaker a STABLE voice but
+# not a UNIQUE one, so two viewers regularly ended up indistinguishable.
+
+
+def _pick_first(seed: str, pool: tuple[str, ...]) -> str:
+    """Worst-case hash: always returns the same voice, so any uniqueness
+    in the result comes from the ledger rather than from luck."""
+    return pool[0]
+
+
+def test_claim_voice_is_stable_for_the_same_speaker():
+    state = ListenerState()
+    pool = ("ara", "atlas", "luna")
+
+    first = state.claim_voice("xfuroo", pool, _pick_first)
+
+    assert state.claim_voice("xfuroo", pool, _pick_first) == first
+
+
+def test_claim_voice_never_hands_two_speakers_the_same_voice():
+    state = ListenerState()
+    pool = ("ara", "atlas", "luna")
+
+    voices = [state.claim_voice(name, pool, _pick_first) for name in ("a", "b", "c")]
+
+    assert sorted(voices) == ["ara", "atlas", "luna"]
+
+
+def test_claim_voice_falls_back_to_the_hash_once_the_pool_is_exhausted():
+    state = ListenerState()
+    pool = ("ara",)
+    state.claim_voice("first", pool, _pick_first)
+
+    # A duplicate voice still beats no voice at all.
+    assert state.claim_voice("second", pool, _pick_first) == "ara"
+
+
+def test_claim_voice_avoids_a_voice_a_live_agent_is_already_using():
+    state = ListenerState()
+    state.register_agent("some-agent")  # heartbeat = live
+    state.set_character({"voice": "atlas"}, "some-agent")
+    pool = ("atlas", "luna")
+
+    assert state.claim_voice("viewer", pool, _pick_first) == "luna"
+
+
+def test_a_dormant_session_does_not_squat_on_its_voice():
+    state = ListenerState()
+    # A character bucket outlives the session that made it. This one never
+    # sent a heartbeat, so it is long gone and must not deny anyone its voice.
+    state.set_character({"voice": "lux"}, "session-from-july")
+    pool = ("lux", "luna")
+
+    assert state.claim_voice("viewer", pool, _pick_first) == "lux"
+    assert state.set_voice_claim("other", "luna", pool) == "ok"
+
+
+def test_the_voice_in_use_right_now_is_never_handed_out():
+    state = ListenerState()
+    state.set_character({"voice": "zenith"})  # the shared "" bucket
+    pool = ("zenith", "luna")
+
+    assert state.claim_voice("viewer", pool, _pick_first) == "luna"
+    assert state.set_voice_claim("viewer2", "zenith", pool) == "taken"
+
+
+def test_set_voice_claim_grants_a_free_voice():
+    state = ListenerState()
+    pool = ("ara", "atlas")
+
+    assert state.set_voice_claim("xfuroo", "atlas", pool) == "ok"
+    assert state.voice_claims()["xfuroo"] == "atlas"
+
+
+def test_set_voice_claim_refuses_one_someone_else_holds():
+    state = ListenerState()
+    pool = ("ara", "atlas")
+    state.set_voice_claim("first", "atlas", pool)
+
+    assert state.set_voice_claim("second", "atlas", pool) == "taken"
+    assert "second" not in state.voice_claims()
+
+
+def test_set_voice_claim_rejects_a_voice_outside_the_pool():
+    state = ListenerState()
+
+    assert state.set_voice_claim("xfuroo", "nonesuch", ("ara",)) == "unknown"
+
+
+def test_set_voice_claim_is_idempotent_for_the_current_holder():
+    state = ListenerState()
+    pool = ("ara", "atlas")
+    state.set_voice_claim("xfuroo", "atlas", pool)
+
+    assert state.set_voice_claim("xfuroo", "atlas", pool) == "ok"
+
+
+def test_load_voice_claims_drops_duplicates_from_a_corrupted_file():
+    state = ListenerState()
+
+    state.load_voice_claims({"first": "atlas", "second": "atlas"})
+
+    assert list(state.voice_claims().values()) == ["atlas"]

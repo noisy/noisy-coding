@@ -56,3 +56,51 @@ def test_gender_flip_sends_a_silent_persona_instruction(character_server):
     assert transcripts[0].text.startswith("[PERSONA]")
     assert "male" in transcripts[0].text
     assert "silently" in transcripts[0].text
+
+
+# --- speaker voice claims via /voice ------------------------------------
+
+
+def _post_voice(port: int, body: dict) -> tuple[int, dict]:
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    connection.request("POST", "/voice", body=json.dumps(body))
+    response = connection.getresponse()
+    status, payload = response.status, json.loads(response.read())
+    connection.close()
+    return status, payload
+
+
+def test_voice_endpoint_moves_a_named_speaker_onto_a_free_voice(
+    character_server, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(http_api, "VOICE_CLAIMS_FILE", tmp_path / "voice-claims.json")
+    state, port = character_server
+
+    status, payload = _post_voice(port, {"voice_id": "lux", "speaker": "xfuroo"})
+
+    assert (status, payload["voice"]) == (200, "lux")
+    # The claim is what a later /speak reads back for that name.
+    assert state.claim_voice("xfuroo", http_api.SUBAGENT_VOICE_POOL, http_api._hash_pick) == "lux"
+
+
+def test_voice_endpoint_refuses_a_voice_another_speaker_holds(
+    character_server, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(http_api, "VOICE_CLAIMS_FILE", tmp_path / "voice-claims.json")
+    state, port = character_server
+    _post_voice(port, {"voice_id": "lux", "speaker": "xfuroo"})
+
+    status, payload = _post_voice(port, {"voice_id": "lux", "speaker": "latecomer"})
+
+    assert status == 409
+    assert payload["held_by"] == "xfuroo"
+    assert "latecomer" not in state.voice_claims()
+
+
+def test_voice_endpoint_without_a_speaker_still_moves_the_agent(character_server):
+    state, port = character_server
+
+    status, payload = _post_voice(port, {"voice_id": "rex"})
+
+    assert (status, payload["voice"]) == (200, "rex")
+    assert state.character()["voice"] == "rex"
