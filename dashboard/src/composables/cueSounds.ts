@@ -58,48 +58,58 @@ export function playCue(cue: CueName): void {
 }
 
 /* --- recording hum ------------------------------------------------------
-The "mic is live" indicator you can hear: a barely-there two-note drone
-(a soft fifth, slowly breathing) that starts when recording starts and
-stops the instant it ends. Continuous by design - a glance-free answer to
-"is it capturing?" in every mode: hold, toggle and auto. */
+The "mic is live" indicator you can hear: soft pink-ish noise (white noise
+through a gentle lowpass), like a distant air vent - far less musical and
+less intrusive than a tone. Starts when recording starts, stops the
+instant it ends. Continuous by design: a glance-free answer to "is it
+capturing?" in every mode - hold, toggle and auto. */
 
-let hum: { oscillators: OscillatorNode[]; gain: GainNode; lfo: OscillatorNode } | null = null;
+let hum: { source: AudioBufferSourceNode; gain: GainNode } | null = null;
+let noiseBuffer: AudioBuffer | null = null;
+
+function pinkishNoise(ctx: AudioContext): AudioBuffer {
+  if (noiseBuffer) return noiseBuffer;
+  const seconds = 2;
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  // Paul Kellet's economy pink noise approximation - softer spectrum than
+  // raw white, no shimmer, nothing for the ear to latch onto.
+  let b0 = 0, b1 = 0, b2 = 0;
+  for (let i = 0; i < data.length; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99765 * b0 + white * 0.099046;
+    b1 = 0.963 * b1 + white * 0.2965164;
+    b2 = 0.57 * b2 + white * 1.0526913;
+    data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.11;
+  }
+  noiseBuffer = buffer;
+  return buffer;
+}
 
 export function startRecordingHum(): void {
   const ctx = audioContext();
   if (!ctx || hum) return;
-  const master = ctx.createGain();
-  master.gain.setValueAtTime(0, ctx.currentTime);
-  master.gain.linearRampToValueAtTime(0.012, ctx.currentTime + 0.25); // whisper
-  // A soft fifth (A3 + E4), slightly detuned so it shimmers instead of
-  // beeping; a slow LFO makes it "breathe" so the ear doesn't tune it out
-  // entirely - present, never annoying.
-  const oscillators = [220, 330.5].map((freq) => {
-    const oscillator = ctx.createOscillator();
-    oscillator.type = "sine";
-    oscillator.frequency.value = freq;
-    oscillator.connect(master);
-    oscillator.start();
-    return oscillator;
-  });
-  const lfo = ctx.createOscillator();
-  const lfoGain = ctx.createGain();
-  lfo.frequency.value = 0.35;
-  lfoGain.gain.value = 0.004;
-  lfo.connect(lfoGain).connect(master.gain);
-  lfo.start();
-  master.connect(ctx.destination);
-  hum = { oscillators, gain: master, lfo };
+  const source = ctx.createBufferSource();
+  source.buffer = pinkishNoise(ctx);
+  source.loop = true;
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 500; // keep only the airy bottom
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.005, ctx.currentTime + 0.3); // whisper
+  source.connect(lowpass).connect(gain).connect(ctx.destination);
+  source.start();
+  hum = { source, gain };
 }
 
 export function stopRecordingHum(): void {
   const ctx = audioContext();
   if (!ctx || !hum) return;
-  const { oscillators, gain, lfo } = hum;
+  const { source, gain } = hum;
   hum = null;
   gain.gain.cancelScheduledValues(ctx.currentTime);
   gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.12);
-  for (const oscillator of oscillators) oscillator.stop(ctx.currentTime + 0.15);
-  lfo.stop(ctx.currentTime + 0.15);
+  source.stop(ctx.currentTime + 0.15);
 }
