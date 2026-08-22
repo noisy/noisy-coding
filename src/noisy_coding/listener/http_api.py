@@ -618,11 +618,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._handle_speak()
             elif self.path == "/shutdown":
                 # Graceful shutdown (#35): agents call this instead of kill.
-                # Default 30 s countdown; the dashboard shows a banner with
+                # Default 5 min countdown; the dashboard shows a banner with
                 # CANCEL and RESTART NOW. The watcher (daemon.py) refuses to
                 # die mid-recording.
                 body = self._read_json_body()
-                delay = float(body.get("delay_seconds", 30))
+                delay = float(body.get("delay_seconds", 300))
                 at = state.schedule_shutdown(delay)
                 state.add_event(
                     "agent", f"shutdown scheduled in {int(delay)}s (cancellable)"

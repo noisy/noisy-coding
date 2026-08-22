@@ -136,8 +136,8 @@ export function togglePlaybackPause(): Promise<{ paused: boolean }> {
   return postJson<{ paused: boolean }>("/playback-pause", {});
 }
 
-/** Graceful shutdown (#35): schedule (default 30 s), or 0 = right now. */
-export function scheduleShutdown(delaySeconds = 30): Promise<{ shutdown_at: number }> {
+/** Graceful shutdown (#35): schedule (default 5 min), or 0 = right now. */
+export function scheduleShutdown(delaySeconds = 300): Promise<{ shutdown_at: number }> {
   return postJson<{ shutdown_at: number }>("/shutdown", { delay_seconds: delaySeconds });
 }
 

@@ -350,6 +350,10 @@ const shutdownSeconds = computed(() => {
   if (!at) return null;
   return Math.max(0, Math.ceil(at - nowTick.value / 1000));
 });
+const shutdownLabel = computed(() => {
+  const s = shutdownSeconds.value ?? 0;
+  return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s}s`;
+});
 
 const pickPttKey = (mode: "hold" | "toggle", key: string) =>
   setSettings(mode === "hold" ? { ptt_hold_key: key } : { ptt_toggle_key: key }).catch(swallow);
@@ -458,7 +462,7 @@ const LANGUAGES: Record<string, string> = {
          gesture anyway. This banner IS that gesture. -->
     <!-- Graceful shutdown (#35): impossible to miss, trivial to stop. -->
     <div v-if="shutdownSeconds !== null" class="shutdown-banner">
-      <span>⚠ DAEMON RESTARTS IN {{ shutdownSeconds }}s — finish your sentence, it will wait for you</span>
+      <span>⚠ DAEMON RESTARTS IN {{ shutdownLabel }} — finish your sentence, it will wait for you</span>
       <button class="ctl small" @click="scheduleShutdown(0).catch(swallow)">RESTART NOW</button>
       <button class="ctl small" @click="cancelShutdown().catch(swallow)">CANCEL</button>
     </div>
@@ -728,13 +732,19 @@ const LANGUAGES: Record<string, string> = {
 
 <style scoped>
 .shutdown-banner {
-  display: flex; align-items: center; justify-content: center; gap: 16px;
-  background: rgba(255, 95, 107, 0.14);
-  border: 1px solid rgba(255, 95, 107, 0.6);
-  color: var(--red);
-  font-size: 12px; letter-spacing: 0.14em; font-weight: 700;
-  padding: 10px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  /* Unmissable: SOLID red slab, dark text, tall - the loudest thing on
+     the page while it's up. */
+  background: var(--red);
+  border: 2px solid #ffffff;
+  color: #10040a;
+  font-size: 16px; letter-spacing: 0.14em; font-weight: 800;
+  padding: 18px 20px; margin-bottom: 10px;
+  box-shadow: 0 0 24px rgba(255, 95, 107, 0.8);
   animation: blink 1.2s step-end infinite;
+}
+.shutdown-banner .ctl {
+  color: #10040a; border-color: #10040a; font-weight: 800;
 }
 .shutdown-banner .ctl { animation: none; }
 @keyframes blink { 50% { opacity: 0.75; } }
