@@ -6,11 +6,11 @@ export const SPRITE_GRID = 6;
 
 export const SPRITE_CELL: Record<string, number> = {
   // female
-  ara: 1, carina: 3, eve: 5, iris: 10, luna: 15, celeste: 16, ursa: 29,
+  ara: 8, carina: 16, eve: 15, iris: 7, luna: 1, celeste: 32, ursa: 5,
   // male
-  altair: 0, atlas: 2, sal: 4, kepler: 6, rex: 8, cosmo: 9, helios: 14,
-  leo: 12, lux: 13, sirius: 17, castor: 18, naksh: 19, helix: 21,
-  perseus: 22, orion: 23, lumen: 24, rigel: 27, zenith: 31, zagan: 30,
+  altair: 30, atlas: 31, sal: 22, kepler: 12, rex: 23, cosmo: 6, helios: 25,
+  leo: 0, lux: 13, sirius: 19, castor: 4, naksh: 18, helix: 21,
+  perseus: 28, orion: 27, lumen: 24, rigel: 9, zenith: 17, zagan: 2,
 };
 
 /** CSS background properties showing `voice`'s cell, or null when the
