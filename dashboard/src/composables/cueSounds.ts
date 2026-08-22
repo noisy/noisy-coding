@@ -64,40 +64,63 @@ less intrusive than a tone. Starts when recording starts, stops the
 instant it ends. Continuous by design: a glance-free answer to "is it
 capturing?" in every mode - hold, toggle and auto. */
 
-let hum: { source: AudioBufferSourceNode; gain: GainNode } | null = null;
-let noiseBuffer: AudioBuffer | null = null;
+export type HumNoise = "pink" | "white" | "brown";
+export const HUM_NOISES: HumNoise[] = ["pink", "white", "brown"];
+/** UI volume 0..1 maps onto this gain ceiling - even "10" stays polite. */
+const HUM_MAX_GAIN = 0.02;
+export const HUM_DEFAULT_VOLUME = 0.25;
 
-function pinkishNoise(ctx: AudioContext): AudioBuffer {
-  if (noiseBuffer) return noiseBuffer;
-  const seconds = 2;
-  const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+let hum: { source: AudioBufferSourceNode; gain: GainNode } | null = null;
+const noiseBuffers: Partial<Record<HumNoise, AudioBuffer>> = {};
+
+function noiseBuffer(ctx: AudioContext, kind: HumNoise): AudioBuffer {
+  const cached = noiseBuffers[kind];
+  if (cached) return cached;
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const data = buffer.getChannelData(0);
-  // Paul Kellet's economy pink noise approximation - softer spectrum than
-  // raw white, no shimmer, nothing for the ear to latch onto.
-  let b0 = 0, b1 = 0, b2 = 0;
-  for (let i = 0; i < data.length; i++) {
-    const white = Math.random() * 2 - 1;
-    b0 = 0.99765 * b0 + white * 0.099046;
-    b1 = 0.963 * b1 + white * 0.2965164;
-    b2 = 0.57 * b2 + white * 1.0526913;
-    data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.11;
+  if (kind === "white") {
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.25;
+  } else if (kind === "brown") {
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      last = (last + (Math.random() * 2 - 1) * 0.02) / 1.02;
+      data[i] = last * 3.5;
+    }
+  } else {
+    // Paul Kellet's economy pink approximation - softer than white,
+    // brighter than brown; nothing for the ear to latch onto.
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < data.length; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99765 * b0 + white * 0.099046;
+      b1 = 0.963 * b1 + white * 0.2965164;
+      b2 = 0.57 * b2 + white * 1.0526913;
+      data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.11;
+    }
   }
-  noiseBuffer = buffer;
+  noiseBuffers[kind] = buffer;
   return buffer;
 }
 
-export function startRecordingHum(): void {
+export function startRecordingHum(
+  kind: HumNoise = "pink",
+  volume: number = HUM_DEFAULT_VOLUME,
+): void {
   const ctx = audioContext();
-  if (!ctx || hum) return;
+  if (!ctx) return;
+  if (hum) stopRecordingHum();
   const source = ctx.createBufferSource();
-  source.buffer = pinkishNoise(ctx);
+  source.buffer = noiseBuffer(ctx, kind);
   source.loop = true;
   const lowpass = ctx.createBiquadFilter();
   lowpass.type = "lowpass";
   lowpass.frequency.value = 500; // keep only the airy bottom
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.005, ctx.currentTime + 0.3); // whisper
+  gain.gain.linearRampToValueAtTime(
+    Math.max(0, Math.min(1, volume)) * HUM_MAX_GAIN,
+    ctx.currentTime + 0.3,
+  );
   source.connect(lowpass).connect(gain).connect(ctx.destination);
   source.start();
   hum = { source, gain };

@@ -43,6 +43,8 @@ const errorCount = computed(() => errors.value.length);
 
 const { prefs: cuePrefs, enabled: cuesEnabled } = useAudioCues(utterances, status, errorCount, viewedAgent);
 const setCue = (name: CueName, value: boolean) => (cuePrefs.value.cues[name] = value);
+const setHum = (patch: { recordingHum?: boolean; humNoise?: string; humVolume?: number }) =>
+  Object.assign(cuePrefs.value, patch);
 
 function eventTime(ts: number): string {
   const d = new Date(ts * 1000);
@@ -601,6 +603,7 @@ const LANGUAGES: Record<string, string> = {
             @pick-ptt-key="pickPttKey"
             @refresh-devices="loadDevices"
             @toggle-cue="setCue"
+            @set-hum="setHum"
             @run-checks="runChecks"
           />
         </HudPanel>

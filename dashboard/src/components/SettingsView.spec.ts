@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import SettingsView from "./SettingsView.vue";
 
 describe("SettingsView", () => {
-  it("shows the key as a masked form field plus the pricing/link guidance", () => {
+  it("shows the key as a masked form field plus the pricing/link guidance", async () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "····kRc9" } });
+    await wrapper.findAll(".tabbtn").find((b) => b.text() === "SYSTEM")!.trigger("click");
 
     const stored = wrapper.find(".keyinput.stored");
     expect((stored.element as HTMLInputElement).value).toContain("kRc9");
@@ -17,6 +18,7 @@ describe("SettingsView", () => {
 
   it("emits save with the entered key and hides the input again", async () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "····kRc9" } });
+    await wrapper.findAll(".tabbtn").find((b) => b.text() === "SYSTEM")!.trigger("click");
 
     await wrapper.find(".btn").trigger("click"); // REPLACE
     await wrapper.find("input.keyinput").setValue("xai-new-key-123");
@@ -30,6 +32,7 @@ describe("SettingsView", () => {
 
   it("rejects obviously-not-a-key input without emitting", async () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "" } });
+    await wrapper.findAll(".tabbtn").find((b) => b.text() === "SYSTEM")!.trigger("click");
 
     await wrapper.find(".btn").trigger("click");
     await wrapper.find("input.keyinput").setValue("abc");

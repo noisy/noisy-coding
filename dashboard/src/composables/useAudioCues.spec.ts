@@ -6,7 +6,12 @@ import { nextTick, ref } from "vue";
 import type { DaemonStatus, Utterance } from "../types";
 import { useAudioCues } from "./useAudioCues";
 
-vi.mock("./cueSounds", () => ({ playCue: vi.fn() }));
+vi.mock("./cueSounds", () => ({
+  playCue: vi.fn(),
+  startRecordingHum: vi.fn(),
+  stopRecordingHum: vi.fn(),
+  HUM_DEFAULT_VOLUME: 0.25,
+}));
 import { playCue } from "./cueSounds";
 
 function utterance(id: number, role: string): Utterance {

@@ -4,7 +4,7 @@
 import { computed, ref, watch, type Ref } from "vue";
 import type { DaemonStatus, Utterance } from "../types";
 import { detectCues, snapshotUtterances, type CueName } from "./cueEvents";
-import { playCue, startRecordingHum, stopRecordingHum } from "./cueSounds";
+import { HUM_DEFAULT_VOLUME, playCue, startRecordingHum, stopRecordingHum, type HumNoise } from "./cueSounds";
 
 const STORAGE_KEY = "noisy-coding.audio-cues";
 
@@ -13,6 +13,8 @@ export interface CuePrefs {
   cues: Record<CueName, boolean>;
   /** Barely-audible drone while the mic is capturing (all modes). */
   recordingHum?: boolean;
+  humNoise?: HumNoise;
+  humVolume?: number; // 0..1
 }
 
 export const CUE_LABELS: Record<CueName, string> = {
@@ -28,6 +30,8 @@ function defaultPrefs(): CuePrefs {
     enabled: true, // on by default — the cues carry real state changes
     cues: { committed: true, delivered: true, claude: true, unheard: true, error: true },
     recordingHum: true,
+    humNoise: "pink" as HumNoise,
+    humVolume: HUM_DEFAULT_VOLUME,
   };
 }
 
@@ -96,9 +100,16 @@ export function useAudioCues(
     if (s.detection_mode === "ptt") return s.ptt_held || s.recording;
     return s.recording;
   };
+  const humActive = () =>
+    micArmed() && prefs.value.enabled && (prefs.value.recordingHum ?? true);
   watch(
-    () => micArmed() && prefs.value.enabled && (prefs.value.recordingHum ?? true),
-    (on) => (on ? startRecordingHum() : stopRecordingHum()),
+    // Restart with fresh params when the noise color or volume changes
+    // while armed - startRecordingHum replaces a running hum in place.
+    () => (humActive() ? `${prefs.value.humNoise ?? "pink"}|${prefs.value.humVolume ?? HUM_DEFAULT_VOLUME}` : ""),
+    (key) => {
+      if (!key) return stopRecordingHum();
+      startRecordingHum(prefs.value.humNoise ?? "pink", prefs.value.humVolume ?? HUM_DEFAULT_VOLUME);
+    },
   );
 
   const enabled = computed({

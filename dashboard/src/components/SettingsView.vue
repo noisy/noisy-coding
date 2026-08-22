@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+// The panel got crowded - a toolbar splits it into three homes. AUDIO is
+// first: it's what gets touched mid-session.
+const TABS = ["AUDIO", "SOUNDS", "SYSTEM"] as const;
+const tab = ref<(typeof TABS)[number]>("AUDIO");
+
 // Mirrors KEYCODES in listener/hotkey.py - keys that never type characters.
 const PTT_KEYS = [
   "F13", "F14", "F15", "F16", "F17", "F18", "F19",
@@ -9,6 +14,7 @@ const PTT_KEYS = [
 import type { DiagnosticChecks } from "../api/client";
 import type { InputDevice } from "../types";
 import { CUE_LABELS, type CuePrefs } from "../composables/useAudioCues";
+import { HUM_NOISES, startRecordingHum, stopRecordingHum } from "../composables/cueSounds";
 import type { CueName } from "../composables/cueEvents";
 import { playCue } from "../composables/cueSounds";
 import DiagnosticChecklist from "./DiagnosticChecklist.vue";
@@ -38,10 +44,18 @@ const emit = defineEmits<{
   pickPttKey: [mode: "hold" | "toggle", key: string];
   refreshDevices: [];
   toggleCue: [name: CueName, value: boolean];
+  setHum: [patch: { recordingHum?: boolean; humNoise?: string; humVolume?: number }];
   runChecks: [];
 }>();
 
 const cueNames = Object.keys(CUE_LABELS) as CueName[];
+
+let humPreviewTimer: ReturnType<typeof setTimeout> | undefined;
+function previewHum(noise: string, volume: number) {
+  clearTimeout(humPreviewTimer);
+  startRecordingHum(noise as never, volume);
+  humPreviewTimer = setTimeout(stopRecordingHum, 1500);
+}
 
 const keyInput = ref("");
 const editing = ref(false);
@@ -57,6 +71,14 @@ function submit() {
 
 <template>
   <div class="settings">
+    <nav class="toolbar">
+      <button
+        v-for="t in TABS" :key="t" class="tabbtn" :class="{ on: tab === t }"
+        @click="tab = t"
+      >{{ t }}</button>
+    </nav>
+
+    <template v-if="tab === 'AUDIO'">
     <!-- Microphone first: switched far more often than the API key. -->
     <section class="sec">
       <div class="keyrow">
@@ -139,6 +161,9 @@ function submit() {
       </div>
     </section>
 
+    </template>
+
+    <template v-if="tab === 'SYSTEM'">
     <section class="sec">
       <div class="keyrow">
         <span class="lbl">XAI API KEY</span>
@@ -209,6 +234,45 @@ function submit() {
       </div>
     </section>
 
+    </template>
+
+    <template v-if="tab === 'SOUNDS'">
+    <section v-if="cuePrefs" class="sec">
+      <div class="keyrow">
+        <span class="lbl">RECORDING HUM</span>
+        <button
+          class="btn" :class="{ dim: !(cuePrefs.recordingHum ?? true) }"
+          @click="emit('setHum', { recordingHum: !(cuePrefs.recordingHum ?? true) })"
+        >{{ (cuePrefs.recordingHum ?? true) ? "ON" : "OFF" }}</button>
+      </div>
+      <div class="keyrow">
+        <span class="lbl">NOISE</span>
+        <select
+          class="keyinput"
+          :value="cuePrefs.humNoise ?? 'pink'"
+          @change="emit('setHum', { humNoise: ($event.target as HTMLSelectElement).value });
+                   previewHum(($event.target as HTMLSelectElement).value, cuePrefs.humVolume ?? 0.25)"
+        >
+          <option v-for="n in HUM_NOISES" :key="n" :value="n">{{ n.toUpperCase() }}</option>
+        </select>
+      </div>
+      <div class="keyrow">
+        <span class="lbl">VOLUME</span>
+        <input
+          class="slider" type="range" min="0" max="1" step="0.05"
+          :value="cuePrefs.humVolume ?? 0.25"
+          @input="emit('setHum', { humVolume: Number(($event.target as HTMLInputElement).value) })"
+          @change="previewHum(cuePrefs.humNoise ?? 'pink', Number(($event.target as HTMLInputElement).value))"
+        />
+      </div>
+      <div class="text">
+        <p>
+          The barely-there noise that plays while the system can hear you.
+          Changing the color or volume gives a 1.5 s preview.
+        </p>
+      </div>
+    </section>
+
     <section v-if="cuePrefs" class="sec">
       <div class="keyrow">
         <span class="lbl">AUDIO CUES</span>
@@ -232,11 +296,21 @@ function submit() {
         </p>
       </div>
     </section>
+    </template>
   </div>
 </template>
 
 <style scoped>
 .settings { display: grid; gap: 22px; }
+.toolbar { display: flex; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.tabbtn {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+  color: var(--muted); background: none; border: 1px solid transparent;
+  padding: 4px 12px; cursor: pointer;
+}
+.tabbtn.on { color: var(--cyan); border-color: rgba(63, 216, 255, 0.4); }
+.tabbtn:hover { color: var(--cyan-hi); }
+.slider { flex: 1; accent-color: var(--cyan); }
 
 .keyrow { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .keyrow .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); width: 92px; flex: none; }
