@@ -129,6 +129,18 @@ export function setPtt(held: boolean): Promise<void> {
   return post("/ptt", { held });
 }
 
+/** Transport pause for SYSTEM-speaker playback: freezes the daemon's
+ * player in place (SIGSTOP) and reports the new state. Tab playback
+ * pauses client-side in useBrowserAudio instead. */
+export function togglePlaybackPause(): Promise<{ paused: boolean }> {
+  return postJson<{ paused: boolean }>("/playback-pause", {});
+}
+
+/** Skip the rest of whatever is on the speakers; queued speech continues. */
+export function interruptPlayback(): Promise<void> {
+  return post("/interrupt", {});
+}
+
 /** Recall a transcript that still waits in the queue (AWAITING CLAUDE). */
 export function cancelTranscript(utteranceId: number): Promise<void> {
   return post("/cancel", { utterance_id: utteranceId });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -41,7 +41,7 @@ const thinkingAgents = computed(() => {
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
 const errorCount = computed(() => errors.value.length);
 
-const { prefs: cuePrefs, enabled: cuesEnabled } = useAudioCues(utterances, status, errorCount);
+const { prefs: cuePrefs, enabled: cuesEnabled } = useAudioCues(utterances, status, errorCount, viewedAgent);
 const setCue = (name: CueName, value: boolean) => (cuePrefs.value.cues[name] = value);
 
 function eventTime(ts: number): string {
@@ -245,9 +245,26 @@ const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
 const browserAudio = useBrowserAudio();
-// Top-level ref so the template auto-unwraps it (refs nested in a plain
-// object would not).
-const playbackPaused = browserAudio.playbackPaused;
+// Playback lives in ONE of two places: the browser tab (output=browser)
+// or a daemon-side system player (output=system). The transport buttons
+// drive both - whichever holds the clip reacts, the other no-ops.
+const daemonPaused = ref(false);
+const playbackPaused = computed(
+  () => browserAudio.playbackPaused.value || daemonPaused.value,
+);
+const pausePlayback = async () => {
+  browserAudio.pauseToggle();
+  try {
+    daemonPaused.value = (await togglePlaybackPause()).paused;
+  } catch {
+    /* daemon unreachable - the tab side already did what it could */
+  }
+};
+const skipPlayback = () => {
+  browserAudio.skip();
+  daemonPaused.value = false;
+  interruptPlayback().catch(swallow);
+};
 // The SPEAKER side needs no permission and no gesture — connect the WS
 // lease the moment the page knows the tab is a nominated device, so
 // Claude's first words (the first-contact greeting) can play at once.
@@ -605,8 +622,8 @@ const LANGUAGES: Record<string, string> = {
                 :activity="status?.activity?.[viewedAgent ?? ''] ?? null"
                 @replay="replay"
                 @cancel="cancel"
-                @pause="browserAudio.pauseToggle"
-                @skip="browserAudio.skip"
+                @pause="pausePlayback"
+                @skip="skipPlayback"
               />
               <ConversationTelemetry
                 :stt-latency-ms="status?.stt_latency_ms ?? null"

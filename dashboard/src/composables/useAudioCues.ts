@@ -41,6 +41,7 @@ export function useAudioCues(
   utterances: Ref<Utterance[]>,
   status: Ref<DaemonStatus | null>,
   errorCount: Ref<number>,
+  viewedAgent?: Ref<string | null>,
 ) {
   const prefs = ref<CuePrefs>(loadPrefs());
   watch(
@@ -60,7 +61,19 @@ export function useAudioCues(
   }
 
   let previous = snapshotUtterances([]);
+  // Tab switches are silent (#33): a view change is the USER navigating,
+  // not conversation events - reset the baseline without emitting cues.
+  // The id-swap heuristic in detectCues stays as a fallback, but it misses
+  // switches where the two views share any card (broadcast announces).
+  let previousAgent = viewedAgent?.value ?? null;
   watch(utterances, (list) => {
+    const agent = viewedAgent?.value ?? null;
+    const viewChanged = agent !== previousAgent;
+    previousAgent = agent;
+    if (viewChanged) {
+      previous = snapshotUtterances(list);
+      return;
+    }
     const cues = detectCues(previous, list, status.value?.voice_muted ?? false);
     previous = snapshotUtterances(list);
     cues.forEach(play);
