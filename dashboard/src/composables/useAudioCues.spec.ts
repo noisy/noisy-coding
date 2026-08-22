@@ -53,7 +53,8 @@ describe("useAudioCues on tab switch", () => {
     const utterances = ref<Utterance[]>([utterance(1, "claude")]);
     const status = ref<DaemonStatus | null>(null);
     const viewedAgent = ref<string | null>("alpha");
-    useAudioCues(utterances, status, ref(0), viewedAgent);
+    const { prefs } = useAudioCues(utterances, status, ref(0), viewedAgent);
+    prefs.value.cues.claude = true; // defaults OFF now - opt in for the test
 
     // Prime the baseline: the watcher only sees mutations, and the very
     // first snapshot is treated as history backfill (never cued).
