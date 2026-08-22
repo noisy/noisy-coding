@@ -637,6 +637,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     "agent", f"shutdown scheduled in {int(delay)}s (cancellable)"
                 )
                 self._respond({"shutdown_at": at})
+            elif self.path == "/shutdown-postpone":
+                body = self._read_json_body()
+                seconds = float(body.get("seconds", 60))
+                at = state.postpone_shutdown(seconds)
+                state.add_event("agent", f"shutdown postponed by {int(seconds)}s")
+                self._respond({"shutdown_at": at})
             elif self.path == "/shutdown-cancel":
                 state.cancel_shutdown()
                 state.add_event("agent", "shutdown cancelled")

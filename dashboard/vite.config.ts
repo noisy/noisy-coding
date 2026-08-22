@@ -15,7 +15,7 @@ const DAEMON_PATHS = [
   "/status", "/utterances", "/character", "/drain", "/events",
   "/stream", "/pause", "/resume", "/mute", "/mode", "/settings",
   "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
-  "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/voice-mute", "/credentials", "/dismiss-agent",
+  "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/shutdown-postpone", "/voice-mute", "/credentials", "/dismiss-agent",
   "/reorder-agents",
 ];
 

@@ -11,7 +11,7 @@ withDefaults(
   }>(),
   { variant: "card-d5" },
 );
-defineEmits<{ restartNow: []; cancel: [] }>();
+defineEmits<{ restartNow: []; cancel: []; postpone: [] }>();
 </script>
 
 <template>
@@ -24,6 +24,7 @@ defineEmits<{ restartNow: []; cancel: [] }>();
       <span class="count">{{ label }}</span>
     </div>
     <button class="act now" @click="$emit('restartNow')">restart now</button>
+    <button class="act now postpone" @click="$emit('postpone')">+1 min</button>
     <button class="act cancel" @click="$emit('cancel')">✕ CANCEL</button>
   </div>
 </template>
@@ -52,6 +53,8 @@ defineEmits<{ restartNow: []; cancel: [] }>();
   color: var(--red); border: 1px solid rgba(255, 95, 107, 0.4);
 }
 .act.now:hover { border-color: var(--red); }
+.act.postpone { width: 150px; color: var(--cyan-dim); border-color: rgba(63, 216, 255, 0.35); }
+.act.postpone:hover { color: var(--cyan-hi); border-color: var(--cyan); }
 .act.cancel {
   flex: 1; align-self: stretch; border: none;
   font-size: 24px; font-weight: 800; letter-spacing: 0.24em;

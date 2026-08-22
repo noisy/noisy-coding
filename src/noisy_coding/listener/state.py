@@ -441,6 +441,13 @@ class ListenerState:
             self._shutdown_at = time.time() + max(0.0, delay_seconds)
             return self._shutdown_at
 
+    def postpone_shutdown(self, seconds: float) -> float:
+        """Push a scheduled shutdown further out; no-op when none is set."""
+        with self._lock:
+            if self._shutdown_at:
+                self._shutdown_at += max(0.0, seconds)
+            return self._shutdown_at
+
     def cancel_shutdown(self) -> None:
         with self._lock:
             self._shutdown_at = 0.0

@@ -141,6 +141,10 @@ export function scheduleShutdown(delaySeconds = 300): Promise<{ shutdown_at: num
   return postJson<{ shutdown_at: number }>("/shutdown", { delay_seconds: delaySeconds });
 }
 
+export function postponeShutdown(seconds = 60): Promise<void> {
+  return post("/shutdown-postpone", { seconds });
+}
+
 export function cancelShutdown(): Promise<void> {
   return post("/shutdown-cancel", {});
 }
