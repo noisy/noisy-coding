@@ -94,3 +94,15 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# Release checklist - printed on every bump so no agent relies on memory.
+print("""
+NEXT STEPS (release checklist):
+  1. tests + dashboard build green
+  2. commit 'release X.Y.Z', tag vX.Y.Z, push both
+  3. wait for the release workflow (docker image + draft)
+  4. WRITE REAL RELEASE NOTES - the auto-generated body only lists PRs
+     and misses direct commits. Summarize highlights for humans, then:
+       gh release edit vX.Y.Z --notes-file <notes> --draft=false
+  5. verify: gh release view + docker manifest inspect noisy/noisy-coding:X.Y.Z
+""")

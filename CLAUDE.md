@@ -23,3 +23,12 @@ owns ports 8765–8767; the dev instance from this checkout runs on 7765
 - `docs/hooks.md` — the five hooks, why each exists, registration paths
 - `docs/ports.md` — what each port is for
 - `docs/local-development.md` — dev instance next to production
+
+## Releasing
+
+Run `python3 scripts/bump_version.py X.Y.Z` - it bumps all four version
+files AND prints the release checklist. Follow it to the letter; the one
+step agents keep forgetting: **auto-generated release notes only list PRs
+and miss direct commits - always write real notes** (highlights for
+humans) and publish with `gh release edit vX.Y.Z --notes-file ... --draft=false`,
+then verify the GitHub release and the Docker image manifest.
