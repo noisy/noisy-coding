@@ -51,6 +51,7 @@ const replayable = computed(
     :replayable="replayable"
     :playing="playing"
     :paused="paused"
+    :variant="speaker && !fromDaemon ? 'guest' : 'agent'"
     @replay="$emit('replay', utterance)"
     @pause="$emit('pause', utterance)"
     @skip="$emit('skip', utterance)"

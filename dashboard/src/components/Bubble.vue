@@ -21,6 +21,10 @@ const props = withDefaults(
     playing?: boolean;
     /** Playback is paused mid-utterance (only meaningful while playing). */
     paused?: boolean;
+    /** Who is talking, structurally: "agent" is Claude itself, "guest" is
+     * any named persona speaking through it (viewers, subagents) - a
+     * clearly different surface so guests never read as Claude's words. */
+    variant?: "agent" | "guest";
     /** Voice name — when it maps to a portrait in the avatars sprite, the
      * bubble grows a portrait column (same artwork as the voice picker). */
     voice?: string;
@@ -34,6 +38,7 @@ const props = withDefaults(
     cancelable: false,
     playing: false,
     paused: false,
+    variant: "agent",
   },
 );
 
@@ -46,7 +51,7 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
 </script>
 
 <template>
-  <div class="msg" :class="[`side-${side}`, `accent-${accent}`, { withportrait: !!portrait }]">
+  <div class="msg" :class="[`side-${side}`, `accent-${accent}`, `variant-${variant}`, { withportrait: !!portrait }]">
     <span v-if="portrait" class="portrait" :style="portrait" aria-hidden="true" />
     <div class="mbody">
     <div class="mhead">
@@ -113,6 +118,22 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
   padding: 10px 14px 9px;
   max-width: 88%;
 }
+/* Guests (viewers, subagent personas) get a SOLID, unmistakably different
+   surface: deep green-slate fill, green accents, no violet anywhere.
+   Picked live on stream 2026-08-22 (variant C). */
+.msg.variant-guest {
+  --accent: var(--green);
+  background: #0a1f18;
+  border-color: rgba(77, 255, 180, 0.35);
+}
+.msg.variant-guest.side-right {
+  background: linear-gradient(270deg, rgba(77, 255, 180, 0.10), #0a1f18 45%);
+  border-right-color: var(--green);
+}
+.msg.variant-guest .who { color: var(--green); text-shadow: 0 0 8px rgba(77, 255, 180, 0.5); }
+.msg.variant-guest .portrait { border-color: rgba(77, 255, 180, 0.6); }
+.msg.variant-guest .txt { color: #cfeee0; }
+
 .msg.accent-amber { --accent: var(--amber); --accent-tint: rgba(255, 180, 84, 0.07); }
 .msg.accent-violet { --accent: var(--violet); --accent-tint: color-mix(in srgb, var(--violet) 7%, transparent); }
 .msg.accent-cyan { --accent: var(--cyan); --accent-tint: rgba(63, 216, 255, 0.07); }
