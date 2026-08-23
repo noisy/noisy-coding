@@ -33,6 +33,16 @@ and miss direct commits - always write real notes** (highlights for
 humans) and publish with `gh release edit vX.Y.Z --notes-file ... --draft=false`,
 then verify the GitHub release and the Docker image manifest.
 
+Deploying to the local prod container is part of the release:
+
+    docker compose pull && docker compose up -d
+    curl -s http://127.0.0.1:8765/status | grep -o '"version": "[^"]*"'
+
+The curl MUST report the version just released - `up -d` alone proves
+nothing. docker-compose.yml runs the PUBLISHED image; never point it at
+`build:` (a stale local build once shadowed a release as 2.13.4) - the
+working tree runs via docker-compose.dev.yml under a distinct name.
+
 ## Frontend changes
 
 New UI (a widget, banner, layout, any new look) is designed in Storybook

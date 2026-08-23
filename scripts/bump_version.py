@@ -105,4 +105,8 @@ NEXT STEPS (release checklist):
      and misses direct commits. Summarize highlights for humans, then:
        gh release edit vX.Y.Z --notes-file <notes> --draft=false
   5. verify: gh release view + docker manifest inspect noisy/noisy-coding:X.Y.Z
+  6. deploy + PROVE it: docker compose pull && docker compose up -d, then
+     curl -s http://127.0.0.1:8765/status must report X.Y.Z - the running
+     version is the only evidence a deploy happened (a stale local build
+     once served 2.13.4 while the 2.16.0 release looked "done")
 """)

@@ -15,7 +15,11 @@
 
 services:
   noisy-coding:
-    build: .
+    # Published image = what a release actually shipped. Contributors who
+    # want to run their working tree use docker-compose.dev.yml instead -
+    # `build:` here once let a stale local build shadow a fresh release
+    # (prod reported 2.13.4 the day 2.16.0 shipped).
+    image: noisy/noisy-coding:latest
     container_name: noisy-coding
     ports:
       - "127.0.0.1:8765:8765"   # HTTP API + dashboard
