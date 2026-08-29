@@ -39,6 +39,12 @@
           ]
         }
       ]
-    }
+    },
+    "extraResources": [
+      {
+        "from": "build/daemon",
+        "to": "daemon"
+      }
+    ]
   }
 }

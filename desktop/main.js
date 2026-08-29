@@ -11,20 +11,108 @@
  */
 const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen } = require("electron");
 const path = require("node:path");
+const http = require("node:http");
+const { spawn } = require("node:child_process");
 
 /** Packaged, files live in the asar; in dev they sit next to this file. */
 const asset = (name) => path.join(__dirname, "build", name);
 
 // The daemon serves the built dashboard under /next/ - the bare /companion
 // path belongs to the vite dev server, not to the daemon.
+/* Which daemon does the app talk to?
+ *
+ * Three instances can coexist and must never fight over a port:
+ *   8765  production, the Docker container
+ *   7765  a developer instance
+ *   9765  ours, spawned by this app
+ * (the audio bridge is always HTTP port + 1, automatically.)
+ *
+ * But spawning is the LAST resort. Two daemons mean two microphones
+ * competing for the same device, which is a mess we spent this morning
+ * untangling - so if one is already listening, attach to it instead. That
+ * also matches the spec: the app must live alongside an existing CLI or
+ * Docker install rather than replacing it.
+ */
+const OWN_PORT = Number(process.env.NOISY_APP_PORT || 9765);
+/* Ours first, then the developer instance, then production.
+ * Production last on purpose: it runs a PUBLISHED image, which may predate
+ * the views this app needs - attaching to it first served a not-found page
+ * where the widget should have been. */
+const CANDIDATE_PORTS = [OWN_PORT, 7765, 8765];
+
+/** Can this port serve what the app actually needs?
+ *
+ * Not "is something alive" - an older daemon answers /status happily and
+ * then 404s the widget, which looks like a broken app rather than an
+ * unsuitable daemon. Ask for the view itself. */
+function serves(port, path) {
+  return new Promise((resolve) => {
+    const request = http.get(
+      { host: "127.0.0.1", port, path, timeout: 700 },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode === 200);
+      },
+    );
+    request.on("timeout", () => (request.destroy(), resolve(false)));
+    request.on("error", () => resolve(false));
+  });
+}
+
+let child = null;   // the daemon WE started, if any
+
+/** Where the frozen daemon lives: inside the bundle once packaged, in the
+ *  build directory during development. */
+function daemonBinary() {
+  const packaged = path.join(process.resourcesPath || "", "daemon", "noisy-coding-daemon");
+  const local = path.join(__dirname, "build", "daemon", "noisy-coding-daemon");
+  return require("node:fs").existsSync(packaged) ? packaged : local;
+}
+
+/** Start our own daemon and wait for it to answer. */
+async function spawnDaemon() {
+  const bin = daemonBinary();
+  if (!require("node:fs").existsSync(bin)) return null;
+
+  child = spawn(bin, [], {
+    env: { ...process.env, NOISY_CODING_LISTENER_PORT: String(OWN_PORT) },
+    stdio: "ignore",
+    // Not detached: the daemon is part of this app and must not outlive it.
+    // An orphaned daemon holding the microphone is worse than no daemon.
+    detached: false,
+  });
+  child.on("exit", () => (child = null));
+
+  // Starting takes a few seconds - audio devices, models, the HTTP server.
+  for (let i = 0; i < 40; i += 1) {
+    if (await serves(OWN_PORT, "/status")) return OWN_PORT;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return null;
+}
+
+/** The first daemon already running, or null when we must start our own. */
+async function findDaemon() {
+  for (const port of CANDIDATE_PORTS) {
+    if (await serves(port, "/next/companion")) return port;
+  }
+  // Nothing can serve the widget: fall back to anything alive, so the
+  // dashboard still works and the menu bar can say what it attached to.
+  for (const port of CANDIDATE_PORTS) {
+    if (await serves(port, "/status")) return port;
+  }
+  return null;
+}
+
 /* Two windows, one app:
  *   - the DASHBOARD, an ordinary window with the full UI
  *   - the WIDGET, frameless and always on top
  * Both are views of the same bundle served by the daemon, so neither
  * duplicates anything; the app is a window manager, not a second client. */
-const BASE = process.env.NOISY_DAEMON_URL || "http://127.0.0.1:7765";
-const WIDGET_URL = process.env.NOISY_COMPANION_URL || `${BASE}/next/companion?transparent=1`;
-const DASHBOARD_URL = process.env.NOISY_DASHBOARD_URL || `${BASE}/next/`;
+let base = process.env.NOISY_DAEMON_URL || null;   // resolved at startup
+let attachedPort = null;                           // which daemon we found
+const widgetUrl = () => `${base}/next/companion?transparent=1`;
+const dashboardUrl = () => `${base}/next/`;
 
 let win = null;
 let dash = null;
@@ -48,7 +136,7 @@ function createDashboard() {
     show: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
-  dash.loadURL(DASHBOARD_URL);
+  dash.loadURL(dashboardUrl());
   dash.once("ready-to-show", () => dash.show());
   dash.on("closed", () => (dash = null));
   return dash;
@@ -76,7 +164,7 @@ function createWindow() {
   win.setAlwaysOnTop(true, "screen-saver");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  win.loadURL(WIDGET_URL);
+  win.loadURL(widgetUrl());
   win.once("ready-to-show", () => win.show());
   watchHover(win);
   win.on("closed", () => (win = null));
@@ -127,6 +215,15 @@ function setGhost(on) {
 
 function buildTray() {
   const menu = Menu.buildFromTemplate([
+    // Which daemon is answering matters when three can be running: the app
+    // should never leave you guessing whose conversation you are looking at.
+    {
+      label: attachedPort
+        ? `Daemon: :${attachedPort}${child ? " (ours)" : " (attached)"}`
+        : "Daemon: not found",
+      enabled: false,
+    },
+    { type: "separator" },
     { label: "Open dashboard", click: () => createDashboard() },
     {
       label: win && !win.isDestroyed() && win.isVisible() ? "Hide widget" : "Show widget",
@@ -151,7 +248,21 @@ function buildTray() {
   tray?.setContextMenu(menu);
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  /* Attach before opening anything: both windows are views of a daemon, and
+   * pointing them at nothing produces a not-found page that looks like a
+   * bug rather than a missing service. */
+  if (!base) {
+    attachedPort = await findDaemon();
+    if (attachedPort) {
+      base = `http://127.0.0.1:${attachedPort}`;
+    } else {
+      // Nothing usable is running - start the one we carry.
+      attachedPort = await spawnDaemon();
+      base = `http://127.0.0.1:${attachedPort || OWN_PORT}`;
+    }
+  }
+
   /* Keep the Dock icon for as long as the app runs.
    *
    * macOS drops an app out of the Dock once it owns no ordinary windows -
@@ -176,7 +287,11 @@ app.whenReady().then(() => {
     win.show();
     win.setAlwaysOnTop(true, "screen-saver");
   });
-  tray.setToolTip("noisy-coding companion");
+  tray.setToolTip(
+    attachedPort
+      ? `noisy-coding - attached to :${attachedPort}`
+      : `noisy-coding - no daemon found (expected :${OWN_PORT})`,
+  );
   buildTray();
 
   // A keyboard escape hatch: a click-through window cannot be clicked to
@@ -217,3 +332,10 @@ app.whenReady().then(() => {
 /* Closing a window does NOT quit: the app lives in the menu bar and the
  * widget is meant to outlive any particular window. Quit from the tray. */
 app.on("window-all-closed", () => {});
+
+/* Take the daemon down with us. It was started for this app; leaving it
+ * running would hold the microphone open with nothing to talk to. */
+app.on("before-quit", () => {
+  child?.kill("SIGTERM");
+  child = null;
+});

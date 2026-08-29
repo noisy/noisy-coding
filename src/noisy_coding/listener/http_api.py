@@ -146,7 +146,21 @@ BIND_ENV_VAR = "NOISY_CODING_BIND"
 # rate for smooth rendering, not coordination logic.
 MIC_STREAM_INTERVAL_SECONDS = 0.05
 # The built Vue HUD (dashboard/dist) served at /next; legacy stays at /.
-DIST_DIR = Path(__file__).resolve().parents[3] / "dashboard" / "dist"
+def _dist_dir() -> Path:
+    """Where the built dashboard lives.
+
+    Frozen (PyInstaller) the source tree is gone: files bundled by the spec
+    are unpacked next to the executable, under sys._MEIPASS. From a checkout
+    they sit three levels up, in dashboard/dist. Getting this wrong shows
+    "HUD not built yet" from a daemon that is otherwise perfectly healthy.
+    """
+    bundled = getattr(sys, "_MEIPASS", None)
+    if bundled:
+        return Path(bundled) / "dashboard" / "dist"
+    return Path(__file__).resolve().parents[3] / "dashboard" / "dist"
+
+
+DIST_DIR = _dist_dir()
 STATIC_CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript",
