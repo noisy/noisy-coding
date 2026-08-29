@@ -808,9 +808,22 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 return
             target = (DIST_DIR / relative).resolve()
             # Never serve anything outside dist (path traversal guard).
-            if not target.is_relative_to(DIST_DIR.resolve()) or not target.is_file():
+            if not target.is_relative_to(DIST_DIR.resolve()):
                 self._respond({"error": "not found"}, status=404)
                 return
+            if not target.is_file():
+                # The HUD routes on pathname (/debug, /logs, /companion), so a
+                # path with no file behind it is a VIEW, not a mistake - hand
+                # back the entry point and let the app route it. Anything with
+                # an extension really is missing: a 404 for a stylesheet must
+                # not arrive as a page of HTML.
+                if target.suffix:
+                    self._respond({"error": "not found"}, status=404)
+                    return
+                target = DIST_DIR / "index.html"
+                if not target.is_file():
+                    self._respond({"error": "not found"}, status=404)
+                    return
             payload = target.read_bytes()
             self.send_response(200)
             self.send_header(

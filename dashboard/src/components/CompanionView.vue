@@ -80,6 +80,32 @@ if (new URLSearchParams(window.location.search).has("transparent")) {
   document.body.classList.add("companion-transparent");
 }
 
+/* Inside the desktop app the window IS the floating widget, so the button
+ * that pops one out has nothing to do - it would open a picture-in-picture
+ * copy of a window that already floats. */
+const nativeShell =
+  typeof navigator !== "undefined" && navigator.userAgent.includes("Electron");
+
+/* Hover on the WINDOW, not on any element: a frameless window needs to
+ * advertise its own edges, and parts of it (padding, the gap beside the
+ * rail) belong to no child at all. */
+if (typeof window !== "undefined") {
+  const mark = (on: boolean) => document.body.classList.toggle("hovering", on);
+  window.addEventListener("mouseover", () => mark(true));
+  // In a native shell the main process owns this (see watchHover): it can
+  // see the cursor even over an OS drag region, which the page cannot.
+  // These stay for the browser, where there is no drag region to hide in.
+  // Browser only. In the native shell the main process owns the hover
+  // state (see watchHover) - it can see the cursor over an OS drag region,
+  // where the page's own events stop arriving.
+  if (!nativeShell) {
+    window.addEventListener("mouseout", (e) => {
+      if (!e.relatedTarget) mark(false);
+    });
+  }
+  window.addEventListener("blur", () => mark(false));
+}
+
 const host = ref<HTMLElement | null>(null);
 const anchor = ref<HTMLElement | null>(null);
 const { supported: pipSupported, open: pipOpen, popOut } = useDocumentPip(host, anchor);
@@ -143,8 +169,16 @@ const mode = computed<"claude" | "user" | "idle">(() => {
       @select="selectAgent"
               />
     </div>
+    <!-- The drag handle: a full-width bar, not a few dots. macOS owns the
+         click inside an app-region (cursor included), so the handle has to
+         announce itself by being big and obvious rather than by changing
+         the pointer. Its whole width drags. -->
+    <div class="drag-strip" title="Drag to move">
+      <span /><span /><span /><span /><span /><span />
+    </div>
+
     <button
-      v-if="pipSupported && !pipOpen"
+      v-if="pipSupported && !pipOpen && !nativeShell"
       class="pop-out"
       title="Float above every window"
       @click="popOut"
@@ -155,13 +189,8 @@ const mode = computed<"claude" | "user" | "idle">(() => {
 </template>
 
 <style>
-/* Keep the HUD's dark backdrop from hud.css. The widget's colours are
-   translucent - rgba surfaces and borders - so they are mixed with whatever
-   is behind them. Over a browser's white page they wash out and stop
-   matching Storybook, where stories render on that same dark chrome.
-   Transparency is opt-in via ?transparent=1, for a native shell that can
-   actually composite it; a plain browser paints white behind the page and
-   would only break the colours again. */
+/* Transparent-mode styling lives in Companion.vue, next to the component
+   it dresses, so Storybook can show it too. */
 html,
 body,
 #app {
@@ -171,17 +200,46 @@ body,
 </style>
 
 <style>
-/* Opt-in transparency, applied by CompanionView when asked for. */
-body.companion-transparent,
-body.companion-transparent #app {
-  background: transparent !important;
-}
-body.companion-transparent::before {
-  display: none;
-}
 </style>
 
 <style scoped>
+/* Hidden until wanted, like the outline: a permanent grip on a widget this
+   small is one more thing competing for attention. */
+.drag-strip {
+  position: absolute;
+  /* Flush with the window's own outline, so the bar has no left, right or
+     top edge of its own - it REUSES the window's. Only its underside is
+     drawn, as a divider. A box inside a box reads as accidental; a strip
+     bounded by the frame reads like a title bar. */
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  z-index: 200;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  opacity: 0;
+  transition: opacity 140ms ease;
+  background-image:
+    repeating-linear-gradient(90deg, #fff 0 5px, #10151f 5px 10px);
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+}
+body.hovering .drag-strip { opacity: 1; }
+/* The dots are the only solid thing left, so they carry both colours too:
+   a white core inside a dark ring. Bigger, because a 3px dot with a border
+   is mostly border. */
+.drag-strip span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid #10151f;
+  box-sizing: border-box;
+}
 .companion-window {
   position: relative;
   display: flex;

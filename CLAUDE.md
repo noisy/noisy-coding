@@ -43,6 +43,17 @@ nothing. docker-compose.yml runs the PUBLISHED image; never point it at
 `build:` (a stale local build once shadowed a release as 2.13.4) - the
 working tree runs via docker-compose.dev.yml under a distinct name.
 
+## Restarting the daemon
+
+Never `kill` it. Use the graceful path, and **always sixty seconds**:
+
+    curl -X POST http://127.0.0.1:7765/shutdown -d '{"delay_seconds":60}'
+
+The dashboard shows a countdown with CANCEL and RESTART NOW, and the daemon
+refuses to die mid-recording. Sixty is not negotiable downwards: a shorter
+countdown is not enough warning to finish a thought, and Krzysztof can
+always hit RESTART NOW to go faster. The delay exists for him, not for us.
+
 ## Frontend changes
 
 New UI (a widget, banner, layout, any new look) is designed in Storybook

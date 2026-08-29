@@ -1,0 +1,14 @@
+{
+  "name": "noisy-coding-desktop",
+  "version": "2.17.0",
+  "private": true,
+  "description": "Thin desktop shell for the noisy-coding companion widget",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "NOISY_COMPANION_URL=http://localhost:5173/companion?transparent=1 electron ."
+  },
+  "devDependencies": {
+    "electron": "^32.0.0"
+  }
+}

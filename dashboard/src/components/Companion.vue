@@ -387,6 +387,164 @@ watch(
   </div>
 </template>
 
+<style>
+/* Keep the HUD's dark backdrop from hud.css. The widget's colours are
+   translucent - rgba surfaces and borders - so they are mixed with whatever
+   is behind them. Over a browser's white page they wash out and stop
+   matching Storybook, where stories render on that same dark chrome.
+   Transparency is opt-in via ?transparent=1, for a native shell that can
+   actually composite it; a plain browser paints white behind the page and
+   would only break the colours again. */
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+}
+
+</style>
+
+<style>
+/* Floating over an editor, the widget should be its CONTENTS - bubbles,
+   portraits, the hexagon - not a dark slab with contents inside it. So the
+   panel itself loses its background and border, while everything that
+   carries meaning becomes fully opaque instead of 85% (translucent bubbles
+   over live code are unreadable, and the code behind them is unreadable
+   too). Only in transparent mode; the browser keeps its panel. */
+body.companion-transparent .companion {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+/* An invisible window has no edges, so there is no way to tell where it
+   ends or what responds to a drag.
+   Drawn on the WINDOW, not on the widget: hovering the widget itself left
+   gaps wherever a child sat outside its box (the hexagon) and the outline
+   was clipped where the widget did not fill the window. Fixed to the
+   viewport, it always traces the real edge, and one listener on the window
+   means every part of it counts as hover. */
+body.companion-transparent::after {
+  content: "";
+  position: fixed;
+  inset: 2px;
+  /* Two-tone dashes: white, dark, white, dark, all the way round.
+     A single colour can only ever work on some backgrounds, and this window
+     floats over all of them - so instead of choosing, the line carries both,
+     and whichever one contrasts is the one you see. Drawn as four striped
+     edges rather than a CSS border, because a border's dash phase cannot be
+     offset to interleave a second colour. Replaces a difference-blend
+     version, which worked but also inverted our own chrome underneath it. */
+  background-image:
+    repeating-linear-gradient(90deg, #fff 0 5px, #10151f 5px 10px),
+    repeating-linear-gradient(90deg, #fff 0 5px, #10151f 5px 10px),
+    repeating-linear-gradient(0deg, #fff 0 5px, #10151f 5px 10px),
+    repeating-linear-gradient(0deg, #fff 0 5px, #10151f 5px 10px);
+  background-size: 100% 1px, 100% 1px, 1px 100%, 1px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 140ms ease;
+  pointer-events: none;
+  z-index: 100;
+}
+body.companion-transparent.hovering::after { opacity: 1; }
+body.companion-transparent .companion .msg {
+  background: #050e18 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+body.companion-transparent .companion .msg.side-left {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, #050e18), #050e18 45%) !important;
+}
+body.companion-transparent .companion .msg.side-right {
+  background: linear-gradient(270deg, color-mix(in srgb, var(--accent) 14%, #050e18), #050e18 45%) !important;
+}
+/* The hexagon is an outline with nothing behind it: over an editor its bars
+   were drawn straight onto the code. Fill the shape itself - not the SVG
+   box, or it becomes a dark square. */
+body.companion-transparent .companion .hex polygon {
+  fill: #050e18;
+}
+
+/* Older messages are NOT faded here.
+   On the HUD's dark panel, dropping a bubble to 55% reads as "further back".
+   Over an editor there is no panel behind it, so the same rule makes the
+   code show through the message - the past becomes literally transparent
+   rather than merely quieter. The effect is worth having; it needs to be
+   done with colour, not opacity. */
+body.companion-transparent .companion .msgs .older {
+  opacity: 1;
+}
+
+/* The hexagon is never dimmed here.
+   Opacity means "further back" only when there is something behind it to
+   recede INTO; over a white editor a 45% hexagon just looks broken. So it
+   stays fully drawn and says idle-versus-live with COLOUR: a cool slate
+   when it is only listening, amber and glowing when it holds the floor. */
+/* Two elements, one job each - never both changing at once, or neither is
+   a signal. The RING is identity: amber, always, never dimmed. The BARS
+   are state: amber while listening, red while recording - the one colour
+   everybody reads as "this is being captured" without being told. */
+body.companion-transparent .companion .rail .hex {
+  opacity: 1;
+  color: var(--amber);
+}
+body.companion-transparent .companion .hex .spectrum rect {
+  fill: var(--amber);
+  /* Full brightness while idle too: the microphone IS on, and a dimmed
+     spectrum implies it is not. Recording is said with colour, not with
+     how bright the bars are. */
+  opacity: 1;
+  transition: fill 120ms ease;
+}
+body.companion-transparent .companion .rail.active .hex .spectrum rect {
+  fill: #ff4d4d;
+}
+
+/* The heads sit on nothing now, so they need their own ground. */
+body.companion-transparent .companion .head {
+  background-color: #050e18;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* A frameless native window has no title bar, so the page has to say what
+   can be grabbed - and the CURSOR has to say it too, because a draggable
+   region that looks identical to a non-draggable one is a guessing game.
+   Three behaviours, matching what each area is FOR:
+     - anywhere on the widget: a grab hand, and it drags the window
+     - message text: a text cursor, and it selects - you may want to copy
+       what was said, and dragging the window instead would be maddening
+     - avatars and buttons: a pointer, and they click */
+body.companion-transparent .companion { cursor: default; }
+
+body.companion-transparent .msg,
+body.companion-transparent .msg * {
+  -webkit-app-region: no-drag;
+  cursor: text;
+  user-select: text;
+}
+
+body.companion-transparent button,
+body.companion-transparent .head {
+  -webkit-app-region: no-drag;
+  cursor: pointer;
+}
+
+/* Only the handle drags. Everything else keeps its own cursor, which an
+   OS drag region would override with an arrow. */
+body.companion-transparent .drag-strip {
+  -webkit-app-region: drag;
+}
+
+/* Opt-in transparency, applied by CompanionView when asked for. */
+body.companion-transparent,
+body.companion-transparent #app {
+  background: transparent !important;
+}
+body.companion-transparent::before {
+  display: none;
+}
+</style>
+
 <style scoped>
 .companion {
   width: 420px;
@@ -416,7 +574,7 @@ watch(
    would fight the script for the same property. Dimmed at rest so the idle
    breathing reads as "listening" rather than "something is happening". */
 .hex .spectrum rect {
-  fill: var(--amber);
+  fill: currentColor;
   opacity: 0.45;
   transition: opacity 180ms ease;
 }
