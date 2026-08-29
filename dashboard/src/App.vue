@@ -19,6 +19,7 @@ import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
 import SpectrumBars from "./components/SpectrumBars.vue";
 import StatusStrip from "./components/StatusStrip.vue";
+import CompanionFloat from "./components/CompanionFloat.vue";
 import VersionBadge from "./components/VersionBadge.vue";
 import type { CueName } from "./composables/cueEvents";
 import { useAudioCues } from "./composables/useAudioCues";
@@ -747,7 +748,8 @@ const LANGUAGES: Record<string, string> = {
       </span>
       <!-- Right edge order: version second-from-corner, system status in
            the corner itself. -->
-      <VersionBadge style="margin-left: auto" :daemon-version="status?.version" :latest-version="status?.latest_version" :dev-instance="isDevInstance" />
+      <CompanionFloat style="margin-left: auto" />
+      <VersionBadge :daemon-version="status?.version" :latest-version="status?.latest_version" :dev-instance="isDevInstance" />
       <span>{{ offline ? "◈ LINK DOWN" : lastError ? "◈ DEGRADED — SEE LAST ERROR" : "◈ ALL SYSTEMS NOMINAL" }}</span>
     </footer>
   </div>
