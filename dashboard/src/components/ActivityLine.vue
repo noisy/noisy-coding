@@ -52,9 +52,14 @@ const label = computed(() => {
 
 <style scoped>
 .busyrow {
-  align-self: flex-start;
+  /* Claude's side, like his replies - it stands in for the reply that has
+     not arrived yet, so it must not sit where the user's messages do.
+     The text inside stays left-aligned: it is a line to read, not a label. */
+  align-self: flex-end;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  text-align: left;
   gap: 9px;
   max-width: 88%;
   padding: 6px 12px;

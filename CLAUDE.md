@@ -49,3 +49,15 @@ New UI (a widget, banner, layout, any new look) is designed in Storybook
 FIRST - present several variants (3-5) as *.stories.ts and let Krzysztof
 pick before wiring anything into the app. Only trivially-derivative
 changes (same pattern as an existing element) may skip this.
+
+**And Storybook is kept up to date afterwards.** It is the reference for
+what the UI does, not a scratchpad from when a component was designed:
+
+- change a component's behaviour, update its stories in the same commit
+- a bug worth fixing is a state worth a story - regressions belong where
+  they can be seen, not only in a spec
+- delete stories for things that no longer exist (git remembers them);
+  stale variants cost more than they save, because someone will judge a
+  change against a story that no longer describes the product
+- cover the parts, not just the assembled whole - a component in isolation
+  is where a change usually breaks first

@@ -1,107 +1,205 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import { defineComponent, ref } from "vue";
-import Companion, { type CompanionMessage } from "./Companion.vue";
+import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 
-const meta: Meta = { title: "Companion/PoC" };
+/* The companion widget (#28).
+ *
+ * The always-on-top panel that lives over the editor: a spectrum on the
+ * left for the user's voice, the conversation in the middle, and a rail of
+ * agent portraits on the right.
+ *
+ * Grouped by what a story is FOR - the states it can be in, the way it
+ * sizes text, and the rail - so a change can be judged against the case it
+ * was meant to affect rather than one general-purpose demo.
+ */
+const meta: Meta<typeof Companion> = { title: "Companion/Widget", component: Companion };
 export default meta;
+type Story = StoryObj<typeof Companion>;
 
-const READY: CompanionMessage = { role: "claude", text: "I'm ready." };
-const FOUR: CompanionMessage[] = [
-  { role: "claude", text: "I'm ready." },
-  { role: "user", text: "let's build the companion widget" },
-  { role: "claude", text: "Storybook first - you pick, then I wire it in." },
-  { role: "user", text: "keep it small, always on top" },
+const SHORT = "On it.";
+const MEDIUM =
+  "Storybook first - you pick a variant, then I wire it to the daemon and we " +
+  "find out what the real data does to it.";
+const LONG =
+  "The type size is decided per message from its own length and never revisited: " +
+  "a short line gets big type, a long one gets small type, and neither changes " +
+  "after it appears. That replaced a thread-wide system that measured the whole " +
+  "conversation and resized everything at once, which is why a single short line " +
+  "used to come out tiny - it was being sized to fit a dozen messages that had " +
+  "already scrolled out of sight.";
+
+const FEED: CompanionMessage[] = [
+  { id: 1, role: "claude", text: "I'm ready." },
+  { id: 2, role: "user", text: "let's wire up the companion" },
+  { id: 3, role: "claude", text: MEDIUM },
 ];
 
-const USER_LINE = "okay so the next thing I want to build is the companion widget";
-const CLAUDE_LINE = "On it - Storybook first, you pick, then I wire it in.";
+const AGENTS: CompanionAgent[] = [
+  { name: "stream-day-2", voice: "lux", active: true },
+  { name: "chat", voice: "eve" },
+  { name: "talk-me-through", voice: "atlas", unread: true },
+];
 
-/* ------------------------------------------------------------------ *
- * Interactive playground: drive the whole conversation flow by hand
- * or hit PLAY DEMO for the scripted loop (user talks word by word ->
- * message commits -> Claude replies -> idle).
- * ------------------------------------------------------------------ */
+const base = { voice: "lux", maxHeight: 200, agents: AGENTS };
+
+/* ---- states ------------------------------------------------------- */
+
+/** Cold start: the daemon seeds one line so the widget is never empty. */
+export const ColdStart: Story = {
+  args: { ...base, mode: "idle", feed: [{ id: 1, role: "claude", text: "I'm ready." }] },
+};
+
+/** A conversation with nothing in it yet - switching to a fresh agent. */
+export const EmptyConversation: Story = { args: { ...base, mode: "idle", feed: [] } };
+
+/** Claude holding the floor: its portrait lit, the spectrum at rest. */
+export const ClaudeSpeaking: Story = { args: { ...base, mode: "claude", feed: FEED } };
+
+/** The user mid-sentence, transcript growing as they speak. */
+export const UserTalking: Story = {
+  args: { ...base, mode: "user", feed: FEED, liveText: "okay so the next thing", level: 0.6 },
+};
+
+/** Holding push-to-talk before a word is said: lit, but nothing to show. */
+export const ListeningSilent: Story = {
+  args: { ...base, mode: "user", feed: FEED, liveText: "", level: 0.02 },
+};
+
+/* ---- type sizing --------------------------------------------------- */
+
+/** Each message keeps its own size. The three tiers, one after another. */
+export const MessageSizes: Story = {
+  args: {
+    ...base,
+    mode: "claude",
+    maxHeight: 260,
+    feed: [
+      { id: 1, role: "user", text: LONG },
+      { id: 2, role: "claude", text: MEDIUM },
+      { id: 3, role: "user", text: SHORT },
+    ],
+  },
+};
+
+/** A short line after a long history: must be BIG, not sized for the
+ *  messages that already scrolled away. */
+export const ShortAfterLong: Story = {
+  args: {
+    ...base,
+    mode: "claude",
+    feed: [
+      { id: 1, role: "user", text: LONG },
+      { id: 2, role: "claude", text: LONG },
+      { id: 3, role: "user", text: SHORT },
+    ],
+  },
+};
+
+/** More than fits: the thread scrolls, pinned to the newest. */
+export const Overflowing: Story = {
+  args: {
+    ...base,
+    mode: "claude",
+    feed: Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      role: i % 2 ? "claude" : ("user" as const),
+      text: i % 3 ? MEDIUM : SHORT,
+    })) as CompanionMessage[],
+  },
+};
+
+/* ---- the agent rail ------------------------------------------------ */
+
+/** Two conversations - the common case. */
+export const RailTwo: Story = {
+  args: {
+    ...base,
+    mode: "claude",
+    feed: FEED,
+    agents: [
+      { name: "stream-day-2", voice: "lux", active: true },
+      { name: "chat", voice: "eve", unread: true },
+    ],
+  },
+};
+
+/** Five - where a vertical rail stops being readable, if it does. */
+export const RailCrowded: Story = {
+  args: {
+    ...base,
+    mode: "claude",
+    feed: FEED,
+    agents: [
+      { name: "stream-day-2", voice: "lux" },
+      { name: "chat", voice: "eve" },
+      { name: "talk-me-through", voice: "atlas", active: true },
+      { name: "word-up", voice: "iris", unread: true },
+      { name: "test16", voice: "kepler" },
+    ],
+  },
+};
+
+/** No rail at all: one conversation, portrait only. */
+export const RailNone: Story = {
+  args: { ...base, mode: "claude", feed: FEED, agents: [] },
+};
+
+/* ---- interactive ---------------------------------------------------- */
+
+/** Drive the whole flow by hand: idle -> user talks -> commits -> reply. */
 const Playground = defineComponent({
   components: { Companion },
   setup() {
     const mode = ref<"idle" | "user" | "claude">("idle");
-    const feed = ref<CompanionMessage[]>([READY]);
+    const feed = ref<CompanionMessage[]>([{ id: 0, role: "claude", text: "I'm ready." }]);
     const liveText = ref("");
-    let timers: number[] = [];
-    const later = (ms: number, fn: () => void) => {
-      timers.push(window.setTimeout(fn, ms));
-    };
-    const clear = () => { timers.forEach(clearTimeout); timers = []; };
+    const level = ref(0);
+    let nextId = 1;
 
-    const userStarts = () => { clear(); mode.value = "user"; liveText.value = ""; };
-    const userWords = () => {
+    const talk = () => {
       mode.value = "user";
-      const words = USER_LINE.split(" ");
       liveText.value = "";
-      words.forEach((w, i) => later(220 * i, () => { liveText.value += (i ? " " : "") + w; }));
-    };
-    const userCommits = () => {
-      feed.value = [...feed.value, { role: "user", text: liveText.value || USER_LINE }];
-      liveText.value = ""; mode.value = "idle";
-    };
-    const claudeReplies = () => {
-      mode.value = "claude";
-      feed.value = [...feed.value, { role: "claude", text: CLAUDE_LINE }];
-      later(2600, () => { mode.value = "idle"; });
-    };
-    const reset = () => { clear(); mode.value = "idle"; feed.value = [READY]; liveText.value = ""; };
-    const demo = () => {
-      reset();
-      userStarts();
-      later(400, userWords);
-      later(400 + 220 * USER_LINE.split(" ").length + 700, userCommits);
-      later(400 + 220 * USER_LINE.split(" ").length + 1400, claudeReplies);
+      level.value = 0.5;
+      const words = "okay so the next thing I want is the agent rail".split(" ");
+      words.forEach((w, i) =>
+        setTimeout(() => {
+          liveText.value = liveText.value ? `${liveText.value} ${w}` : w;
+          level.value = 0.3 + Math.random() * 0.5;
+        }, i * 180),
+      );
+      setTimeout(() => {
+        feed.value = [...feed.value, { id: nextId++, role: "user", text: liveText.value }];
+        liveText.value = "";
+        level.value = 0;
+        mode.value = "idle";
+      }, words.length * 180 + 300);
     };
 
-    return { mode, feed, liveText, userStarts, userWords, userCommits, claudeReplies, reset, demo };
+    const reply = (text: string) => {
+      mode.value = "claude";
+      feed.value = [...feed.value, { id: nextId++, role: "claude", text }];
+      setTimeout(() => (mode.value = "idle"), 1500);
+    };
+
+    return { mode, feed, liveText, level, talk, reply, SHORT, LONG };
   },
   template: `
-    <div style="background:#02060c;padding:24px;height:480px;font-family:monospace;
-                display:flex;flex-direction:column;justify-content:space-between;
-                border:1px dashed rgba(63,216,255,0.2)">
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button @click="demo" style="padding:6px 12px">▶ PLAY DEMO</button>
-        <button @click="userStarts">1. user starts (listening)</button>
-        <button @click="userWords">2. user words stream in</button>
-        <button @click="userCommits">3. user message commits</button>
-        <button @click="claudeReplies">4. claude replies</button>
-        <button @click="reset">reset</button>
+    <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+      <div style="display:flex;gap:8px">
+        <button @click="talk()">user talks</button>
+        <button @click="reply(SHORT)">short reply</button>
+        <button @click="reply(LONG)">long reply</button>
       </div>
-      <div style="align-self:flex-start">
-        <Companion :mode="mode" :feed="feed" :live-text="liveText" voice="rex" :max-height="200" />
-      </div>
-    </div>`,
+      <Companion
+        :mode="mode" voice="lux" :feed="feed" :live-text="liveText"
+        :level="level" :max-height="200"
+        :agents="[
+          { name: 'stream-day-2', voice: 'lux', active: true },
+          { name: 'chat', voice: 'eve' },
+        ]"
+      />
+    </div>
+  `,
 });
 
 export const Playground_Flow: StoryObj = { render: () => Playground };
-
-const wrap = (props: Record<string, unknown>) => ({
-  components: { Companion },
-  setup: () => ({ props }),
-  // pinned like the real widget: bottom-left of the frame, growing upward
-  template: `<div style="background:#02060c;padding:24px;height:360px;display:flex;
-                         align-items:flex-end;border:1px dashed rgba(63,216,255,0.2)">
-    <Companion v-bind="props" /></div>`,
-});
-
-export const MidConversation_Scrolled: StoryObj = {
-  render: () => wrap({ mode: "idle", feed: FOUR, maxHeight: 170 }),
-};
-export const ClaudeSpeaking: StoryObj = {
-  render: () => wrap({ mode: "claude", feed: FOUR }),
-};
-export const UserTalking_LiveTranscript: StoryObj = {
-  render: () => wrap({
-    mode: "user",
-    feed: FOUR,
-    liveText: "and it should stay small in the corner",
-  }),
-};
-export const ColdStart_ImReady: StoryObj = {
-  render: () => wrap({ mode: "idle", feed: [READY] }),
-};

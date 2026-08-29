@@ -10,6 +10,7 @@
 import { computed, ref } from "vue";
 import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 import { useDaemonState } from "../composables/useDaemonState";
+import { timelineZone } from "../machines/chat";
 import { useMicStream } from "../composables/useMicStream";
 import { useDocumentPip } from "../composables/useDocumentPip";
 
@@ -32,20 +33,32 @@ const host = ref<HTMLElement | null>(null);
 const anchor = ref<HTMLElement | null>(null);
 const { supported, open, popOut } = useDocumentPip(host, anchor);
 
-const DELIVERED = /delivered|cancelled|failed/i;
+/* Live = the user card still being composed. The state machine owns what
+ * each status MEANS; the widget used to test the status text with a regex
+ * of its own, which is how it disagreed with the dashboard. */
 const liveText = computed(() => {
   const last = [...mine.value].reverse().find((u) => u.role === "user");
-  if (!last || DELIVERED.test(last.status)) return "";
-  return last.text;
+  if (!last || timelineZone("user", last.status) !== "done") return last?.text ?? "";
+  return "";
 });
 
 const feed = computed<CompanionMessage[]>(() =>
   mine.value
-    .filter((u) => u.committed_at > 0 && u.text.trim())
+    /* Not `committed_at > 0`: that drops everything still in flight -
+     * transcribing, awaiting pickup, queued behind the speaker - which is
+     * exactly the pending zone the dashboard shows below the line. The
+     * zone decides where a card goes; this filter only decides whether
+     * there is anything to render at all. */
+    .filter((u) => u.text.trim())
     .filter((u) => u.role === "user" || u.role === "claude")
     .filter((u) => !(u.role === "user" && u.text === liveText.value))
     .slice(-12)
-    .map((u) => ({ id: u.id, role: u.role as "user" | "claude", text: u.text })),
+    .map((u) => ({
+      id: u.id,
+      role: u.role as "user" | "claude",
+      text: u.text,
+      zone: timelineZone(u.role === "user" ? "user" : "claude", u.status),
+    })),
 );
 
 /* Every conversation, in the dashboard's own tab order.
@@ -69,6 +82,16 @@ const others = computed<CompanionAgent[]>(() => {
       active: name === viewedAgent.value,
       unread: (queued[name] ?? 0) > 0,
     }));
+});
+
+/* What this agent is doing between messages, straight from the daemon's
+ * activity line - the same source and the same freshness window the
+ * dashboard uses, so the two never disagree about who is working. */
+const ACTIVITY_FRESH_S = 20;
+const activity = computed(() => {
+  const a = status.value?.activity?.[viewedAgent.value ?? ""];
+  if (!a?.text) return null;
+  return Date.now() / 1000 - a.at < ACTIVITY_FRESH_S ? a.text : null;
 });
 
 const mode = computed<"claude" | "user" | "idle">(() => {
@@ -104,6 +127,7 @@ const mode = computed<"claude" | "user" | "idle">(() => {
           :live-text="liveText"
           :max-height="220"
       :level="level"
+      :activity="activity"
       :agents="others"
       @select="selectAgent"
                 />

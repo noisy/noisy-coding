@@ -17,6 +17,10 @@ import { voiceSpriteStyle } from "./voiceSprites";
 export interface CompanionMessage {
   role: "user" | "claude";
   text: string;
+  /** Timeline zone from machines/chat.ts. "pending" is still waiting its
+   *  turn - a transcript not picked up yet, or a reply queued behind the
+   *  speaker - and renders dimmed below the line, as in the dashboard. */
+  zone?: "done" | "active" | "pending";
   /** The utterance's own id. Keying by position makes Vue reuse a bubble
    *  for a different message - switch conversation and the second bubble
    *  morphs into the other agent's second bubble instead of being replaced. */
@@ -45,6 +49,9 @@ const props = withDefaults(
     maxHeight?: number;
     /** Live mic level, 0..1. Drives the spectrum. */
     level?: number;
+    /** What the agent is doing between messages ("running Bash", …), from
+     *  the daemon's activity line. Null when it is not working. */
+    activity?: string | null;
     /** Other conversations, oldest at the top. The ACTIVE one is `voice`. */
     agents?: CompanionAgent[];
   }>(),
@@ -56,6 +63,7 @@ const props = withDefaults(
     maxHeight: 200,
     level: 0,
     agents: () => [],
+    activity: null,
   },
 );
 
@@ -232,6 +240,17 @@ watch(
   { immediate: true },
 );
 
+/* Same split as the dashboard's conversation log: what already happened,
+ * then the busy line, then what is still waiting its turn. The zones come
+ * from machines/chat.ts - the widget must not invent its own rules about
+ * what "delivered" means, which is exactly what it did before. */
+const history = computed(() => props.feed.filter((m) => m.zone !== "pending"));
+const waiting = computed(() => props.feed.filter((m) => m.zone === "pending"));
+/** Room for two; the rest become a count, so a queue cannot fill a widget. */
+const WAITING_SHOWN = 2;
+const waitingShown = computed(() => waiting.value.slice(0, WAITING_SHOWN));
+const waitingExtra = computed(() => Math.max(0, waiting.value.length - WAITING_SHOWN));
+
 const scroller = ref<HTMLElement | null>(null);
 const root = ref<HTMLElement | null>(null);
 /* Follow the newest message, unless the reader has scrolled away.
@@ -307,9 +326,9 @@ watch(
         class="msgs"
       >
         <Bubble
-          v-for="(m, i) in feed"
+          v-for="(m, i) in history"
           :key="m.id ?? `pos-${i}`"
-          :class="[sizeOf(m.text), { older: i < feed.length - 1 || !!liveText }]"
+          :class="[sizeOf(m.text), { older: i < history.length - 1 || !!liveText }]"
           compact
           :side="m.role === 'claude' ? 'right' : 'left'"
           :accent="m.role === 'claude' ? 'violet' : 'amber'"
@@ -328,7 +347,24 @@ watch(
         :text="liveText"
       />
       <span v-else-if="mode === 'user'" class="listening">LISTENING</span>
-      <span v-else-if="!feed.length && !liveText" class="listening">NO MESSAGES YET</span>
+      <span v-else-if="!feed.length && !liveText && !activity" class="listening">NO MESSAGES YET</span>
+
+      <!-- The present: what the agent is doing between messages. -->
+      <span v-if="activity" class="activity">{{ activity }}<i /><i /><i /></span>
+
+      <!-- Below the line: still waiting its turn. -->
+      <Bubble
+        v-for="m in waitingShown"
+        :key="`w-${m.id}`"
+        class="pending"
+        :class="sizeOf(m.text)"
+        compact
+        :side="m.role === 'claude' ? 'right' : 'left'"
+        :accent="m.role === 'claude' ? 'violet' : 'amber'"
+        who="" status-kind="off" status-label="" time=""
+        :text="m.text"
+      />
+      <span v-if="waitingExtra" class="listening">+{{ waitingExtra }} WAITING</span>
     </div>
 
     <!-- Claude's head floats over the thread's bottom-right corner so the
@@ -470,6 +506,35 @@ watch(
 /* Per-message sizing. A short line is meant to be read at a glance from
    the corner of the eye; a long one has to fit, and you will look at it
    properly anyway. */
+/* Waiting its turn: present, but clearly not yet said. */
+.thread :deep(.pending) { opacity: 0.45; border-style: dashed; }
+
+/* The busy line. Three dots that actually move, because a static "thinking"
+   label is indistinguishable from a frozen widget. */
+.activity {
+  /* Claude's side, shaped like one of his bubbles: it occupies the place
+     the reply will take, so the feed does not jump when it arrives.
+     Right-aligned inside, mirroring the dashboard's left. */
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 5px 10px;
+  text-align: right;
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--violet); opacity: 0.9;
+  border: 1px dashed color-mix(in srgb, var(--violet) 35%, transparent);
+  border-right: 2px solid var(--violet);
+  background: color-mix(in srgb, var(--violet) 5%, transparent);
+  border-radius: 8px;
+}
+.activity i {
+  display: inline-block; width: 3px; height: 3px; margin-left: 3px;
+  border-radius: 50%; background: currentColor;
+  animation: dot 1.2s ease-in-out infinite;
+}
+.activity i:nth-child(2) { animation-delay: 0.15s; }
+.activity i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes dot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
 .thread :deep(.size-l) { padding: 8px 12px; }
 .thread :deep(.size-l .txt) { font-size: 14px; line-height: 1.45; }
 
@@ -490,6 +555,7 @@ watch(
 .livebubble { flex: none; align-self: flex-start; }
 .listening {
   flex: none;
+  align-self: flex-start;
   font-size: 10px; letter-spacing: 0.34em; color: var(--amber);
   text-shadow: var(--glow-amber);
   animation: fade 1.4s ease-in-out infinite;
