@@ -12,15 +12,47 @@
 const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen } = require("electron");
 const path = require("node:path");
 
+/** Packaged, files live in the asar; in dev they sit next to this file. */
+const asset = (name) => path.join(__dirname, "build", name);
+
 // The daemon serves the built dashboard under /next/ - the bare /companion
 // path belongs to the vite dev server, not to the daemon.
-const DEFAULT_URL = "http://127.0.0.1:7765/next/companion?transparent=1";
-const url = process.env.NOISY_COMPANION_URL || DEFAULT_URL;
+/* Two windows, one app:
+ *   - the DASHBOARD, an ordinary window with the full UI
+ *   - the WIDGET, frameless and always on top
+ * Both are views of the same bundle served by the daemon, so neither
+ * duplicates anything; the app is a window manager, not a second client. */
+const BASE = process.env.NOISY_DAEMON_URL || "http://127.0.0.1:7765";
+const WIDGET_URL = process.env.NOISY_COMPANION_URL || `${BASE}/next/companion?transparent=1`;
+const DASHBOARD_URL = process.env.NOISY_DASHBOARD_URL || `${BASE}/next/`;
 
 let win = null;
+let dash = null;
 let tray = null;
 /** Click-through: the widget is visible but the editor beneath stays usable. */
 let ghost = false;
+
+function createDashboard() {
+  if (dash && !dash.isDestroyed()) {
+    dash.show();
+    dash.focus();
+    return dash;
+  }
+  dash = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    // An ordinary window: it has a title bar, it goes behind other windows,
+    // it belongs in the Dock. Everything the widget deliberately is not.
+    title: "Noisy Coding",
+    backgroundColor: "#050e18",
+    show: false,
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  dash.loadURL(DASHBOARD_URL);
+  dash.once("ready-to-show", () => dash.show());
+  dash.on("closed", () => (dash = null));
+  return dash;
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -44,7 +76,7 @@ function createWindow() {
   win.setAlwaysOnTop(true, "screen-saver");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  win.loadURL(url);
+  win.loadURL(WIDGET_URL);
   win.once("ready-to-show", () => win.show());
   watchHover(win);
   win.on("closed", () => (win = null));
@@ -95,8 +127,24 @@ function setGhost(on) {
 
 function buildTray() {
   const menu = Menu.buildFromTemplate([
+    { label: "Open dashboard", click: () => createDashboard() },
+    {
+      label: win && !win.isDestroyed() && win.isVisible() ? "Hide widget" : "Show widget",
+      click: () => {
+        if (!win || win.isDestroyed()) return createWindow();
+        win.isVisible() ? win.hide() : win.show();
+        buildTray();
+      },
+    },
+    { type: "separator" },
     { label: ghost ? "Click-through: ON" : "Click-through: OFF", click: () => setGhost(!ghost) },
-    { label: "Reload", click: () => win?.reload() },
+    {
+      label: "Reload both (Ctrl+Alt+R)",
+      click: () => {
+        win?.reload();
+        dash?.reload();
+      },
+    },
     { type: "separator" },
     { label: "Quit", role: "quit" },
   ]);
@@ -104,18 +152,45 @@ function buildTray() {
 }
 
 app.whenReady().then(() => {
+  /* Keep the Dock icon for as long as the app runs.
+   *
+   * macOS drops an app out of the Dock once it owns no ordinary windows -
+   * and the widget is frameless, always-on-top and visible on every space,
+   * which does not count. So the icon appeared at launch and vanished a
+   * moment later, exactly as described. Asking for it explicitly keeps it. */
+  app.dock?.show();
+
   createWindow();
 
-  // An empty image keeps the tray icon a placeholder rather than a broken
-  // one; the artwork is a later problem than the window behaviour.
-  tray = new Tray(nativeImage.createEmpty());
-  tray.setTitle("◉");
+  // A real menu-bar icon. "Template" in the filename tells macOS it is a
+  // monochrome mask, so it inverts correctly in light and dark menu bars.
+  // Without this the app is running and completely invisible - which is
+  // exactly how it felt.
+  const trayIcon = nativeImage.createFromPath(asset("trayTemplate.png"));
+  trayIcon.setTemplateImage(true);
+  tray = new Tray(trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon);
+  if (trayIcon.isEmpty()) tray.setTitle("◉");
+  // Clicking the icon brings the widget back if it was closed or lost.
+  tray.on("click", () => {
+    if (!win || win.isDestroyed()) return createWindow();
+    win.show();
+    win.setAlwaysOnTop(true, "screen-saver");
+  });
   tray.setToolTip("noisy-coding companion");
   buildTray();
 
   // A keyboard escape hatch: a click-through window cannot be clicked to
   // turn click-through off again.
   globalShortcut.register("Control+Alt+G", () => setGhost(!ghost));
+
+  /* Reload BOTH windows from anywhere, even when the widget has no focus -
+   * which it usually does not, since it floats over whatever you are
+   * actually working in. Testing a change should not require hunting for
+   * the window first. */
+  globalShortcut.register("Control+Alt+R", () => {
+    win?.reload();
+    dash?.reload();
+  });
 
   /* A frameless window has no menu of its own, so the ordinary shortcuts
    * have to be registered by hand - without them there is no way to reload
@@ -134,12 +209,11 @@ app.whenReady().then(() => {
   ]);
   Menu.setApplicationMenu(menu);
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  // Clicking the Dock icon opens the dashboard - the widget is always
+  // there, so it is not what someone is asking for.
+  app.on("activate", () => createDashboard());
 });
 
-// The widget is not a document: closing its window should quit, and the
-// dock icon is noise for something that lives in the menu bar.
-app.on("window-all-closed", () => app.quit());
-app.dock?.hide();
+/* Closing a window does NOT quit: the app lives in the menu bar and the
+ * widget is meant to outlive any particular window. Quit from the tray. */
+app.on("window-all-closed", () => {});

@@ -1,14 +1,44 @@
 {
-  "name": "noisy-coding-desktop",
+  "name": "noisy-coding-companion",
   "version": "2.17.0",
   "private": true,
-  "description": "Thin desktop shell for the noisy-coding companion widget",
+  "description": "The noisy-coding companion widget, always on top",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "start:dev": "NOISY_COMPANION_URL=http://localhost:5173/companion?transparent=1 electron ."
+    "start:dev": "NOISY_COMPANION_URL=http://localhost:5173/companion?transparent=1 electron .",
+    "dist": "electron-builder --mac --dir",
+    "dmg": "electron-builder --mac"
   },
   "devDependencies": {
-    "electron": "^32.0.0"
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "productName": "Noisy Coding",
+  "build": {
+    "appId": "pl.noisy.coding.companion",
+    "productName": "Noisy Coding",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "build/trayTemplate*.png"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "identity": null,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    }
   }
 }
