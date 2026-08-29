@@ -28,6 +28,7 @@ const FEED: CompanionMessage[] = [
    is for judging the design, and a blank disc judges the artwork instead. */
 const OTHERS: CompanionAgent[] = [
   { name: "chat", voice: "eve" },
+  { name: "stream-day-2", voice: "lux", active: true },
   { name: "talk-me-through", voice: "atlas", unread: true },
   { name: "word-up", voice: "iris" },
 ];

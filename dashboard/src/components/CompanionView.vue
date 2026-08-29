@@ -13,19 +13,30 @@ import { useDaemonState } from "../composables/useDaemonState";
 import { useMicStream } from "../composables/useMicStream";
 import { useDocumentPip } from "../composables/useDocumentPip";
 
+/* Filter here rather than using the composable's `utterances`.
+ *
+ * That list is only reassigned inside the poll tick, so switching agent
+ * waited up to a full poll before the thread caught up - the head changed
+ * instantly, the conversation arrived a beat later. `allUtterances` already
+ * holds every agent's messages in memory, so filtering it against the
+ * selected agent switches in the same frame as the click. */
 const { status, allUtterances, character, viewedAgent, selectAgent } = useDaemonState();
+
+const mine = computed(() =>
+  allUtterances.value.filter((u) => u.agent === viewedAgent.value),
+);
 // Live mic level, so the spectrum follows the voice instead of looping.
 const { level } = useMicStream();
 
 // The widget is a glance, not an archive: only committed lines, only the
 // last handful, oldest first so the freshest sits at the bottom.
 const feed = computed<CompanionMessage[]>(() =>
-  allUtterances.value
+  mine.value
     .filter((u) => u.committed_at > 0 && u.text.trim())
     .filter((u) => u.role === "user" || u.role === "claude")
     .filter((u) => !(u.role === "user" && u.text === liveText.value))
     .slice(-12)
-    .map((u) => ({ role: u.role as "user" | "claude", text: u.text })),
+    .map((u) => ({ id: u.id, role: u.role as "user" | "claude", text: u.text })),
 );
 
 /* What the user is saying RIGHT NOW.
@@ -38,7 +49,7 @@ const feed = computed<CompanionMessage[]>(() =>
  */
 const DELIVERED = /delivered|cancelled|failed/i;
 const liveText = computed(() => {
-  const last = [...allUtterances.value].reverse().find((u) => u.role === "user");
+  const last = [...mine.value].reverse().find((u) => u.role === "user");
   if (!last || DELIVERED.test(last.status)) return "";
   return last.text;
 });
@@ -60,7 +71,7 @@ const host = ref<HTMLElement | null>(null);
 const anchor = ref<HTMLElement | null>(null);
 const { supported: pipSupported, open: pipOpen, popOut } = useDocumentPip(host, anchor);
 
-/* The other conversations, in the dashboard's own tab order.
+/* Every conversation, in the dashboard's own tab order.
  *
  * Offline agents are dropped: the widget has room for a handful of heads,
  * and a tab you cannot talk to is not worth one of those slots. Unread is
@@ -71,12 +82,14 @@ const others = computed<CompanionAgent[]>(() => {
   const meta = s.agents_meta ?? {};
   const queued = s.queued_by_agent ?? {};
   return Object.keys(s.agents ?? {})
-    .filter((name) => name !== viewedAgent.value)
-    .filter((name) => meta[name]?.online !== false)
+    // Offline agents stay: a tab Krzysztof still has open is a
+    // conversation he still switches to, and hiding it makes heads appear
+    // and vanish as sessions idle out.
     .sort((a, b) => (meta[a]?.activated_at ?? 0) - (meta[b]?.activated_at ?? 0))
     .map((name) => ({
       name,
       voice: s.agent_voices?.[name] ?? "rex",
+      active: name === viewedAgent.value,
       unread: (queued[name] ?? 0) > 0,
     }));
 });
