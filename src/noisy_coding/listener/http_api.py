@@ -413,6 +413,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
                         "agents_meta": state.agents_meta,
+                        # Each conversation's voice, so a client can draw its
+                        # portrait without asking /character once per agent.
+                        "agent_voices": {
+                            name: state.character(name).get("voice", "")
+                            for name in state.agents
+                        },
                         "queued_by_agent": state.queued_by_agent,
                         "muted_agents": state.muted_agents,
                         "version": DAEMON_VERSION,

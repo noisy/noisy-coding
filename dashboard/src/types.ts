@@ -49,6 +49,9 @@ export interface DaemonStatus {
     string,
     { label: string; online: boolean; activated_at: number; offline_since: number | null; manual_pos?: number | null }
   >;
+  /** Each conversation's voice, so clients can draw a portrait without
+   *  fetching /character once per agent. Absent on old daemons. */
+  agent_voices?: Record<string, string>;
   /** Waiting (undelivered) transcripts per addressee agent. */
   queued_by_agent?: Record<string, number>;
   /** Conversations whose speech parks as unheard (per-tab mute). */
