@@ -76,13 +76,16 @@ def voice_ready() -> bool:
     stt = entries.get(config.stt_provider_name())
     if not (tts and tts["ready"] and stt and stt["ready"]):
         return False
-    if "local" in (config.tts_provider_name(), config.stt_provider_name()):
+    tts_local = config.tts_provider_name() == "local"
+    stt_local = config.stt_provider_name() == "local"
+    if tts_local or stt_local:
         # Installed is not enough: the WEIGHTS must be on disk, or the
         # gate would close while 340 MB is still in flight and the first
-        # utterance would block on the download.
+        # utterance would block on the download. Direction-aware — a
+        # mixed setup only needs the weights for its local half.
         from noisy_coding.providers.local import models_present
 
-        return models_present()
+        return models_present(tts=tts_local, stt=stt_local)
     return True
 
 

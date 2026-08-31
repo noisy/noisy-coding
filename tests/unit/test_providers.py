@@ -131,11 +131,37 @@ def test_voice_ready_requires_local_weights_on_disk(providers_file, monkeypatch)
         "noisy_coding.providers.manifest._local_missing", lambda: ""
     )
     monkeypatch.setattr(
-        "noisy_coding.providers.local.models_present", lambda: False
+        "noisy_coding.providers.local.models_present", lambda **kw: False
     )
     assert providers.voice_ready() is False
     monkeypatch.setattr(
-        "noisy_coding.providers.local.models_present", lambda: True
+        "noisy_coding.providers.local.models_present", lambda **kw: True
+    )
+    assert providers.voice_ready() is True
+
+
+def test_voice_ready_checks_only_the_local_direction(
+    providers_file, monkeypatch, tmp_path
+):
+    """Mixed setup: tts=local(kokoro weights present) + stt=grok(key set)
+    must pass the gate without the whisper cache (PR #47 round 3)."""
+    providers_file.write_text(
+        json.dumps({"tts": "local", "stt": "grok", "local": {}})
+    )
+    monkeypatch.setattr(
+        "noisy_coding.providers.manifest._local_missing", lambda: ""
+    )
+    monkeypatch.setattr(
+        "noisy_coding.credentials.api_key", lambda: "xai-test-key"
+    )
+    kokoro_dir = tmp_path / "models" / "kokoro"
+    kokoro_dir.mkdir(parents=True)
+    for filename in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
+        (kokoro_dir / filename).write_bytes(b"weights")
+    monkeypatch.setattr("noisy_coding.config_dir.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(
+        "noisy_coding.providers.local._whisper_cached",
+        lambda model: (_ for _ in ()).throw(AssertionError("STT is grok — must not be checked")),
     )
     assert providers.voice_ready() is True
 

@@ -212,22 +212,25 @@ def _whisper_cached(model_name: str) -> bool:
     return isinstance(result, str)
 
 
-def models_present() -> bool:
+def models_present(tts: bool = True, stt: bool = True) -> bool:
     """Every weight the CURRENT local configuration needs is on disk —
-    the first utterance will not block on a download."""
+    the first utterance will not block on a download. Direction-aware:
+    a mixed setup (say local TTS + cloud STT) needs only its own half."""
     from noisy_coding.config_dir import CONFIG_DIR
 
     engine = str(config.local_options().get("tts_engine") or "kokoro")
-    if engine != "say":
+    if tts and engine != "say":
         kokoro_dir = CONFIG_DIR / "models" / "kokoro"
         for filename in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
             target = kokoro_dir / filename
             if not (target.exists() and target.stat().st_size > 0):
                 return False
-    model_name = str(
-        config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
-    )
-    return _whisper_cached(model_name)
+    if stt:
+        model_name = str(
+            config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
+        )
+        return _whisper_cached(model_name)
+    return True
 
 
 def download_status() -> list[dict]:
