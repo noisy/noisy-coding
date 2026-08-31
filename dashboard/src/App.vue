@@ -822,9 +822,8 @@ const LANGUAGES: Record<string, string> = {
 .logo.dev svg polygon[fill^="rgba"] { fill: rgba(255, 184, 77, 0.08); }
 .logo.dev .title { color: #ffb84d; text-shadow: 0 0 12px rgba(255, 184, 77, 0.55); }
 .devbadge {
-  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
-  margin-left: 12px; padding: 2px 8px; white-space: nowrap;
-  font-size: 36px; font-weight: 700; letter-spacing: 0.22em;
+  display: inline-block; margin-top: 4px; padding: 1px 6px; white-space: nowrap;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.22em;
   color: #1a1205; background: #ffb84d; border-radius: 3px;
 }
 .sysstate { width: 316px; flex: none; display: flex; align-items: stretch; }
