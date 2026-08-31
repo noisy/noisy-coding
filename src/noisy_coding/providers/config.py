@@ -23,7 +23,10 @@ PROVIDERS_FILE = CONFIG_DIR / "providers.json"
 
 DEFAULT_TTS = "grok"
 DEFAULT_STT = "grok"
-DEFAULT_LOCAL_STT_MODEL = "small"
+# "base" per the 2026-08-31 benchmark: small is 2.6x realtime (5.9 s for a
+# 15 s utterance) on this class of machine, base is 8.6x with quality that
+# holds for dictation; tiny (16x) stays a manual pick where speed rules.
+DEFAULT_LOCAL_STT_MODEL = "base"
 
 
 def _read() -> dict[str, Any]:
