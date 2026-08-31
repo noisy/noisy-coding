@@ -213,9 +213,19 @@ export interface ProviderEntry {
   fields: ProviderField[];
 }
 
+export interface ModelDownload {
+  name: string;
+  label: string;
+  state: "missing" | "downloading" | "done" | "error";
+  done_bytes: number;
+  total_bytes: number;
+  detail: string;
+}
+
 export interface ProvidersInfo {
   catalog: ProviderEntry[];
   active: { tts: string; stt: string };
+  downloads?: ModelDownload[];
 }
 
 export function getProviders(): Promise<ProvidersInfo> {

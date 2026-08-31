@@ -32,7 +32,7 @@ from pathlib import Path
 import httpx
 import numpy as np
 
-from noisy_coding.providers import config
+from noisy_coding.providers import config, downloads
 from noisy_coding.providers.base import (
     STTError,
     STTStreamSession,
@@ -65,9 +65,19 @@ class LocalSTT:
                     from faster_whisper import WhisperModel
                 except ImportError as error:
                     raise STTError(_INSTALL_HINT) from error
-                LocalSTT._model = WhisperModel(
-                    model_name, device="auto", compute_type="auto"
-                )
+                key = f"whisper-{model_name}"
+                label = f"Whisper model ({model_name})"
+                # huggingface_hub exposes no byte-progress callback, so
+                # whisper reports coarsely: downloading -> done.
+                downloads.report(key, label, "downloading")
+                try:
+                    LocalSTT._model = WhisperModel(
+                        model_name, device="auto", compute_type="auto"
+                    )
+                except Exception as error:
+                    downloads.report(key, label, "error", detail=str(error)[:200])
+                    raise
+                downloads.report(key, label, "done")
                 LocalSTT._model_name = model_name
             return LocalSTT._model
 
@@ -155,25 +165,82 @@ class _KokoroEngine:
 
 
 def _ensure_downloaded(url: str, filename: str) -> Path:
-    """The model files land in the config dir once; every later run is offline."""
+    """The model files land in the config dir once; every later run is
+    offline. Progress goes to the downloads registry so the dashboard can
+    draw a bar instead of the user staring at dead air."""
     from noisy_coding.config_dir import CONFIG_DIR
 
+    label = f"Kokoro voice model ({filename})"
     target = CONFIG_DIR / "models" / "kokoro" / filename
     if target.exists() and target.stat().st_size > 0:
+        size = target.stat().st_size
+        downloads.report(filename, label, "done", size, size)
         return target
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_suffix(target.suffix + ".part")
     try:
         with httpx.stream("GET", url, follow_redirects=True, timeout=600.0) as response:
             response.raise_for_status()
+            total = int(response.headers.get("content-length", 0))
+            done = 0
+            downloads.report(filename, label, "downloading", 0, total)
             with partial.open("wb") as out:
                 for chunk in response.iter_bytes():
                     out.write(chunk)
+                    done += len(chunk)
+                    downloads.report(filename, label, "downloading", done, total)
         partial.replace(target)
+        downloads.report(filename, label, "done", done, total or done)
     except (httpx.HTTPError, OSError) as error:
         partial.unlink(missing_ok=True)
+        downloads.report(filename, label, "error", detail=str(error)[:200])
         raise TTSError(f"Downloading the Kokoro model failed: {error}") from error
     return target
+
+
+def download_status() -> list[dict]:
+    """What local-model weights exist, are arriving, or are missing —
+    seeds the registry with on-disk facts so a fresh daemon reports
+    'done' for files fetched by an earlier run."""
+    from noisy_coding.config_dir import CONFIG_DIR
+
+    kokoro_dir = CONFIG_DIR / "models" / "kokoro"
+    known = {entry["name"] for entry in downloads.status()}
+    for filename in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
+        if filename in known:
+            continue
+        target = kokoro_dir / filename
+        label = f"Kokoro voice model ({filename})"
+        if target.exists() and target.stat().st_size > 0:
+            size = target.stat().st_size
+            downloads.report(filename, label, "done", size, size)
+        else:
+            downloads.report(filename, label, "missing")
+    model_name = str(
+        config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
+    )
+    whisper_key = f"whisper-{model_name}"
+    if whisper_key not in known:
+        state = "done" if LocalSTT._model_name == model_name else "missing"
+        downloads.report(whisper_key, f"Whisper model ({model_name})", state)
+    return downloads.status()
+
+
+def prefetch_models() -> bool:
+    """Start fetching every local weight in the background — called when
+    the user switches an engine to local, so the first utterance finds
+    the models already on disk."""
+    engine = str(config.local_options().get("tts_engine") or "kokoro")
+    targets = []
+    if engine != "say":
+        targets.append(
+            lambda: _ensure_downloaded(_KOKORO_MODEL_URL, "kokoro-v1.0.onnx")
+        )
+        targets.append(
+            lambda: _ensure_downloaded(_KOKORO_VOICES_URL, "voices-v1.0.bin")
+        )
+    targets.append(lambda: LocalSTT()._load_model())
+    return downloads.prefetch(targets)
 
 
 class LocalTTS:

@@ -4,7 +4,7 @@
 // one import + one tag and no parent grows new plumbing. The form is
 // generated from the catalog the daemon sends — a provider added on the
 // Python side shows up here with zero frontend work.
-import { onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   getProviders,
   setProviders,
@@ -16,14 +16,44 @@ const info = ref<ProvidersInfo | null>(null);
 const busy = ref(false);
 const note = ref("");
 
+// Big weights arrive in the background — while any file is in flight,
+// poll so the bar actually moves.
+const POLL_MS = 1000;
+let pollTimer: ReturnType<typeof setInterval> | undefined;
+
+const downloading = computed(() =>
+  (info.value?.downloads ?? []).some((d) => d.state === "downloading"),
+);
+
+// A weight matters on screen only when a local engine is picked (or it
+// is mid-flight / failed — never hide an error).
+const visibleDownloads = computed(() => {
+  const active = info.value?.active;
+  const localActive = active && (active.tts === "local" || active.stt === "local");
+  return (info.value?.downloads ?? []).filter(
+    (d) => d.state === "downloading" || d.state === "error" || (localActive && d.state !== "missing"),
+  );
+});
+
+function percent(done: number, total: number): number {
+  return total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+}
+
+function megabytes(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(0)} MB`;
+}
+
 async function refresh() {
   try {
     info.value = await getProviders();
   } catch {
     info.value = null; // an old daemon without /providers — hide quietly
   }
+  clearInterval(pollTimer);
+  if (downloading.value) pollTimer = setInterval(refresh, POLL_MS);
 }
 onMounted(refresh);
+onUnmounted(() => clearInterval(pollTimer));
 
 async function pick(direction: "tts" | "stt", name: string) {
   busy.value = true;
@@ -108,6 +138,30 @@ function fieldsFor(name: string) {
       </div>
     </template>
 
+    <div v-if="visibleDownloads.length" class="downloads">
+      <div v-for="d in visibleDownloads" :key="d.name" class="dlrow">
+        <span class="dl-label">{{ d.label.toUpperCase() }}</span>
+        <template v-if="d.state === 'downloading'">
+          <div class="bar">
+            <div
+              class="fill"
+              :class="{ pulse: !d.total_bytes }"
+              :style="{ width: (d.total_bytes ? percent(d.done_bytes, d.total_bytes) : 100) + '%' }"
+            />
+          </div>
+          <span class="dl-state">
+            {{ d.total_bytes
+              ? `${percent(d.done_bytes, d.total_bytes)}% OF ${megabytes(d.total_bytes)}`
+              : "DOWNLOADING…" }}
+          </span>
+        </template>
+        <span v-else-if="d.state === 'done'" class="dl-state ok">
+          ✓ DOWNLOADED{{ d.total_bytes ? ` — ${megabytes(d.total_bytes)}` : "" }}
+        </span>
+        <span v-else-if="d.state === 'error'" class="dl-state err">FAILED — {{ d.detail }}</span>
+      </div>
+    </div>
+
     <div class="text">
       <p v-if="note" class="note">{{ note }}</p>
       <p>
@@ -145,4 +199,18 @@ function fieldsFor(name: string) {
   margin-left: 102px;
 }
 .note { color: var(--green); letter-spacing: 0.08em; }
+
+.downloads { display: grid; gap: 10px; margin: 0 0 16px 102px; max-width: 640px; }
+.dlrow { display: flex; align-items: center; gap: 10px; }
+.dl-label { font-size: 9px; letter-spacing: 0.18em; color: var(--muted); flex: none; }
+.bar {
+  flex: 1; height: 6px; background: rgba(4, 12, 20, 0.9);
+  border: 1px solid var(--line-strong); overflow: hidden;
+}
+.fill { height: 100%; background: var(--cyan); transition: width 0.4s linear; }
+.fill.pulse { animation: dl-pulse 1.2s ease-in-out infinite; }
+@keyframes dl-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
+.dl-state { font-size: 9px; letter-spacing: 0.14em; color: var(--cyan-dim); flex: none; }
+.dl-state.ok { color: var(--green); }
+.dl-state.err { color: var(--amber); }
 </style>

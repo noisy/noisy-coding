@@ -384,6 +384,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # new provider never means new frontend code.
                 from noisy_coding import providers
                 from noisy_coding.providers import config as provider_config
+                from noisy_coding.providers import local as local_provider
 
                 self._respond(
                     {
@@ -392,6 +393,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                             "tts": provider_config.tts_provider_name(),
                             "stt": provider_config.stt_provider_name(),
                         },
+                        # Local model weights: what's on disk, what's
+                        # arriving right now (the UI polls while any
+                        # entry says "downloading" and draws a bar).
+                        "downloads": local_provider.download_status(),
                     }
                 )
             elif url.path == "/stream/mic":
@@ -681,6 +686,15 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 provider_config.save(
                     tts=choice.get("tts"), stt=choice.get("stt"), **local
                 )
+                if "local" in (
+                    provider_config.tts_provider_name(),
+                    provider_config.stt_provider_name(),
+                ):
+                    # Fetch the weights NOW, in the background — the first
+                    # utterance must find them on disk, not wait for them.
+                    from noisy_coding.providers import local as local_provider
+
+                    local_provider.prefetch_models()
                 state.add_event(
                     "providers",
                     f"tts={provider_config.tts_provider_name()} "
