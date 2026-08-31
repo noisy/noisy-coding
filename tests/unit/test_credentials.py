@@ -1,4 +1,3 @@
-import json
 import stat
 
 from noisy_coding import credentials

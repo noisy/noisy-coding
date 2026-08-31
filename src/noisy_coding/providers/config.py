@@ -1,0 +1,60 @@
+"""Which provider is active, per direction — one small file, read per call.
+
+Same philosophy as credentials.py: no env-var maze, one source of truth
+in the config dir, and because every call re-reads it, switching provider
+is a file write — no daemon restart. The file is optional; missing or
+broken means the defaults (Grok both ways).
+
+providers.json shape:
+
+    {
+      "tts": "grok",
+      "stt": "local",
+      "local": {"stt_model": "small", "tts_voice": ""}
+    }
+"""
+
+import json
+from typing import Any
+
+from noisy_coding.config_dir import CONFIG_DIR
+
+PROVIDERS_FILE = CONFIG_DIR / "providers.json"
+
+DEFAULT_TTS = "grok"
+DEFAULT_STT = "grok"
+DEFAULT_LOCAL_STT_MODEL = "small"
+
+
+def _read() -> dict[str, Any]:
+    try:
+        data = json.loads(PROVIDERS_FILE.read_text())
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def tts_provider_name() -> str:
+    return str(_read().get("tts") or DEFAULT_TTS)
+
+
+def stt_provider_name() -> str:
+    return str(_read().get("stt") or DEFAULT_STT)
+
+
+def local_options() -> dict[str, Any]:
+    options = _read().get("local")
+    return options if isinstance(options, dict) else {}
+
+
+def save(tts: str | None = None, stt: str | None = None, **local: Any) -> None:
+    """Update the selection, keeping unspecified fields as they are."""
+    data = _read()
+    if tts is not None:
+        data["tts"] = tts
+    if stt is not None:
+        data["stt"] = stt
+    if local:
+        data["local"] = {**data.get("local", {}), **local}
+    PROVIDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PROVIDERS_FILE.write_text(json.dumps(data, indent=2))

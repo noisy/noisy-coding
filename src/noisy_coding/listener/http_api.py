@@ -377,6 +377,28 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "selected": state.input_device,
                     }
                 )
+            elif url.path == "/providers":
+                # Voice engines: the full catalog (setup metadata per
+                # provider) plus what is active per direction — the
+                # dashboard renders fields it has never heard of, so a
+                # new provider never means new frontend code.
+                from noisy_coding import providers
+                from noisy_coding.providers import config as provider_config
+                from noisy_coding.providers import local as local_provider
+
+                self._respond(
+                    {
+                        "catalog": providers.catalog(),
+                        "active": {
+                            "tts": provider_config.tts_provider_name(),
+                            "stt": provider_config.stt_provider_name(),
+                        },
+                        # Local model weights: what's on disk, what's
+                        # arriving right now (the UI polls while any
+                        # entry says "downloading" and draws a bar).
+                        "downloads": local_provider.download_status(),
+                    }
+                )
             elif url.path == "/stream/mic":
                 self._stream_mic_levels()
             elif url.path == "/next":
@@ -387,12 +409,18 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._serve_hud_file(url.path[len("/next/"):] or "index.html")
             elif url.path == "/status":
                 _maybe_refresh_latest_version(state)
+                from noisy_coding import providers as _providers
+
                 self._respond(
                     {
                         "listening": not state.paused,
                         "muted": state.user_muted,
                         "voice_muted": state.voice_muted,
                         "api_key_set": bool(credentials.api_key()),
+                        # The gate's real question: is a READY engine
+                        # selected both ways? (A local-only setup is
+                        # configured with no key at all.) Additive key.
+                        "voice_ready": _providers.voice_ready(),
                         "api_key_hint": credentials.api_key_hint(),
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
@@ -634,6 +662,60 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond(result)
                 else:
                     self._respond({"error": "no known setting in body"}, status=400)
+            elif self.path == "/providers":
+                # Switch voice engines and/or store per-provider options.
+                # The selection lives in providers.json and is re-read on
+                # every synth/transcribe call — active immediately, no
+                # daemon restart.
+                from noisy_coding import providers
+                from noisy_coding.providers import config as provider_config
+
+                body = self._read_json_body()
+                known = providers.available()
+                choice: dict = {}
+                for direction in ("tts", "stt"):
+                    name = body.get(direction)
+                    if name is None:
+                        continue
+                    if name not in known[direction]:
+                        self._respond(
+                            {"error": f"unknown {direction} provider '{name}'"},
+                            status=400,
+                        )
+                        return
+                    choice[direction] = name
+                local = body.get("local")
+                local = local if isinstance(local, dict) else {}
+                # {"prefetch": true} alone re-kicks the downloads — the
+                # RETRY button after a failed fetch.
+                prefetch_requested = bool(body.get("prefetch"))
+                if not choice and not local and not prefetch_requested:
+                    self._respond({"error": "nothing to change"}, status=400)
+                    return
+                if choice or local:
+                    provider_config.save(
+                        tts=choice.get("tts"), stt=choice.get("stt"), **local
+                    )
+                if prefetch_requested or "local" in (
+                    provider_config.tts_provider_name(),
+                    provider_config.stt_provider_name(),
+                ):
+                    # Fetch the weights NOW, in the background — the first
+                    # utterance must find them on disk, not wait for them.
+                    from noisy_coding.providers import local as local_provider
+
+                    local_provider.prefetch_models()
+                state.add_event(
+                    "providers",
+                    f"tts={provider_config.tts_provider_name()} "
+                    f"stt={provider_config.stt_provider_name()}",
+                )
+                self._respond(
+                    {
+                        "tts": provider_config.tts_provider_name(),
+                        "stt": provider_config.stt_provider_name(),
+                    }
+                )
             elif self.path == "/speaking":
                 body = self._read_json_body()
                 speaking = bool(body.get("speaking", False))

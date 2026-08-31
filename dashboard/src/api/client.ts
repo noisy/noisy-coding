@@ -190,3 +190,58 @@ export function speakText(
 export function stopPlayback(): Promise<void> {
   return post("/interrupt", {});
 }
+
+/** Voice-provider switching (issues #36/#37): the catalog describes every
+ * engine's setup needs as data, so a new provider never means new UI code. */
+export interface ProviderField {
+  key: string;
+  kind: "secret" | "choice" | "text";
+  label: string;
+  required: boolean;
+  hint?: string;
+  options?: string[];
+  value?: string;
+}
+
+export interface ProviderEntry {
+  name: string;
+  kind: "cloud-api" | "local";
+  label: string;
+  directions: ("tts" | "stt")[];
+  streaming: { tts: boolean; stt: boolean };
+  ready: boolean;
+  /** When not ready: why, and how to fix it (rendered inline). */
+  ready_detail?: string;
+  fields: ProviderField[];
+}
+
+export interface ModelDownload {
+  name: string;
+  label: string;
+  state: "missing" | "downloading" | "done" | "error";
+  done_bytes: number;
+  total_bytes: number;
+  detail: string;
+}
+
+export interface ProvidersInfo {
+  catalog: ProviderEntry[];
+  active: { tts: string; stt: string };
+  downloads?: ModelDownload[];
+}
+
+export function getProviders(): Promise<ProvidersInfo> {
+  return getJson<ProvidersInfo>("/providers");
+}
+
+/** Switch engines and/or store provider options — active immediately,
+ * the daemon re-reads the selection on every call. */
+export function setProviders(patch: {
+  tts?: string;
+  stt?: string;
+  local?: Record<string, string>;
+  /** Re-kick the model downloads (the RETRY after a failed fetch). */
+  prefetch?: boolean;
+}): Promise<{ tts: string; stt: string }> {
+  return postJson<{ tts: string; stt: string }>("/providers", patch);
+}
