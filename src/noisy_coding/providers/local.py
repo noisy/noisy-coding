@@ -198,6 +198,38 @@ def _ensure_downloaded(url: str, filename: str) -> Path:
     return target
 
 
+def _whisper_cached(model_name: str) -> bool:
+    """Is the faster-whisper model already in the Hugging Face cache?
+    Checked on disk (not via a loaded model) so a fresh daemon reports
+    weights a previous run fetched."""
+    try:
+        from huggingface_hub import try_to_load_from_cache
+    except ImportError:
+        return False
+    result = try_to_load_from_cache(
+        f"Systran/faster-whisper-{model_name}", "model.bin"
+    )
+    return isinstance(result, str)
+
+
+def models_present() -> bool:
+    """Every weight the CURRENT local configuration needs is on disk —
+    the first utterance will not block on a download."""
+    from noisy_coding.config_dir import CONFIG_DIR
+
+    engine = str(config.local_options().get("tts_engine") or "kokoro")
+    if engine != "say":
+        kokoro_dir = CONFIG_DIR / "models" / "kokoro"
+        for filename in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
+            target = kokoro_dir / filename
+            if not (target.exists() and target.stat().st_size > 0):
+                return False
+    model_name = str(
+        config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
+    )
+    return _whisper_cached(model_name)
+
+
 def download_status() -> list[dict]:
     """What local-model weights exist, are arriving, or are missing —
     seeds the registry with on-disk facts so a fresh daemon reports
@@ -221,7 +253,7 @@ def download_status() -> list[dict]:
     )
     whisper_key = f"whisper-{model_name}"
     if whisper_key not in known:
-        state = "done" if LocalSTT._model_name == model_name else "missing"
+        state = "done" if _whisper_cached(model_name) else "missing"
         downloads.report(whisper_key, f"Whisper model ({model_name})", state)
     return downloads.status()
 

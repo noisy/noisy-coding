@@ -74,7 +74,16 @@ def voice_ready() -> bool:
     entries = {entry["name"]: entry for entry in catalog()}
     tts = entries.get(config.tts_provider_name())
     stt = entries.get(config.stt_provider_name())
-    return bool(tts and tts["ready"] and stt and stt["ready"])
+    if not (tts and tts["ready"] and stt and stt["ready"]):
+        return False
+    if "local" in (config.tts_provider_name(), config.stt_provider_name()):
+        # Installed is not enough: the WEIGHTS must be on disk, or the
+        # gate would close while 340 MB is still in flight and the first
+        # utterance would block on the download.
+        from noisy_coding.providers.local import models_present
+
+        return models_present()
+    return True
 
 
 def available() -> dict[str, list[str]]:

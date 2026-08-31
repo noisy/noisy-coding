@@ -123,6 +123,23 @@ def test_catalog_names_match_registry(providers_file):
     assert names == set(providers.available()["tts"])
 
 
+def test_voice_ready_requires_local_weights_on_disk(providers_file, monkeypatch):
+    """The gate must stay open while the 340 MB is still in flight: an
+    installed-but-not-downloaded local setup is NOT ready (PR #47 round 2)."""
+    providers_file.write_text(json.dumps({"stt": "local", "tts": "local"}))
+    monkeypatch.setattr(
+        "noisy_coding.providers.manifest._local_missing", lambda: ""
+    )
+    monkeypatch.setattr(
+        "noisy_coding.providers.local.models_present", lambda: False
+    )
+    assert providers.voice_ready() is False
+    monkeypatch.setattr(
+        "noisy_coding.providers.local.models_present", lambda: True
+    )
+    assert providers.voice_ready() is True
+
+
 def test_catalog_survives_repeated_calls(providers_file):
     """Regression: the metadata submodule import must never shadow the
     package-level catalog() function (it did, when both were named

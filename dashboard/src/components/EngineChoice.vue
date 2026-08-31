@@ -35,10 +35,15 @@ const localActive = computed(() => {
   return active?.tts === "local" && active?.stt === "local";
 });
 
+// Reflect a pre-existing local setup ONCE, on first load — later polls
+// must not fight a user who clicked back to CLOUD mid-download.
+let syncedOnce = false;
+
 async function refresh() {
   try {
     info.value = await getProviders();
-    if (localActive.value) setChosen("local");
+    if (!syncedOnce && localActive.value) setChosen("local");
+    syncedOnce = true;
   } catch {
     info.value = null; // an old daemon — the parent's key flow still works
   }
@@ -47,6 +52,14 @@ async function refresh() {
 }
 onMounted(refresh);
 onUnmounted(() => clearInterval(pollTimer));
+
+// The daemon answers errors as {"error": "..."} — surface that wording;
+// anything else gets a human line instead of a stack-trace string.
+function friendly(e: unknown): string {
+  const text = e instanceof Error ? e.message : String(e);
+  const match = text.match(/\{"error":\s*"([^"]+)"/);
+  return match ? match[1] : "the daemon didn't accept that — try again";
+}
 
 function setChosen(mode: "cloud" | "local") {
   chosen.value = mode;
@@ -63,7 +76,7 @@ async function pickLocal() {
     await setProviders({ tts: "local", stt: "local" });
     await refresh();
   } catch (e) {
-    error.value = String(e);
+    error.value = friendly(e);
   } finally {
     busy.value = false;
   }
@@ -82,7 +95,7 @@ async function retryDownloads() {
     await setProviders({ prefetch: true });
     await refresh();
   } catch (e) {
-    error.value = String(e);
+    error.value = friendly(e);
   } finally {
     busy.value = false;
   }
