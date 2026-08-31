@@ -121,3 +121,11 @@ def test_grok_errors_are_provider_errors():
 def test_catalog_names_match_registry(providers_file):
     names = {entry["name"] for entry in providers.catalog()}
     assert names == set(providers.available()["tts"])
+
+
+def test_catalog_survives_repeated_calls(providers_file):
+    """Regression: the metadata submodule import must never shadow the
+    package-level catalog() function (it did, when both were named
+    'catalog' — the second HTTP GET /providers then 500'd)."""
+    assert providers.catalog() == providers.catalog()
+    assert callable(providers.catalog)

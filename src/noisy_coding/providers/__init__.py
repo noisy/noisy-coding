@@ -60,8 +60,8 @@ _STT_FACTORIES = {"grok": _grok_stt, "local": _local_stt}
 
 
 def catalog() -> list[dict]:
-    """Setup metadata for every provider — see providers/catalog.py."""
-    from noisy_coding.providers.catalog import catalog as _catalog
+    """Setup metadata for every provider — see providers/manifest.py."""
+    from noisy_coding.providers.manifest import catalog as _catalog
 
     return _catalog()
 

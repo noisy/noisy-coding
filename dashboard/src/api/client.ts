@@ -190,3 +190,44 @@ export function speakText(
 export function stopPlayback(): Promise<void> {
   return post("/interrupt", {});
 }
+
+/** Voice-provider switching (issues #36/#37): the catalog describes every
+ * engine's setup needs as data, so a new provider never means new UI code. */
+export interface ProviderField {
+  key: string;
+  kind: "secret" | "choice" | "text";
+  label: string;
+  required: boolean;
+  hint?: string;
+  options?: string[];
+  value?: string;
+}
+
+export interface ProviderEntry {
+  name: string;
+  kind: "cloud-api" | "local";
+  label: string;
+  directions: ("tts" | "stt")[];
+  streaming: { tts: boolean; stt: boolean };
+  ready: boolean;
+  fields: ProviderField[];
+}
+
+export interface ProvidersInfo {
+  catalog: ProviderEntry[];
+  active: { tts: string; stt: string };
+}
+
+export function getProviders(): Promise<ProvidersInfo> {
+  return getJson<ProvidersInfo>("/providers");
+}
+
+/** Switch engines and/or store provider options — active immediately,
+ * the daemon re-reads the selection on every call. */
+export function setProviders(patch: {
+  tts?: string;
+  stt?: string;
+  local?: Record<string, string>;
+}): Promise<{ tts: string; stt: string }> {
+  return postJson<{ tts: string; stt: string }>("/providers", patch);
+}
