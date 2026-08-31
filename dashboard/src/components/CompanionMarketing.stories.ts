@@ -1,12 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
-import { computed, defineComponent, onMounted, onUnmounted, type PropType } from "vue";
+import { computed, defineComponent, onMounted, onUnmounted } from "vue";
 import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 
 /* Synthetic screenshots: the widget over a wallpaper-like backdrop.
  *
  * ONE story; the combinations live in the controls. Pick a backdrop and a
- * content preset from the dropdowns, or paste a scenario JSON to override
- * the preset entirely - the scenario object describes the whole scene:
+ * content preset from the dropdowns - a preset describes the whole scene:
  * messages, agents rail, and widget mode. scripts/marketing-shots.sh
  * captures the shipped combos by passing the same args in the story URL.
  */
@@ -18,7 +17,7 @@ export default meta;
 
 /* ---- backdrops ------------------------------------------------------ */
 
-export const BACKDROPS: Record<string, string> = {
+const BACKDROPS: Record<string, string> = {
   /** Deep space navy/purple, like the brand wallpapers. */
   space:
     "radial-gradient(1200px 700px at 20% 15%, #2a2350 0%, transparent 55%)," +
@@ -37,11 +36,10 @@ export const BACKDROPS: Record<string, string> = {
 
 /* ---- content presets -------------------------------------------------
  *
- * One JSON object per scene: everything the widget needs. The same shape
- * works pasted into the `scenario` control.
+ * One object per scene: everything the widget needs.
  */
 
-export interface Scenario {
+interface Scenario {
   mode: "claude" | "idle";
   feed: CompanionMessage[];
   agents: CompanionAgent[];
@@ -58,7 +56,7 @@ const AGENTS_TWO: CompanionAgent[] = [
   { name: "chat", voice: "eve", unread: true },
 ];
 
-export const PRESETS: Record<string, Scenario> = {
+const PRESETS: Record<string, Scenario> = {
   "fixing-tests": {
     mode: "claude",
     agents: AGENTS,
@@ -103,13 +101,17 @@ export const PRESETS: Record<string, Scenario> = {
 
 /* ---- the frame ------------------------------------------------------- */
 
-/** A 1200x760 crop of a desktop with the widget floating in it. */
+/** The frame WRAPS the widget: fit-content plus a consistent wallpaper
+ *  border, so every preset gets the same modest margin regardless of how
+ *  much text it carries. The page behind is painted a solid sentinel color
+ *  so the capture script can trim the screenshot to exactly this frame. */
+const SENTINEL_BG = "#010203";
+
 const Shot = defineComponent({
   components: { Companion },
   props: {
     backdrop: { type: String, required: true },
     preset: { type: String, required: true },
-    scenario: { type: Object as PropType<Scenario | null>, default: null },
   },
   setup(props) {
     // The widget ships without chrome of its own; transparent mode is how
@@ -118,20 +120,23 @@ const Shot = defineComponent({
     onUnmounted(() => document.body.classList.remove("companion-transparent"));
 
     const scene = computed<Scenario>(
-      () => props.scenario ?? PRESETS[props.preset] ?? PRESETS["fixing-tests"],
+      () => PRESETS[props.preset] ?? PRESETS["fixing-tests"],
     );
     const background = computed(() => BACKDROPS[props.backdrop] ?? BACKDROPS.space);
-    return { scene, background };
+    return { scene, background, SENTINEL_BG };
   },
   template: `
-    <div :style="{
-      width: '1200px', height: '760px', background,
-      borderRadius: '18px', overflow: 'hidden', position: 'relative',
-      boxShadow: 'inset 0 0 180px rgba(0,0,0,0.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }">
-      <Companion :mode="scene.mode" voice="lux" :feed="scene.feed"
-                 :agents="scene.agents" :max-height="220" />
+    <div>
+      <div :style="{ position: 'fixed', inset: '0', background: SENTINEL_BG, zIndex: 1 }" />
+      <div :style="{
+        position: 'relative', zIndex: 2,
+        display: 'inline-block', padding: '36px',
+        background, borderRadius: '18px', overflow: 'hidden',
+        boxShadow: 'inset 0 0 120px rgba(0,0,0,0.45)',
+      }">
+        <Companion :mode="scene.mode" voice="lux" :feed="scene.feed"
+                   :agents="scene.agents" :max-height="220" />
+      </div>
     </div>
   `,
 });
@@ -140,13 +145,11 @@ export const Widget: StoryObj = {
   argTypes: {
     backdrop: { control: "select", options: Object.keys(BACKDROPS) },
     preset: { control: "select", options: Object.keys(PRESETS) },
-    /** Full scene as JSON - overrides the preset when set. */
-    scenario: { control: "object" },
   },
-  args: { backdrop: "space", preset: "fixing-tests", scenario: null },
+  args: { backdrop: "space", preset: "fixing-tests" },
   render: (args) => ({
     components: { Shot },
     setup: () => ({ args }),
-    template: `<Shot :backdrop="args.backdrop" :preset="args.preset" :scenario="args.scenario" />`,
+    template: `<Shot :backdrop="args.backdrop" :preset="args.preset" />`,
   }),
 };

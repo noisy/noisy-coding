@@ -17,6 +17,7 @@
     "xstate": "^5.32.4"
   },
   "devDependencies": {
+    "@storybook/addon-essentials": "^8.6.18",
     "@storybook/vue3": "^8.6.18",
     "@storybook/vue3-vite": "^8.6.18",
     "@vitejs/plugin-vue": "^5.2.1",

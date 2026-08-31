@@ -53,10 +53,13 @@ const TerminalShot = defineComponent({
   },
   template: `
     <div :style="{
-      width: '1200px', height: '400px',
+      width: '1200px', height: '760px',
+      background: 'linear-gradient(160deg, #1a1d2b 0%, #23283c 55%, #181b28 100%)',
       borderRadius: '14px', overflow: 'hidden', position: 'relative',
     }">
-      <ClaudeCodeMock full-bleed :banner="banner" />
+      <div style="position:absolute; inset:26px 30px">
+        <ClaudeCodeMock full-bleed :banner="banner" />
+      </div>
       <div style="position:absolute; right:32px; bottom:28px">
         <Companion :mode="mode" voice="lux" :feed="feed" :max-height="200"
                    :agents="[
