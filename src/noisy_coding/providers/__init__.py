@@ -66,6 +66,17 @@ def catalog() -> list[dict]:
     return _catalog()
 
 
+def voice_ready() -> bool:
+    """Can the daemon hear AND speak right now? True when the selected
+    provider for each direction is ready (key present / installs in
+    place). This — not "is an xAI key set" — is what the first-contact
+    gate must ask, or a local-only user can never get past it."""
+    entries = {entry["name"]: entry for entry in catalog()}
+    tts = entries.get(config.tts_provider_name())
+    stt = entries.get(config.stt_provider_name())
+    return bool(tts and tts["ready"] and stt and stt["ready"])
+
+
 def available() -> dict[str, list[str]]:
     return {"tts": sorted(_TTS_FACTORIES), "stt": sorted(_STT_FACTORIES)}
 

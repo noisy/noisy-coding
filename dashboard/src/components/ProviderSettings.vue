@@ -83,6 +83,34 @@ async function saveField(provider: ProviderEntry, key: string, value: string) {
   }
 }
 
+async function retryDownloads() {
+  busy.value = true;
+  try {
+    await setProviders({ prefetch: true });
+    note.value = "download restarted";
+    await refresh();
+  } catch (error) {
+    note.value = String(error);
+  } finally {
+    busy.value = false;
+  }
+}
+
+// Why an engine can't run yet — shown under the pickers so NOT READY is
+// always actionable, never a bare label.
+const notReadyDetails = computed(() => {
+  const entries = info.value?.catalog ?? [];
+  const activeNames = new Set(Object.values(info.value?.active ?? {}));
+  return entries
+    .filter((p) => !p.ready && (p.ready_detail ?? "") !== "")
+    .map((p) => ({
+      name: p.name,
+      label: p.label,
+      detail: p.ready_detail as string,
+      active: activeNames.has(p.name),
+    }));
+});
+
 function fieldsFor(name: string) {
   const entry = info.value?.catalog.find((p) => p.name === name);
   // The xAI key already has a dedicated editor above — don't render secrets twice.
@@ -158,12 +186,18 @@ function fieldsFor(name: string) {
         <span v-else-if="d.state === 'done'" class="dl-state ok">
           ✓ DOWNLOADED{{ d.total_bytes ? ` — ${megabytes(d.total_bytes)}` : "" }}
         </span>
-        <span v-else-if="d.state === 'error'" class="dl-state err">FAILED — {{ d.detail }}</span>
+        <template v-else-if="d.state === 'error'">
+          <span class="dl-state err">FAILED — {{ d.detail }}</span>
+          <button class="btn" :disabled="busy" @click="retryDownloads">RETRY</button>
+        </template>
       </div>
     </div>
 
     <div class="text">
       <p v-if="note" class="note">{{ note }}</p>
+      <p v-for="nr in notReadyDetails" :key="nr.name" :class="nr.active ? 'warn' : ''">
+        <b>{{ nr.label.toUpperCase() }}</b> is not ready: {{ nr.detail }}
+      </p>
       <p>
         Which engine hears you (transcription) and which speaks
         (voice engine). LOCAL runs entirely on this machine — whisper for
@@ -213,4 +247,12 @@ function fieldsFor(name: string) {
 .dl-state { font-size: 9px; letter-spacing: 0.14em; color: var(--cyan-dim); flex: none; }
 .dl-state.ok { color: var(--green); }
 .dl-state.err { color: var(--amber); }
+.warn { color: var(--amber); }
+.btn {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
+  color: var(--cyan); background: rgba(63, 216, 255, 0.06);
+  border: 1px solid var(--line-strong); padding: 4px 10px; cursor: pointer;
+  flex: none;
+}
+.btn:hover { color: var(--cyan-hi); }
 </style>

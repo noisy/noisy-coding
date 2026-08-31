@@ -210,6 +210,8 @@ export interface ProviderEntry {
   directions: ("tts" | "stt")[];
   streaming: { tts: boolean; stt: boolean };
   ready: boolean;
+  /** When not ready: why, and how to fix it (rendered inline). */
+  ready_detail?: string;
   fields: ProviderField[];
 }
 
@@ -238,6 +240,8 @@ export function setProviders(patch: {
   tts?: string;
   stt?: string;
   local?: Record<string, string>;
+  /** Re-kick the model downloads (the RETRY after a failed fetch). */
+  prefetch?: boolean;
 }): Promise<{ tts: string; stt: string }> {
   return postJson<{ tts: string; stt: string }>("/providers", patch);
 }

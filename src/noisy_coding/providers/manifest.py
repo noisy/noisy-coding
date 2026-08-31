@@ -12,8 +12,9 @@ Field kinds the UI understands:
   - "text":   free-form value
 
 `ready` says whether the provider could work right now (key present,
-optional dependency installed, binary on PATH) — the chooser can gray
-out or badge entries accordingly.
+optional dependency installed, binary on PATH) — and when it is False,
+`ready_detail` says WHY and how to fix it, so the UI never shows a bare
+"NOT READY" the user can't act on.
 """
 
 import shutil
@@ -34,6 +35,10 @@ def catalog() -> list[dict[str, Any]]:
             "directions": ["tts", "stt"],
             "streaming": {"tts": True, "stt": True},
             "ready": bool(credentials.api_key()),
+            "ready_detail": (
+                "" if credentials.api_key()
+                else "No xAI API key yet — paste one below (console.x.ai → API Keys)."
+            ),
             "fields": [
                 {
                     "key": "xai_api_key",
@@ -50,7 +55,8 @@ def catalog() -> list[dict[str, Any]]:
             "label": "Local (offline)",
             "directions": ["tts", "stt"],
             "streaming": {"tts": False, "stt": False},
-            "ready": _local_ready(),
+            "ready": not _local_missing(),
+            "ready_detail": _local_missing(),
             "fields": [
                 {
                     "key": "stt_model",
@@ -63,18 +69,58 @@ def catalog() -> list[dict[str, Any]]:
                         or config.DEFAULT_LOCAL_STT_MODEL
                     ),
                 },
-                {
-                    "key": "tts_voice",
-                    "kind": "text",
-                    "label": "System voice (empty = default)",
-                    "required": False,
-                    "value": str(config.local_options().get("tts_voice") or ""),
-                },
+                _local_voice_field(),
             ],
         },
     ]
 
 
-def _local_ready() -> bool:
-    """STT needs faster-whisper installed; TTS needs the `say` binary."""
-    return find_spec("faster_whisper") is not None and bool(shutil.which("say"))
+# The v1.0 voice pack ids, prefix = locale+gender (af = American female).
+# Static on purpose: listing voices must not require the 340 MB model.
+KOKORO_VOICES = [
+    "af_bella", "af_heart", "af_nicole", "af_nova", "af_sarah", "af_sky",
+    "am_adam", "am_echo", "am_michael", "am_onyx", "am_puck",
+    "bf_alice", "bf_emma", "bf_isabella", "bm_daniel", "bm_george", "bm_lewis",
+]
+
+
+def _local_voice_field() -> dict[str, Any]:
+    """The voice picker matches the engine: a free-text macOS voice name
+    for `say`, a fixed choice of Kokoro ids otherwise."""
+    value = str(config.local_options().get("tts_voice") or "")
+    if _local_tts_engine() == "say":
+        return {
+            "key": "tts_voice",
+            "kind": "text",
+            "label": "macOS voice (empty = system default)",
+            "required": False,
+            "value": value,
+        }
+    return {
+        "key": "tts_voice",
+        "kind": "choice",
+        "label": "Kokoro voice",
+        "required": False,
+        "options": KOKORO_VOICES,
+        "value": value if value in KOKORO_VOICES else "af_sarah",
+    }
+
+
+def _local_tts_engine() -> str:
+    return str(config.local_options().get("tts_engine") or "kokoro")
+
+
+def _local_missing() -> str:
+    """Empty string when local can work; otherwise what's missing and the fix.
+
+    Checks match what actually runs: kokoro-onnx only while Kokoro is the
+    chosen engine (say needs no package), so `ready` never lies about a
+    dependency the first utterance would then trip over."""
+    if find_spec("faster_whisper") is None:
+        return "faster-whisper is not installed — run: uv sync --extra local"
+    if _local_tts_engine() == "say":
+        if not shutil.which("say"):
+            return "the macOS `say` command is missing on this system"
+    elif find_spec("kokoro_onnx") is None:
+        return "kokoro-onnx is not installed — run: uv sync --extra local"
+    return ""

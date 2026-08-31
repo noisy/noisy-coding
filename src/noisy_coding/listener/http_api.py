@@ -409,12 +409,18 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._serve_hud_file(url.path[len("/next/"):] or "index.html")
             elif url.path == "/status":
                 _maybe_refresh_latest_version(state)
+                from noisy_coding import providers as _providers
+
                 self._respond(
                     {
                         "listening": not state.paused,
                         "muted": state.user_muted,
                         "voice_muted": state.voice_muted,
                         "api_key_set": bool(credentials.api_key()),
+                        # The gate's real question: is a READY engine
+                        # selected both ways? (A local-only setup is
+                        # configured with no key at all.) Additive key.
+                        "voice_ready": _providers.voice_ready(),
                         "api_key_hint": credentials.api_key_hint(),
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
@@ -680,13 +686,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     choice[direction] = name
                 local = body.get("local")
                 local = local if isinstance(local, dict) else {}
-                if not choice and not local:
+                # {"prefetch": true} alone re-kicks the downloads — the
+                # RETRY button after a failed fetch.
+                prefetch_requested = bool(body.get("prefetch"))
+                if not choice and not local and not prefetch_requested:
                     self._respond({"error": "nothing to change"}, status=400)
                     return
-                provider_config.save(
-                    tts=choice.get("tts"), stt=choice.get("stt"), **local
-                )
-                if "local" in (
+                if choice or local:
+                    provider_config.save(
+                        tts=choice.get("tts"), stt=choice.get("stt"), **local
+                    )
+                if prefetch_requested or "local" in (
                     provider_config.tts_provider_name(),
                     provider_config.stt_provider_name(),
                 ):

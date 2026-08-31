@@ -45,8 +45,9 @@ const LOCAL = {
       value: "small",
     },
     {
-      key: "tts_voice", kind: "text" as const,
-      label: "System voice (empty = default)", required: false, value: "",
+      key: "tts_voice", kind: "choice" as const, label: "Kokoro voice",
+      required: false, options: ["af_sarah", "af_heart", "am_adam", "bf_emma"],
+      value: "af_sarah",
     },
   ],
 };
