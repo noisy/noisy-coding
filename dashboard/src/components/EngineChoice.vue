@@ -72,8 +72,11 @@ async function pickLocal() {
   busy.value = true;
   error.value = "";
   try {
-    // One click does it all: local for both directions, weights on the way.
-    await setProviders({ tts: "local", stt: "local" });
+    // Benchmark-optimal default: local hearing is faster than the cloud
+    // round-trip, but local speech takes ~5 s per reply - so when a Grok
+    // key exists, keep the cloud voice and go local only for STT.
+    const grokReady = info.value?.catalog.find((p) => p.name === "grok")?.ready;
+    await setProviders({ stt: "local", tts: grokReady ? "grok" : "local" });
     await refresh();
   } catch (e) {
     error.value = friendly(e);
@@ -125,8 +128,9 @@ async function retryDownloads() {
       >
         <span class="card-title">LOCAL · OFFLINE</span>
         <span class="card-text">
-          No key, no cloud, no cost: whisper hears you, Kokoro speaks.
-          One click — the models (~340 MB) download while you watch.
+          No key needed: whisper transcribes you on this machine — faster
+          than the cloud. One click; the models download while you watch.
+          (Without a key, Kokoro also speaks locally: ~5 s per reply.)
         </span>
       </button>
     </div>

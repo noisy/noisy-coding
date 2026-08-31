@@ -19,7 +19,7 @@ import { HUM_NOISES, startRecordingHum, stopRecordingHum } from "../composables/
 import type { CueName } from "../composables/cueEvents";
 import { playCue } from "../composables/cueSounds";
 import DiagnosticChecklist from "./DiagnosticChecklist.vue";
-import ProviderSettings from "./ProviderSettings.vue";
+import SignalPath from "./SignalPath.vue";
 
 withDefaults(
   defineProps<{
@@ -180,7 +180,7 @@ function submit() {
     </template>
 
     <template v-if="tab === 'SYSTEM'">
-    <ProviderSettings />
+    <SignalPath />
     <section class="sec">
       <div class="keyrow">
         <span class="lbl">XAI API KEY</span>
