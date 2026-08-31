@@ -19,13 +19,17 @@ const spriteStyle = computed(() => voiceSpriteStyle(props.voice));
 // Fallback identity for voices without a portrait: deterministic
 // per-voice color + monogram.
 const hue = computed(() => {
+  // No voice yet (the first poll is still in flight) hashes to 0, which is
+  // pure red - the "red question mark" flash on every cold start. An
+  // unknown identity should look neutral, so it borrows the UI's cyan.
+  if (!props.voice) return 195;
   let h = 0;
   for (const ch of props.voice) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return h;
 });
 const color = computed(() => `hsl(${hue.value}, 85%, 62%)`);
 const dim = computed(() => `hsla(${hue.value}, 85%, 62%, 0.12)`);
-const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : "?"));
+const monogram = computed(() => (props.voice ? props.voice[0].toUpperCase() : ""));
 </script>
 
 <template>

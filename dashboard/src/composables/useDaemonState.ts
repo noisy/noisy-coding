@@ -25,12 +25,34 @@ export interface DaemonState {
   reorderAgents: (order: string[]) => void;
 }
 
+const CHARACTER_CACHE_KEY = "noisy.lastCharacter";
+
+function readCachedCharacter(): Character | null {
+  try {
+    const raw = localStorage.getItem(CHARACTER_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Character) : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheCharacter(c: Character | null) {
+  try {
+    if (c) localStorage.setItem(CHARACTER_CACHE_KEY, JSON.stringify(c));
+  } catch {
+    /* storage unavailable - the seed is a convenience, not state */
+  }
+}
+
 export function useDaemonState(pollMs = 400): DaemonState {
   const status = ref<DaemonStatus | null>(null);
   const utterances = ref<Utterance[]>([]);
   const utterancesFor = ref<string | null>(null);
   const allUtterances = ref<Utterance[]>([]);
-  const character = ref<Character | null>(null);
+  // Seed the avatar from the last session so the widget never opens on the
+  // default (red) portrait while the first /character round-trip is in
+  // flight - the swap read as a broken flash on every app start.
+  const character = ref<Character | null>(readCachedCharacter());
   const offline = ref(false);
   const viewedAgent = ref<string | null>(null);
   const errors = ref<DaemonEvent[]>([]);
@@ -86,6 +108,7 @@ export function useDaemonState(pollMs = 400): DaemonState {
         : all;
       utterancesFor.value = agent ?? null;
       character.value = await getCharacter(agent);
+      cacheCharacter(character.value);
       // Surface system failures (STT/TTS errors) that otherwise die
       // silently in the daemon's event log.
       const fresh = await getEvents(lastEventSeq);
