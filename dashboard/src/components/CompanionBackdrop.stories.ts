@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
-import { computed, defineComponent, ref, watch } from "vue";
+import { computed, defineComponent, onUnmounted, ref, watch } from "vue";
 import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 
 /* How the widget survives whatever is behind it.
@@ -59,12 +59,18 @@ const Backdrop = defineComponent({
       (on) => document.body.classList.toggle("companion-transparent", on),
       { immediate: true },
     );
+    // The class lives on <body>, OUTSIDE this story's root - without this
+    // cleanup it leaks into every story visited afterwards and renders
+    // them in ghost/transparent mode (seen as "empty" sections).
+    onUnmounted(() => document.body.classList.remove("companion-transparent"));
 
     return { level, mode, transparent, background, grey };
   },
   template: `
     <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;gap:12px;align-items:center;font:11px/1.4 monospace">
+      <div style="display:flex;gap:12px;align-items:center;font:13px/1.5 monospace;
+                  padding:8px 12px;border:1px solid #3fd8ff55;border-radius:8px;background:#0b1622;color:#cfe9f5">
+        <strong style="color:#3fd8ff">controls:</strong>
         <label>backdrop
           <input type="range" min="0" max="100" v-model.number="level"
                  :disabled="mode !== 'grey'" style="vertical-align:middle" />

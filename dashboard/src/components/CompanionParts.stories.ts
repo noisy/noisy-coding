@@ -8,7 +8,7 @@ import { SPRITE_CELL, voiceSpriteStyle } from "./voiceSprites";
  * The widget stories show whether it LOOKS right; these show whether each
  * part behaves on its own - which is where a change usually breaks first.
  */
-const meta: Meta = { title: "Companion/Parts" };
+const meta: Meta = { title: "Companion/Parts", parameters: { layout: "centered" } };
 export default meta;
 
 /** The bubble at each of the widget's three sizes, both sides.

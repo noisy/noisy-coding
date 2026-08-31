@@ -12,7 +12,13 @@ import Companion, { type CompanionAgent, type CompanionMessage } from "./Compani
  * sizes text, and the rail - so a change can be judged against the case it
  * was meant to affect rather than one general-purpose demo.
  */
-const meta: Meta<typeof Companion> = { title: "Companion/Widget", component: Companion };
+const meta: Meta<typeof Companion> = {
+  title: "Companion/Widget",
+  component: Companion,
+  // The widget is small; Storybook's padded canvas made it float in a sea
+  // of empty space. Centered crops the frame to the content.
+  parameters: { layout: "centered" },
+};
 export default meta;
 type Story = StoryObj<typeof Companion>;
 
