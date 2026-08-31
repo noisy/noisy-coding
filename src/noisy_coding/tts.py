@@ -1,26 +1,21 @@
 """Client for the Grok (xAI) batch text-to-speech API."""
 
 import base64
-from dataclasses import dataclass
 
 import httpx
 
 from noisy_coding import credentials
+from noisy_coding.providers.base import SynthesizedAudio, TTSError
+
+__all__ = ["GrokTTSError", "SynthesizedAudio", "synthesize", "list_voices"]
 
 XAI_API_BASE = "https://api.x.ai/v1"
 REQUEST_TIMEOUT_SECONDS = 60.0
 MAX_TEXT_LENGTH = 15_000
 
 
-class GrokTTSError(RuntimeError):
+class GrokTTSError(TTSError):
     """Raised when the Grok TTS API cannot produce audio."""
-
-
-@dataclass(frozen=True)
-class SynthesizedAudio:
-    audio: bytes
-    content_type: str
-    duration_seconds: float
 
 
 def _api_key() -> str:

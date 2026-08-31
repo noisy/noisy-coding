@@ -17,7 +17,6 @@ import time
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from noisy_coding import tts
 from noisy_coding.config_dir import CONFIG_DIR
 
 LISTENER_PORT_ENV_VAR = "NOISY_CODING_LISTENER_PORT"
@@ -207,8 +206,10 @@ async def change_voice(voice_id: str, speaker: str = "") -> str:
 
 @mcp.tool()
 async def list_voices() -> list[dict]:
-    """List the Grok TTS voices available for the speak tool."""
-    return await tts.list_voices()
+    """List the TTS voices the active provider offers for the speak tool."""
+    from noisy_coding import providers
+
+    return await providers.active_tts().list_voices()
 
 
 def _daemon_running(port: int) -> bool:

@@ -18,11 +18,12 @@ from typing import Callable
 import websockets
 
 from noisy_coding import playback, tts
+from noisy_coding.providers.base import TTSError
 
 STREAM_URL_BASE = "wss://api.x.ai/v1/tts"
 
 
-class GrokTTSStreamError(RuntimeError):
+class GrokTTSStreamError(TTSError):
     """Raised when the streaming TTS session fails."""
 
 

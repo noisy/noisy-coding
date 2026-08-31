@@ -12,7 +12,7 @@ from noisy_coding.listener.state import ListenerState
 def batch_pipeline(monkeypatch):
     """Batch TTS with a fresh in-memory cache — the deterministic pipeline."""
     monkeypatch.setattr(speech, "_audio_cache", audio_cache.AudioCache(directory=None))
-    monkeypatch.setattr(speech, "_tts_streaming", lambda _state: False)
+    monkeypatch.setattr(speech, "_tts_streaming", lambda _state, _provider: False)
     monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
 
 
@@ -384,7 +384,7 @@ def test_errored_card_replays_through_the_normal_path(monkeypatch, batch_pipelin
 def test_live_mode_streams_the_head_and_prefetches_the_queue(monkeypatch):
     state = ListenerState()
     monkeypatch.setattr(speech, "_audio_cache", audio_cache.AudioCache(directory=None))
-    monkeypatch.setattr(speech, "_tts_streaming", lambda _state: True)
+    monkeypatch.setattr(speech, "_tts_streaming", lambda _state, _provider: True)
     monkeypatch.setattr(speech, "ECHO_TAIL_SECONDS", 0)
     synth_calls = []
     streamed = []

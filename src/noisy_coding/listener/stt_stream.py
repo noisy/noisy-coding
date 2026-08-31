@@ -13,6 +13,7 @@ from collections.abc import Callable
 from websockets.sync.client import connect
 
 from noisy_coding import tts
+from noisy_coding.providers.base import STTError
 
 STREAM_URL_BASE = "wss://api.x.ai/v1/stt"
 CONNECT_TIMEOUT_SECONDS = 5.0
@@ -20,7 +21,7 @@ FINISH_TIMEOUT_SECONDS = 10.0
 EMPTY_FINISH_TIMEOUT_SECONDS = 1.5
 
 
-class GrokStreamError(RuntimeError):
+class GrokStreamError(STTError):
     """Raised when the streaming STT session cannot be established."""
 
 

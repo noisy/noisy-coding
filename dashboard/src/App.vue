@@ -11,6 +11,7 @@ import CharacterReadout from "./components/CharacterReadout.vue";
 import ConversationLog from "./components/ConversationLog.vue";
 import ConversationTelemetry from "./components/ConversationTelemetry.vue";
 import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
+import EngineChoice from "./components/EngineChoice.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import SessionRing from "./components/SessionRing.vue";
@@ -203,10 +204,17 @@ const showSettings = ref(false);
 // verdict. Both flags bridge those windows.
 const firstContactVerifying = ref(false);
 const firstContactFailed = ref(false);
+// Which path the engine cards picked; the key form belongs to "cloud".
+const gateMode = ref<"cloud" | "local">("cloud");
+// "Unconfigured" asks about a READY engine, not about a key: a local-only
+// setup has no key at all. voice_ready is additive — an older daemon
+// without it falls back to the key check.
 const unconfigured = computed(
   () =>
     status.value != null &&
-    (!status.value.api_key_set || firstContactVerifying.value || firstContactFailed.value),
+    (!(status.value.voice_ready ?? status.value.api_key_set) ||
+      firstContactVerifying.value ||
+      firstContactFailed.value),
 );
 // Per-endpoint xAI checks: run automatically on key save, or on demand.
 // Kept here (not in SettingsView) so the panel stays a dumb form — and
@@ -439,11 +447,15 @@ const LANGUAGES: Record<string, string> = {
   <div v-if="unconfigured" class="setup-overlay">
     <div class="setup-box">
       <div class="setup-title">NOISY-CODING · FIRST CONTACT</div>
+      <!-- Engine first, key second (#36/#37): the cards decide whether the
+           key form below applies at all. -->
+      <EngineChoice @mode="gateMode = $event" />
       <!-- The welcome pitch has done its job the moment a key is submitted:
            from then on the box is a verification panel, and every saved
            line keeps it on-screen even with seven failing checks. It folds
            away (grid-rows collapse) instead of vanishing in one frame. -->
       <div
+        v-show="gateMode === 'cloud'"
         class="setup-pitch"
         :class="{ collapsed: checksRunning || !!visibleChecks || firstContactFailed }"
       >
@@ -462,7 +474,7 @@ const LANGUAGES: Record<string, string> = {
           </p>
         </div>
       </div>
-      <div class="setup-row">
+      <div v-show="gateMode === 'cloud'" class="setup-row">
         <input
           v-model="keyInput"
           type="password"
