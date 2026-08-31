@@ -9,7 +9,7 @@
  * Deliberately thin. If Electron turns out to be the wrong choice, the
  * thing being replaced should be this file, not an application.
  */
-const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, dialog } = require("electron");
 const path = require("node:path");
 const http = require("node:http");
 const { spawn } = require("node:child_process");
@@ -19,32 +19,43 @@ const asset = (name) => path.join(__dirname, "build", name);
 
 // The daemon serves the built dashboard under /next/ - the bare /companion
 // path belongs to the vite dev server, not to the daemon.
-/* Which daemon does the app talk to?
+/* TWO MODES, and nothing in between.
  *
- * Three instances can coexist and must never fight over a port:
- *   8765  production, the Docker container
- *   7765  a developer instance
- *   9765  ours, spawned by this app
- * (the audio bridge is always HTTP port + 1, automatically.)
+ *   production  the app owns everything: it starts the daemon it carries,
+ *               serves the UI from that daemon, and stops it on quit. This
+ *               is what a user gets, and the default.
  *
- * But spawning is the LAST resort. Two daemons mean two microphones
- * competing for the same device, which is a mess we spent this morning
- * untangling - so if one is already listening, attach to it instead. That
- * also matches the spec: the app must live alongside an existing CLI or
- * Docker install rather than replacing it.
+ *   local       the app owns NOTHING: it attaches to a daemon you already
+ *               run from source, and loads the UI from vite. It never
+ *               starts them - your terminal shows their logs, you restart
+ *               them your own way, and nothing of yours can be orphaned by
+ *               an app that quit.
+ *
+ * Chosen at launch (NOISY_MODE=local), because you pick it once when you
+ * sit down to work. A menu that switched it live would cost reloaded
+ * windows, a swapped config directory and a daemon lifecycle question, to
+ * save one relaunch of something you change twice a day.
  */
-const OWN_PORT = Number(process.env.NOISY_APP_PORT || 9765);
-/* Ours first, then the developer instance, then production.
- * Production last on purpose: it runs a PUBLISHED image, which may predate
- * the views this app needs - attaching to it first served a not-found page
- * where the widget should have been. */
-const CANDIDATE_PORTS = [OWN_PORT, 7765, 8765];
+// Baked into the build (dev variant) or set for one run. A packaged app
+// should not depend on how it was launched - double-clicking an icon
+// passes no environment.
+const BUILT_MODE = (() => {
+  try {
+    return require("./package.json").noisyMode;
+  } catch {
+    return undefined;
+  }
+})();
+const MODE =
+  (process.env.NOISY_MODE || BUILT_MODE) === "local" ? "local" : "production";
 
-/** Can this port serve what the app actually needs?
- *
- * Not "is something alive" - an older daemon answers /status happily and
- * then 404s the widget, which looks like a broken app rather than an
- * unsuitable daemon. Ask for the view itself. */
+const OWN_PORT = Number(process.env.NOISY_APP_PORT || 9765);
+const LOCAL_DAEMON_PORT = Number(process.env.NOISY_LOCAL_PORT || 7765);
+const LOCAL_UI = process.env.NOISY_LOCAL_UI || "http://localhost:5173";
+
+/** Can this port serve what the app needs? Not "is something alive" - an
+ *  older daemon answers /status happily and then 404s the widget, which
+ *  looks like a broken app rather than an unsuitable daemon. */
 function serves(port, path) {
   return new Promise((resolve) => {
     const request = http.get(
@@ -69,21 +80,28 @@ function daemonBinary() {
   return require("node:fs").existsSync(packaged) ? packaged : local;
 }
 
-/** Start our own daemon and wait for it to answer. */
+/** Start the daemon we carry and wait for it to answer. */
 async function spawnDaemon() {
   const bin = daemonBinary();
   if (!require("node:fs").existsSync(bin)) return null;
 
   child = spawn(bin, [], {
-    env: { ...process.env, NOISY_CODING_LISTENER_PORT: String(OWN_PORT) },
+    env: {
+      ...process.env,
+      NOISY_CODING_LISTENER_PORT: String(OWN_PORT),
+      // Its own config directory: sharing one means sharing settings,
+      // history and the voice ledger, where the last writer wins.
+      NOISY_CODING_CONFIG_DIR:
+        process.env.NOISY_CODING_CONFIG_DIR ||
+        path.join(app.getPath("home"), ".config", "noisy-coding-app"),
+    },
     stdio: "ignore",
-    // Not detached: the daemon is part of this app and must not outlive it.
-    // An orphaned daemon holding the microphone is worse than no daemon.
+    // Not detached: an orphaned daemon holding the microphone is worse
+    // than no daemon at all.
     detached: false,
   });
   child.on("exit", () => (child = null));
 
-  // Starting takes a few seconds - audio devices, models, the HTTP server.
   for (let i = 0; i < 40; i += 1) {
     if (await serves(OWN_PORT, "/status")) return OWN_PORT;
     await new Promise((r) => setTimeout(r, 500));
@@ -91,17 +109,40 @@ async function spawnDaemon() {
   return null;
 }
 
-/** The first daemon already running, or null when we must start our own. */
-async function findDaemon() {
-  for (const port of CANDIDATE_PORTS) {
-    if (await serves(port, "/next/companion")) return port;
+/** Resolve the mode into a daemon and a UI, or a reason it cannot. */
+async function resolveMode() {
+  if (MODE === "local") {
+    // A GUEST here: attach to what is already running, start nothing.
+    const daemonOk = await serves(LOCAL_DAEMON_PORT, "/status");
+    const uiOk = await new Promise((resolve) => {
+      const request = http.get(`${LOCAL_UI}/`, { timeout: 700 }, (res) => {
+        res.resume();
+        resolve(res.statusCode < 500);
+      });
+      request.on("timeout", () => (request.destroy(), resolve(false)));
+      request.on("error", () => resolve(false));
+    });
+
+    base = `http://127.0.0.1:${LOCAL_DAEMON_PORT}`;
+    attachedPort = daemonOk ? LOCAL_DAEMON_PORT : null;
+    // A missing vite is not a reason to show nothing: the daemon still has
+    // a built copy of the UI.
+    uiBase = uiOk ? LOCAL_UI : base;
+
+    const missing = [];
+    if (!daemonOk) missing.push(`daemon on :${LOCAL_DAEMON_PORT}`);
+    if (!uiOk) missing.push(`vite on ${LOCAL_UI}`);
+    problem = missing.length ? `local mode: no ${missing.join(", no ")}` : null;
+    return;
   }
-  // Nothing can serve the widget: fall back to anything alive, so the
-  // dashboard still works and the menu bar can say what it attached to.
-  for (const port of CANDIDATE_PORTS) {
-    if (await serves(port, "/status")) return port;
-  }
-  return null;
+
+  // Production: the OWNER. Start the daemon we carry.
+  attachedPort = (await serves(OWN_PORT, "/next/companion"))
+    ? OWN_PORT
+    : await spawnDaemon();
+  base = `http://127.0.0.1:${attachedPort || OWN_PORT}`;
+  uiBase = base;
+  problem = attachedPort ? null : "the bundled daemon did not start";
 }
 
 /* Two windows, one app:
@@ -109,10 +150,18 @@ async function findDaemon() {
  *   - the WIDGET, frameless and always on top
  * Both are views of the same bundle served by the daemon, so neither
  * duplicates anything; the app is a window manager, not a second client. */
-let base = process.env.NOISY_DAEMON_URL || null;   // resolved at startup
-let attachedPort = null;                           // which daemon we found
-const widgetUrl = () => `${base}/next/companion?transparent=1`;
-const dashboardUrl = () => `${base}/next/`;
+let base = null;        // where the DATA comes from (the daemon)
+let uiBase = null;      // where the SCREEN comes from - not always the same
+let attachedPort = null;
+let problem = null;     // what to say when the mode's parts are missing
+
+/* Vite serves the views at the root; the daemon serves the built bundle
+ * under /next/. Same app, two prefixes. */
+const widgetUrl = () =>
+  uiBase === LOCAL_UI
+    ? `${uiBase}/companion?transparent=1`
+    : `${uiBase}/next/companion?transparent=1`;
+const dashboardUrl = () => (uiBase === LOCAL_UI ? `${uiBase}/` : `${uiBase}/next/`);
 
 let win = null;
 let dash = null;
@@ -166,6 +215,37 @@ function createWindow() {
 
   win.loadURL(widgetUrl());
   win.once("ready-to-show", () => win.show());
+
+  /* Hide the window while it reloads.
+   *
+   * A transparent window is only transparent once the page's CSS says so -
+   * before that Chromium paints its default white base, so every reload
+   * flashes a white rectangle for a second. Nothing can make that paint
+   * transparent; what we CAN do is not show it. Briefly absent reads as a
+   * reload; briefly white reads as a bug. */
+  win.webContents.on("did-start-loading", () => win.hide());
+  win.webContents.on("did-stop-loading", async () => {
+    /* Wait for the page to be TRANSPARENT, not merely loaded.
+     *
+     * A fixed delay guesses, and guesses differently for each source: the
+     * built bundle finishes loading fast, so a 90ms timer showed the window
+     * while Chromium's white base was still painted; vite is slower, so the
+     * same timer happened to be enough. Ask the page instead - it knows
+     * when its own stylesheet has landed. */
+    for (let i = 0; i < 40; i += 1) {
+      const ready = await win?.webContents
+        .executeJavaScript(
+          'document.body?.classList.contains("companion-transparent") === true',
+        )
+        .catch(() => false);
+      if (ready) break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    // One frame more, so the first paint is the transparent one.
+    await new Promise((r) => setTimeout(r, 32));
+    win?.show();
+  });
+
   watchHover(win);
   win.on("closed", () => (win = null));
 }
@@ -213,16 +293,51 @@ function setGhost(on) {
   buildTray();
 }
 
+/** Swap the UI source and reload. Data (the daemon) does not move. */
+function useUi(which) {
+  uiBase = which === "vite" ? LOCAL_UI : base;
+  win?.loadURL(widgetUrl());
+  dash?.loadURL(dashboardUrl());
+  buildTray();
+}
+
 function buildTray() {
   const menu = Menu.buildFromTemplate([
     // Which daemon is answering matters when three can be running: the app
     // should never leave you guessing whose conversation you are looking at.
     {
-      label: attachedPort
-        ? `Daemon: :${attachedPort}${child ? " (ours)" : " (attached)"}`
-        : "Daemon: not found",
+      // A fact, not a choice - the mode is decided at launch. But with two
+      // possible daemons on one machine, which one you see must never be a
+      // guess.
+      label:
+        MODE === "local"
+          ? `LOCAL - daemon :${attachedPort ?? "?"}, ui ${uiBase === LOCAL_UI ? "vite" : "built"}`
+          : `Production - daemon :${attachedPort ?? "?"}${child ? " (ours)" : ""}`,
       enabled: false,
     },
+    /* Only in local mode, and only for the UI.
+     *
+     * The daemon is chosen when you sit down; the interface is not. Vite
+     * dies mid-session on a bad import, and when it does you still want a
+     * working widget - so this is recovery from a failure, not a
+     * preference, and that is why it earns a live switch. */
+    ...(MODE === "local"
+      ? [
+          { type: "separator" },
+          {
+            label: "Interface: vite (hot reload)",
+            type: "radio",
+            checked: uiBase === LOCAL_UI,
+            click: () => useUi("vite"),
+          },
+          {
+            label: "Interface: built (stable)",
+            type: "radio",
+            checked: uiBase !== LOCAL_UI,
+            click: () => useUi("built"),
+          },
+        ]
+      : []),
     { type: "separator" },
     { label: "Open dashboard", click: () => createDashboard() },
     {
@@ -252,15 +367,16 @@ app.whenReady().then(async () => {
   /* Attach before opening anything: both windows are views of a daemon, and
    * pointing them at nothing produces a not-found page that looks like a
    * bug rather than a missing service. */
-  if (!base) {
-    attachedPort = await findDaemon();
-    if (attachedPort) {
-      base = `http://127.0.0.1:${attachedPort}`;
-    } else {
-      // Nothing usable is running - start the one we carry.
-      attachedPort = await spawnDaemon();
-      base = `http://127.0.0.1:${attachedPort || OWN_PORT}`;
-    }
+  await resolveMode();
+  if (problem) {
+    // Say what is missing rather than opening a window onto nothing - a
+    // not-found page reads as a broken app, not an absent service.
+    dialog.showMessageBox({
+      type: "warning",
+      message: `Noisy Coding (${MODE})`,
+      detail: `${problem}.\n\nStart it, then reload with Ctrl+Alt+R.`,
+      buttons: ["Continue"],
+    });
   }
 
   /* Keep the Dock icon for as long as the app runs.
@@ -277,8 +393,14 @@ app.whenReady().then(async () => {
   // monochrome mask, so it inverts correctly in light and dark menu bars.
   // Without this the app is running and completely invisible - which is
   // exactly how it felt.
-  const trayIcon = nativeImage.createFromPath(asset("trayTemplate.png"));
-  trayIcon.setTemplateImage(true);
+  /* macOS forces monochrome only on images marked as TEMPLATE - that is
+   * what makes the production icon adapt to a light or dark menu bar. The
+   * dev build deliberately opts out: a coloured icon cannot adapt, but it
+   * also cannot be mistaken for the production one at a glance. */
+  const trayIcon = nativeImage.createFromPath(
+    asset(MODE === "local" ? "trayDev.png" : "trayTemplate.png"),
+  );
+  trayIcon.setTemplateImage(MODE !== "local");
   tray = new Tray(trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon);
   if (trayIcon.isEmpty()) tray.setTitle("◉");
   // Clicking the icon brings the widget back if it was closed or lost.
@@ -319,6 +441,23 @@ app.whenReady().then(async () => {
         { role: "toggleDevTools", accelerator: "CommandOrControl+Alt+I" },
         { type: "separator" },
         { role: "quit", accelerator: "CommandOrControl+Q" },
+      ],
+    },
+    /* Cut, copy and paste are not free on macOS: they are MENU ITEMS, and
+     * a window whose application menu lacks them simply does not respond to
+     * the shortcuts. Replacing the default menu without an Edit submenu
+     * silently disables pasting - which matters most on the one screen a
+     * new user meets first, where they have to paste an API key. */
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
       ],
     },
   ]);

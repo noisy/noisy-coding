@@ -65,7 +65,23 @@ const levelDb = computed(() =>
 // A dev instance is any daemon serving off the production port. The marker
 // is deliberately confined to the logo block — the rest of the theme stays
 // production-identical so prod colors can be tested on a local instance.
-const isDevInstance = window.location.port !== "" && window.location.port !== "8765";
+/* Which instance is this?
+ *
+ * Three now live side by side, and "which one am I looking at" must never
+ * be a guess - especially on stream, where the dev instance is on screen
+ * almost all the time.
+ *   8765  the Docker install
+ *   9765  the desktop app's own daemon - a user's normal case, so no badge
+ *   other a daemon someone is developing against
+ */
+const instanceKind =
+  window.location.port === "" || window.location.port === "8765"
+    ? "docker"
+    : window.location.port === "9765"
+      ? "app"
+      : "dev";
+const isDevInstance = instanceKind === "dev";
+const instanceLabel = instanceKind === "dev" ? "DEV INSTANCE" : "";
 
 // Controls: fire the POST, then let the next 400 ms poll reflect reality —
 // no optimistic local state to get out of sync.
@@ -611,7 +627,7 @@ const LANGUAGES: Record<string, string> = {
               <div>
                 <div class="title">NOISY-CODING</div>
                 <div class="sub">TALK WITH YOUR AGENT</div>
-                <div v-if="isDevInstance" class="devbadge">LOCAL</div>
+                <div v-if="instanceLabel" class="devbadge">{{ instanceLabel }}</div>
               </div>
             </div>
           </div>

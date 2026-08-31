@@ -7,8 +7,11 @@
   "scripts": {
     "start": "electron .",
     "start:dev": "NOISY_COMPANION_URL=http://localhost:5173/companion?transparent=1 electron .",
-    "dist": "electron-builder --mac --dir",
-    "dmg": "electron-builder --mac"
+    "dist": "npm run build:daemon && electron-builder --mac --dir",
+    "dmg": "electron-builder --mac",
+    "local": "NOISY_MODE=local electron .",
+    "build:daemon": "cd .. && .venv/bin/pyinstaller desktop/daemon.spec --distpath desktop/build/daemon --noconfirm --log-level WARN",
+    "dist:dev": "electron-builder --mac --dir -c.extraMetadata.noisyMode=local -c.productName=\"Noisy Coding Dev\" -c.appId=pl.noisy.coding.companion.dev -c.directories.output=dist-dev -c.mac.icon=build/icon-dev.icns"
   },
   "devDependencies": {
     "electron": "^32.0.0",
@@ -25,7 +28,7 @@
     "files": [
       "main.js",
       "package.json",
-      "build/trayTemplate*.png"
+      "build/tray*.png"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
