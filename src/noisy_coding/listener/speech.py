@@ -21,9 +21,8 @@ from collections import deque
 from concurrent.futures import Future
 from dataclasses import dataclass
 
-from noisy_coding import playback, tts, tts_stream
+from noisy_coding import playback, providers, tts
 from noisy_coding.listener import audio_cache, tab_audio
-from noisy_coding.listener import pricing
 from noisy_coding.listener.state import ListenerState
 
 DEFAULT_VOICE_ENV_VAR = "NOISY_CODING_DEFAULT_VOICE"
@@ -152,6 +151,7 @@ class _PreparedSpeech:
     audio: tts.SynthesizedAudio | None = None  # rendered ahead (or cached)
     cached: bool = False  # bytes came from the cache — nothing was paid
     stream: bool = False  # render coupled to playback (live TTS at queue head)
+    provider: providers.TTSProvider | None = None  # backend picked at synth time
     # audio=None with stream=False means the synth stage skipped rendering
     # (voice was muted then); the playback stage decides at its turn.
 
@@ -293,11 +293,16 @@ def _is_fatal_speech_error(error: Exception) -> bool:
 
 
 async def _synthesize_with_retry(
-    state: ListenerState, speech_text: str, voice: str, language: str, speed: float
+    state: ListenerState,
+    provider: providers.TTSProvider,
+    speech_text: str,
+    voice: str,
+    language: str,
+    speed: float,
 ) -> tts.SynthesizedAudio:
     for attempt, delay in enumerate(SYNTH_RETRY_DELAYS_SECONDS):
         try:
-            return await tts.synthesize(speech_text, voice, language, speed)
+            return await provider.synthesize(speech_text, voice, language, speed)
         except Exception as error:
             if _is_fatal_speech_error(error):
                 raise
@@ -305,7 +310,7 @@ async def _synthesize_with_retry(
             state.add_event("speak_retry", str(error)[:160])
             if delay:
                 await asyncio.sleep(delay)
-    return await tts.synthesize(speech_text, voice, language, speed)
+    return await provider.synthesize(speech_text, voice, language, speed)
 
 
 def _error_card_fields(error: Exception) -> dict:
@@ -341,8 +346,10 @@ def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
         _log(f"[speak] user finished — held playback {time.monotonic() - held_since:.1f}s")
 
 
-def _tts_streaming(state: ListenerState) -> bool:
+def _tts_streaming(state: ListenerState, provider: providers.TTSProvider) -> bool:
     """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
+    if not provider.supports_streaming:
+        return False  # batch-only backend (e.g. local) — never a hard error
     if state.output_device == "browser":
         # The tab plays one complete clip per message (v1) — streaming
         # chunks over the bridge is a later iteration.
@@ -379,26 +386,31 @@ def _prepare_audio(
     _play_prepared.
     """
     voice, language, speed = resolve_options(state, agent)
+    provider = providers.active_tts()
     if voice_override:
         voice = voice_override  # a subagent's own persona (#22)
     if state.voice_muted or state.agent_muted(agent):
         # Deferred = costs nothing until played: render nothing while the
         # speaker is muted. _play_prepared parks the card (or renders at
         # its turn, should the user unmute in the meantime).
-        return _PreparedSpeech(voice, language, speed)
+        return _PreparedSpeech(voice, language, speed, provider=provider)
     cached = _audio_cache.get(_cache_key(source_id, text, voice, language, speed))
     if cached is not None:
         audio = tts.SynthesizedAudio(cached, audio_cache.CONTENT_TYPE, 0.0)
         _mark_ready(state, utterance_id)
-        return _PreparedSpeech(voice, language, speed, audio=audio, cached=True)
-    if _tts_streaming(state) and _next_to_play(seq):
+        return _PreparedSpeech(
+            voice, language, speed, audio=audio, cached=True, provider=provider
+        )
+    if _tts_streaming(state, provider) and _next_to_play(seq):
         # Nothing plays before this one — stream it, audio starts fastest.
         # Clips queued BEHIND a playing one batch-render right here instead:
         # ready-to-play the instant the speaker frees, no dead air between.
-        return _PreparedSpeech(voice, language, speed, stream=True)
-    audio = _synthesize_now(state, text, voice, language, speed, utterance_id, source_id)
+        return _PreparedSpeech(voice, language, speed, stream=True, provider=provider)
+    audio = _synthesize_now(
+        state, provider, text, voice, language, speed, utterance_id, source_id
+    )
     _mark_ready(state, utterance_id)
-    return _PreparedSpeech(voice, language, speed, audio=audio)
+    return _PreparedSpeech(voice, language, speed, audio=audio, provider=provider)
 
 
 def _mark_ready(state: ListenerState, utterance_id: int) -> None:
@@ -409,8 +421,13 @@ def _mark_ready(state: ListenerState, utterance_id: int) -> None:
     state.update_utterance(utterance_id, status="ready — waiting for the speaker")
 
 
-def _charge_synthesis(state: ListenerState, text: str, utterance_id: int) -> None:
-    cost = pricing.tts_cost_usd(len(text))
+def _charge_synthesis(
+    state: ListenerState,
+    provider: providers.TTSProvider,
+    text: str,
+    utterance_id: int,
+) -> None:
+    cost = provider.cost_usd(len(text))
     state.add_cost("claude", cost)
     state.add_usage("tts_chars", len(text))
     state.update_utterance(utterance_id, cost_usd=cost)
@@ -418,6 +435,7 @@ def _charge_synthesis(state: ListenerState, text: str, utterance_id: int) -> Non
 
 def _synthesize_now(
     state: ListenerState,
+    provider: providers.TTSProvider,
     text: str,
     voice: str,
     language: str,
@@ -426,12 +444,12 @@ def _synthesize_now(
     source_id: int,
 ) -> tts.SynthesizedAudio:
     """One paid batch render, cached so this exact clip is never paid twice."""
-    state.update_utterance(utterance_id, status="synthesizing (Grok TTS)…")
-    _charge_synthesis(state, text, utterance_id)
+    state.update_utterance(utterance_id, status=f"synthesizing ({provider.label})…")
+    _charge_synthesis(state, provider, text, utterance_id)
     synth_started = time.monotonic()
     audio = asyncio.run(
         _synthesize_with_retry(
-            state, _emphasis_to_speech_tags(text), voice, language, speed
+            state, provider, _emphasis_to_speech_tags(text), voice, language, speed
         )
     )
     state.set_latency("tts", (time.monotonic() - synth_started) * 1000)
@@ -501,7 +519,8 @@ def _play_prepared(
             # but it is audible now — render at our turn, exactly like
             # the pre-pipeline flow did.
             audio = _synthesize_now(
-                state, text, prepared.voice, prepared.language, prepared.speed,
+                state, prepared.provider or providers.active_tts(), text,
+                prepared.voice, prepared.language, prepared.speed,
                 utterance_id, source_id,
             )
         if not aec_covers_echo:
@@ -553,8 +572,9 @@ async def _stream_and_play(
     mode too; a stream that errors out caches nothing (partial audio must
     never be replayed as the full message).
     """
-    _charge_synthesis(state, text, utterance_id)
-    detail = "streaming from Grok TTS"
+    provider = prepared.provider or providers.active_tts()
+    _charge_synthesis(state, provider, text, utterance_id)
+    detail = f"streaming from {provider.label}"
     state.add_event("speak_audio", detail)
     state.update_utterance(
         utterance_id, status="playing through speakers…", detail=detail
@@ -562,7 +582,7 @@ async def _stream_and_play(
     chunks = bytearray()
     for attempt, delay in enumerate((*SYNTH_RETRY_DELAYS_SECONDS, None)):
         try:
-            await tts_stream.speak_streaming(
+            await provider.speak_streaming(
                 _emphasis_to_speech_tags(text),
                 prepared.voice,
                 prepared.language,
@@ -592,8 +612,8 @@ async def _play_audio(
     cached: bool,
     utterance_id: int,
 ) -> None:
-    origin = "cache — no re-synthesis" if cached else "Grok TTS"
-    detail = f"{len(audio.audio) / 1024:.0f} kB MP3 from {origin}"
+    origin = "cache — no re-synthesis" if cached else "fresh synthesis"
+    detail = f"{len(audio.audio) / 1024:.0f} kB audio from {origin}"
     if state.output_device == "browser":
         live_bridge = tab_audio.bridge()
         state.add_event("speak_audio", detail + " → browser tab")

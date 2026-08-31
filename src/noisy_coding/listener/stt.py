@@ -7,11 +7,12 @@ import httpx
 import numpy as np
 
 from noisy_coding import tts
+from noisy_coding.providers.base import STTError
 
 REQUEST_TIMEOUT_SECONDS = 60.0
 
 
-class GrokSTTError(RuntimeError):
+class GrokSTTError(STTError):
     """Raised when the Grok STT API cannot transcribe audio."""
 
 

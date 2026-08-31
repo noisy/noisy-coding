@@ -1,0 +1,80 @@
+"""Voice-provider registry — the daemon's single door to TTS and STT.
+
+Callers ask for `active_tts()` / `active_stt()` at the moment of use;
+the selection in providers.json is re-read on every call, so switching
+provider is a file write away, no restart (same contract as the API key
+in credentials.py). Unknown names fall back to Grok rather than mute
+the daemon.
+"""
+
+from noisy_coding.providers import config
+from noisy_coding.providers.base import (
+    STTError,
+    STTProvider,
+    STTStreamSession,
+    SynthesizedAudio,
+    TTSError,
+    TTSProvider,
+)
+
+__all__ = [
+    "active_tts",
+    "active_stt",
+    "available",
+    "catalog",
+    "STTError",
+    "TTSError",
+    "STTProvider",
+    "TTSProvider",
+    "STTStreamSession",
+    "SynthesizedAudio",
+]
+
+
+def _grok_tts() -> TTSProvider:
+    from noisy_coding.providers.grok import GrokTTS
+
+    return GrokTTS()
+
+
+def _grok_stt() -> STTProvider:
+    from noisy_coding.providers.grok import GrokSTT
+
+    return GrokSTT()
+
+
+def _local_tts() -> TTSProvider:
+    from noisy_coding.providers.local import LocalTTS
+
+    return LocalTTS()
+
+
+def _local_stt() -> STTProvider:
+    from noisy_coding.providers.local import LocalSTT
+
+    return LocalSTT()
+
+
+_TTS_FACTORIES = {"grok": _grok_tts, "local": _local_tts}
+_STT_FACTORIES = {"grok": _grok_stt, "local": _local_stt}
+
+
+def catalog() -> list[dict]:
+    """Setup metadata for every provider — see providers/catalog.py."""
+    from noisy_coding.providers.catalog import catalog as _catalog
+
+    return _catalog()
+
+
+def available() -> dict[str, list[str]]:
+    return {"tts": sorted(_TTS_FACTORIES), "stt": sorted(_STT_FACTORIES)}
+
+
+def active_tts() -> TTSProvider:
+    factory = _TTS_FACTORIES.get(config.tts_provider_name(), _grok_tts)
+    return factory()
+
+
+def active_stt() -> STTProvider:
+    factory = _STT_FACTORIES.get(config.stt_provider_name(), _grok_stt)
+    return factory()

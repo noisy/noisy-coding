@@ -17,7 +17,8 @@ import sounddevice as sd
 
 from noisy_coding import credentials
 from noisy_coding.config_dir import CONFIG_DIR, migrate_legacy_config_dir
-from noisy_coding.listener import pricing, speech, stt, stt_stream
+from noisy_coding import providers
+from noisy_coding.listener import speech, stt
 import json
 
 from noisy_coding.listener.http_api import (
@@ -119,24 +120,25 @@ def _transcribe_and_enqueue(
     state: ListenerState,
     utterance_id: int,
 ) -> None:
+    provider = providers.active_stt()
     seconds = len(samples) / sample_rate
-    cost = pricing.stt_cost_usd(seconds)
+    cost = provider.cost_usd(seconds)
     state.add_cost("user", cost)
     state.add_usage("stt_seconds", seconds)
     _log(f"[transcribing] {seconds:.1f}s of audio (batch)")
     state.add_event("transcribing", f"{seconds:.1f}s")
     state.update_utterance(
         utterance_id,
-        status="transcribing (Grok STT)…",
+        status=f"transcribing ({provider.label})…",
         detail=f"{seconds:.1f}s audio",
         cost_usd=cost,
         duration_s=round(seconds, 1),
     )
     stt_started = time.monotonic()
     try:
-        text = stt.transcribe(stt.encode_wav(samples, sample_rate), state.language)
+        text = provider.transcribe(stt.encode_wav(samples, sample_rate), state.language)
         state.set_latency("stt", (time.monotonic() - stt_started) * 1000)
-    except stt.GrokSTTError as error:
+    except providers.STTError as error:
         _log(f"[stt-error] {error}")
         state.add_event("stt_error", str(error)[:200])
         state.update_utterance(utterance_id, status="transcription error")
@@ -152,7 +154,10 @@ def _transcribe_and_enqueue(
 
 def _start_stream(
     segmenter, config: VadConfig, state: ListenerState, utterance_id: int
-) -> stt_stream.StreamingSession | None:
+) -> providers.STTStreamSession | None:
+    provider = providers.active_stt()
+    if not provider.supports_streaming:
+        return None  # batch-only backend (e.g. local) — the caller batches
     longest_shown = 0
     language = state.language
 
@@ -172,15 +177,17 @@ def _start_stream(
         segmenter.request_close()
 
     try:
-        session = stt_stream.StreamingSession(
+        session = provider.open_stream(
             config.sample_rate,
             language,
             on_partial,
             smart_turn=smart_turn,
             on_turn_end=on_turn_end if smart_turn > 0 else None,
         )
-    except stt_stream.GrokStreamError as error:
+    except providers.STTError as error:
         _log(f"[stream-error] {error} — falling back to batch for this utterance")
+        return None
+    if session is None:
         return None
     for frame in segmenter.recording_frames:
         session.send(frame.tobytes())
@@ -188,12 +195,12 @@ def _start_stream(
 
 
 def _finalize_stream(
-    session: stt_stream.StreamingSession,
+    session: providers.STTStreamSession,
     seconds: float,
     state: ListenerState,
     utterance_id: int,
 ) -> None:
-    cost = pricing.stt_streaming_cost_usd(seconds)
+    cost = providers.active_stt().streaming_cost_usd(seconds)
     state.add_cost("user", cost)
     state.add_usage("stt_seconds", seconds)
     state.update_utterance(
@@ -379,7 +386,7 @@ def run(config: VadConfig | None = None) -> None:
     try:
         try:
             current_utterance_id = 0
-            stream: stt_stream.StreamingSession | None = None
+            stream: providers.STTStreamSession | None = None
             api_key_present = False
             key_check_at = 0.0
             last_frame_at = time.monotonic()
