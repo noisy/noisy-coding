@@ -9,10 +9,12 @@ local.stt_model) downloads from Hugging Face on first use and is cached
 by faster-whisper; every later transcription is offline. The model is
 loaded once per process and reused — loading is the expensive part.
 
-TTS: the macOS `say` engine — zero extra dependencies, works offline.
-Not a beauty-contest voice, but a correct, free fallback that proves the
-provider seam; Piper/Kokoro can slot in behind the same interface later
-(see issue #37 for candidates, including NVIDIA Nemotron for STT).
+TTS: Kokoro by default — a small open TTS model (kokoro-onnx) with
+natural voices that runs offline on CPU; the model files (~340 MB)
+download once into the config dir. The macOS `say` engine remains the
+zero-dependency fallback (local.tts_engine = "say"), because a garbled
+but audible daemon beats a mute one. Other engines (Piper, and Nemotron
+for STT) can slot behind the same seam later — see issue #37.
 
 Streaming: neither direction streams yet (supports_streaming = False);
 the daemon's batch paths carry local mode. Whisper partials are feasible
@@ -27,6 +29,7 @@ import wave
 from collections.abc import Callable
 from pathlib import Path
 
+import httpx
 import numpy as np
 
 from noisy_coding.providers import config
@@ -119,14 +122,105 @@ def _wav_to_float32(wav_bytes: bytes) -> np.ndarray:
     return samples
 
 
+_KOKORO_RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+_KOKORO_MODEL_URL = f"{_KOKORO_RELEASE}/kokoro-v1.0.onnx"
+_KOKORO_VOICES_URL = f"{_KOKORO_RELEASE}/voices-v1.0.bin"
+DEFAULT_KOKORO_VOICE = "af_sarah"
+
+_KOKORO_INSTALL_HINT = (
+    "Local TTS needs the optional kokoro-onnx dependency — install it "
+    "with: uv sync --extra local (or pip install kokoro-onnx). "
+    'To use the built-in macOS voice instead, set local.tts_engine to "say".'
+)
+
+
+class _KokoroEngine:
+    """kokoro-onnx behind a lock: loaded once per process, like the STT model."""
+
+    _model = None
+    _lock = threading.Lock()
+
+    @classmethod
+    def model(cls):
+        with cls._lock:
+            if cls._model is None:
+                try:
+                    from kokoro_onnx import Kokoro
+                except ImportError as error:
+                    raise TTSError(_KOKORO_INSTALL_HINT) from error
+                model_path = _ensure_downloaded(_KOKORO_MODEL_URL, "kokoro-v1.0.onnx")
+                voices_path = _ensure_downloaded(_KOKORO_VOICES_URL, "voices-v1.0.bin")
+                cls._model = Kokoro(str(model_path), str(voices_path))
+            return cls._model
+
+
+def _ensure_downloaded(url: str, filename: str) -> Path:
+    """The model files land in the config dir once; every later run is offline."""
+    from noisy_coding.config_dir import CONFIG_DIR
+
+    target = CONFIG_DIR / "models" / "kokoro" / filename
+    if target.exists() and target.stat().st_size > 0:
+        return target
+    target.parent.mkdir(parents=True, exist_ok=True)
+    partial = target.with_suffix(target.suffix + ".part")
+    try:
+        with httpx.stream("GET", url, follow_redirects=True, timeout=600.0) as response:
+            response.raise_for_status()
+            with partial.open("wb") as out:
+                for chunk in response.iter_bytes():
+                    out.write(chunk)
+        partial.replace(target)
+    except (httpx.HTTPError, OSError) as error:
+        partial.unlink(missing_ok=True)
+        raise TTSError(f"Downloading the Kokoro model failed: {error}") from error
+    return target
+
+
 class LocalTTS:
     name = "local"
-    label = "local TTS (say)"
+    label = "local TTS (kokoro)"
     supports_streaming = False
 
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
     ) -> SynthesizedAudio:
+        engine = str(config.local_options().get("tts_engine") or "kokoro")
+        if engine == "say":
+            return await self._synthesize_say(text, speed)
+        return await asyncio.to_thread(self._synthesize_kokoro, text, voice_id, speed)
+
+    def _synthesize_kokoro(
+        self, text: str, voice_id: str, speed: float
+    ) -> SynthesizedAudio:
+        model = _KokoroEngine.model()
+        voice = self._kokoro_voice(model, voice_id)
+        try:
+            samples, sample_rate = model.create(
+                text, voice=voice, speed=max(0.5, min(2.0, speed))
+            )
+        except Exception as error:
+            raise TTSError(f"Local TTS (kokoro) failed: {error}") from error
+        pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16)
+        buffer = io.BytesIO()
+        with wave.open(buffer, "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(sample_rate)
+            out.writeframes(pcm.tobytes())
+        return SynthesizedAudio(buffer.getvalue(), "audio/wav", len(pcm) / sample_rate)
+
+    def _kokoro_voice(self, model, voice_id: str) -> str:
+        """The daemon's voice names are Grok's; map through config, or fall
+        back to a fixed default so every agent still gets a stable voice."""
+        known = set(model.get_voices())
+        if voice_id in known:
+            return voice_id
+        configured = str(config.local_options().get("tts_voice") or "")
+        if configured in known:
+            return configured
+        return DEFAULT_KOKORO_VOICE
+
+    async def _synthesize_say(self, text: str, speed: float) -> SynthesizedAudio:
         voice = str(config.local_options().get("tts_voice") or "")
         # `say` rate is words per minute; ~180 wpm reads as speed 1.0.
         rate = max(90, min(360, int(180 * speed)))
@@ -159,6 +253,14 @@ class LocalTTS:
         raise TTSError("Local TTS does not stream — use the batch path.")
 
     async def list_voices(self) -> list[dict]:
+        engine = str(config.local_options().get("tts_engine") or "kokoro")
+        if engine != "say":
+            names = await asyncio.to_thread(
+                lambda: list(_KokoroEngine.model().get_voices())
+            )
+            # Kokoro voice ids lead with a locale+gender prefix ("af_" =
+            # American female); surface that as the language column.
+            return [{"voice_id": name, "language": name.split("_")[0]} for name in names]
         try:
             result = await asyncio.create_subprocess_exec(
                 "say", "-v", "?",
