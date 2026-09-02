@@ -35,6 +35,9 @@ export interface CompanionAgent {
   active?: boolean;
   /** Something happened here while you were looking elsewhere. */
   unread?: boolean;
+  /** Messages queued to be SPOKEN in this conversation - shown as a small
+   *  numeric badge on the head (0/undefined = no badge). */
+  waiting?: number;
 }
 
 const props = withDefaults(
@@ -54,6 +57,8 @@ const props = withDefaults(
     activity?: string | null;
     /** Other conversations, oldest at the top. The ACTIVE one is `voice`. */
     agents?: CompanionAgent[];
+    /** Queued-to-speak count for the single-conversation portrait. */
+    waiting?: number;
   }>(),
   {
     mode: "idle",
@@ -63,6 +68,7 @@ const props = withDefaults(
     maxHeight: 200,
     level: 0,
     agents: () => [],
+    waiting: 0,
     activity: null,
   },
 );
@@ -380,9 +386,10 @@ watch(
         :style="otherStyle(a.voice)"
         :title="a.name"
         @click="$emit('select', a.name)"
-      />
+      ><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->
-      <span v-if="!agents.length" class="head current" :style="portrait" />
+      <span v-if="!agents.length" class="head current" :style="portrait"
+      ><span v-if="waiting" class="waiting">{{ waiting > 9 ? "9+" : waiting }}</span></span>
     </div>
   </div>
 </template>
@@ -611,6 +618,18 @@ body.companion-transparent::before {
   display: block; width: 44px; height: 44px;
   border: 2px solid var(--violet);
   border-radius: 50%;
+  position: relative;
+}
+/* Queued-to-speak counter: a small solid badge pinned to the head's edge.
+   Solid, not translucent - it has to survive any backdrop, like the
+   bubbles. Amber = "parked, waiting", the same language as UNHEARD. */
+.waiting {
+  position: absolute; top: -5px; right: -7px;
+  min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: 8px; box-sizing: border-box;
+  background: var(--amber, #ffb84d); color: #1a1205;
+  font: 700 10px/15px var(--mono, monospace); text-align: center;
+  pointer-events: none;
 }
 .rail.active .head {
   box-shadow: 0 0 14px color-mix(in srgb, var(--violet) 60%, transparent);

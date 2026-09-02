@@ -81,6 +81,7 @@ const others = computed<CompanionAgent[]>(() => {
       voice: s.agent_voices?.[name] ?? "rex",
       active: name === viewedAgent.value,
       unread: (queued[name] ?? 0) > 0,
+      waiting: queued[name] ?? 0,
     }));
 });
 

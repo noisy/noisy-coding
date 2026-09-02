@@ -209,3 +209,23 @@ const Playground = defineComponent({
 });
 
 export const Playground_Flow: StoryObj = { render: () => Playground };
+
+/** Queued-to-speak badges: the active head and a rail head both carrying
+ *  counts, plus the 9+ cap. */
+export const WaitingBadges: StoryObj = {
+  render: () => ({
+    components: { Companion },
+    setup: () => ({ SHORT }),
+    template: `
+      <Companion
+        mode="idle" voice="lux" :max-height="200"
+        :feed="[{ id: 1, role: 'claude', text: SHORT }]"
+        :agents="[
+          { name: 'stream-day-4', voice: 'lux', active: true, waiting: 3 },
+          { name: 'chat', voice: 'eve', unread: true, waiting: 12 },
+          { name: 'website', voice: 'atlas' },
+        ]"
+      />
+    `,
+  }),
+};
