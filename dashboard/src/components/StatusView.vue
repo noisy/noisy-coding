@@ -175,7 +175,8 @@ button { background: rgba(4, 12, 20, 0.9); color: var(--cyan); border: 1px solid
 button:disabled { opacity: 0.4; }
 .meta { color: var(--muted); font-size: 11px; }
 table { border-collapse: collapse; width: 100%; }
-td, th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; font-size: 12px; }
+td, th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
+table { table-layout: fixed; }
 th { color: var(--muted); font-weight: normal; letter-spacing: 0.15em; font-size: 10.5px; }
 .pipe-col { width: 90px; }
 .chip { font-size: 10.5px; letter-spacing: 0.1em; padding: 2px 7px; border: 1px solid; }
@@ -185,12 +186,14 @@ th { color: var(--muted); font-weight: normal; letter-spacing: 0.15em; font-size
 .running { color: var(--amber, #ffb84d); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.4; } }
 .detail-row td { background: rgba(255, 95, 107, 0.05); }
-.fail-detail { display: grid; grid-template-columns: 52px 1fr; gap: 2px 10px; padding: 4px 0; }
+.fail-detail { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 10px; padding: 4px 0; }
 .pipe { color: var(--muted); font-size: 10.5px; letter-spacing: 0.15em; }
 /* Classic two-line diff: expected with deletions in red, actual with
    insertions in green - highlights on the words, quiet elsewhere. */
-.difflines { font-size: 11.5px; display: grid; gap: 2px; }
-.line { padding: 2px 6px; }
+.difflines { font-size: 11.5px; display: grid; gap: 2px; min-width: 0; }
+/* Long transcripts WRAP - a failure must never widen the table and summon
+   a horizontal scrollbar that shoves the other results off screen. */
+.line { padding: 2px 6px; overflow-wrap: anywhere; white-space: normal; }
 .line .sign { display: inline-block; width: 14px; color: var(--muted); }
 .line.del { background: rgba(255, 95, 107, 0.07); }
 .line.ins { background: rgba(109, 255, 158, 0.06); }
