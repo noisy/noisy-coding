@@ -236,13 +236,14 @@ onMounted(() => {
     let settle: ReturnType<typeof setTimeout> | undefined;
     sizeWatch = new ResizeObserver(() => {
       clearTimeout(settle);
+      // Per-tick work stays CHEAP (refit only) - chaining scroll work onto
+      // every tick made dragging feel dead. The bottom re-pin and the mode
+      // flip both wait for the resize to settle.
+      void refit();
       settle = setTimeout(() => {
         if (root.value) setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
+        void stickToBottom(false);
       }, 160);
-      // The BOTTOM is the anchor: a width change rewraps every bubble and
-      // the old scrollTop then points mid-history - the newest message must
-      // stay pinned to the bottom edge while the content grows upward.
-      void refit().then(() => stickToBottom(false));
     });
     sizeWatch.observe(root.value);
   }
