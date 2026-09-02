@@ -701,14 +701,15 @@ body.companion-transparent::before {
      first (nothing readable near the drag strip), then a long ramp - full
      opacity only from 72px down. "Complete transparency must start
      earlier, counting from the bottom." */
-  /* Ease-out approximated with stops: gentle at the top, closing faster
-     toward the bottom. Overridable via --companion-thread-mask so the
-     Storybook gradient lab can compare curves and lengths live. */
+  /* Ease-in-out, picked by eye in the Storybook fade lab (day 4):
+     dead zone 16px, full opacity at 52px - stops match the lab's
+     ease-in-out at those slider values. Overridable via
+     --companion-thread-mask so the lab can keep comparing live. */
   mask-image: var(--companion-thread-mask, linear-gradient(to bottom,
     transparent 0 16px,
-    rgba(0, 0, 0, 0.35) 34px,
-    rgba(0, 0, 0, 0.75) 52px,
-    black 72px));
+    rgba(0, 0, 0, 0.15) 26.8px,
+    rgba(0, 0, 0, 0.85) 41.2px,
+    black 52px));
 }
 /* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
    hairline (transparent border + padding-box clip) and fills the gutter
