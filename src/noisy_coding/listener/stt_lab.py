@@ -105,6 +105,11 @@ def run_one(body: dict) -> dict:
         return {"file": path.name, "path": mode, "error": str(error)[:300]}
     ms = round((time.monotonic() - started) * 1000)
     expected = _expectations().get(path.name, "")
+    if not expected and actual.strip():
+        # First run is the baseline: the transcript becomes the expectation
+        # automatically - no blessing ceremony, the icons just work.
+        bless(path.name, actual)
+        expected = actual
     result = {"file": path.name, "path": mode, "engine": provider.label,
               "actual": actual, "expected": expected, "ms": ms}
     if expected:

@@ -61,17 +61,6 @@ function failures(file: string) {
     .filter(({ r }) => r && (r.error || r.ok === false));
 }
 
-/** Store this run's transcript as the recording's expected text. */
-async function blessFrom(file: string) {
-  const text =
-    cell(file, "batch")?.result?.actual ?? cell(file, "live")?.result?.actual;
-  if (!text) return;
-  await fetch("/tests/speech/bless", {
-    method: "POST",
-    body: JSON.stringify({ file, text }),
-  });
-  await refresh();
-}
 </script>
 
 <template>
@@ -100,12 +89,6 @@ async function blessFrom(file: string) {
               <td>
                 <span class="file">{{ t.file }}</span>
                 <span class="meta"> · {{ t.seconds }}s</span>
-                <span v-if="!t.expected" class="meta"> · no expectation</span>
-                <button
-                  v-if="!t.expected && (cell(t.file, 'batch')?.result?.actual || cell(t.file, 'live')?.result?.actual)"
-                  class="small bless" @click="blessFrom(t.file)">
-                  ✓ SET AS EXPECTED
-                </button>
               </td>
               <td v-for="p in PIPELINES" :key="p" class="pipe-col">
                 <span v-if="cell(t.file, p)?.running" class="running">…</span>
@@ -115,7 +98,7 @@ async function blessFrom(file: string) {
                     ✗ {{ cell(t.file, p)!.result!.ratio!.toFixed(2) }}
                   </span>
                   <span v-else-if="cell(t.file, p)!.result!.ok" class="chip ok">✓</span>
-                  <span v-else class="chip none" title="no expectation to compare against">RAN</span>
+                  <span v-else class="chip ok">✓</span>
                 </template>
                 <span v-else class="meta">-</span>
               </td>
@@ -153,8 +136,6 @@ h2 { font-size: 14px; letter-spacing: 0.2em; margin: 0; }
 .sec-head { display: flex; gap: 14px; align-items: center; border-bottom: 1.5px solid var(--line-strong); padding-bottom: 8px; margin-bottom: 12px; }
 .sec-head button { margin-left: auto; }
 button { background: rgba(4, 12, 20, 0.9); color: var(--cyan); border: 1px solid var(--line-strong); font: inherit; padding: 8px 20px; cursor: pointer; letter-spacing: 0.2em; }
-button.small { padding: 2px 8px; font-size: 9.5px; margin-left: 10px; }
-button.bless { color: var(--green, #6dff9e); border-color: rgba(109, 255, 158, 0.5); }
 button:disabled { opacity: 0.4; }
 .meta { color: var(--muted); font-size: 11px; }
 table { border-collapse: collapse; width: 100%; }
