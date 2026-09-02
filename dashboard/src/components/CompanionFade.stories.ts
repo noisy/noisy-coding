@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
-import { computed, defineComponent, ref } from "vue";
+import { computed, defineComponent, onMounted, onUnmounted, ref } from "vue";
 import Companion, { type CompanionMessage } from "./Companion.vue";
 
 /** GRADIENT LAB (day 4): the thread's top melt-away, on a WHITE backdrop,
@@ -38,6 +38,10 @@ const CURVES: Curve[] = [
 const Lab = defineComponent({
   components: { Companion },
   setup() {
+    // TRANSPARENT mode, as over a real desktop: the whole point of judging
+    // the fade on white is seeing through the widget onto the backdrop.
+    onMounted(() => document.body.classList.add("companion-transparent"));
+    onUnmounted(() => document.body.classList.remove("companion-transparent"));
     const dead = ref(16);
     const full = ref(72);
     const masks = computed(() =>
