@@ -194,6 +194,31 @@ function animate(now: number) {
 
 let sizeWatch: ResizeObserver | undefined;
 
+/* NARROW MODE lives in a class, not a container query, for one reason:
+ * crossing the breakpoint reflows everything at once (rails drop below the
+ * thread, text rewraps) and a raw reflow is a visual JUMP. Owning the flip
+ * in JS lets it ride a View Transition - the browser cross-fades and
+ * morphs the pieces to their new places over ~250ms. Falls back to an
+ * instant flip where the API is missing or motion is reduced. */
+const NARROW_BELOW_PX = 420;
+const narrow = ref(false);
+function setNarrow(value: boolean) {
+  if (narrow.value === value) return;
+  const doc = root.value?.ownerDocument ?? document;
+  const reduced = (doc.defaultView ?? window)
+    .matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const start = (doc as any).startViewTransition?.bind(doc);
+  if (!start || reduced) {
+    narrow.value = value;
+    return;
+  }
+  start(async () => {
+    narrow.value = value;
+    await nextTick();
+  });
+}
+
 onMounted(() => {
   frame = requestAnimationFrame(animate);
   // A ResizeObserver rather than a window listener: it fires when the widget
@@ -201,7 +226,11 @@ onMounted(() => {
   // both of which change the space available - and neither of which raises a
   // resize event on the page that owns this code.
   if (root.value) {
-    sizeWatch = new ResizeObserver(() => void refit());
+    setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
+    sizeWatch = new ResizeObserver(() => {
+      if (root.value) setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
+      void refit();
+    });
     sizeWatch.observe(root.value);
   }
 });
@@ -313,7 +342,7 @@ watch(
 </script>
 
 <template>
-  <div ref="root" class="companion" :style="{ minHeight: railHeight + 'px' }" @mousemove="trackPointer" @mouseleave="nearScroll = false">
+  <div ref="root" class="companion" :class="{ narrow }" :style="{ minHeight: railHeight + 'px' }" @mousemove="trackPointer" @mouseleave="nearScroll = false">
     <!-- Left rail: the user's indicator. Lights up while they talk. -->
     <div class="rail left" :class="{ active: mode === 'user' }">
       <svg viewBox="0 0 100 100" class="hex">
@@ -566,7 +595,6 @@ body.companion-transparent::before {
      into a narrow strip of screen. */
   width: 100%;
   min-width: 280px;
-  container-type: inline-size;
   box-sizing: border-box;
   background: rgba(5, 14, 24, 0.92);
   border: 1px solid rgba(63, 216, 255, 0.25);
@@ -774,20 +802,23 @@ body.companion-transparent::before {
 /* NARROW MODE: under the 420px design width the side rails cost more than
    they give - the thread takes the full width and both indicators move
    into a bottom row: hexagon left, conversation heads right. */
-@container (max-width: 419px) {
-  .thread { flex-basis: 100%; order: 0; padding-right: 12px; }
-  .rail.left { order: 1; }
-  .rail.right {
-    position: static; order: 2; margin-left: auto;
-    /* Align the heads' right edge with the BUBBLES' right edge: the thread
-       keeps 12px of its own right padding PLUS the constant 6px scrollbar
-       gutter, the root only 4px - without the full 18px the avatars poke
-       out past Claude's messages. */
-    margin-right: 18px;
-    flex-direction: row; align-items: flex-end; gap: 6px;
-  }
-  .head { width: 36px; height: 36px; }
-  .head.other { width: 28px; height: 28px; }
-  /* the hexagon deliberately keeps its base 52px - one size in both modes */
+.companion.narrow .thread { flex-basis: 100%; order: 0; padding-right: 12px; }
+.companion.narrow .rail.left { order: 1; }
+.companion.narrow .rail.right {
+  position: static; order: 2; margin-left: auto;
+  /* Align the heads' right edge with the BUBBLES' right edge: the thread
+     keeps 12px of its own right padding PLUS the constant 6px scrollbar
+     gutter, the root only 4px - without the full 18px the avatars poke
+     out past Claude's messages. */
+  margin-right: 18px;
+  flex-direction: row; align-items: flex-end; gap: 6px;
 }
+.companion.narrow .head { width: 36px; height: 36px; }
+.companion.narrow .head.other { width: 28px; height: 28px; }
+/* the hexagon deliberately keeps its base 52px - one size in both modes */
+
+/* View-transition names: the rails morph as OBJECTS between their side and
+   bottom positions instead of cross-fading with the whole root. */
+.rail.left { view-transition-name: companion-hex; }
+.rail.right { view-transition-name: companion-heads; }
 </style>
