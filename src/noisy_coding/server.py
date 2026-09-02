@@ -205,36 +205,51 @@ async def change_voice(voice_id: str, speaker: str = "") -> str:
 
 
 @mcp.tool()
-async def set_bubble_color(color: str, speaker: str) -> str:
-    """Tint a named speaker's bubbles on the dashboard and the widget.
+async def set_speaker_style(speaker: str, color: str = "", label: str = "") -> str:
+    """Style a named speaker's bubbles: palette color and/or a free title.
 
-    A fixed palette, one color per speaker, persisted across restarts:
-      - "green"   the default guest look (subagent personas)
-      - "purple"  Twitch chat voices
-      - "red"     YouTube chat voices
-      - "default" back to the standard guest green
+    Color is a FIXED palette, persisted across restarts:
+      - "normal"  the main agent's own look (e.g. a chat moderator persona)
+      - "green"   the guest look (plain subagent personas - also the fallback)
+      - "purple"  Twitch chat viewers
+      - "red"     YouTube chat viewers
+      - "default" clear the entry, back to guest green
 
-    Use it once per speaker (e.g. when a chat viewer first speaks) so the
-    audience can tell at a glance which platform a message came from.
+    The label is FREE TEXT shown as the bubble's title instead of the
+    standard "<SPEAKER> · CLAUDE" - e.g. "YouTube · someRandomGuy" or
+    "Luna - chat agent". Empty label leaves the current one; to clear a
+    label set it to "-".
+
+    Use it once per speaker (e.g. a viewer's first message); repeating it
+    is harmless.
 
     Args:
-        color: One of default/green/purple/red.
-        speaker: The speaker name whose bubbles to tint (same name you
-            pass to speak(speaker=...)).
+        speaker: The speaker name (same as in speak(speaker=...)).
+        color: One of default/normal/green/purple/red, or "" to leave as is.
+        label: The bubble title to show, "" to leave as is, "-" to clear.
     """
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    body: dict = {"speaker": speaker.strip()}
+    if color.strip():
+        body["color"] = color.strip().lower()
+    if label.strip():
+        body["label"] = "" if label.strip() == "-" else label.strip()
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(
-                f"http://127.0.0.1:{port}/speaker-color",
-                json={"speaker": speaker.strip(), "color": color.strip().lower()},
+                f"http://127.0.0.1:{port}/speaker-style", json=body
             )
             data = response.json()
     except (httpx.HTTPError, ValueError):
         return "The voice daemon is not reachable; nothing changed."
     if "error" in data:
-        return f"Color change failed: {data['error']}"
-    return f"Bubbles for '{data['speaker']}' are now {data['color']}."
+        return f"Style change failed: {data['error']}"
+    parts = []
+    if data.get("color"):
+        parts.append(f"color {data['color']}")
+    if "label" in body:
+        parts.append(f"title {body['label'] or 'cleared'!r}")
+    return f"Bubbles for '{data['speaker']}': " + (", ".join(parts) or "unchanged") + "."
 
 
 @mcp.tool()

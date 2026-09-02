@@ -3,6 +3,8 @@
 export interface DaemonStatus {
   /** Named speakers whose bubbles carry a palette tint (twitch purple / youtube red). */
   speaker_colors?: Record<string, string>;
+  /** Free bubble titles per speaker ("YouTube · nick", "Luna - chat agent"). */
+  speaker_labels?: Record<string, string>;
   listening: boolean;
   muted: boolean;
   voice_muted: boolean;

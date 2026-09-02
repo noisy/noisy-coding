@@ -11,6 +11,8 @@ const props = withDefaults(
     utterances: Utterance[];
     /** speaker -> palette color, straight from status.speaker_colors. */
     speakerColors?: Record<string, string>;
+    /** speaker -> free bubble title, straight from status.speaker_labels. */
+    speakerLabels?: Record<string, string>;
     playingId?: number;
     playbackPaused?: boolean;
     activity?: { text: string; at: number } | null;
@@ -159,7 +161,8 @@ watch(
     <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
       <FeedRow
         v-for="utterance in processed"
-        :tint="(speakerColors?.[utterance.speaker ?? ''] as 'green'|'purple'|'red') ?? 'green'"
+        :tint="(speakerColors?.[utterance.speaker ?? ''] as 'normal'|'green'|'purple'|'red') ?? 'green'"
+        :label="speakerLabels?.[utterance.speaker ?? ''] ?? ''"
         :key="utterance.id"
         :utterance="utterance"
         :playing="utterance.id === playingId"
@@ -174,7 +177,8 @@ watch(
       <ActivityLine :activity="activity" :playing-card-visible="playingCardVisible" />
       <FeedRow
         v-for="utterance in pending"
-        :tint="(speakerColors?.[utterance.speaker ?? ''] as 'green'|'purple'|'red') ?? 'green'"
+        :tint="(speakerColors?.[utterance.speaker ?? ''] as 'normal'|'green'|'purple'|'red') ?? 'green'"
+        :label="speakerLabels?.[utterance.speaker ?? ''] ?? ''"
         :key="utterance.id"
         :utterance="utterance"
         :playing="utterance.id === playingId"

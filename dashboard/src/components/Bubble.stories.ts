@@ -100,7 +100,24 @@ export const ChatTwitchPurple: StoryObj = {
         cost_usd: 0.0021,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="purple" /></div>`,
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="purple" label="Twitch · xfuroo" /></div>`,
+  }),
+};
+
+export const ChatModeratorNormal: StoryObj = {
+  render: () => ({
+    components: { ClaudeBubble },
+    setup: () => ({
+      u: utterance({
+        role: "claude",
+        status: "played",
+        speaker: "luna",
+        voice: "luna",
+        text: "Reading the chat: three greetings and one question about the widget.",
+        cost_usd: 0.003,
+      }),
+    }),
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="normal" label="Luna - chat agent" /></div>`,
   }),
 };
 
@@ -117,7 +134,7 @@ export const ChatYouTubeRed: StoryObj = {
         cost_usd: 0.0021,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="red" /></div>`,
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="red" label="YouTube · DevWatcher42" /></div>`,
   }),
 };
 

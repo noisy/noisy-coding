@@ -721,6 +721,7 @@ const LANGUAGES: Record<string, string> = {
               <ConversationLog
                 :utterances="utterances"
                 :speaker-colors="status?.speaker_colors ?? {}"
+                :speaker-labels="status?.speaker_labels ?? {}"
                 :playing-id="status?.playing_utterance_id ?? 0"
                 :playback-paused="playbackPaused"
                 :activity="status?.activity?.[viewedAgent ?? ''] ?? null"

@@ -152,6 +152,7 @@ class ListenerState:
         # guest green. A fixed palette, not free RGB - four states the UI
         # styles deliberately beat a color picker nobody calibrates.
         self._speaker_colors: dict[str, str] = {}
+        self._speaker_labels: dict[str, str] = {}
 
     @staticmethod
     def _default_character() -> dict:
@@ -190,32 +191,71 @@ class ListenerState:
         with self._lock:
             return {k: dict(v) for k, v in self._characters.items()}
 
-    # --- speaker bubble colors --------------------------------------------
+    # --- speaker bubble style (color + free title) -------------------------
+    #
+    # Color stays a FIXED palette - four looks the UI styles deliberately:
+    #   normal  the main agent's violet bubble (e.g. the chat moderator)
+    #   green   the guest default (plain subagent personas)
+    #   purple  Twitch chat viewers
+    #   red     YouTube chat viewers
+    # "default" is the CLEAR operation, not a fifth look: it drops the entry
+    # and the speaker falls back to guest green.
+    #
+    # The TITLE is free text ("YouTube · someRandomGuy", "Luna - chat agent");
+    # an empty label clears it and the UI falls back to "<SPEAKER> · CLAUDE".
 
-    SPEAKER_PALETTE = ("default", "green", "purple", "red")
+    SPEAKER_PALETTE = ("default", "normal", "green", "purple", "red")
 
     def speaker_colors(self) -> dict[str, str]:
         with self._lock:
             return dict(self._speaker_colors)
 
-    def set_speaker_color(self, speaker: str, color: str) -> bool:
-        """Assign one of the palette colors to a named speaker's bubbles."""
+    def speaker_labels(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self._speaker_labels)
+
+    def set_speaker_style(
+        self, speaker: str, color: str | None = None, label: str | None = None
+    ) -> bool:
+        """Set a named speaker's bubble color (palette) and/or free title."""
         speaker = (speaker or "").strip()
-        if not speaker or color not in self.SPEAKER_PALETTE:
+        if not speaker:
+            return False
+        if color is not None and color not in self.SPEAKER_PALETTE:
             return False
         with self._lock:
             if color == "default":
                 self._speaker_colors.pop(speaker, None)
-            else:
+            elif color is not None:
                 self._speaker_colors[speaker] = color
+            if label is not None:
+                label = label.strip()[:80]
+                if label:
+                    self._speaker_labels[speaker] = label
+                else:
+                    self._speaker_labels.pop(speaker, None)
         return True
 
-    def load_speaker_colors(self, colors: dict) -> None:
+    def set_speaker_color(self, speaker: str, color: str) -> bool:
+        return self.set_speaker_style(speaker, color=color)
+
+    def load_speaker_styles(self, data: dict) -> None:
+        # Two formats on disk: the original flat {speaker: color} and the
+        # current {"colors": {...}, "labels": {...}}.
+        colors = data.get("colors", data) if isinstance(data, dict) else {}
+        labels = data.get("labels", {}) if isinstance(data, dict) else {}
         with self._lock:
             self._speaker_colors = {
                 str(k): str(v) for k, v in colors.items()
                 if str(v) in self.SPEAKER_PALETTE
             }
+            self._speaker_labels = {
+                str(k): str(v)[:80] for k, v in labels.items() if str(v).strip()
+            }
+
+    # Back-compat alias (older callers/tests).
+    def load_speaker_colors(self, colors: dict) -> None:
+        self.load_speaker_styles(colors)
 
     # --- voice claims ----------------------------------------------------
     #

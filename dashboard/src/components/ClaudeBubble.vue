@@ -7,9 +7,13 @@ import { formatCost, formatTime, statusChip } from "./bubbleStatus";
 
 const props = withDefaults(
   defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean;
-    /** Palette color for this speaker's bubbles (from status.speaker_colors). */
-    tint?: "green" | "purple" | "red" }>(),
-  { playing: false, paused: false, tint: "green" },
+    /** Palette color for this speaker's bubbles (from status.speaker_colors).
+     *  "normal" renders the main agent's own look, no guest surface. */
+    tint?: "normal" | "green" | "purple" | "red";
+    /** Free bubble title (from status.speaker_labels); overrides the
+     *  default "<SPEAKER> · CLAUDE" header. */
+    label?: string }>(),
+  { playing: false, paused: false, tint: "green", label: "" },
 );
 defineEmits<{ replay: [utterance: Utterance]; pause: [utterance: Utterance]; skip: [utterance: Utterance] }>();
 
@@ -23,7 +27,8 @@ const fromDaemon = computed(() => props.utterance.role === "daemon");
 const speaker = computed(() => (props.utterance.speaker || "").trim());
 const who = computed(() => {
   if (fromDaemon.value) return "NOISY-CODING";
-  if (speaker.value) return `${speaker.value.toUpperCase()} · SUBAGENT`;
+  if (speaker.value && props.label) return props.label.toUpperCase();
+  if (speaker.value) return `${speaker.value.toUpperCase()} · CLAUDE`;
   return "CLAUDE";
 });
 // Amber is reserved for the USER's side of the dialogue — a subagent stays
@@ -53,8 +58,8 @@ const replayable = computed(
     :replayable="replayable"
     :playing="playing"
     :paused="paused"
-    :variant="speaker && !fromDaemon ? 'guest' : 'agent'"
-    :tint="tint"
+    :variant="speaker && !fromDaemon && tint !== 'normal' ? 'guest' : 'agent'"
+    :tint="tint === 'normal' ? 'green' : tint"
     @replay="$emit('replay', utterance)"
     @pause="$emit('pause', utterance)"
     @skip="$emit('skip', utterance)"

@@ -247,14 +247,16 @@ def save_characters(state: ListenerState) -> None:
 
 def save_speaker_colors(state: ListenerState) -> None:
     try:
-        SPEAKER_COLORS_FILE.write_text(json.dumps(state.speaker_colors()))
+        SPEAKER_COLORS_FILE.write_text(json.dumps(
+            {"colors": state.speaker_colors(), "labels": state.speaker_labels()}
+        ))
     except OSError:
         pass
 
 
 def load_speaker_colors(state: ListenerState) -> None:
     try:
-        state.load_speaker_colors(json.loads(SPEAKER_COLORS_FILE.read_text()))
+        state.load_speaker_styles(json.loads(SPEAKER_COLORS_FILE.read_text()))
     except (OSError, ValueError):
         pass
 
@@ -439,6 +441,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         # Named speakers whose bubbles carry a platform
                         # tint (twitch purple / youtube red).
                         "speaker_colors": state.speaker_colors(),
+                        "speaker_labels": state.speaker_labels(),
                         "api_key_hint": credentials.api_key_hint(),
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
@@ -554,17 +557,19 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.set_paused(False)
                 state.add_event("unmuted")
                 self._respond({"listening": True})
-            elif self.path == "/speaker-color":
+            elif self.path in ("/speaker-color", "/speaker-style"):
                 body = self._read_json_body()
                 speaker = str(body.get("speaker", ""))
-                color = str(body.get("color", ""))
-                if state.set_speaker_color(speaker, color):
+                color = str(body["color"]) if "color" in body else None
+                label = str(body["label"]) if "label" in body else None
+                if state.set_speaker_style(speaker, color=color, label=label):
                     save_speaker_colors(state)
-                    self._respond({"ok": True, "speaker": speaker, "color": color})
+                    self._respond({"ok": True, "speaker": speaker,
+                                   "color": color, "label": label})
                 else:
                     self._respond(
-                        {"error": "speaker and color in "
-                         + "/".join(state.SPEAKER_PALETTE) + " required"},
+                        {"error": "speaker required; color, if given, one of "
+                         + "/".join(state.SPEAKER_PALETTE)},
                         status=400,
                     )
             elif self.path == "/character":
