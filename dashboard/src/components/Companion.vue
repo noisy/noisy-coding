@@ -216,6 +216,8 @@ function setNarrow(value: boolean) {
   start(async () => {
     narrow.value = value;
     await nextTick();
+    // The reflow changes every height - re-pin the newest message.
+    await stickToBottom(false);
   });
 }
 
@@ -237,7 +239,10 @@ onMounted(() => {
       settle = setTimeout(() => {
         if (root.value) setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
       }, 160);
-      void refit();
+      // The BOTTOM is the anchor: a width change rewraps every bubble and
+      // the old scrollTop then points mid-history - the newest message must
+      // stay pinned to the bottom edge while the content grows upward.
+      void refit().then(() => stickToBottom(false));
     });
     sizeWatch.observe(root.value);
   }
