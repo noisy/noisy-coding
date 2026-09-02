@@ -16,7 +16,7 @@ const DAEMON_PATHS = [
   "/stream", "/pause", "/resume", "/mute", "/mode", "/settings",
   "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
   "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/shutdown-postpone", "/voice-mute", "/credentials", "/dismiss-agent",
-  "/reorder-agents", "/providers",
+  "/reorder-agents", "/providers", "/stt-lab",
 ];
 
 export default defineConfig({

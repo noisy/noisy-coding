@@ -420,12 +420,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/stream/mic":
                 self._stream_mic_levels()
             elif url.path == "/stt-lab":
-                body = stt_lab.PAGE.encode()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(body)))
+                # The lab UI is a dashboard view; the daemon only serves data.
+                self.send_response(302)
+                self.send_header("Location", "/next/stt-lab")
                 self.end_headers()
-                self.wfile.write(body)
             elif url.path == "/next":
                 self.send_response(301)
                 self.send_header("Location", "/next/")

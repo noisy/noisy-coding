@@ -7,9 +7,10 @@ bytes, batch and live paths - and shows a short per-file summary plus a
 verdict. Deliberately simple: no per-test knobs, the CLI harness
 (tools/stt_consistency.py) exists for deep dives.
 
-Endpoints (wired in http_api.py):
-    GET  /stt-lab        the page
+Endpoint (wired in http_api.py):
     POST /stt-lab/run    run the sweep -> summary JSON
+The PAGE lives in the dashboard (SttLabView.vue) - the daemon serves data,
+never markup.
 """
 import difflib
 import itertools
@@ -94,50 +95,3 @@ def run_sweep() -> dict:
             "verdict": "PASS" if worst >= PASS_SCORE else "FAIL",
             "rows": rows}
 
-
-PAGE = """<!doctype html><meta charset="utf-8">
-<title>STT LAB</title>
-<style>
-  body { background:#050e18; color:#cfe9f5; font:13px/1.6 ui-monospace,monospace;
-         max-width:860px; margin:0 auto; padding:24px; }
-  h1 { font-size:16px; letter-spacing:.3em; color:#3fd8ff; }
-  button { background:#071626; color:#3fd8ff; border:1px solid #1c3a52;
-           font:inherit; padding:10px 26px; cursor:pointer; letter-spacing:.2em; }
-  button:disabled { opacity:.4; }
-  table { border-collapse:collapse; width:100%; margin-top:16px; }
-  td,th { border-bottom:1px solid #12283a; padding:6px 8px; text-align:left; }
-  th { color:#5b7c8f; font-weight:normal; letter-spacing:.15em; font-size:11px; }
-  .ok { color:#6dff9e; } .bad { color:#ff5f6b; }
-  .verdict { font-size:15px; margin-left:14px; letter-spacing:.2em; }
-  .diff { color:#ffb84d; font-size:11px; }
-  .txt { color:#5b7c8f; font-size:11px; }
-</style>
-<h1>STT LAB</h1>
-<p>One sweep: the newest recordings, replayed 3x through the active engine,
-batch and live. Score 1.000 = the engine is deterministic; red = it changes
-its mind about identical audio.</p>
-<button id="go">RERUN</button><span id="verdict" class="verdict"></span>
-<div id="out"></div>
-<script>
-const fmt = s => `<span class="${s >= 0.90 ? 'ok' : 'bad'}">${s.toFixed(3)}</span>`;
-document.getElementById('go').onclick = async () => {
-  const go = document.getElementById('go');
-  go.disabled = true;
-  document.getElementById('verdict').textContent = 'running… ~1 min';
-  let r;
-  try { r = await fetch('/stt-lab/run', { method:'POST' }).then(x => x.json()); }
-  catch (e) { r = { error: String(e) }; }
-  go.disabled = false;
-  if (r.error) { document.getElementById('verdict').textContent = r.error; return; }
-  document.getElementById('verdict').innerHTML =
-    `<span class="${r.verdict === 'PASS' ? 'ok' : 'bad'}">${r.verdict}</span>
-     · ${r.engine} · worst ${r.worst.toFixed(3)}`;
-  document.getElementById('out').innerHTML =
-    '<table><tr><th>recording</th><th>batch</th><th>live</th></tr>' +
-    r.rows.map(row => `<tr><td>${row.file}<div class="txt">${row.text}</div>` +
-      (row.batch_diff ? `<div class="diff">${row.batch_diff}</div>` : '') +
-      (row.live_diff ? `<div class="diff">${row.live_diff}</div>` : '') +
-      `</td><td>${fmt(row.batch)}</td><td>${fmt(row.live)}</td></tr>`).join('') +
-    '</table>';
-};
-</script>"""
