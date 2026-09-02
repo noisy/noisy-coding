@@ -194,32 +194,11 @@ function animate(now: number) {
 
 let sizeWatch: ResizeObserver | undefined;
 
-/* NARROW MODE lives in a class, not a container query, for one reason:
- * crossing the breakpoint reflows everything at once (rails drop below the
- * thread, text rewraps) and a raw reflow is a visual JUMP. Owning the flip
- * in JS lets it ride a View Transition - the browser cross-fades and
- * morphs the pieces to their new places over ~250ms. Falls back to an
- * instant flip where the API is missing or motion is reduced. */
+/* NARROW MODE is a class flipped straight from the resize observer.
+ * (It briefly rode a View Transition; verdict after trying it live: not
+ * worth it - the morph fought window dragging and cost reactivity.) */
 const NARROW_BELOW_PX = 420;
 const narrow = ref(false);
-function setNarrow(value: boolean) {
-  if (narrow.value === value) return;
-  const doc = root.value?.ownerDocument ?? document;
-  const reduced = (doc.defaultView ?? window)
-    .matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const start = (doc as any).startViewTransition?.bind(doc);
-  if (!start || reduced) {
-    narrow.value = value;
-    return;
-  }
-  start(async () => {
-    narrow.value = value;
-    await nextTick();
-    // The reflow changes every height - re-pin the newest message.
-    await stickToBottom(false);
-  });
-}
 
 onMounted(() => {
   frame = requestAnimationFrame(animate);
@@ -235,15 +214,12 @@ onMounted(() => {
      * showed. Waiting for the resize to settle lets the morph play. */
     let settle: ReturnType<typeof setTimeout> | undefined;
     sizeWatch = new ResizeObserver(() => {
-      clearTimeout(settle);
-      // Per-tick work stays CHEAP (refit only) - chaining scroll work onto
-      // every tick made dragging feel dead. The bottom re-pin and the mode
-      // flip both wait for the resize to settle.
+      // Cheap per tick: a class flip and the type refit. The bottom re-pin
+      // (scroll work) waits for the resize to settle.
+      if (root.value) narrow.value = root.value.offsetWidth < NARROW_BELOW_PX;
       void refit();
-      settle = setTimeout(() => {
-        if (root.value) setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
-        void stickToBottom(false);
-      }, 160);
+      clearTimeout(settle);
+      settle = setTimeout(() => void stickToBottom(false), 160);
     });
     sizeWatch.observe(root.value);
   }
@@ -381,7 +357,6 @@ watch(
         <Bubble
           v-for="(m, i) in history"
           :key="m.id ?? `pos-${i}`"
-          :style="{ viewTransitionName: 'msg-' + (m.id ?? i) }"
           :class="[sizeOf(m.text), { older: i < history.length - 1 || !!liveText }]"
           compact
           :side="m.role === 'claude' ? 'right' : 'left'"
@@ -832,8 +807,4 @@ body.companion-transparent::before {
    avatar at the narrowest view read as a regression, not a savings. */
 /* the hexagon deliberately keeps its base 52px - one size in both modes */
 
-/* View-transition names: the rails morph as OBJECTS between their side and
-   bottom positions instead of cross-fading with the whole root. */
-.rail.left { view-transition-name: companion-hex; }
-.rail.right { view-transition-name: companion-heads; }
 </style>
