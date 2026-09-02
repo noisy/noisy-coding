@@ -701,7 +701,13 @@ body.companion-transparent::before {
      first (nothing readable near the drag strip), then a long ramp - full
      opacity only from 72px down. "Complete transparency must start
      earlier, counting from the bottom." */
-  mask-image: linear-gradient(to bottom, transparent 0 16px, black 72px);
+  /* Ease-out approximated with stops: gentle at the top, closing faster
+     toward the bottom - reads lighter than a straight linear ramp. */
+  mask-image: linear-gradient(to bottom,
+    transparent 0 16px,
+    rgba(0, 0, 0, 0.35) 34px,
+    rgba(0, 0, 0, 0.75) 52px,
+    black 72px);
 }
 /* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
    hairline (transparent border + padding-box clip) and fills the gutter
