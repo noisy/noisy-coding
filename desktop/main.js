@@ -199,9 +199,9 @@ function createWindow() {
   win = new BrowserWindow({
     width: 420,
     height: 280,
-    // The widget is fluid ABOVE 420px (its design floor) - the window must
-    // not shrink below it, or the bubbles have no room to exist.
-    minWidth: 420,
+    // The widget reflows under 420px (rails drop below the bubbles), so
+    // the window floor is the bubbles' own minimum, not the design width.
+    minWidth: 280,
     minHeight: 200,
     // Frameless and transparent: the page paints its own background, and
     // /companion?transparent=1 strips the HUD's dark chrome for exactly this.

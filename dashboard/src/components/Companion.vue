@@ -559,18 +559,24 @@ body.companion-transparent::before {
 <style scoped>
 .companion {
   /* Fluid: fill whatever the host gives (the Electron window, the PiP
-     window, a story frame), with 420px as the floor it was designed at.
-     Widen the window and the bubbles get room - the width is the HOST'S
-     decision, not the widget's. */
+     window, a story frame). 420px is the design width; BELOW it the widget
+     does not shrink the bubbles - it reflows: the hexagon and the avatar
+     rail drop under the last bubble (see the container query below), so
+     the true floor is just the bubbles themselves. For a widget squeezed
+     into a narrow strip of screen. */
   width: 100%;
-  min-width: 420px;
+  min-width: 280px;
+  container-type: inline-size;
   box-sizing: border-box;
   background: rgba(5, 14, 24, 0.92);
   border: 1px solid rgba(63, 216, 255, 0.25);
   border-radius: 14px;
   padding: 16px 4px 16px 16px; /* thread + scrollbar run to the right edge */
   font-family: var(--mono);
-  display: flex; gap: 14px; align-items: flex-end;
+  /* wrap is ALWAYS on: above 420px nothing ever wraps (the thread flexes,
+     rails fit), and a container query cannot style its own container -
+     so the narrow-mode reflow relies on this base rule. */
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
   position: relative;
 }
 
@@ -748,4 +754,19 @@ body.companion-transparent::before {
   animation: fade 1.4s ease-in-out infinite;
 }
 @keyframes fade { 50% { opacity: 0.45; } }
+
+/* NARROW MODE: under the 420px design width the side rails cost more than
+   they give - the thread takes the full width and both indicators move
+   into a bottom row: hexagon left, conversation heads right. */
+@container (max-width: 419px) {
+  .thread { flex-basis: 100%; order: 0; padding-right: 12px; }
+  .rail.left { order: 1; }
+  .rail.right {
+    position: static; order: 2; margin-left: auto;
+    flex-direction: row; align-items: flex-end; gap: 6px;
+  }
+  .head { width: 36px; height: 36px; }
+  .head.other { width: 28px; height: 28px; }
+  .hex { width: 40px; height: 40px; }
+}
 </style>

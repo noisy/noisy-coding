@@ -124,7 +124,7 @@ const mode = computed<"claude" | "user" | "idle">(() => {
 
     <!-- Parked off-screen until it pops out; the PiP window adopts this node. -->
     <div ref="anchor" class="float-anchor">
-      <div ref="host">
+      <div ref="host" class="float-host">
         <Companion
           :mode="mode"
           :voice="character?.voice ?? 'rex'"
@@ -175,4 +175,8 @@ const mode = computed<"claude" | "user" | "idle">(() => {
   top: 0;
   width: 420px;
 }
+/* In the PiP window the host is the widget's only parent - it must span
+   the window, or the fluid widget shrinks to content and false-triggers
+   narrow mode. */
+.float-host { width: 100%; }
 </style>

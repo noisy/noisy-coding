@@ -254,6 +254,10 @@ body.hovering .drag-strip { opacity: 1; }
   padding: 8px;
   box-sizing: border-box;
 }
+/* The widget is fluid (width: 100%), so every wrapper between it and the
+   window must pass the width down - a shrink-to-fit host collapses the
+   widget to its content and falsely triggers narrow mode. */
+.companion-host { width: 100%; }
 
 /* Out of the way until wanted: the widget is meant to be glanced at, and a
    permanent button in the corner is one more thing competing for attention. */

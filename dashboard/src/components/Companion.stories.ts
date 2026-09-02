@@ -212,20 +212,46 @@ export const Playground_Flow: StoryObj = { render: () => Playground };
 
 /** Queued-to-speak badges: the active head and a rail head both carrying
  *  counts, plus the 9+ cap. */
+/** Narrow mode: under 420px the rails drop below the last bubble -
+ *  hexagon left, heads right - so the widget fits a narrow screen strip. */
+export const NarrowStrip: StoryObj = {
+  render: () => ({
+    components: { Companion },
+    setup: () => ({ SHORT }),
+    template: `
+      <div style="width: 300px">
+        <Companion
+          mode="idle" voice="lux" :max-height="220"
+          :feed="[
+            { id: 1, role: 'user', text: 'does it still fit?' },
+            { id: 2, role: 'claude', text: SHORT },
+          ]"
+          :agents="[
+            { name: 'stream-day-4', voice: 'lux', active: true, waiting: 2 },
+            { name: 'chat', voice: 'eve' },
+          ]"
+        />
+      </div>
+    `,
+  }),
+};
+
 export const WaitingBadges: StoryObj = {
   render: () => ({
     components: { Companion },
     setup: () => ({ SHORT }),
     template: `
-      <Companion
-        mode="idle" voice="lux" :max-height="200"
-        :feed="[{ id: 1, role: 'claude', text: SHORT }]"
-        :agents="[
-          { name: 'stream-day-4', voice: 'lux', active: true, waiting: 3 },
-          { name: 'chat', voice: 'eve', unread: true, waiting: 12 },
-          { name: 'website', voice: 'atlas' },
-        ]"
-      />
+      <div style="width: 520px">
+        <Companion
+          mode="idle" voice="lux" :max-height="200"
+          :feed="[{ id: 1, role: 'claude', text: SHORT }]"
+          :agents="[
+            { name: 'stream-day-4', voice: 'lux', active: true, waiting: 3 },
+            { name: 'chat', voice: 'eve', unread: true, waiting: 12 },
+            { name: 'website', voice: 'atlas' },
+          ]"
+        />
+      </div>
     `,
   }),
 };
