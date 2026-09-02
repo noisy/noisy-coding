@@ -66,6 +66,29 @@ export function useDocumentPip(
     });
     doc.body.classList.add(...document.body.classList);
     doc.body.append(host.value);
+    /* A floor for the floating window: below 280px the widget's content
+     * cannot shrink further (its own min-width) and starts CLIPPING, which
+     * reads as "part of the widget is hidden". PiP windows have no
+     * min-size API, so bounce back after the drag ends; if the browser
+     * refuses programmatic resize, scrolling is still prevented and the
+     * user simply sees the clamp not happen - never an error. */
+    const MIN_W = 280;
+    const MIN_H = 160;
+    let bounce: ReturnType<typeof setTimeout> | undefined;
+    pip.addEventListener("resize", () => {
+      clearTimeout(bounce);
+      bounce = setTimeout(() => {
+        if (pip.innerWidth >= MIN_W && pip.innerHeight >= MIN_H) return;
+        try {
+          pip.resizeTo(
+            Math.max(pip.outerWidth, MIN_W),
+            Math.max(pip.outerHeight, MIN_H),
+          );
+        } catch {
+          /* browser said no - nothing to do */
+        }
+      }, 150);
+    });
     open.value = true;
     pip.addEventListener("pagehide", () => {
       anchor.value?.append(host.value!);
