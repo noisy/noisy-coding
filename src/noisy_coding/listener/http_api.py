@@ -179,6 +179,7 @@ BUILD_HINT_HTML = """<!doctype html><meta charset="utf-8">
 PORT_ENV_VAR = "NOISY_CODING_LISTENER_PORT"
 CHARACTER_FILE = CONFIG_DIR / "character.json"
 VOICE_CLAIMS_FILE = CONFIG_DIR / "voice-claims.json"
+SPEAKER_COLORS_FILE = CONFIG_DIR / "speaker-colors.json"
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
 
@@ -241,6 +242,20 @@ def save_characters(state: ListenerState) -> None:
         CHARACTER_FILE.parent.mkdir(parents=True, exist_ok=True)
         CHARACTER_FILE.write_text(json.dumps(state.all_characters()))
     except OSError:
+        pass
+
+
+def save_speaker_colors(state: ListenerState) -> None:
+    try:
+        SPEAKER_COLORS_FILE.write_text(json.dumps(state.speaker_colors()))
+    except OSError:
+        pass
+
+
+def load_speaker_colors(state: ListenerState) -> None:
+    try:
+        state.load_speaker_colors(json.loads(SPEAKER_COLORS_FILE.read_text()))
+    except (OSError, ValueError):
         pass
 
 
@@ -421,6 +436,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         # selected both ways? (A local-only setup is
                         # configured with no key at all.) Additive key.
                         "voice_ready": _providers.voice_ready(),
+                        # Named speakers whose bubbles carry a platform
+                        # tint (twitch purple / youtube red).
+                        "speaker_colors": state.speaker_colors(),
                         "api_key_hint": credentials.api_key_hint(),
                         "recording": state.recording,
                         "claude_speaking": state.claude_speaking,
@@ -536,6 +554,19 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.set_paused(False)
                 state.add_event("unmuted")
                 self._respond({"listening": True})
+            elif self.path == "/speaker-color":
+                body = self._read_json_body()
+                speaker = str(body.get("speaker", ""))
+                color = str(body.get("color", ""))
+                if state.set_speaker_color(speaker, color):
+                    save_speaker_colors(state)
+                    self._respond({"ok": True, "speaker": speaker, "color": color})
+                else:
+                    self._respond(
+                        {"error": "speaker and color in "
+                         + "/".join(state.SPEAKER_PALETTE) + " required"},
+                        status=400,
+                    )
             elif self.path == "/character":
                 body = self._read_json_body()
                 agent = body.get("agent")  # which tab's character (None=active)

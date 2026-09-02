@@ -85,6 +85,42 @@ export const SubagentPortraitLuna: StoryObj = {
   }),
 };
 
+/** Chat-platform tints: the speaker's bubble carries its platform's brand
+ *  color - Twitch purple, YouTube red - while plain subagents stay green. */
+export const ChatTwitchPurple: StoryObj = {
+  render: () => ({
+    components: { ClaudeBubble },
+    setup: () => ({
+      u: utterance({
+        role: "claude",
+        status: "played",
+        speaker: "xfuroo",
+        voice: "eve",
+        text: "gg, the widget looks way better today",
+        cost_usd: 0.0021,
+      }),
+    }),
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="purple" /></div>`,
+  }),
+};
+
+export const ChatYouTubeRed: StoryObj = {
+  render: () => ({
+    components: { ClaudeBubble },
+    setup: () => ({
+      u: utterance({
+        role: "claude",
+        status: "played",
+        speaker: "DevWatcher42",
+        voice: "atlas",
+        text: "first! greetings from the red side",
+        cost_usd: 0.0021,
+      }),
+    }),
+    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="red" /></div>`,
+  }),
+};
+
 export const SubagentPortraitAltair: StoryObj = {
   render: () => ({
     components: { ClaudeBubble },

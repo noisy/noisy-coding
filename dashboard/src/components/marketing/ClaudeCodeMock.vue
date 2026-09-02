@@ -15,8 +15,11 @@ withDefaults(
     /** Startup art: the mascot alone (like a fresh session today) or the
      *  mascot plus the block-letter banner. */
     banner?: "mascot" | "both";
+    /** How many transcript lines are revealed, from the top. Lets a
+     *  marketing scene "type out" the session; everything by default. */
+    visibleLines?: number;
   }>(),
-  { title: "claude - orderflow-api", fullBleed: false, banner: "mascot" },
+  { title: "claude - orderflow-api", fullBleed: false, banner: "mascot", visibleLines: Infinity },
 );
 
 // The little orange creature from the current startup screen.
@@ -74,7 +77,7 @@ const TRANSCRIPT: Line[] = [
         </div>
       </div>
       <div class="ccgap" />
-      <template v-for="(line, i) in TRANSCRIPT" :key="i">
+      <template v-for="(line, i) in TRANSCRIPT.slice(0, visibleLines)" :key="i">
         <div v-if="line.kind === 'prompt'" class="ccline ccprompt">
           <span class="ccmark">&gt;</span> {{ line.text }}
         </div>

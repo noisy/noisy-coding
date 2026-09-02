@@ -28,6 +28,7 @@ from noisy_coding.listener.http_api import (
     PORT_ENV_VAR,
     SETTINGS_FILE,
     start_http_api,
+    SPEAKER_COLORS_FILE,
 )
 from noisy_coding.listener.state import ListenerState
 from noisy_coding.listener.tab_audio import start_bridge
@@ -296,6 +297,11 @@ def run(config: VadConfig | None = None) -> None:
     # only meaningful if it outlives the process that wrote it.
     try:
         state.load_voice_claims(json.loads(VOICE_CLAIMS_FILE.read_text()))
+    except (OSError, ValueError, AttributeError):
+        pass
+    # Chat-platform bubble colors follow the same rule.
+    try:
+        state.load_speaker_colors(json.loads(SPEAKER_COLORS_FILE.read_text()))
     except (OSError, ValueError, AttributeError):
         pass
     # Saved tuning (pause-split, smart_turn, mode) survives restarts and

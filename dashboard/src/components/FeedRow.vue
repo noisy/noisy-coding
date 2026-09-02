@@ -3,7 +3,8 @@ import type { Utterance } from "../types";
 import ClaudeBubble from "./ClaudeBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
-withDefaults(defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean }>(), {
+withDefaults(defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean; tint?: "green" | "purple" | "red" }>(), {
+  tint: "green",
   playing: false,
   paused: false,
 });
@@ -33,6 +34,7 @@ function sysTime(epochSeconds: number): string {
     @cancel="$emit('cancel', $event)"
   />
   <ClaudeBubble
+    :tint="tint"
     v-else
     :utterance="utterance"
     :playing="playing"

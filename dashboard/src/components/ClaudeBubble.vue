@@ -6,8 +6,10 @@ import Bubble from "./Bubble.vue";
 import { formatCost, formatTime, statusChip } from "./bubbleStatus";
 
 const props = withDefaults(
-  defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean }>(),
-  { playing: false, paused: false },
+  defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean;
+    /** Palette color for this speaker's bubbles (from status.speaker_colors). */
+    tint?: "green" | "purple" | "red" }>(),
+  { playing: false, paused: false, tint: "green" },
 );
 defineEmits<{ replay: [utterance: Utterance]; pause: [utterance: Utterance]; skip: [utterance: Utterance] }>();
 
@@ -52,6 +54,7 @@ const replayable = computed(
     :playing="playing"
     :paused="paused"
     :variant="speaker && !fromDaemon ? 'guest' : 'agent'"
+    :tint="tint"
     @replay="$emit('replay', utterance)"
     @pause="$emit('pause', utterance)"
     @skip="$emit('skip', utterance)"

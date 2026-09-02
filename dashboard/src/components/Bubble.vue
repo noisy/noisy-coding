@@ -25,6 +25,8 @@ const props = withDefaults(
      * any named persona speaking through it (viewers, subagents) - a
      * clearly different surface so guests never read as Claude's words. */
     variant?: "agent" | "guest";
+    /** Guest palette: chat platforms carry their brand color. */
+    tint?: "green" | "purple" | "red";
     /** Companion mode (#28): text only - no header, no footer, tighter
      * padding. The SAME component everywhere a message renders. */
     compact?: boolean;
@@ -42,6 +44,7 @@ const props = withDefaults(
     playing: false,
     paused: false,
     variant: "agent",
+    tint: "green",
     compact: false,
   },
 );
@@ -55,7 +58,7 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
 </script>
 
 <template>
-  <div class="msg" :class="[`side-${side}`, `accent-${accent}`, `variant-${variant}`, { withportrait: !!portrait }]">
+  <div class="msg" :class="[`side-${side}`, `accent-${accent}`, `variant-${variant}`, `tint-${tint}`, { withportrait: !!portrait }]">
     <span v-if="portrait" class="portrait" :style="portrait" aria-hidden="true" />
     <div class="mbody">
     <div v-if="!compact" class="mhead">
@@ -123,20 +126,40 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
   max-width: 88%;
 }
 /* Guests (viewers, subagent personas) get a SOLID, unmistakably different
-   surface: deep green-slate fill, green accents, no violet anywhere.
-   Picked live on stream 2026-08-22 (variant C). */
+   surface - deep tinted fill, matching accents, no violet anywhere.
+   Picked live on stream 2026-08-22 (variant C). The TINT carries the
+   platform: guest green by default, Twitch purple, YouTube red - all
+   through three custom properties so the rules below stay single-sourced. */
 .msg.variant-guest {
-  --accent: var(--green);
-  background: #0a1f18;
-  border-color: rgba(77, 255, 180, 0.35);
+  /* guest green - the default tint */
+  --guest: #4dffb4;
+  --guest-glow: 77, 255, 180;
+  --guest-fill: #0a1f18;
+}
+.msg.variant-guest.tint-purple {
+  /* Twitch brand violet, lightened for legibility on the dark fill */
+  --guest: #a970ff;
+  --guest-glow: 169, 112, 255;
+  --guest-fill: #170f26;
+}
+.msg.variant-guest.tint-red {
+  /* YouTube red, warmed so white text beside it still breathes */
+  --guest: #ff5a52;
+  --guest-glow: 255, 90, 82;
+  --guest-fill: #24100e;
+}
+.msg.variant-guest {
+  --accent: var(--guest);
+  background: var(--guest-fill);
+  border-color: rgba(var(--guest-glow), 0.35);
 }
 .msg.variant-guest.side-right {
-  background: linear-gradient(270deg, rgba(77, 255, 180, 0.10), #0a1f18 45%);
-  border-right-color: var(--green);
+  background: linear-gradient(270deg, rgba(var(--guest-glow), 0.10), var(--guest-fill) 45%);
+  border-right-color: var(--guest);
 }
-.msg.variant-guest .who { color: var(--green); text-shadow: 0 0 8px rgba(77, 255, 180, 0.5); }
-.msg.variant-guest .portrait { border-color: rgba(77, 255, 180, 0.6); }
-.msg.variant-guest .txt { color: #cfeee0; }
+.msg.variant-guest .who { color: var(--guest); text-shadow: 0 0 8px rgba(var(--guest-glow), 0.5); }
+.msg.variant-guest .portrait { border-color: rgba(var(--guest-glow), 0.6); }
+.msg.variant-guest .txt { color: #e6ecea; }
 
 .msg.accent-amber { --accent: var(--amber); --accent-tint: rgba(255, 180, 84, 0.07); }
 .msg.accent-violet { --accent: var(--violet); --accent-tint: color-mix(in srgb, var(--violet) 7%, transparent); }

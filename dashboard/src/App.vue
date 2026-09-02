@@ -720,6 +720,7 @@ const LANGUAGES: Record<string, string> = {
               </div>
               <ConversationLog
                 :utterances="utterances"
+                :speaker-colors="status?.speaker_colors ?? {}"
                 :playing-id="status?.playing_utterance_id ?? 0"
                 :playback-paused="playbackPaused"
                 :activity="status?.activity?.[viewedAgent ?? ''] ?? null"

@@ -1,6 +1,8 @@
 /** Shapes of the listener daemon's HTTP API responses. */
 
 export interface DaemonStatus {
+  /** Named speakers whose bubbles carry a palette tint (twitch purple / youtube red). */
+  speaker_colors?: Record<string, string>;
   listening: boolean;
   muted: boolean;
   voice_muted: boolean;

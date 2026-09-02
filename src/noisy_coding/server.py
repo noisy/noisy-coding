@@ -205,6 +205,39 @@ async def change_voice(voice_id: str, speaker: str = "") -> str:
 
 
 @mcp.tool()
+async def set_bubble_color(color: str, speaker: str) -> str:
+    """Tint a named speaker's bubbles on the dashboard and the widget.
+
+    A fixed palette, one color per speaker, persisted across restarts:
+      - "green"   the default guest look (subagent personas)
+      - "purple"  Twitch chat voices
+      - "red"     YouTube chat voices
+      - "default" back to the standard guest green
+
+    Use it once per speaker (e.g. when a chat viewer first speaks) so the
+    audience can tell at a glance which platform a message came from.
+
+    Args:
+        color: One of default/green/purple/red.
+        speaker: The speaker name whose bubbles to tint (same name you
+            pass to speak(speaker=...)).
+    """
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                f"http://127.0.0.1:{port}/speaker-color",
+                json={"speaker": speaker.strip(), "color": color.strip().lower()},
+            )
+            data = response.json()
+    except (httpx.HTTPError, ValueError):
+        return "The voice daemon is not reachable; nothing changed."
+    if "error" in data:
+        return f"Color change failed: {data['error']}"
+    return f"Bubbles for '{data['speaker']}' are now {data['color']}."
+
+
+@mcp.tool()
 async def list_voices() -> list[dict]:
     """List the TTS voices the active provider offers for the speak tool."""
     from noisy_coding import providers

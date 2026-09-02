@@ -147,6 +147,11 @@ class ListenerState:
         # ear, which is the whole point of handing them different ones.
         self._voice_claims: dict[str, str] = {}
         self._voice_claims_dirty = False
+        # Bubble color per named speaker: chat platforms get their brand
+        # color (twitch=purple, youtube=red), everything else the default
+        # guest green. A fixed palette, not free RGB - four states the UI
+        # styles deliberately beat a color picker nobody calibrates.
+        self._speaker_colors: dict[str, str] = {}
 
     @staticmethod
     def _default_character() -> dict:
@@ -184,6 +189,33 @@ class ListenerState:
     def all_characters(self) -> dict:
         with self._lock:
             return {k: dict(v) for k, v in self._characters.items()}
+
+    # --- speaker bubble colors --------------------------------------------
+
+    SPEAKER_PALETTE = ("default", "green", "purple", "red")
+
+    def speaker_colors(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self._speaker_colors)
+
+    def set_speaker_color(self, speaker: str, color: str) -> bool:
+        """Assign one of the palette colors to a named speaker's bubbles."""
+        speaker = (speaker or "").strip()
+        if not speaker or color not in self.SPEAKER_PALETTE:
+            return False
+        with self._lock:
+            if color == "default":
+                self._speaker_colors.pop(speaker, None)
+            else:
+                self._speaker_colors[speaker] = color
+        return True
+
+    def load_speaker_colors(self, colors: dict) -> None:
+        with self._lock:
+            self._speaker_colors = {
+                str(k): str(v) for k, v in colors.items()
+                if str(v) in self.SPEAKER_PALETTE
+            }
 
     # --- voice claims ----------------------------------------------------
     #
