@@ -749,7 +749,10 @@ body.companion-transparent::before {
 .arrive-enter-from { opacity: 0; transform: translateY(14px); }
 .arrive-move { transition: transform 0.35s ease; }
 
-.livebubble { flex: none; align-self: flex-start; }
+/* The in-progress message stays visible even when the thread is scrolled
+   up - sticky pins it to the scroller's bottom edge, same always-on-top
+   behavior as the dashboard's compose float. */
+.livebubble { flex: none; align-self: flex-start; position: sticky; bottom: 0; z-index: 2; }
 .listening {
   flex: none;
   align-self: flex-start;
@@ -768,13 +771,14 @@ body.companion-transparent::before {
   .rail.right {
     position: static; order: 2; margin-left: auto;
     /* Align the heads' right edge with the BUBBLES' right edge: the thread
-       keeps 12px of its own right padding, the root only 4px - without
-       this the avatars poke out past Claude's messages. */
-    margin-right: 12px;
+       keeps 12px of its own right padding PLUS the constant 6px scrollbar
+       gutter, the root only 4px - without the full 18px the avatars poke
+       out past Claude's messages. */
+    margin-right: 18px;
     flex-direction: row; align-items: flex-end; gap: 6px;
   }
   .head { width: 36px; height: 36px; }
   .head.other { width: 28px; height: 28px; }
-  .hex { width: 40px; height: 40px; }
+  /* the hexagon deliberately keeps its base 52px - one size in both modes */
 }
 </style>
