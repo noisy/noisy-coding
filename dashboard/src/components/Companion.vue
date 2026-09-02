@@ -705,11 +705,14 @@ body.companion-transparent::before {
      dead zone 16px, full opacity at 52px - stops match the lab's
      ease-in-out at those slider values. Overridable via
      --companion-thread-mask so the lab can keep comparing live. */
+  /* Near-clip per the white-backdrop verdict: 16px dead zone, full opacity
+     already at 28px - the half-ghost band shrinks to ~12px, so light text
+     never hovers half-melted over a light desktop. */
   mask-image: var(--companion-thread-mask, linear-gradient(to bottom,
     transparent 0 16px,
-    rgba(0, 0, 0, 0.15) 26.8px,
-    rgba(0, 0, 0, 0.85) 41.2px,
-    black 52px));
+    rgba(0, 0, 0, 0.15) 19.6px,
+    rgba(0, 0, 0, 0.85) 24.4px,
+    black 28px));
 }
 /* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
    hairline (transparent border + padding-box clip) and fills the gutter
