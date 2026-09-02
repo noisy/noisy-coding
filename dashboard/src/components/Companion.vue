@@ -217,9 +217,9 @@ onMounted(() => {
       // Cheap per tick: a class flip and the type refit. The bottom re-pin
       // (scroll work) waits for the resize to settle.
       if (root.value) narrow.value = root.value.offsetWidth < NARROW_BELOW_PX;
-      void refit();
+      void refit().then(updateClipped);
       clearTimeout(settle);
-      settle = setTimeout(() => void stickToBottom(false), 160);
+      settle = setTimeout(() => stickToBottom(false).then(updateClipped), 160);
     });
     sizeWatch.observe(root.value);
   }
@@ -293,10 +293,19 @@ const root = ref<HTMLElement | null>(null);
 const BOTTOM_SLACK_PX = 48;
 const following = ref(true);
 
+/* True when content is CLIPPED below the viewport - the bottom fade shows
+ * only then: fully scrolled down, the newest message must end SHARP. */
+const clippedBelow = ref(false);
+function updateClipped() {
+  const el = scroller.value;
+  if (el) clippedBelow.value = el.scrollHeight - el.scrollTop - el.clientHeight > 2;
+}
+
 function onScroll() {
   const el = scroller.value;
   if (!el) return;
   following.value = el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_SLACK_PX;
+  updateClipped();
 }
 
 async function stickToBottom(smooth = true): Promise<void> {
@@ -348,7 +357,7 @@ watch(
     </div>
 
     <!-- The thread: pixel-clamped, scrollable, pinned to the newest. -->
-    <div ref="scroller" class="thread" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll }" :style="{ maxHeight: threadHeight + 'px' }">
+    <div ref="scroller" class="thread" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll, 'clipped-below': clippedBelow }" :style="{ maxHeight: threadHeight + 'px' }">
       <transition-group
         :name="animateArrival ? 'arrive' : ''"
         tag="div"
@@ -713,6 +722,18 @@ body.companion-transparent::before {
     rgba(0, 0, 0, 0.15) 19.6px,
     rgba(0, 0, 0, 0.85) 24.4px,
     black 28px));
+}
+/* Content clipped below the viewport gets a SHORT bottom melt too - but
+   only then: at full scroll the newest message ends sharp, and the fade
+   appearing is itself the "there is more below" signal. */
+.thread.clipped-below {
+  mask-image: linear-gradient(to bottom,
+    transparent 0 16px,
+    rgba(0, 0, 0, 0.15) 19.6px,
+    rgba(0, 0, 0, 0.85) 24.4px,
+    black 28px,
+    black calc(100% - 20px),
+    transparent 100%);
 }
 /* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
    hairline (transparent border + padding-box clip) and fills the gutter
