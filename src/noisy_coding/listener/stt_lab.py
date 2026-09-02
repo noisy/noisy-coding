@@ -21,9 +21,13 @@ from pathlib import Path
 from noisy_coding import providers
 from noisy_coding.config_dir import CONFIG_DIR
 
-AUDIO_DIR = CONFIG_DIR / "utterance_audio"
+# A FIXED test set, not "whatever was said last": recordings live in their
+# own directory, outside the utterance archive's 200-file ring - the suite
+# only changes when a human adds or removes a file here. Baselines
+# (expected.json) live alongside.
+AUDIO_DIR = CONFIG_DIR / "speech_tests"
 EXPECTATIONS_FILE = AUDIO_DIR / "expected.json"
-MAX_TESTS = 10
+MAX_TESTS = 20
 PASS_RATIO = 0.90
 
 
@@ -58,7 +62,7 @@ def audio_path(name: str) -> Path | None:
 def list_tests() -> dict:
     expected = _expectations()
     tests = []
-    for path in sorted(AUDIO_DIR.glob("*.wav"), reverse=True)[:MAX_TESTS]:
+    for path in sorted(AUDIO_DIR.glob("*.wav"))[:MAX_TESTS]:
         try:
             with wave.open(str(path), "rb") as w:
                 seconds = w.getnframes() / w.getframerate()
