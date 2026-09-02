@@ -700,7 +700,11 @@ body.companion-transparent::before {
    the corner of the eye; a long one has to fit, and you will look at it
    properly anyway. */
 /* Waiting its turn: present, but clearly not yet said. */
-.thread :deep(.pending) { opacity: 0.45; border-style: dashed; }
+/* Awaiting pickup: the dashed border alone says "not settled yet" -
+   NO transparency, the text stays fully readable (and in transparent
+   mode a see-through bubble dissolved into the editor behind it). */
+.thread :deep(.pending) { border-style: dashed; }
+.thread :deep(.pending .txt) { color: var(--muted); }
 
 /* The busy line. Three dots that actually move, because a static "thinking"
    label is indistinguishable from a frozen widget. */
