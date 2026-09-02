@@ -212,6 +212,28 @@ export const Playground_Flow: StoryObj = { render: () => Playground };
 
 /** Queued-to-speak badges: the active head and a rail head both carrying
  *  counts, plus the 9+ cap. */
+/** The live (composing) bubble must FLOAT over a scrolled-up feed - same
+ *  contract as the dashboard composer. Scroll the thread up: the amber
+ *  bubble stays pinned to the bottom edge. */
+export const LiveOverScroll: StoryObj = {
+  render: () => ({
+    components: { Companion },
+    setup: () => ({
+      feed: Array.from({ length: 14 }, (_, i) => ({
+        id: i + 1,
+        role: i % 2 ? "claude" : "user",
+        text: `message number ${i + 1} to make the thread scroll`,
+      })),
+    }),
+    template: `
+      <div style="width: 460px">
+        <Companion mode="user" voice="lux" :feed="feed" :max-height="180"
+          live-text="I am still talking and this must stay visible" />
+      </div>
+    `,
+  }),
+};
+
 /** Narrow mode: under 420px the rails drop below the last bubble -
  *  hexagon left, heads right - so the widget fits a narrow screen strip. */
 export const NarrowStrip: StoryObj = {

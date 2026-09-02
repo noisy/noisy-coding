@@ -623,7 +623,8 @@ body.companion-transparent::before {
   opacity: 0.55;
   border-color: rgba(148, 163, 220, 0.4);
   cursor: pointer;
-  transition: opacity 140ms ease, transform 140ms ease, border-color 140ms ease;
+  transition: width 260ms ease, height 260ms ease, opacity 140ms ease,
+    transform 140ms ease, border-color 140ms ease;
 }
 .head.other:hover { opacity: 1 !important; transform: scale(1.08); border-color: var(--violet); }
 /* A dot, not a badge: at 30px there is no room for a number, and the point
@@ -635,6 +636,10 @@ body.companion-transparent::before {
   border: 2px solid var(--violet);
   border-radius: 50%;
   position: relative;
+  /* Switching conversations: the old head shrinks as the new one grows -
+     a few hundred ms of motion instead of an instant jump. */
+  transition: width 260ms ease, height 260ms ease, opacity 140ms ease,
+    border-color 140ms ease;
 }
 /* Queued-to-speak counter: a small solid badge pinned to the head's edge.
    Solid, not translucent - it has to survive any backdrop, like the
@@ -663,6 +668,10 @@ body.companion-transparent::before {
   /* NOTE: no scrollbar-width/scrollbar-color here - when set, Chrome
      switches to native scrollbars and IGNORES the ::-webkit-scrollbar
      hairline below. Webkit styles alone cover our Chrome-based use. */
+  /* Reserve the 6px gutter even before the thread overflows - otherwise
+     the bubbles shift 6px left the moment a scrollbar appears (and the
+     narrow-mode avatar alignment below assumes the gutter is there). */
+  scrollbar-gutter: stable;
   /* older messages melt away at the top edge */
   mask-image: linear-gradient(to bottom, transparent, black 22px);
 }
