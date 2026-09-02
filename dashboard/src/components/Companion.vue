@@ -25,6 +25,10 @@ export interface CompanionMessage {
    *  for a different message - switch conversation and the second bubble
    *  morphs into the other agent's second bubble instead of being replaced. */
   id?: string | number;
+  /** Status chip, SAME semantics as the dashboard (bubbleStatus.statusChip):
+   *  the widget must represent transcribing/queued/unheard identically. */
+  statusKind?: import("./bubbleStatus").StatusKind;
+  statusLabel?: string;
 }
 
 /** One conversation in the rail, in the dashboard's own tab order. */
@@ -338,7 +342,7 @@ watch(
           compact
           :side="m.role === 'claude' ? 'right' : 'left'"
           :accent="m.role === 'claude' ? 'violet' : 'amber'"
-          who="" status-kind="off" status-label="" time=""
+          who="" :status-kind="m.statusKind ?? 'off'" :status-label="m.statusLabel ?? ''" time=""
           :text="m.text"
         />
       </transition-group>
@@ -367,7 +371,7 @@ watch(
         compact
         :side="m.role === 'claude' ? 'right' : 'left'"
         :accent="m.role === 'claude' ? 'violet' : 'amber'"
-        who="" status-kind="off" status-label="" time=""
+        who="" :status-kind="m.statusKind ?? 'off'" :status-label="m.statusLabel ?? ''" time=""
         :text="m.text"
       />
       <span v-if="waitingExtra" class="listening">+{{ waitingExtra }} WAITING</span>
@@ -554,7 +558,13 @@ body.companion-transparent::before {
 
 <style scoped>
 .companion {
-  width: 420px;
+  /* Fluid: fill whatever the host gives (the Electron window, the PiP
+     window, a story frame), with 420px as the floor it was designed at.
+     Widen the window and the bubbles get room - the width is the HOST'S
+     decision, not the widget's. */
+  width: 100%;
+  min-width: 420px;
+  box-sizing: border-box;
   background: rgba(5, 14, 24, 0.92);
   border: 1px solid rgba(63, 216, 255, 0.25);
   border-radius: 14px;

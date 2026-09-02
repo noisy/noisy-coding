@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { statusToState, timelineZone } from "../machines/chat";
+import { useConversationFeed } from "../composables/useConversationFeed";
 import type { Utterance } from "../types";
 import ActivityLine from "./ActivityLine.vue";
 import FeedRow from "./FeedRow.vue";
@@ -26,74 +26,11 @@ defineEmits<{
   skip: [utterance: Utterance];
 }>();
 
-// Noise guard: utterances that never became real speech (empty, dropped)
-// or were recalled would flood the log in a loud room and bury the actual
-// conversation — hide them entirely. STT errors stay visible: that's real
-// speech that got lost.
-const NOISE_STATES = new Set(["empty", "dropped", "cancelled"]);
-function isNoise(u: Utterance): boolean {
-  return u.role === "user" && NOISE_STATES.has(statusToState("user", u.status) ?? "");
-}
-
-// Oldest first — the newest message lands at the BOTTOM, like a chat.
-// Order = when a message ENTERED the conversation (committed_at): a Claude
-// reply that arrived while the user was still composing sits ABOVE their
-// finished message, iMessage style.
-function commitTime(u: Utterance): number {
-  return u.committed_at || u.started_at;
-}
-
-const ordered = computed(() =>
-  props.utterances
-    .filter((u) => !isNoise(u))
-    .sort((a, b) => commitTime(a) - commitTime(b) || a.id - b.id),
-);
-
-// The in-progress user utterance renders in a RESERVED slot below the
-// feed: it may still vanish (noise) or grow (live partials), and without
-// its own space every appearance/disappearance shoves the whole log
-// around. Once it settles into a real message it moves into the feed —
-// visually the same spot.
-const LIVE_STATES = new Set(["recording", "transcribing"]);
-function isLiveUser(u: Utterance): boolean {
-  return u.role === "user" && LIVE_STATES.has(statusToState("user", u.status) ?? "");
-}
-
-// The composer holds ANY in-progress user utterance — even when a Claude
-// message arrived meanwhile and sorted after it. The reply belongs in the
-// feed above; the composition stays pinned at the bottom until finished.
-const liveTail = computed(() => {
-  const live = ordered.value.filter(isLiveUser);
-  return live.length ? live[live.length - 1] : null;
-});
-
-const settled = computed(() => ordered.value.filter((u) => !isLiveUser(u)));
-
-// The virtual "processed line" (see timelineZone in machines/chat.ts): the
-// feed reads past → present → future. History first (delivered, played,
-// parked, failed — plus in-flight speech, which settles in place), then
-// the busy row AS the line itself, then everything still waiting its turn.
-// A card never renders below a zone it outranks, so a PLAYING reply can't
-// dive under the user's AWAITING transcripts.
-//
-// Done is STICKY: a replayed card re-enters the pipeline (synthesizing →
-// ready → playing), but it is history being re-heard, not future work — it
-// must keep its chronological slot instead of sinking below newer cards
-// and jumping back when finished. Keyed by id:started_at because a daemon
-// restart reuses ids from 1.
-const everDone = new Set<string>();
-function zoneOf(u: Utterance): "done" | "active" | "pending" {
-  if (u.role === "system") return "done";
-  // Daemon speech rides the claude pipeline — same statuses, same zones.
-  const zone = timelineZone(u.role === "user" ? "user" : "claude", u.status);
-  const key = `${u.id}:${u.started_at}`;
-  if (zone === "done") everDone.add(key);
-  else if (everDone.has(key)) return "done";
-  return zone;
-}
-
-const processed = computed(() => settled.value.filter((u) => zoneOf(u) !== "pending"));
-const pending = computed(() => settled.value.filter((u) => zoneOf(u) === "pending"));
+// One feed logic for every surface - see useConversationFeed.ts. The
+// widget consumes the same composable; only styling may differ.
+const utterancesRef = computed(() => props.utterances);
+const { ordered, liveTail, settled, processed, pending } =
+  useConversationFeed(utterancesRef);
 
 // The card being spoken renders right above the busy line — quoting the
 // speech in the line too would double it (see ActivityLine).

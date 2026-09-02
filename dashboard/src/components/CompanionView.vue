@@ -10,7 +10,8 @@
 import { computed, ref } from "vue";
 import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 import { useDaemonState } from "../composables/useDaemonState";
-import { timelineZone } from "../machines/chat";
+import { statusChip } from "./bubbleStatus";
+import { useConversationFeed } from "../composables/useConversationFeed";
 import { useMicStream } from "../composables/useMicStream";
 import { useDocumentPip } from "../composables/useDocumentPip";
 
@@ -31,23 +32,28 @@ const { level } = useMicStream();
 
 // The widget is a glance, not an archive: only committed lines, only the
 // last handful, oldest first so the freshest sits at the bottom.
+function toMessage(u: (typeof processed)["value"][number]): CompanionMessage {
+  const chip = statusChip(u.status, u.role === "user" ? "user" : "claude");
+  return {
+    id: u.id,
+    role: u.role as "user" | "claude",
+    text: u.text,
+    zone: u.role === "user" || u.role === "claude"
+      ? (pending.value.includes(u) ? "pending" : "done")
+      : "done",
+    statusKind: chip.kind,
+    statusLabel: chip.label,
+  };
+}
+/* SAME logic as the dashboard's ConversationLog (useConversationFeed):
+ * processed above the line, pending below, identical zones and chips -
+ * only the compact styling differs. */
 const feed = computed<CompanionMessage[]>(() =>
-  mine.value
-    /* Not `committed_at > 0`: that drops everything still in flight -
-     * transcribing, awaiting pickup, queued behind the speaker - which is
-     * exactly the pending zone the dashboard shows below the line. The
-     * zone decides where a card goes; this filter only decides whether
-     * there is anything to render at all. */
-    .filter((u) => u.text.trim())
+  [...processed.value, ...pending.value]
     .filter((u) => u.role === "user" || u.role === "claude")
-    .filter((u) => !(u.role === "user" && u.text === liveText.value))
+    .filter((u) => u.text.trim())
     .slice(-12)
-    .map((u) => ({
-      id: u.id,
-      role: u.role as "user" | "claude",
-      text: u.text,
-      zone: timelineZone(u.role === "user" ? "user" : "claude", u.status),
-    })),
+    .map(toMessage),
 );
 
 /* What the user is saying RIGHT NOW.
@@ -61,11 +67,9 @@ const feed = computed<CompanionMessage[]>(() =>
 /* Live = the user card still being composed. The state machine owns what
  * each status MEANS; the widget used to test the status text with a regex
  * of its own, which is how it disagreed with the dashboard. */
-const liveText = computed(() => {
-  const last = [...mine.value].reverse().find((u) => u.role === "user");
-  if (!last || timelineZone("user", last.status) !== "done") return last?.text ?? "";
-  return "";
-});
+const { processed, pending, liveTail } = useConversationFeed(mine);
+// Live = the composer's utterance, straight from the SHARED feed logic.
+const liveText = computed(() => liveTail.value?.text ?? "");
 
 /* Document Picture-in-Picture: the only way a browser gets a genuinely
  * always-on-top window. It hosts real DOM, so the live component moves into
