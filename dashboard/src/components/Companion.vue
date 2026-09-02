@@ -763,6 +763,10 @@ body.companion-transparent::before {
   .rail.left { order: 1; }
   .rail.right {
     position: static; order: 2; margin-left: auto;
+    /* Align the heads' right edge with the BUBBLES' right edge: the thread
+       keeps 12px of its own right padding, the root only 4px - without
+       this the avatars poke out past Claude's messages. */
+    margin-right: 12px;
     flex-direction: row; align-items: flex-end; gap: 6px;
   }
   .head { width: 36px; height: 36px; }
