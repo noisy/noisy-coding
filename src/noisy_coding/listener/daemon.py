@@ -136,8 +136,9 @@ def _transcribe_and_enqueue(
         duration_s=round(seconds, 1),
     )
     stt_started = time.monotonic()
+    wav_bytes = stt.encode_wav(samples, sample_rate)
     try:
-        text = provider.transcribe(stt.encode_wav(samples, sample_rate), state.language)
+        text = provider.transcribe(wav_bytes, state.language)
         state.set_latency("stt", (time.monotonic() - stt_started) * 1000)
     except providers.STTError as error:
         _log(f"[stt-error] {error}")
@@ -151,6 +152,23 @@ def _transcribe_and_enqueue(
         return
     state.add_transcript(text, utterance_id)
     _log(f"[queued] ({seconds:.1f}s) {text}")
+
+
+UTTERANCE_AUDIO_DIR = CONFIG_DIR / "utterance_audio"
+UTTERANCE_AUDIO_KEEP = 200
+
+
+def _archive_utterance_audio(utterance_id: int, wav_bytes: bytes) -> None:
+    """Save one utterance's WAV; keep only the newest UTTERANCE_AUDIO_KEEP."""
+    try:
+        UTTERANCE_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        (UTTERANCE_AUDIO_DIR / f"{stamp}-u{utterance_id}.wav").write_bytes(wav_bytes)
+        stale = sorted(UTTERANCE_AUDIO_DIR.glob("*.wav"))[:-UTTERANCE_AUDIO_KEEP]
+        for path in stale:
+            path.unlink(missing_ok=True)
+    except OSError:
+        pass  # archiving is best-effort; transcription must not suffer
 
 
 def _start_stream(
@@ -578,6 +596,14 @@ def run(config: VadConfig | None = None) -> None:
                             )
                 if utterance is not None:
                     seconds = len(utterance) / config.sample_rate
+                    # Archive in BOTH modes: the segmenter hands back the
+                    # full utterance even when a live stream transcribed it,
+                    # and live mode is precisely where the mangled
+                    # transcripts happen - the evidence must cover it.
+                    _archive_utterance_audio(
+                        current_utterance_id,
+                        stt.encode_wav(utterance, config.sample_rate),
+                    )
                     if stream is not None:
                         stt_executor.submit(
                             _finalize_stream, stream, seconds, state, current_utterance_id

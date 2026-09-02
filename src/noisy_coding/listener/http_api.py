@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 
 from noisy_coding import credentials, diagnostics, playback
 from noisy_coding.config_dir import CONFIG_DIR
+from noisy_coding.listener import stt_lab
 from noisy_coding.listener import pricing, speech, tab_audio
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
 from noisy_coding.listener.state import ListenerState
@@ -418,6 +419,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 )
             elif url.path == "/stream/mic":
                 self._stream_mic_levels()
+            elif url.path == "/stt-lab":
+                body = stt_lab.PAGE.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
             elif url.path == "/next":
                 self.send_response(301)
                 self.send_header("Location", "/next/")
@@ -557,6 +565,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.set_paused(False)
                 state.add_event("unmuted")
                 self._respond({"listening": True})
+            elif self.path == "/stt-lab/run":
+                # Synchronous by design: the sweep is ~30 transcriptions and
+                # the page shows a spinner; a job queue would be ceremony.
+                self._respond(stt_lab.run_sweep())
             elif self.path in ("/speaker-color", "/speaker-style"):
                 body = self._read_json_body()
                 speaker = str(body.get("speaker", ""))
@@ -770,6 +782,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # die mid-recording.
                 body = self._read_json_body()
                 delay = float(body.get("delay_seconds", 300))
+                # The countdown exists for the HUMAN: a 2s "graceful" restart
+                # once ate a sentence mid-recording (stream day 4). Agents do
+                # not get to rush it - anything under 60s is clamped UP,
+                # except an exact 0, which is the dashboard's RESTART NOW
+                # button: an explicit human click, the one caller allowed to
+                # skip the wait.
+                if 0 < delay < 60:
+                    delay = 60.0
                 at = state.schedule_shutdown(delay)
                 state.add_event(
                     "agent", f"shutdown scheduled in {int(delay)}s (cancellable)"

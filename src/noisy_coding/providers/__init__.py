@@ -101,3 +101,11 @@ def active_tts() -> TTSProvider:
 def active_stt() -> STTProvider:
     factory = _STT_FACTORIES.get(config.stt_provider_name(), _grok_stt)
     return factory()
+
+
+def stt_provider(name: str) -> STTProvider:
+    """A named STT engine, regardless of what the daemon has active -
+    for harnesses that compare engines side by side."""
+    if name not in _STT_FACTORIES:
+        raise KeyError(f"unknown STT provider {name!r}; have {sorted(_STT_FACTORIES)}")
+    return _STT_FACTORIES[name]()
