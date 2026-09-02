@@ -367,6 +367,7 @@ watch(
         <Bubble
           v-for="(m, i) in history"
           :key="m.id ?? `pos-${i}`"
+          :style="{ viewTransitionName: 'msg-' + (m.id ?? i) }"
           :class="[sizeOf(m.text), { older: i < history.length - 1 || !!liveText }]"
           compact
           :side="m.role === 'claude' ? 'right' : 'left'"
@@ -651,7 +652,7 @@ body.companion-transparent::before {
   opacity: 0.55;
   border-color: rgba(148, 163, 220, 0.4);
   cursor: pointer;
-  transition: width 260ms ease, height 260ms ease, opacity 140ms ease,
+  transition: width 400ms ease, height 400ms ease, opacity 140ms ease,
     transform 140ms ease, border-color 140ms ease;
 }
 .head.other:hover { opacity: 1 !important; transform: scale(1.08); border-color: var(--violet); }
@@ -666,7 +667,7 @@ body.companion-transparent::before {
   position: relative;
   /* Switching conversations: the old head shrinks as the new one grows -
      a few hundred ms of motion instead of an instant jump. */
-  transition: width 260ms ease, height 260ms ease, opacity 140ms ease,
+  transition: width 400ms ease, height 400ms ease, opacity 140ms ease,
     border-color 140ms ease;
 }
 /* Queued-to-speak counter: a small solid badge pinned to the head's edge.
@@ -813,8 +814,8 @@ body.companion-transparent::before {
   margin-right: 18px;
   flex-direction: row; align-items: flex-end; gap: 6px;
 }
-.companion.narrow .head { width: 36px; height: 36px; }
-.companion.narrow .head.other { width: 28px; height: 28px; }
+/* Heads keep their NORMAL sizes in narrow mode - shrinking the active
+   avatar at the narrowest view read as a regression, not a savings. */
 /* the hexagon deliberately keeps its base 52px - one size in both modes */
 
 /* View-transition names: the rails morph as OBJECTS between their side and
