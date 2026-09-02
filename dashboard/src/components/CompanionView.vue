@@ -251,7 +251,10 @@ body.hovering .drag-strip { opacity: 1; }
   align-items: flex-end;
   justify-content: center;
   height: 100%;
-  padding: 8px;
+  /* The drag strip is the window's title bar (22px + 2px inset): content
+     must never render under it, so the viewport starts below - with a few
+     px of breathing room. */
+  padding: 32px 8px 8px;
   box-sizing: border-box;
 }
 /* The widget is fluid (width: 100%), so every wrapper between it and the

@@ -691,7 +691,9 @@ body.companion-transparent::before {
      narrow-mode avatar alignment below assumes the gutter is there). */
   scrollbar-gutter: stable;
   /* older messages melt away at the top edge */
-  mask-image: linear-gradient(to bottom, transparent, black 22px);
+  /* Twice the original 22px: the melt-away at the top reads as a fade,
+     not a hard clip. */
+  mask-image: linear-gradient(to bottom, transparent, black 44px);
 }
 /* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
    hairline (transparent border + padding-box clip) and fills the gutter
