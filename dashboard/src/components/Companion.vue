@@ -585,6 +585,12 @@ body.companion-transparent::before {
      into a narrow strip of screen. */
   width: 100%;
   min-width: 280px;
+  /* Never taller than the host viewport: bottom-anchored, an overgrown box
+     used to overflow OUT THE TOP (measured: -178px) and its bubbles rode
+     over the drag strip. The thread scrolls internally; the box does not
+     escape the window. */
+  max-height: 100%;
+  overflow: hidden;
   box-sizing: border-box;
   background: rgba(5, 14, 24, 0.92);
   border: 1px solid rgba(63, 216, 255, 0.25);
@@ -691,9 +697,11 @@ body.companion-transparent::before {
      narrow-mode avatar alignment below assumes the gutter is there). */
   scrollbar-gutter: stable;
   /* older messages melt away at the top edge */
-  /* Twice the original 22px: the melt-away at the top reads as a fade,
-     not a hard clip. */
-  mask-image: linear-gradient(to bottom, transparent, black 44px);
+  /* The melt-away, tuned by eye on stream day 4: a dead-transparent band
+     first (nothing readable near the drag strip), then a long ramp - full
+     opacity only from 72px down. "Complete transparency must start
+     earlier, counting from the bottom." */
+  mask-image: linear-gradient(to bottom, transparent 0 16px, black 72px);
 }
 /* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
    hairline (transparent border + padding-box clip) and fills the gutter
