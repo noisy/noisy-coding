@@ -437,6 +437,20 @@ def run(config: VadConfig | None = None) -> None:
                 if active_input is not None:  # None while the browser tab is the mic
                     active_input.stop()
                     active_input.close()
+                # PortAudio enumerates devices ONCE per initialization, so a
+                # microphone plugged in after daemon start is invisible to
+                # this process even though /devices (a fresh subprocess)
+                # lists it - the root of issue #41. With our only input
+                # stream now closed, re-initializing PortAudio is safe and
+                # refreshes the device table, so the reopen below can find
+                # the newcomer. A concurrent TTS playback stream would make
+                # the reinit throw - then we keep the old instance and log.
+                try:
+                    sd._terminate()
+                    sd._initialize()
+                    _log("[mic] PortAudio reinitialized - device table refreshed")
+                except Exception as error:  # noqa: BLE001 - keep the old instance
+                    _log(f"[mic] PortAudio reinit skipped: {error}")
                 active_input = _open_input_stream(state, config, on_audio)
                 active_device = state.input_device
                 last_frame_at = time.monotonic()
