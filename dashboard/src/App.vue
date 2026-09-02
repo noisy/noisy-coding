@@ -277,6 +277,10 @@ const setLanguage = (event: Event) =>
 const devices = ref<InputDevice[]>([]);
 const loadDevices = () => getDevices().then((d) => (devices.value = d)).catch(swallow);
 onMounted(loadDevices);
+// Opening SETTINGS re-enumerates: /devices spawns a fresh PortAudio in a
+// subprocess, so a mic plugged in after daemon start appears the moment
+// the panel opens - not only after the manual refresh button.
+watch(showSettings, (open) => { if (open) loadDevices(); });
 const browserAudio = useBrowserAudio();
 useTabStatus(status);
 // Tab honesty (#30): mute releases the capture (Chrome's red dot goes
