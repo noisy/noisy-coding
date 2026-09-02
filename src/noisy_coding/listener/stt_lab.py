@@ -1,20 +1,19 @@
-"""STT Lab - one-button consistency sweep, served by the daemon (day 4).
+"""Speech-to-text test bench data layer (day 4, v2).
 
-Same-sounding phrases kept transcribing differently; the daemon now archives
-every utterance's WAV (utterance_audio/). This page has ONE job: a RERUN
-button that replays the newest recordings through the active engine - same
-bytes, batch and live paths - and shows a short per-file summary plus a
-verdict. Deliberately simple: no per-test knobs, the CLI harness
-(tools/stt_consistency.py) exists for deep dives.
+Each archived utterance WAV is a TEST: it carries an EXPECTED transcript
+(blessed from a previous run) and can be re-run through the batch or the
+live pipeline. The status page fires the runs in parallel - one small
+request per recording per pipeline - and renders each diff as it lands.
 
-Endpoint (wired in http_api.py):
-    POST /stt-lab/run    run the sweep -> summary JSON
-The PAGE lives in the dashboard (SttLabView.vue) - the daemon serves data,
-never markup.
+Endpoints (wired in http_api.py):
+    GET  /tests/speech        list tests: file, seconds, expected transcript
+    POST /tests/speech/run    {"file", "path": "batch"|"live"} -> actual+diff
+    POST /tests/speech/bless  {"file", "text"} -> store as expected
+
+The UI lives in the dashboard (StatusView.vue); the daemon serves data only.
 """
 import difflib
-import itertools
-import statistics
+import json
 import time
 import wave
 from pathlib import Path
@@ -23,9 +22,51 @@ from noisy_coding import providers
 from noisy_coding.config_dir import CONFIG_DIR
 
 AUDIO_DIR = CONFIG_DIR / "utterance_audio"
-SWEEP_FILES = 5
-SWEEP_RUNS = 3
-PASS_SCORE = 0.90
+EXPECTATIONS_FILE = AUDIO_DIR / "expected.json"
+MAX_TESTS = 10
+PASS_RATIO = 0.90
+
+
+def _expectations() -> dict:
+    try:
+        return json.loads(EXPECTATIONS_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def bless(name: str, text: str) -> bool:
+    path = audio_path(name)
+    if path is None or not text.strip():
+        return False
+    data = _expectations()
+    data[name] = text.strip()
+    # Drop expectations whose recording is gone (the archive is a ring).
+    data = {k: v for k, v in data.items() if (AUDIO_DIR / k).is_file()}
+    AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+    EXPECTATIONS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    return True
+
+
+def audio_path(name: str) -> Path | None:
+    """Resolve a file STRICTLY inside the archive (no traversal)."""
+    if "/" in name or "\\" in name or not name.endswith(".wav"):
+        return None
+    path = AUDIO_DIR / name
+    return path if path.is_file() else None
+
+
+def list_tests() -> dict:
+    expected = _expectations()
+    tests = []
+    for path in sorted(AUDIO_DIR.glob("*.wav"), reverse=True)[:MAX_TESTS]:
+        try:
+            with wave.open(str(path), "rb") as w:
+                seconds = w.getnframes() / w.getframerate()
+        except (OSError, wave.Error):
+            continue
+        tests.append({"file": path.name, "seconds": round(seconds, 1),
+                      "expected": expected.get(path.name, "")})
+    return {"engine": providers.active_stt().label, "tests": tests}
 
 
 def _transcribe_live(provider, path: Path) -> str:
@@ -42,56 +83,35 @@ def _transcribe_live(provider, path: Path) -> str:
     return session.finish()
 
 
-def _score(texts: list[str]) -> float:
-    if len(texts) < 2:
-        return 1.0
-    return statistics.mean(
-        difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
-        for a, b in itertools.combinations(texts, 2))
+def _word_diff(expected: str, actual: str) -> str:
+    matcher = difflib.SequenceMatcher(
+        None, expected.lower().split(), actual.lower().split())
+    return " ".join(
+        f"[-{' '.join(expected.split()[a1:a2])}|+{' '.join(actual.split()[b1:b2])}]"
+        for op, a1, a2, b1, b2 in matcher.get_opcodes() if op != "equal")
 
 
-def _worst_diff(texts: list[str]) -> str:
-    reference = max(set(texts), key=texts.count)
-    worst, worst_ratio = "", 1.0
-    for t in set(texts):
-        if t == reference:
-            continue
-        ratio = difflib.SequenceMatcher(None, reference.lower(), t.lower()).ratio()
-        if ratio < worst_ratio:
-            worst_ratio = ratio
-            matcher = difflib.SequenceMatcher(
-                None, reference.lower().split(), t.lower().split())
-            worst = " ".join(
-                f"[-{' '.join(reference.split()[a1:a2])}|+{' '.join(t.split()[b1:b2])}]"
-                for op, a1, a2, b1, b2 in matcher.get_opcodes() if op != "equal")
-    return worst
-
-
-def run_sweep() -> dict:
-    files = sorted(AUDIO_DIR.glob("*.wav"), reverse=True)[:SWEEP_FILES]
-    if not files:
-        return {"error": "no recordings archived yet - speak to the daemon first"}
+def run_one(body: dict) -> dict:
+    path = audio_path(str(body.get("file", "")))
+    if path is None:
+        return {"error": "unknown file"}
+    mode = "live" if body.get("path") == "live" else "batch"
     provider = providers.active_stt()
-    rows = []
-    for path in files:
-        wav_bytes = path.read_bytes()
-        row = {"file": path.name}
-        for mode in ("batch", "live"):
-            texts = []
-            for _ in range(SWEEP_RUNS):
-                try:
-                    texts.append(_transcribe_live(provider, path) if mode == "live"
-                                 else provider.transcribe(wav_bytes, ""))
-                except Exception as error:  # noqa: BLE001
-                    texts.append(f"<ERROR: {error}>")
-            row[mode] = round(_score(texts), 3)
-            if row[mode] < 1.0:
-                row[f"{mode}_diff"] = _worst_diff(texts)
-        row["text"] = max(set(texts), key=texts.count)
-        rows.append(row)
-    worst = min(min(r["batch"], r["live"]) for r in rows)
-    return {"engine": provider.label, "files": len(rows),
-            "runs_per_path": SWEEP_RUNS, "worst": worst,
-            "verdict": "PASS" if worst >= PASS_SCORE else "FAIL",
-            "rows": rows}
-
+    started = time.monotonic()
+    try:
+        actual = (_transcribe_live(provider, path) if mode == "live"
+                  else provider.transcribe(path.read_bytes(), ""))
+    except Exception as error:  # noqa: BLE001 - the page shows the error
+        return {"file": path.name, "path": mode, "error": str(error)[:300]}
+    ms = round((time.monotonic() - started) * 1000)
+    expected = _expectations().get(path.name, "")
+    result = {"file": path.name, "path": mode, "engine": provider.label,
+              "actual": actual, "expected": expected, "ms": ms}
+    if expected:
+        ratio = difflib.SequenceMatcher(
+            None, expected.lower(), actual.lower()).ratio()
+        result["ratio"] = round(ratio, 3)
+        result["ok"] = ratio >= PASS_RATIO
+        if actual != expected:
+            result["diff"] = _word_diff(expected, actual)
+    return result

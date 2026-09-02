@@ -2,7 +2,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import CompanionView from "./components/CompanionView.vue";
 import DebugView from "./debug/DebugView.vue";
-import SttLabView from "./components/SttLabView.vue";
+import StatusView from "./components/StatusView.vue";
 import LogsView from "./logs/LogsView.vue";
 import "./styles/hud.css";
 
@@ -16,7 +16,9 @@ function rootView() {
   // /next/companion falls through to the full dashboard - which is exactly
   // what it did.
   const path = window.location.pathname.replace(/^\/next/, "");
-  if (path.startsWith("/stt-lab")) return SttLabView;
+  // /status(-page) - the human self-test board. NOTE: on vite, bare
+  // /status is proxied to the daemon JSON API; use /next/status there.
+  if (path.startsWith("/status") || path.startsWith("/stt-lab")) return StatusView;
   if (path.startsWith("/debug")) return DebugView;
   if (path.startsWith("/logs")) return LogsView;
   if (path.startsWith("/companion")) return CompanionView;

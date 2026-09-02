@@ -419,10 +419,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 )
             elif url.path == "/stream/mic":
                 self._stream_mic_levels()
+            elif url.path == "/tests/speech":
+                self._respond(stt_lab.list_tests())
             elif url.path == "/stt-lab":
-                # The lab UI is a dashboard view; the daemon only serves data.
+                # The lab grew into the status page's speech section.
                 self.send_response(302)
-                self.send_header("Location", "/next/stt-lab")
+                self.send_header("Location", "/next/status")
                 self.end_headers()
             elif url.path == "/next":
                 self.send_response(301)
@@ -563,10 +565,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.set_paused(False)
                 state.add_event("unmuted")
                 self._respond({"listening": True})
-            elif self.path == "/stt-lab/run":
-                # Synchronous by design: the sweep is ~30 transcriptions and
-                # the page shows a spinner; a job queue would be ceremony.
-                self._respond(stt_lab.run_sweep())
+            elif self.path == "/tests/speech/run":
+                # One recording, one pipeline, one transcription - small on
+                # purpose: the page fires these in PARALLEL and each row
+                # fills in as its request lands.
+                self._respond(stt_lab.run_one(self._read_json_body()))
+            elif self.path == "/tests/speech/bless":
+                body = self._read_json_body()
+                if stt_lab.bless(str(body.get("file","")), str(body.get("text",""))):
+                    self._respond({"ok": True})
+                else:
+                    self._respond({"error": "file and non-empty text required"}, status=400)
             elif self.path in ("/speaker-color", "/speaker-style"):
                 body = self._read_json_body()
                 speaker = str(body.get("speaker", ""))
