@@ -702,12 +702,13 @@ body.companion-transparent::before {
      opacity only from 72px down. "Complete transparency must start
      earlier, counting from the bottom." */
   /* Ease-out approximated with stops: gentle at the top, closing faster
-     toward the bottom - reads lighter than a straight linear ramp. */
-  mask-image: linear-gradient(to bottom,
+     toward the bottom. Overridable via --companion-thread-mask so the
+     Storybook gradient lab can compare curves and lengths live. */
+  mask-image: var(--companion-thread-mask, linear-gradient(to bottom,
     transparent 0 16px,
     rgba(0, 0, 0, 0.35) 34px,
     rgba(0, 0, 0, 0.75) 52px,
-    black 72px);
+    black 72px));
 }
 /* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
    hairline (transparent border + padding-box clip) and fills the gutter
