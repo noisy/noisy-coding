@@ -226,9 +226,17 @@ onMounted(() => {
   // both of which change the space available - and neither of which raises a
   // resize event on the page that owns this code.
   if (root.value) {
-    setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
+    narrow.value = root.value.offsetWidth < NARROW_BELOW_PX; // first paint: no animation
+    /* DEBOUNCED on purpose: Chrome skips a view transition whose viewport
+     * is being resized mid-flight, and the threshold is always crossed
+     * mid-drag - so an immediate flip technically ran and visually never
+     * showed. Waiting for the resize to settle lets the morph play. */
+    let settle: ReturnType<typeof setTimeout> | undefined;
     sizeWatch = new ResizeObserver(() => {
-      if (root.value) setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        if (root.value) setNarrow(root.value.offsetWidth < NARROW_BELOW_PX);
+      }, 160);
       void refit();
     });
     sizeWatch.observe(root.value);
