@@ -1,7 +1,10 @@
 <script setup lang="ts">
 /** Graceful-shutdown countdown (#35) - five candidate looks, picked in
- * Storybook before wiring. Presentational only: countdown text comes in
- * via props, clicks bubble up. */
+ * Storybook before wiring. Presentational plus ONE bit of local state:
+ * clicking RESTART NOW must acknowledge the click instantly (the actual
+ * restart takes seconds, and a silent button reads as a dead button). */
+import { ref } from "vue";
+
 withDefaults(
   defineProps<{
     label: string; // "4:52" or "19s"
@@ -11,7 +14,14 @@ withDefaults(
   }>(),
   { variant: "card-d5" },
 );
-defineEmits<{ restartNow: []; cancel: []; postpone: [] }>();
+const emit = defineEmits<{ restartNow: []; cancel: []; postpone: [] }>();
+
+const restarting = ref(false);
+function restartNow() {
+  if (restarting.value) return; // one restart is plenty
+  restarting.value = true;
+  emit("restartNow");
+}
 </script>
 
 <template>
@@ -23,9 +33,11 @@ defineEmits<{ restartNow: []; cancel: []; postpone: [] }>();
       </span>
       <span class="count">{{ label }}</span>
     </div>
-    <button class="act now" @click="$emit('restartNow')">restart now</button>
-    <button class="act now postpone" @click="$emit('postpone')">+1 min</button>
-    <button class="act cancel" @click="$emit('cancel')">✕ CANCEL</button>
+    <button class="act now" :class="{ restarting }" :disabled="restarting" @click="restartNow">
+      {{ restarting ? "RESTARTING" : "restart now" }}<span v-if="restarting" class="dots"><i>.</i><i>.</i><i>.</i></span>
+    </button>
+    <button class="act now postpone" :disabled="restarting" @click="$emit('postpone')">+1 min</button>
+    <button class="act cancel" :disabled="restarting" @click="$emit('cancel')">✕ CANCEL</button>
   </div>
 </template>
 
@@ -53,6 +65,18 @@ defineEmits<{ restartNow: []; cancel: []; postpone: [] }>();
   color: var(--red); border: 1px solid rgba(255, 95, 107, 0.4);
 }
 .act.now:hover { border-color: var(--red); }
+/* Clicked: unmistakable acknowledgement - solid fill, animated ellipsis,
+   and every button (this one included) stops taking further clicks. */
+.act.now.restarting {
+  background: var(--red); color: #1a0508; font-weight: 800;
+  border-color: var(--red); cursor: default;
+}
+.act:disabled { opacity: 0.45; cursor: default; }
+.act.now.restarting:disabled { opacity: 1; }
+.dots i { animation: dot-blink 1.2s infinite; }
+.dots i:nth-child(2) { animation-delay: 0.2s; }
+.dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-blink { 0%, 60% { opacity: 1; } 80%, 100% { opacity: 0.15; } }
 .act.postpone { width: 150px; color: var(--cyan-dim); border-color: rgba(63, 216, 255, 0.35); }
 .act.postpone:hover { color: var(--cyan-hi); border-color: var(--cyan); }
 .act.cancel {
