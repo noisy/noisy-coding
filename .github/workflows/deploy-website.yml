@@ -11,7 +11,8 @@ name: deploy-website
 
 on:
   push:
-    branches: [main]
+    # v3-desktop is where the site lives until the branch merges to main.
+    branches: [main, v3-desktop]
     paths:
       - "website/**"
       - "dashboard/src/**" # the site renders the real product components
