@@ -1,0 +1,64 @@
+# Deploys the marketing site to GitHub Pages.
+#
+# HARD REQUIREMENT: only the BUILT website is ever served. The Pages
+# artifact is exactly website/dist - no source, no dashboard/, no
+# website-backend/, no design-concepts/, no repo files. This is why we use
+# the artifact-based Pages actions and never the legacy publish-a-branch
+# mode (which exposes everything in the folder).
+#
+# One-time setup in the repo: Settings > Pages > Source: "GitHub Actions".
+name: deploy-website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - "dashboard/src/**" # the site renders the real product components
+      - "dashboard/public/**"
+      - ".github/workflows/deploy-website.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push supersedes a queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Install and build (website only)
+        working-directory: website
+        env:
+          # Project Pages site is served from /<repo>/. For a custom domain
+          # later: set this to "/" (or drop it) - see website/README.md.
+          PAGES_BASE: /${{ github.event.repository.name }}/
+        run: |
+          npm ci
+          npm run build
+      - name: Upload ONLY the built site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

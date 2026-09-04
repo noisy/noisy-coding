@@ -7,7 +7,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 "$ROOT/scripts/marketing-shots.sh"
 
-# Website build steps go here once the final design gets a real project.
-# For now the design-concepts pages reference img/generated/ directly, so
-# regenerating the shots is the whole build.
-echo "Synthetic screenshots rebuilt; design-concepts pages are current."
+# The Vue website (website/) is built AFTER marketing-shots.sh so its
+# imported img/generated/ assets are never stale. The static design-concepts
+# pages keep referencing img/generated/ directly.
+if [ -d "$ROOT/website/node_modules" ]; then
+  (cd "$ROOT/website" && npm run build)
+else
+  (cd "$ROOT/website" && npm install && npm run build)
+fi
+echo "Synthetic screenshots rebuilt; website built to website/dist."
