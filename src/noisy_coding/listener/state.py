@@ -743,10 +743,7 @@ class ListenerState:
             # was asked, or the user is told immediately that it cannot).
             addressee_online = True
             if addressee:
-                seen = self._agents.get(addressee)
-                addressee_online = (
-                    seen is not None and now - seen <= AGENT_OFFLINE_AFTER_SECONDS
-                )
+                addressee_online = self._agent_alive_locked(addressee, now)
             status = (
                 "ready — awaiting pickup"
                 if addressee_online
@@ -855,7 +852,10 @@ class ListenerState:
         with self._lock:
             meta = {}
             for name, seen in self._agents.items():
-                online = now - seen <= AGENT_OFFLINE_AFTER_SECONDS
+                # Same two-signal rule as the delivery check: a session busy
+                # thinking stops polling, and greying out its tab mid-turn is
+                # the same lie as stamping its messages 'no listener'.
+                online = self._agent_alive_locked(name, now)
                 meta[name] = {
                     "label": self._agent_labels.get(name, name),
                     "online": online,
@@ -1076,8 +1076,19 @@ class ListenerState:
                 self._active_agent = name
 
     def set_active_agent(self, name: str) -> str | None:
+        """Hand the mic to `name`. Returns who actually holds it.
+
+        A tab the user can SEE must be selectable. Requiring membership in
+        `_agents` silently dropped the request for an agent that had a tab
+        but no live heartbeat, so the click did nothing while the dashboard
+        happily showed it as selected - and the mic kept feeding whoever was
+        active before. Any agent we still know a tab for is fair game.
+        """
         with self._lock:
             if name in self._agents:
+                self._active_agent = name
+            elif name in self._agent_labels:
+                self._agents.setdefault(name, time.time())
                 self._active_agent = name
             return self._active_agent
 
@@ -1110,6 +1121,27 @@ class ListenerState:
     def latency_ms(self) -> dict:
         with self._lock:
             return dict(self._latency_ms)
+
+    def _agent_alive_locked(self, agent: str, now: float) -> bool:
+        """Is anyone home on this tab? Call with the lock held.
+
+        Two independent signs of life, because the obvious one lies. The
+        drain heartbeat only ticks when the session POLLS, and a session
+        that is thinking or running a long tool does not poll - so a busy
+        agent looked dead after 30s and the user's message was stamped
+        'no listener' while the agent was very much alive and picked it up
+        moments later. Live activity (the tool/thinking one-liner the hooks
+        push) proves the process is running even while it is not polling.
+        """
+        seen = self._agents.get(agent)
+        if seen is not None and now - seen <= AGENT_OFFLINE_AFTER_SECONDS:
+            return True
+        activity = self._activity.get(agent)
+        return bool(
+            activity
+            and activity.get("text")
+            and now - activity.get("at", 0.0) <= AGENT_OFFLINE_AFTER_SECONDS
+        )
 
     def set_activity(self, agent: str, text: str) -> None:
         """What an agent is doing right now (one line from the hooks)."""

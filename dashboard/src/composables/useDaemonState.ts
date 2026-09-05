@@ -44,7 +44,9 @@ function cacheCharacter(c: Character | null) {
   }
 }
 
-export function useDaemonState(pollMs = 400): DaemonState {
+type SharedDaemonState = DaemonState & { subscribe(): void; unsubscribe(): void };
+
+function createDaemonState(pollMs: number): SharedDaemonState {
   const status = ref<DaemonStatus | null>(null);
   const utterances = ref<Utterance[]>([]);
   const utterancesFor = ref<string | null>(null);
@@ -127,7 +129,16 @@ export function useDaemonState(pollMs = 400): DaemonState {
   function selectAgent(name: string) {
     pinned = true;
     viewedAgent.value = name;
-    setActiveAgent(name).catch(() => {});
+    // The daemon has the last word on who holds the mic, and it can refuse
+    // (an agent that dropped out of its table). Believing the click instead
+    // of the answer is what let the dashboard tab and the companion widget
+    // drift apart - the widget renders active_agent, the tabs rendered a
+    // pinned local guess - and worse, the mic then fed the OTHER agent.
+    setActiveAgent(name)
+      .then((active) => {
+        if (active && active !== name) viewedAgent.value = active;
+      })
+      .catch(() => {});
   }
 
   function reorderAgents(order: string[]) {
@@ -144,11 +155,43 @@ export function useDaemonState(pollMs = 400): DaemonState {
   }
 
   let timer: ReturnType<typeof setInterval> | undefined;
-  onMounted(() => {
-    tick();
-    timer = setInterval(tick, pollMs);
-  });
-  onUnmounted(() => clearInterval(timer));
+  let subscribers = 0;
+  function subscribe() {
+    if (subscribers++ === 0) {
+      tick();
+      timer = setInterval(tick, pollMs);
+    }
+  }
+  function unsubscribe() {
+    if (--subscribers === 0) {
+      clearInterval(timer);
+      timer = undefined;
+    }
+  }
 
-  return { status, utterances, utterancesFor, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents };
+  return { status, utterances, utterancesFor, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents, subscribe, unsubscribe };
+}
+
+/* ONE state for the whole app, not one per component.
+ *
+ * This used to be a plain factory, so App.vue, CompanionView and
+ * CompanionFloat each built their own refs, their own poller and - the bug -
+ * their own `pinned` flag and `viewedAgent`. Clicking a tab in the dashboard
+ * pinned only the dashboard's copy; the widget's copy kept following whatever
+ * it had last pinned, so the two showed different agents and stayed that way.
+ * Sharing the state makes disagreement impossible, and drops two redundant
+ * 400ms polling loops. */
+let shared: SharedDaemonState | null = null;
+
+export function useDaemonState(pollMs = 400): DaemonState {
+  if (!shared) shared = createDaemonState(pollMs);
+  const instance = shared;
+  onMounted(() => instance.subscribe());
+  onUnmounted(() => instance.unsubscribe());
+  return instance;
+}
+
+/** Tests only: drop the shared instance so each case starts clean. */
+export function resetDaemonState(): void {
+  shared = null;
 }

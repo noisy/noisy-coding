@@ -104,8 +104,14 @@ export async function getDevices(): Promise<InputDevice[]> {
   return body.devices;
 }
 
-export function setActiveAgent(name: string): Promise<void> {
-  return post("/active-agent", { name });
+/** Returns the agent the daemon ACTUALLY made active, which is not always
+ *  the one asked for - the caller must reconcile against it rather than
+ *  assume the request won. */
+export async function setActiveAgent(name: string): Promise<string | null> {
+  const body = await postJson<{ active_agent: string | null }>(
+    "/active-agent", { name },
+  );
+  return body.active_agent ?? null;
 }
 
 export function dismissAgent(name: string): Promise<void> {

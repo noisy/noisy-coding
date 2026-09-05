@@ -2,7 +2,7 @@ import { mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import type { DaemonState } from "./useDaemonState";
-import { useDaemonState } from "./useDaemonState";
+import { resetDaemonState, useDaemonState } from "./useDaemonState";
 
 const STATUS = {
   active_agent: "agent-a",
@@ -34,6 +34,7 @@ async function flush() {
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
+  resetDaemonState(); // the state is now app-wide; each case starts clean
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
