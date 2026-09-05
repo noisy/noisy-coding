@@ -160,43 +160,37 @@ function failures(file: string) {
 </template>
 
 <style scoped>
-/* The HUD shell disables body scrolling (#app is a fixed viewport); a
-   status page is a DOCUMENT - it must scroll on its own. */
 .status {
   max-width: 900px; margin: 0 auto; padding: 24px;
-  font-family: var(--mono);
+  font-family: var(--sans);
   height: 100vh; overflow-y: auto; box-sizing: border-box;
 }
-h1 { font-size: 16px; letter-spacing: 0.3em; color: var(--cyan); }
-h2 { font-size: 14px; letter-spacing: 0.2em; margin: 0; }
+h1 { font-size: 16px; letter-spacing: normal; color: var(--cyan); }
+h2 { font-size: 14px; letter-spacing: normal; margin: 0; }
 .sec-head { display: flex; gap: 14px; align-items: center; border-bottom: 1.5px solid var(--line-strong); padding-bottom: 8px; margin-bottom: 12px; }
 .sec-head button { margin-left: auto; }
-button { background: rgba(4, 12, 20, 0.9); color: var(--cyan); border: 1px solid var(--line-strong); font: inherit; padding: 8px 20px; cursor: pointer; letter-spacing: 0.2em; }
+button { background: var(--bg1); color: var(--cyan); border: 1px solid var(--line-strong); font: inherit; padding: 8px 20px; cursor: pointer; letter-spacing: normal; }
 button:disabled { opacity: 0.4; }
 .meta { color: var(--muted); font-size: 11px; }
 table { border-collapse: collapse; width: 100%; }
 td, th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
 table { table-layout: fixed; }
-th { color: var(--muted); font-weight: normal; letter-spacing: 0.15em; font-size: 10.5px; }
+th { color: var(--muted); font-weight: normal; letter-spacing: normal; font-size: 11px; }
 .pipe-col { width: 90px; }
-.chip { font-size: 10.5px; letter-spacing: 0.1em; padding: 2px 7px; border: 1px solid; }
+.chip { font-size: 11px; letter-spacing: normal; padding: 2px 7px; border: 1px solid; }
 .chip.ok { color: var(--green, #6dff9e); border-color: rgba(109, 255, 158, 0.4); }
-.chip.bad { color: var(--red, #ff5f6b); border-color: rgba(255, 95, 107, 0.5); }
+.chip.bad { color: var(--red, #ff5f6b); border-color: rgba(240, 161, 161, 0.5); }
 .chip.none { color: var(--muted); border-color: var(--line); }
-.running { color: var(--amber, #ffb84d); animation: pulse 1.2s ease-in-out infinite; }
+.running { color: var(--amber, #ffb84d); animation: none; }
 @keyframes pulse { 50% { opacity: 0.4; } }
-.detail-row td { background: rgba(255, 95, 107, 0.05); }
+.detail-row td { background: rgba(240, 161, 161, 0.05); }
 .fail-detail { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 10px; padding: 4px 0; }
-.pipe { color: var(--muted); font-size: 10.5px; letter-spacing: 0.15em; }
-/* Classic two-line diff: expected with deletions in red, actual with
-   insertions in green - highlights on the words, quiet elsewhere. */
+.pipe { color: var(--muted); font-size: 11px; letter-spacing: normal; }
 .difflines { font-size: 11.5px; display: grid; gap: 2px; min-width: 0; }
-/* Long transcripts WRAP - a failure must never widen the table and summon
-   a horizontal scrollbar that shoves the other results off screen. */
 .line { padding: 2px 6px; overflow-wrap: anywhere; white-space: normal; }
 .line .sign { display: inline-block; width: 14px; color: var(--muted); }
-.line.del { background: rgba(255, 95, 107, 0.07); }
+.line.del { background: rgba(240, 161, 161, 0.07); }
 .line.ins { background: rgba(109, 255, 158, 0.06); }
-.line.del .hl { color: var(--red, #ff5f6b); background: rgba(255, 95, 107, 0.18); }
+.line.del .hl { color: var(--red, #ff5f6b); background: rgba(240, 161, 161, 0.18); }
 .line.ins .hl { color: var(--green, #6dff9e); background: rgba(109, 255, 158, 0.16); }
 </style>

@@ -221,57 +221,57 @@ function megabytes(bytes: number): string {
 .sec { display: grid; gap: 12px; }
 .path {
   display: flex; align-items: center; gap: 8px;
-  font-size: 9.5px; letter-spacing: 0.14em; color: var(--muted);
+  font-size: 11px; letter-spacing: normal; color: var(--muted);
 }
 .node { flex: none; }
 .wire { flex: 1; border-top: 1px dashed var(--line-strong); }
 .pill {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  font-family: var(--sans); font-size: 11px; letter-spacing: normal;
   color: var(--cyan); cursor: pointer;
   border: 1px solid var(--cyan-dim); border-radius: 999px; padding: 5px 14px;
-  background: rgba(4, 12, 20, 0.9); flex: none;
+  background: var(--bg1); flex: none;
 }
-.pill:hover { border-color: var(--cyan); text-shadow: 0 0 6px rgba(63, 216, 255, 0.5); }
+.pill:hover { border-color: var(--cyan); text-shadow: none; }
 
 .under { display: grid; gap: 6px; margin-left: 90px; max-width: 560px; }
 .dlrow { display: flex; align-items: center; gap: 10px; }
-.dl-label { font-size: 9px; letter-spacing: 0.18em; color: var(--muted); flex: none; }
+.dl-label { font-size: 11px; letter-spacing: normal; color: var(--muted); flex: none; }
 .bar {
-  flex: 1; height: 6px; background: rgba(4, 12, 20, 0.9);
+  flex: 1; height: 6px; background: var(--bg1);
   border: 1px solid var(--line-strong); overflow: hidden;
 }
 .fill { height: 100%; background: var(--cyan); transition: width 0.4s linear; }
-.fill.pulse { animation: dl-pulse 1.2s ease-in-out infinite; }
+.fill.pulse { animation: none; }
 @keyframes dl-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
-.dl-state { font-size: 9px; letter-spacing: 0.14em; color: var(--cyan-dim); flex: none; }
+.dl-state { font-size: 11px; letter-spacing: normal; color: var(--cyan-dim); flex: none; }
 .dl-state.ok { color: var(--green); }
 .dl-state.err { color: var(--amber); }
-.hint { font-size: 9.5px; color: var(--muted); margin: 0; }
+.hint { font-size: 11px; color: var(--muted); margin: 0; }
 
-.warn { font-size: 10.5px; color: var(--amber); margin: 0 0 0 90px; }
-.note { font-size: 10.5px; color: var(--green); letter-spacing: 0.08em; margin: 0 0 0 90px; }
+.warn { font-size: 11px; color: var(--amber); margin: 0 0 0 90px; }
+.note { font-size: 11px; color: var(--green); letter-spacing: normal; margin: 0 0 0 90px; }
 
 .adv {
-  font-size: 9.5px; letter-spacing: 0.16em; color: var(--cyan-dim);
+  font-size: 11px; letter-spacing: normal; color: var(--cyan-dim);
   cursor: pointer; margin-left: 90px;
 }
 .adv:hover { color: var(--cyan); }
-.adv-hint { color: var(--muted); margin-left: 8px; letter-spacing: 0.1em; }
+.adv-hint { color: var(--muted); margin-left: 8px; letter-spacing: normal; }
 .adv-body { display: grid; gap: 10px; margin-left: 90px; max-width: 560px; }
 .keyrow { display: flex; align-items: center; gap: 10px; }
-.keyrow .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); width: 140px; flex: none; }
+.keyrow .lbl { font-size: 11px; letter-spacing: normal; color: var(--muted); width: 140px; flex: none; }
 .keyinput {
-  flex: 1; font-family: var(--mono); font-size: 12px; color: var(--ink);
-  background: rgba(4, 12, 20, 0.9); border: 1px solid var(--line-strong);
+  flex: 1; font-family: var(--sans); font-size: 12px; color: var(--ink);
+  background: var(--bg1); border: 1px solid var(--line-strong);
   padding: 8px 12px;
 }
 .btn {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-  color: var(--cyan); background: rgba(63, 216, 255, 0.06);
+  font-family: var(--sans); font-size: 11px; letter-spacing: normal;
+  color: var(--cyan); background: rgba(158, 188, 245, 0.06);
   border: 1px solid var(--line-strong); padding: 4px 10px; cursor: pointer; flex: none;
 }
 .text {
-  font-size: 10.5px; line-height: 1.75; color: var(--muted);
+  font-size: 11px; line-height: 1.75; color: var(--muted);
   max-width: 640px; margin-left: 90px;
 }
 </style>

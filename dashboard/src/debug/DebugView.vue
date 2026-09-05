@@ -342,8 +342,8 @@ async function copyLog() {
 
 <style scoped>
 .dbg-header { padding: 10px 18px 14px; border-bottom: 1px solid var(--line); flex: none; }
-.dbg-header .title { font-size: 16px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); }
-.dbg-header .sub { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); }
+.dbg-header .title { font-size: 16px; letter-spacing: normal; color: var(--cyan-hi); text-shadow: none; }
+.dbg-header .sub { font-size: 11px; letter-spacing: normal; color: var(--muted); }
 .dbg-cols {
   display: grid;
   grid-template-columns: 240px minmax(380px, 1fr) 320px;
@@ -358,20 +358,20 @@ async function copyLog() {
 .dbg-mid :deep(.panel) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 .group { display: grid; gap: 6px; margin-bottom: 16px; }
-.glabel { font-size: 8.5px; letter-spacing: 0.24em; color: var(--muted); margin-bottom: 2px; }
+.glabel { font-size: 11px; letter-spacing: normal; color: var(--muted); margin-bottom: 2px; }
 .ctl {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.16em;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: normal;
   color: var(--cyan);
   background: rgba(63, 216, 255, 0.06);
   border: 1px solid var(--line-strong);
   padding: 6px 10px;
   cursor: pointer;
   text-align: left;
-  clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
+  border-radius: 8px;
 }
-.ctl:hover:not(:disabled) { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.ctl:hover:not(:disabled) { color: var(--cyan-hi); text-shadow: none; }
 .ctl.dim { color: var(--muted); border-color: var(--line); }
 .ctl.warn { color: var(--amber); border-color: var(--amber-dim); }
 .ctl.danger { color: var(--red); border-color: rgba(255, 95, 107, 0.5); }
@@ -383,6 +383,6 @@ async function copyLog() {
 }
 
 .loglines { margin-top: 10px; display: grid; gap: 3px; overflow-y: auto; }
-.logline { font-size: 9px; color: var(--muted); letter-spacing: 0.04em; white-space: nowrap; }
+.logline { font-size: 11px; color: var(--muted); letter-spacing: normal; white-space: nowrap; }
 .logline:first-child { color: var(--cyan); }
 </style>
