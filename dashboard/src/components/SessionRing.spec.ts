@@ -26,7 +26,7 @@ describe("SessionRing", () => {
     expect(wrapper.findAll("path.seg")).toHaveLength(3);
     expect(wrapper.find(".rc1").text()).toBe("3");
     expect(wrapper.text()).toContain("YOU · 2");
-    expect(wrapper.text()).toContain("CLAUDE · 1");
+    expect(wrapper.text()).toContain("AGENT · 1");
   });
 
   it("skips still-composing utterances (committed_at 0)", () => {

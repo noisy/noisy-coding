@@ -465,7 +465,7 @@ const LANGUAGES: Record<string, string> = {
       >
         <div class="setup-pitch-inner">
           <p class="setup-text">
-            Talk to Claude out loud — it hears you, answers through your speakers,
+            Talk to your agent out loud — it hears you, answers through your speakers,
             and this console shows the whole conversation live. The oscilloscope
             below is already listening to your mic.
           </p>
@@ -568,7 +568,7 @@ const LANGUAGES: Record<string, string> = {
           <div class="controls">
             <!-- The two mode toggles sit together: same choice, two
                  directions (Claude's voice out vs your voice in). -->
-            <div class="ctlrow" title="Claude's speech: batch renders the whole clip first, live streams as it synthesizes">
+            <div class="ctlrow" title="Agent speech: batch renders the whole clip first, live streams as it synthesizes">
               <span class="lbl">TEXT TO SPEECH</span>
               <button class="ctl small" :class="{ on: status?.tts_mode === 'batch' }" @click="setTtsMode('batch')">BATCH</button>
               <button class="ctl small" :class="{ on: status?.tts_mode === 'live' }" @click="setTtsMode('live')">LIVE</button>

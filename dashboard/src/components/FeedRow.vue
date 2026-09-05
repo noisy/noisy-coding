@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Utterance } from "../types";
-import ClaudeBubble from "./ClaudeBubble.vue";
+import AgentBubble from "./AgentBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
 withDefaults(defineProps<{ utterance: Utterance; playing?: boolean; paused?: boolean; tint?: "normal" | "green" | "purple" | "red"; label?: string }>(), {
@@ -34,7 +34,7 @@ function sysTime(epochSeconds: number): string {
     :utterance="utterance"
     @cancel="$emit('cancel', $event)"
   />
-  <ClaudeBubble
+  <AgentBubble
     :tint="tint"
     :label="label"
     v-else

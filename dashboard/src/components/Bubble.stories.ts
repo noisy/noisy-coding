@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import type { Utterance } from "../types";
-import ClaudeBubble from "./ClaudeBubble.vue";
+import AgentBubble from "./AgentBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
 const meta: Meta = { title: "HUD/Bubbles" };
@@ -42,17 +42,17 @@ export const Delivered: StoryObj = {
 
 export const ClaudeSynthesizing: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({ role: "claude", status: "synthesizing (Grok TTS)…", text: "", cost_usd: 0 }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" /></div>`,
   }),
 };
 
 export const ClaudePlayed: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -62,14 +62,14 @@ export const ClaudePlayed: StoryObj = {
         cost_usd: 0.0038,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" /></div>`,
   }),
 };
 
 
 export const SubagentPortraitLuna: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -81,7 +81,7 @@ export const SubagentPortraitLuna: StoryObj = {
         cost_usd: 0.0034,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" /></div>`,
   }),
 };
 
@@ -89,7 +89,7 @@ export const SubagentPortraitLuna: StoryObj = {
  *  color - Twitch purple, YouTube red - while plain subagents stay green. */
 export const ChatTwitchPurple: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -100,13 +100,13 @@ export const ChatTwitchPurple: StoryObj = {
         cost_usd: 0.0021,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="purple" label="Twitch · xfuroo" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" tint="purple" label="Twitch · xfuroo" /></div>`,
   }),
 };
 
 export const ChatModeratorNormal: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -117,13 +117,13 @@ export const ChatModeratorNormal: StoryObj = {
         cost_usd: 0.003,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="normal" label="Luna - chat agent" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" tint="normal" label="Luna - chat agent" /></div>`,
   }),
 };
 
 export const ChatYouTubeRed: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -134,13 +134,13 @@ export const ChatYouTubeRed: StoryObj = {
         cost_usd: 0.0021,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" tint="red" label="YouTube · DevWatcher42" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" tint="red" label="YouTube · DevWatcher42" /></div>`,
   }),
 };
 
 export const SubagentPortraitAltair: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -152,13 +152,13 @@ export const SubagentPortraitAltair: StoryObj = {
         cost_usd: 0.0029,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" /></div>`,
   }),
 };
 
 export const ClaudePlaying: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -168,13 +168,13 @@ export const ClaudePlaying: StoryObj = {
         cost_usd: 0.0031,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" :playing="true" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" :playing="true" /></div>`,
   }),
 };
 
 export const ClaudePaused: StoryObj = {
   render: () => ({
-    components: { ClaudeBubble },
+    components: { AgentBubble },
     setup: () => ({
       u: utterance({
         role: "claude",
@@ -184,6 +184,6 @@ export const ClaudePaused: StoryObj = {
         cost_usd: 0.0031,
       }),
     }),
-    template: `<div style="${feedStyle}"><ClaudeBubble :utterance="u" :playing="true" :paused="true" /></div>`,
+    template: `<div style="${feedStyle}"><AgentBubble :utterance="u" :playing="true" :paused="true" /></div>`,
   }),
 };

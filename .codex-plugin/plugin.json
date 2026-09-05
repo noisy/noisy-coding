@@ -1,0 +1,11 @@
+{
+  "name": "noisy-coding",
+  "version": "2.17.0",
+  "description": "Talk to Codex while it works, with per-session voice and incoming speech.",
+  "author": { "name": "Krzysztof Szumny" },
+  "homepage": "https://github.com/noisy/noisy-coding",
+  "license": "MIT",
+  "skills": "./codex-skills/",
+  "hooks": "./hooks/codex.json",
+  "mcpServers": "./codex.mcp.json"
+}

@@ -138,3 +138,10 @@ local-mode commands that set `NOISY_CODING_LISTENER_PORT` to the dev port.
 Every script reads that variable at invocation time and falls back to 8765,
 so no code changes are needed — only a second daemon on shifted ports and a
 project-scoped hook registration.
+# Codex lifecycle adapter
+
+Codex uses `hooks/codex.json` and the stdlib `hooks/codex.py` adapter, which
+invokes the canonical scripts described below. The Claude hook definitions
+stay in `hooks/hooks.json`. See [Codex setup](codex.md) for installation and
+the synchronous Stop hold. Codex's trusted PreToolUse hook supplies the
+session ID on each speech call; it never routes by working directory.

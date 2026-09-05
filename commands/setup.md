@@ -2,6 +2,12 @@
 description: Start the noisy-coding voice backend (Docker) and walk through first-time setup
 ---
 
+If you are running in Codex, use the dedicated
+`codex-skills/noisy-coding/SKILL.md` and `docs/codex.md` in the installed
+plugin root instead of the Claude Code steps below.
+Select the user's daemon port, configure the integration, review `/hooks`,
+and verify a spoken round trip. Do not assume Docker or port 8765.
+
 Set up the noisy-coding voice backend for this user. Follow these steps in order and narrate briefly as you go:
 
 1. Check Docker: run `docker --version`. If missing, tell the user to install Docker Desktop (or the docker engine on Linux) and stop.

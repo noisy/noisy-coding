@@ -38,7 +38,7 @@ const fuelOn = computed(() => {
       <div class="total">${{ total.toFixed(4) }}</div>
       <div class="split">
         <span class="you-c"><small>YOU · STT</small>${{ costs.user.toFixed(4) }}</span>
-        <span class="cl-c"><small>CLAUDE · TTS</small>${{ costs.claude.toFixed(4) }}</span>
+        <span class="cl-c"><small>AGENT · TTS</small>${{ costs.claude.toFixed(4) }}</span>
       </div>
     </div>
 

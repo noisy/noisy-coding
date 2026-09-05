@@ -70,22 +70,43 @@ def _cwd_agent() -> str:
 mcp = FastMCP("noisy-coding")
 
 
-async def _daemon_speak(body: dict) -> dict | None:
+async def _identity_error(agent_id: str | None) -> str | None:
+    if agent_id is None and not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
+        return None
+    if agent_id and agent_id.strip():
+        return None
+    message = "Voice session identity is missing. Review and trust the noisy-coding hooks in /hooks, then retry."
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    try:
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            await client.post(f"http://127.0.0.1:{port}/event", json={"kind": "voice_identity_error", "detail": message})
+    except httpx.HTTPError:
+        pass
+    return message
+
+
+async def _daemon_speak(body: dict, agent_id: str | None = None) -> dict | None:
     """POST /speak to the daemon; None when it's unreachable (fail open).
 
     A daemon that is merely starting up must not turn speak into an
     exception — on the first failure we (re)spawn it and retry once.
     """
+    # Only a host with trusted identity injection may override legacy routing.
+    if not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
+        agent_id = None
+    error = await _identity_error(agent_id)
+    if error:
+        return {"error": error}
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
     body = dict(body)
-    agent = _agent_name()
+    agent = agent_id.strip() if agent_id is not None else _agent_name()
     if agent:
         body["agent"] = agent
     # #22: let the daemon reattach misattributed speech — when `agent` turns
     # out not to be a registered conversation (subagent/team session id),
     # the daemon falls back to the hooks' id and tags the utterance with a
     # speaker instead of losing it in a tabless void.
-    fallback = _cwd_agent()
+    fallback = _cwd_agent() if agent_id is None else ""
     if fallback and fallback != agent:
         body["agent_fallback"] = fallback
     timeout = httpx.Timeout(SPEAK_TIMEOUT_SECONDS, connect=2.0)
@@ -112,7 +133,7 @@ def _speak_result_message(result: dict | None) -> str | None:
 
 
 @mcp.tool()
-async def speak(text: str, interrupt: bool = False, speaker: str = "") -> str:
+async def speak(text: str, interrupt: bool = False, speaker: str = "", agent_id: str | None = None) -> str:
     """Speak a short message aloud to the user through their speakers.
 
     Use this to deliver a spoken TL;DR alongside (not instead of) your written
@@ -141,11 +162,13 @@ async def speak(text: str, interrupt: bool = False, speaker: str = "") -> str:
             shows the message under that name with its own portrait, and the
             daemon gives you a stable voice distinct from the main agent's.
             The main agent must leave this empty.
+        agent_id: Integration-supplied conversation identity. Leave unset;
+            the trusted host hook supplies it when required.
     """
     body: dict = {"text": text, "interrupt": interrupt, "wait": True}
     if speaker.strip():
         body["speaker"] = speaker.strip()
-    result = await _daemon_speak(body)
+    result = await _daemon_speak(body, agent_id)
     failure = _speak_result_message(result)
     if failure:
         return failure
@@ -153,7 +176,7 @@ async def speak(text: str, interrupt: bool = False, speaker: str = "") -> str:
 
 
 @mcp.tool()
-async def announce(text: str) -> str:
+async def announce(text: str, agent_id: str | None = None) -> str:
     """Speak a quick spoken update WITHOUT waiting for it to finish.
 
     Fire-and-forget: use this to tell the user what you just did and keep
@@ -162,7 +185,7 @@ async def announce(text: str) -> str:
     you are asking a question or otherwise waiting for the user's reply.
     Like speak, it carries only text — voice/speed/language live in the daemon.
     """
-    result = await _daemon_speak({"text": text, "wait": False})
+    result = await _daemon_speak({"text": text, "wait": False}, agent_id)
     failure = _speak_result_message(result)
     if failure:
         return failure
@@ -170,7 +193,7 @@ async def announce(text: str) -> str:
 
 
 @mcp.tool()
-async def change_voice(voice_id: str, speaker: str = "") -> str:
+async def change_voice(voice_id: str, speaker: str = "", agent_id: str | None = None) -> str:
     """Deliberately switch this agent's speaking voice from now on.
 
     Updates your character in the listener daemon: the dashboard shows the
@@ -186,11 +209,17 @@ async def change_voice(voice_id: str, speaker: str = "") -> str:
             held by someone else is refused rather than duplicated, so two
             speakers never become indistinguishable by ear.
     """
+    # Only a host with trusted identity injection may override legacy routing.
+    if not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
+        agent_id = None
+    error = await _identity_error(agent_id)
+    if error:
+        return error
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
     body: dict = {"voice_id": voice_id}
     if speaker.strip():
         body["speaker"] = speaker.strip()
-    agent = _agent_name()
+    agent = agent_id.strip() if agent_id is not None else _agent_name()
     if agent:
         body["agent"] = agent
     try:
@@ -216,7 +245,7 @@ async def set_speaker_style(speaker: str, color: str = "", label: str = "") -> s
       - "default" clear the entry, back to guest green
 
     The label is FREE TEXT shown as the bubble's title instead of the
-    standard "<SPEAKER> · CLAUDE" - e.g. "YouTube · someRandomGuy" or
+    standard "<SPEAKER> · AGENT" - e.g. "YouTube · someRandomGuy" or
     "Luna - chat agent". Empty label leaves the current one; to clear a
     label set it to "-".
 

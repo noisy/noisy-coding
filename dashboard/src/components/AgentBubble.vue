@@ -11,7 +11,7 @@ const props = withDefaults(
      *  "normal" renders the main agent's own look, no guest surface. */
     tint?: "normal" | "green" | "purple" | "red";
     /** Free bubble title (from status.speaker_labels); overrides the
-     *  default "<SPEAKER> · CLAUDE" header. */
+     *  default speaker + agent header. */
     label?: string }>(),
   { playing: false, paused: false, tint: "green", label: "" },
 );
@@ -28,8 +28,9 @@ const speaker = computed(() => (props.utterance.speaker || "").trim());
 const who = computed(() => {
   if (fromDaemon.value) return "NOISY-CODING";
   if (speaker.value && props.label) return props.label.toUpperCase();
-  if (speaker.value) return `${speaker.value.toUpperCase()} · CLAUDE`;
-  return "CLAUDE";
+  const agent = (props.utterance.agent_label?.trim() || "Agent").toUpperCase();
+  if (speaker.value) return `${speaker.value.toUpperCase()} · ${agent}`;
+  return agent;
 });
 // Amber is reserved for the USER's side of the dialogue — a subagent stays
 // in Claude's violet family and is distinguished by the header + avatar.

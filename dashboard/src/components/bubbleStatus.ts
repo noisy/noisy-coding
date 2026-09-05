@@ -15,7 +15,7 @@ const USER_CHIPS: Record<UserState, StatusChip> = {
   // Transcribed, sitting in the queue until Claude is free to pick it up.
   // Name WHO we're waiting for: "transmitting" reads like a transfer in
   // trouble when Claude is just busy, and "ready" begs ready-for-what.
-  ready: { kind: "work", label: "◌ AWAITING CLAUDE" },
+  ready: { kind: "work", label: "◌ AWAITING AGENT" },
   delivered: { kind: "done", label: "✓ DELIVERED" },
   empty: { kind: "fail", label: "✕ NO SPEECH" },
   dropped: { kind: "fail", label: "✕ DROPPED" },

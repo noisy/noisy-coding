@@ -61,7 +61,8 @@ def identity(hook_input: dict) -> tuple[str, str]:
     session_id = str(hook_input.get("session_id", "") or "")
     agent_id = env_name or session_id or "default"
 
-    label = env_name
+    label = (os.environ.get("NOISY_CODING_SESSION_TITLE", "").strip()
+             if os.environ.get("NOISY_CODING_HARNESS") == "codex" else env_name)
     if not label:
         # Set by exec.sh, which reads the transcript host-side: inside the
         # container the transcript_path below points at a file we can't see.
@@ -73,7 +74,7 @@ def identity(hook_input: dict) -> tuple[str, str]:
 
     # Let the MCP server (which has no session_id) find its agent by cwd.
     cwd = str(hook_input.get("cwd", "") or "")
-    if cwd:
+    if cwd and os.environ.get("NOISY_CODING_HARNESS") != "codex":
         try:
             MAP_FILE.parent.mkdir(parents=True, exist_ok=True)
             data = {}

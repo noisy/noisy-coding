@@ -56,6 +56,20 @@ def _post_activity(text: str) -> None:
         pass
 
 
+def _report_duplicate_listener() -> None:
+    message = f"Voice listener already active for session {AGENT}; duplicate listener exited."
+    print(json.dumps({"systemMessage": message}))
+    try:
+        request = urllib.request.Request(
+            f"{BASE_URL}/event",
+            data=json.dumps({"kind": "voice_listener_error", "detail": message}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(request, timeout=0.3).close()
+    except OSError:
+        pass
+
+
 def _poll_for_speech(wait_seconds: float) -> str | None:
     deadline = time.time() + wait_seconds
     while time.time() < deadline:
@@ -102,6 +116,8 @@ def main() -> None:
     DRAIN_PATH = f"/drain?agent={AGENT}"
     # Turn ended — the agent is idle now; clear its live-activity line.
     _post_activity("")
+    if REWAKE_WAIT_SECONDS <= 0:
+        return
     # Per-agent rewake lock so one session's poller can't block another's.
     REWAKE_LOCK_FILE = (
         Path.home() / ".config" / "noisy-coding" / f"rewake-{AGENT}.lock"
@@ -114,6 +130,7 @@ def main() -> None:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
+            _report_duplicate_listener()
             return  # another poller is already on duty
         spoken = _poll_for_speech(REWAKE_WAIT_SECONDS)
         if spoken:

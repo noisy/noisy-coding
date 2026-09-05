@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { Utterance } from "../types";
 import Bubble from "./Bubble.vue";
 import { formatCost, replaySpeechText, statusChip } from "./bubbleStatus";
-import ClaudeBubble from "./ClaudeBubble.vue";
+import AgentBubble from "./AgentBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
 describe("statusChip", () => {
   it.each([
     ["user", "recording…", "rec", "● RECORDING"],
     ["user", "transcribing (live)…", "work", "◌ TRANSCRIBING"],
-    ["user", "ready — awaiting pickup", "work", "◌ AWAITING CLAUDE"],
+    ["user", "ready — awaiting pickup", "work", "◌ AWAITING AGENT"],
     ["user", "delivered to Claude", "done", "✓ DELIVERED"],
     ["user", "cancelled by you", "off", "✕ CANCELLED"],
     ["user", "transcription error", "fail", "✕ ERROR"],
@@ -71,7 +71,7 @@ describe("replaySpeechText", () => {
   });
 });
 
-describe("ClaudeBubble replay", () => {
+describe("AgentBubble replay", () => {
   const played: Utterance = {
     id: 9,
     role: "claude",
@@ -86,7 +86,7 @@ describe("ClaudeBubble replay", () => {
   };
 
   it("shows the replay icon on played speech and emits the utterance", async () => {
-    const wrapper = mount(ClaudeBubble, { props: { utterance: played } });
+    const wrapper = mount(AgentBubble, { props: { utterance: played } });
 
     await wrapper.find(".replay").trigger("click");
 
@@ -94,7 +94,7 @@ describe("ClaudeBubble replay", () => {
   });
 
   it("offers no replay while still synthesizing", () => {
-    const wrapper = mount(ClaudeBubble, {
+    const wrapper = mount(AgentBubble, {
       props: { utterance: { ...played, status: "synthesizing (Grok TTS)…", text: "" } },
     });
 

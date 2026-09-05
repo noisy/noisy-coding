@@ -11,7 +11,7 @@ on:
 
 jobs:
   # Guard against the drift that let .claude-plugin/plugin.json ship three
-  # releases stale (issue #7): the four version-bearing files must agree with
+  # releases stale (issue #7): the version-bearing files must agree with
   # each other, and — when released from a tag — with the tag itself.
   verify-version:
     runs-on: ubuntu-latest
@@ -24,8 +24,9 @@ jobs:
           pyproject=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)
           dashboard=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' dashboard/package.json | head -1)
           plugin=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
-          echo "pyproject=$pyproject dashboard=$dashboard plugin=$plugin"
-          if [ "$pyproject" != "$dashboard" ] || [ "$pyproject" != "$plugin" ]; then
+          codex_plugin=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' .codex-plugin/plugin.json | head -1)
+          echo "pyproject=$pyproject dashboard=$dashboard plugin=$plugin codex_plugin=$codex_plugin"
+          if [ "$pyproject" != "$dashboard" ] || [ "$pyproject" != "$plugin" ] || [ "$pyproject" != "$codex_plugin" ]; then
             echo "::error::version mismatch across files — run scripts/bump_version.py"
             exit 1
           fi

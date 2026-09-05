@@ -1,0 +1,19 @@
+{
+  "noisy-coding": {
+    "command": "uv",
+    "args": [
+      "run",
+      "--frozen",
+      "--no-dev",
+      "python",
+      "hooks/codex_mcp.py"
+    ],
+    "startup_timeout_sec": 120,
+    "tool_timeout_sec": 180,
+    "cwd": ".",
+    "env_vars": [
+      "NOISY_CODING_CODEX_CONFIG",
+      "NOISY_CODING_LISTENER_PORT"
+    ]
+  }
+}

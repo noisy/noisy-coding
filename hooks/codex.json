@@ -1,0 +1,60 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "timeout": 3630,
+            "statusMessage": "Listening for your voice (up to one hour)"
+          }
+        ]
+      }
+    ]
+  }
+}

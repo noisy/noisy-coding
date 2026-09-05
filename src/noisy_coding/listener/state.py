@@ -703,6 +703,10 @@ class ListenerState:
     def utterances(self, agent: str | None = None) -> list[dict]:
         with self._lock:
             items = [dict(u) for u in self._utterances]
+            for item in items:
+                label = self._agent_labels.get(item.get("agent"))
+                if label:
+                    item["agent_label"] = label
         if agent is not None:
             items = [u for u in items if u.get("agent") == agent]
         return items

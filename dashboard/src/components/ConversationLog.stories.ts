@@ -26,6 +26,13 @@ export const Feed: StoryObj<typeof ConversationLog> = {
   }),
 };
 
+export const AgentMetadata: StoryObj<typeof ConversationLog> = {
+  ...Feed,
+  args: {
+    utterances: feed.map((row) => ({ ...row, agent_label: "Build assistant" })),
+  },
+};
+
 // #22: a subagent's speech stays in the parent conversation's feed, but is
 // clearly NOT the main agent - own name, own accent. This story is the
 // design surface for that decoration.

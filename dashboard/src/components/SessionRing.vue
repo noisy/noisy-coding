@@ -117,7 +117,7 @@ const ticks = [0, 90, 180, 270].map((deg) => {
   </div>
   <div class="ringlegend">
     <span class="l-you"><i />YOU · {{ counts.you }}</span>
-    <span class="l-cl"><i />CLAUDE · {{ counts.claude }}</span>
+    <span class="l-cl"><i />AGENT · {{ counts.claude }}</span>
   </div>
 </template>
 
