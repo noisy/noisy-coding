@@ -41,6 +41,12 @@ describe("formatCost", () => {
 });
 
 describe("Bubble", () => {
+  it("keeps unheard speech explicit in the compact companion", () => {
+    const wrapper = mount(Bubble, {
+      props: { side: "right", accent: "violet", who: "Codex", text: "Ready to review.", compact: true, statusKind: "off", statusLabel: "Unheard", time: "" },
+    });
+    expect(wrapper.get(".compact-label").text()).toContain("Unheard");
+  });
   it("renders who, text, status label and cost", () => {
     const wrapper = mount(Bubble, {
       props: {

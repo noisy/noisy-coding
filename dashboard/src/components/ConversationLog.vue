@@ -95,7 +95,7 @@ watch(
 
 <template>
   <div class="logroot">
-    <div ref="feed" class="feed" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
+    <div ref="feed" class="feed" tabindex="0" role="region" aria-label="Conversation history" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
       <FeedRow
         v-for="utterance in processed"
         :tint="(speakerColors?.[utterance.speaker ?? ''] as 'normal'|'green'|'purple'|'red') ?? 'green'"
@@ -122,7 +122,7 @@ watch(
         @replay="$emit('replay', $event)"
         @cancel="$emit('cancel', $event)"
       />
-      <p v-if="!ordered.length" class="empty">NO TRANSMISSIONS YET — START TALKING</p>
+      <p v-if="!ordered.length" class="empty">Start a conversation</p>
     </div>
     <button
       v-if="!stickToBottom"
@@ -139,11 +139,11 @@ watch(
 
 <style scoped>
 .logroot {
-  position: relative; /* anchors the .liveslot overlay */
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0; /* fills the panel; ONLY .feed inside scrolls */
+  min-height: 0;
 }
 .feed {
   display: flex;
@@ -158,40 +158,36 @@ watch(
 }
 .empty {
   color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.22em;
+  font-size: 16px;
+  letter-spacing: normal;
   text-align: center;
-  padding: 28px 0;
+  padding: 72px 12px;
 }
 .liveslot {
-  /* Overlay pinned to the bottom of the log: it renders over the feed's
-     reserved bottom padding, so nothing reflows when a composition
-     appears, grows, or vanishes — and scrolling has no dead strip. */
   position: absolute;
   left: 0;
-  right: 4px; /* clear of the feed scrollbar */
+  right: 4px;
   bottom: 0;
   display: flex;
   flex-direction: column;
 }
 .jumpdown {
   position: absolute;
-  right: 28px; /* clear of the scrollbar with breathing room */
+  right: 28px;
   z-index: 1;
   width: 28px;
   height: 28px;
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 11px;
   color: var(--cyan);
-  background: rgba(4, 12, 20, 0.95);
+  background: var(--bg1);
   border: 1px solid var(--line-strong);
   cursor: pointer;
-  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  border-radius: 8px;
 }
-.jumpdown:hover { color: var(--cyan-hi); border-color: var(--cyan); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.jumpdown:hover { color: var(--cyan-hi); border-color: var(--cyan); text-shadow: none; }
 
 .liveslot :deep(.msg) {
-  /* Solid backdrop: scrolled history may pass underneath. */
-  background-color: rgba(4, 11, 19, 0.97);
+  background-color: var(--bg1);
 }
 </style>

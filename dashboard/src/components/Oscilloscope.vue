@@ -25,16 +25,16 @@ function drawWave(t: number) {
   const cssHeight = Math.max(MIN_HEIGHT, canvas.value.clientHeight);
   const [ctx, W, H] = sizeCanvas(canvas.value, cssHeight);
   ctx.clearRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(63,216,255,0.15)";
+  ctx.strokeStyle = "rgba(158,188,245,0.15)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(0, H / 2);
   ctx.lineTo(W, H / 2);
   ctx.stroke();
-  ctx.strokeStyle = "#3fd8ff";
+  ctx.strokeStyle = "#9ebcf5";
   ctx.lineWidth = 1.6;
-  ctx.shadowColor = "rgba(63,216,255,0.9)";
-  ctx.shadowBlur = 8;
+  ctx.shadowColor = "rgba(158,188,245,0.9)";
+  ctx.shadowBlur = 0;
   ctx.beginPath();
   for (let x = 0; x <= W; x += 2) {
     const p = x / W;

@@ -1,18 +1,8 @@
 <script setup lang="ts">
-/** Always-on-top companion (#28) - PoC, Storybook only.
- *
- * Layout locked with Krzysztof (2026-08-22, v4):
- *  - two persistent rails: the user's hexagon on the LEFT, the head on
- *    the RIGHT - always visible, they light up when their side talks;
- *  - between them one scrollable thread (user amber/left, claude
- *    violet/right, shared compact Bubble), freshest at the bottom,
- *    clipped by PIXEL height and auto-scrolled to the newest message;
- *  - cold start: the daemon seeds the feed with an "I'm ready." from
- *    Claude, so the widget never shows an empty stage.
- */
+/** Compact conversation surface shared by the desktop window and browser companion. */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Bubble from "./Bubble.vue";
-import { voiceSpriteStyle } from "./voiceSprites";
+import VoiceAvatar from "./VoiceAvatar.vue";
 
 export interface CompanionMessage {
   role: "user" | "claude";
@@ -47,6 +37,11 @@ export interface CompanionAgent {
 const props = withDefaults(
   defineProps<{
     mode?: "claude" | "user" | "idle";
+    muted?: boolean;
+    voiceMuted?: boolean;
+    offline?: boolean;
+    /** Use the session header as the frameless desktop window's drag region. */
+    draggable?: boolean;
     voice?: string;
     /** Mixed feed, oldest first; freshest renders at the bottom. */
     feed?: CompanionMessage[];
@@ -66,6 +61,10 @@ const props = withDefaults(
   }>(),
   {
     mode: "idle",
+    muted: false,
+    voiceMuted: false,
+    offline: false,
+    draggable: false,
     voice: "rex",
     feed: () => [],
     liveText: "",
@@ -77,13 +76,6 @@ const props = withDefaults(
   },
 );
 
-const portrait = computed(() => {
-  const style = voiceSpriteStyle(props.voice);
-  if (!style) return {};
-  // No mirror in the companion - the head faces the way the artwork does.
-  const { transform: _drop, ...rest } = style;
-  return rest;
-});
 /* The spectrum is never dead.
  *
  * A row of flat bars reads as "broken", not "quiet", so silence gets a slow
@@ -139,7 +131,10 @@ async function refit() {
   // the picture-in-picture window, not the page that owns this code.
   const view = box.ownerDocument.defaultView ?? window;
   const chrome = box.offsetHeight - el.offsetHeight;
-  ceiling.value = Math.max(110, view.innerHeight - chrome - 4);
+  // The drag handle is part of the card header; reserve only outer padding.
+  const container = box.closest<HTMLElement>('.companion-window');
+  const windowGutter = container ? 16 : 32;
+  ceiling.value = Math.max(32, (container?.clientHeight || view.innerHeight) - chrome - windowGutter);
 
   const room = Math.min(props.maxHeight, ceiling.value);
   const content = el.scrollHeight;
@@ -154,23 +149,21 @@ async function refit() {
   updateClipped();
 }
 
-/* The stack of heads is absolutely positioned (it floats over the thread,
- * clear of the scrollbar), so it contributes nothing to the widget's
- * height. Reserve that height explicitly, or an empty conversation
- * collapses the thread and the heads hang off the bottom edge. */
-const railHeight = computed(() =>
-  Math.max(52, props.agents.length * 40 + 24) + 32,
-);
+const sessionName = computed(() => props.agents.find(a => a.active)?.name ?? 'Companion');
+const waitingCount = computed(() => props.agents.find(a => a.active)?.waiting || props.waiting || props.feed.filter(m => m.zone === 'pending').length);
+const stateLabel = computed(() => {
+  if (props.offline) return 'Offline';
+  if (props.muted) return 'Microphone muted';
+  if (props.mode === 'user') return 'Recording';
+  if (props.mode === 'claude') return 'Speaking';
+  if (props.voiceMuted) return 'Playback muted';
+  if (props.activity) return 'Working';
+  return waitingCount.value ? `${waitingCount.value} waiting` : 'Ready';
+});
 
 const emit = defineEmits<{ (e: "select", name: string): void }>();
 void emit;
 
-function otherStyle(voice: string) {
-  const style = voiceSpriteStyle(voice);
-  if (!style) return {};
-  const { transform: _drop, ...rest } = style;
-  return rest;
-}
 
 const bars = ref<number[]>(new Array(BAR_COUNT).fill(IDLE_FLOOR));
 // Smoothed level: the raw feed is jumpy at 20fps, and bars that snap look
@@ -186,7 +179,7 @@ function animate(now: number) {
 
   const t = now / 1000;
   bars.value = BAR_PHASE.map((phase, i) => {
-    const breath = Math.sin(t * 1.6 + phase) * IDLE_SWING;
+    const breath = props.mode === "user" ? Math.sin(t * 1.6 + phase) * IDLE_SWING : 0;
     const voice = smoothed.value * PEAK * BAR_WEIGHT[i];
     // Flicker keeps the peaks from moving as one block while speaking.
     const flicker = smoothed.value * Math.sin(t * 11 + phase * 2.3) * 6;
@@ -204,7 +197,7 @@ const NARROW_BELOW_PX = 420;
 const narrow = ref(false);
 
 onMounted(() => {
-  frame = requestAnimationFrame(animate);
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) frame = requestAnimationFrame(animate);
   // A ResizeObserver rather than a window listener: it fires when the widget
   // is dragged into the floating window and when that window is resized,
   // both of which change the space available - and neither of which raises a
@@ -225,6 +218,8 @@ onMounted(() => {
       settle = setTimeout(() => stickToBottom(false).then(updateClipped), 160);
     });
     sizeWatch.observe(root.value);
+    const container = root.value.closest('.companion-window');
+    if (container) sizeWatch.observe(container);
   }
 });
 onBeforeUnmount(() => {
@@ -277,11 +272,11 @@ watch(
  * from machines/chat.ts - the widget must not invent its own rules about
  * what "delivered" means, which is exactly what it did before. */
 const history = computed(() => props.feed.filter((m) => m.zone !== "pending"));
-const waiting = computed(() => props.feed.filter((m) => m.zone === "pending"));
+const pendingMessages = computed(() => props.feed.filter((m) => m.zone === "pending"));
 /** Room for two; the rest become a count, so a queue cannot fill a widget. */
 const WAITING_SHOWN = 2;
-const waitingShown = computed(() => waiting.value.slice(0, WAITING_SHOWN));
-const waitingExtra = computed(() => Math.max(0, waiting.value.length - WAITING_SHOWN));
+const waitingShown = computed(() => pendingMessages.value.slice(0, WAITING_SHOWN));
+const waitingExtra = computed(() => Math.max(0, pendingMessages.value.length - WAITING_SHOWN));
 
 const scroller = ref<HTMLElement | null>(null);
 const root = ref<HTMLElement | null>(null);
@@ -354,12 +349,22 @@ watch(
 </script>
 
 <template>
-  <div ref="root" class="companion" :class="{ narrow }" :style="{ minHeight: railHeight + 'px' }" @mousemove="trackPointer" @mouseleave="nearScroll = false">
+  <div ref="root" class="companion" :class="{ narrow }"  @mousemove="trackPointer" @mouseleave="nearScroll = false">
+    <header class="companion-header" :class="{ 'drag-strip': draggable }" :title="draggable ? 'Drag this bar to move the desktop window. Resize at the edges.' : undefined">
+      <span v-if="draggable" class="drag-hint">
+        <svg aria-hidden="true" width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+          <circle cx="2" cy="3" r="1" /><circle cx="8" cy="3" r="1" />
+          <circle cx="2" cy="7" r="1" /><circle cx="8" cy="7" r="1" />
+          <circle cx="2" cy="11" r="1" /><circle cx="8" cy="11" r="1" />
+        </svg>
+        Drag to move
+      </span>
+      <strong :title="sessionName">{{ sessionName }}</strong><span class="companion-state" :class="{ warning: offline || muted || voiceMuted }" role="status">{{ stateLabel }}</span>
+    </header>
     <!-- Left rail: the user's indicator. Lights up while they talk. -->
     <div class="rail left" :class="{ active: mode === 'user' }">
-      <svg viewBox="0 0 100 100" class="hex">
-        <polygon points="50,4 90,27 90,73 50,96 10,73 10,27"
-          fill="none" stroke="currentColor" stroke-width="5" />
+      <svg viewBox="0 0 100 100" class="hex" aria-hidden="true">
+        <rect x="8" y="8" width="84" height="84" rx="24" fill="var(--surface-hover)" />
         <!-- Always drawn: silence is a slow breath, speech rides on top. -->
         <g class="spectrum">
           <rect v-for="(h, i) in bars" :key="i"
@@ -367,10 +372,11 @@ watch(
             rx="2" />
         </g>
       </svg>
+      <span>{{ muted ? "Mic off" : mode === "user" ? "Recording" : "Microphone" }}</span>
     </div>
 
     <!-- The thread: pixel-clamped, scrollable, pinned to the newest. -->
-    <div ref="scroller" class="thread" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll, scrollable: overflowing, 'clipped-below': clippedBelow }" :style="{ maxHeight: threadHeight + 'px' }">
+    <div ref="scroller" class="thread" tabindex="0" role="region" aria-label="Conversation history" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll, scrollable: overflowing, 'clipped-below': clippedBelow }" :style="{ maxHeight: threadHeight + 'px' }">
       <transition-group
         :name="animateArrival ? 'arrive' : ''"
         tag="div"
@@ -383,7 +389,7 @@ watch(
           compact
           :side="m.role === 'claude' ? 'right' : 'left'"
           :accent="m.role === 'claude' ? 'violet' : 'amber'"
-          who="" :status-kind="m.statusKind ?? 'off'" :status-label="m.statusLabel ?? ''" time=""
+          :who="m.role === 'user' ? 'You' : sessionName" :status-kind="m.statusKind ?? 'off'" :status-label="m.statusLabel ?? ''" time=""
           :text="m.text"
         />
       </transition-group>
@@ -397,8 +403,8 @@ watch(
         who="" status-kind="rec" status-label="" time=""
         :text="liveText"
       />
-      <span v-else-if="mode === 'user'" class="listening">LISTENING</span>
-      <span v-else-if="!feed.length && !liveText && !activity" class="listening">NO MESSAGES YET</span>
+      <span v-else-if="mode === 'user'" class="listening">Listening…</span>
+      <span v-else-if="!feed.length && !liveText && !activity" class="listening">Start talking. Your conversation will appear here.</span>
 
       <!-- The present: what the agent is doing between messages. -->
       <span v-if="activity" class="activity">{{ activity }}<i /><i /><i /></span>
@@ -412,459 +418,80 @@ watch(
         compact
         :side="m.role === 'claude' ? 'right' : 'left'"
         :accent="m.role === 'claude' ? 'violet' : 'amber'"
-        who="" :status-kind="m.statusKind ?? 'off'" :status-label="m.statusLabel ?? ''" time=""
+        :who="m.role === 'user' ? 'You' : sessionName" :status-kind="m.statusKind ?? 'off'" :status-label="m.statusLabel ?? ''" time=""
         :text="m.text"
       />
-      <span v-if="waitingExtra" class="listening">+{{ waitingExtra }} WAITING</span>
+      <span v-if="waitingExtra" class="listening">+{{ waitingExtra }} waiting</span>
     </div>
 
-    <!-- Claude's head floats over the thread's bottom-right corner so the
-         scrollbar can live at the widget's true right edge. -->
+    <!-- Session controls stay below the scrollable conversation. -->
     <div class="rail right" :class="{ active: mode === 'claude' }">
-      <!-- Every conversation, in the dashboard's tab order. Nothing moves
-           when you switch: the selected one grows and lights up in place. -->
+      <!-- Selection preserves the session order and button sizes. -->
       <button
         v-for="a in agents"
         :key="a.name"
         class="head"
         :class="{ other: !a.active, current: a.active, unread: a.unread }"
-        :style="otherStyle(a.voice)"
-        :title="a.name"
+        :title="a.name" :aria-label="a.name" :aria-pressed="!!a.active"
         @click="$emit('select', a.name)"
-      ><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
+      ><VoiceAvatar :voice="a.voice" :size="44" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->
-      <span v-if="!agents.length" class="head current" :style="portrait"
-      ><span v-if="waiting" class="waiting">{{ waiting > 9 ? "9+" : waiting }}</span></span>
+      <span v-if="!agents.length" class="head current"
+      ><VoiceAvatar :voice="voice" :size="44" /><span v-if="waiting" class="waiting">{{ waiting > 9 ? "9+" : waiting }}</span></span>
     </div>
   </div>
 </template>
 
 <style>
-/* Keep the HUD's dark backdrop from hud.css. The widget's colours are
-   translucent - rgba surfaces and borders - so they are mixed with whatever
-   is behind them. Over a browser's white page they wash out and stop
-   matching Storybook, where stories render on that same dark chrome.
-   Transparency is opt-in via ?transparent=1, for a native shell that can
-   actually composite it; a plain browser paints white behind the page and
-   would only break the colours again. */
-html,
-body,
-#app {
-  margin: 0;
-  height: 100%;
-}
-
+body.companion-transparent, body.companion-transparent #app { background:transparent; }
+body.companion-transparent .companion { background:transparent; border-color:transparent; box-shadow:none; }
+body.companion-transparent .companion-header,
+body.companion-transparent .rail { background:rgba(27,29,33,.94); border-radius:10px; box-shadow:0 0 0 1px #f3f4f580, 0 0 0 2px #151619b3; }
+body.companion-transparent .companion-header { padding:7px 10px; border-bottom:0; }
+body.companion-transparent .rail { padding:5px; }
+body.companion-transparent .msg { background:rgba(27,29,33,.94); border-color:#f3f4f580; box-shadow:0 0 0 1px #151619b3; }
+body.companion-transparent .msg.side-left { background:rgba(41,40,37,.94); }
+body.companion-transparent .listening,
+body.companion-transparent .activity { background:rgba(27,29,33,.94); border-radius:8px; padding:6px 10px; }
+body.companion-transparent .msg, body.companion-transparent .msg * { -webkit-app-region:no-drag; cursor:text; user-select:text; }
+body.companion-transparent button { -webkit-app-region:no-drag; cursor:pointer; }
+body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 </style>
-
-<style>
-/* Floating over an editor, the widget should be its CONTENTS - bubbles,
-   portraits, the hexagon - not a dark slab with contents inside it. So the
-   panel itself loses its background and border, while everything that
-   carries meaning becomes fully opaque instead of 85% (translucent bubbles
-   over live code are unreadable, and the code behind them is unreadable
-   too). Only in transparent mode; the browser keeps its panel. */
-body.companion-transparent .companion {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-}
-/* An invisible window has no edges, so there is no way to tell where it
-   ends or what responds to a drag.
-   Drawn on the WINDOW, not on the widget: hovering the widget itself left
-   gaps wherever a child sat outside its box (the hexagon) and the outline
-   was clipped where the widget did not fill the window. Fixed to the
-   viewport, it always traces the real edge, and one listener on the window
-   means every part of it counts as hover. */
-body.companion-transparent::after {
-  content: "";
-  position: fixed;
-  inset: 2px;
-  /* Two-tone dashes: white, dark, white, dark, all the way round.
-     A single colour can only ever work on some backgrounds, and this window
-     floats over all of them - so instead of choosing, the line carries both,
-     and whichever one contrasts is the one you see. Drawn as four striped
-     edges rather than a CSS border, because a border's dash phase cannot be
-     offset to interleave a second colour. Replaces a difference-blend
-     version, which worked but also inverted our own chrome underneath it. */
-  background-image:
-    repeating-linear-gradient(90deg, #fff 0 5px, #10151f 5px 10px),
-    repeating-linear-gradient(90deg, #fff 0 5px, #10151f 5px 10px),
-    repeating-linear-gradient(0deg, #fff 0 5px, #10151f 5px 10px),
-    repeating-linear-gradient(0deg, #fff 0 5px, #10151f 5px 10px);
-  background-size: 100% 1px, 100% 1px, 1px 100%, 1px 100%;
-  background-position: 0 0, 0 100%, 0 0, 100% 0;
-  background-repeat: no-repeat;
-  opacity: 0;
-  transition: opacity 140ms ease;
-  pointer-events: none;
-  z-index: 100;
-}
-body.companion-transparent.hovering::after { opacity: 1; }
-body.companion-transparent .companion .msg {
-  background: #050e18 !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
-}
-body.companion-transparent .companion .msg.side-left {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, #050e18), #050e18 45%) !important;
-}
-body.companion-transparent .companion .msg.side-right {
-  background: linear-gradient(270deg, color-mix(in srgb, var(--accent) 14%, #050e18), #050e18 45%) !important;
-}
-/* The hexagon is an outline with nothing behind it: over an editor its bars
-   were drawn straight onto the code. Fill the shape itself - not the SVG
-   box, or it becomes a dark square. */
-body.companion-transparent .companion .hex polygon {
-  fill: #050e18;
-}
-
-/* Older messages are NOT faded here.
-   On the HUD's dark panel, dropping a bubble to 55% reads as "further back".
-   Over an editor there is no panel behind it, so the same rule makes the
-   code show through the message - the past becomes literally transparent
-   rather than merely quieter. The effect is worth having; it needs to be
-   done with colour, not opacity. */
-body.companion-transparent .companion .msgs .older {
-  opacity: 1;
-}
-
-/* The hexagon is never dimmed here.
-   Opacity means "further back" only when there is something behind it to
-   recede INTO; over a white editor a 45% hexagon just looks broken. So it
-   stays fully drawn and says idle-versus-live with COLOUR: a cool slate
-   when it is only listening, amber and glowing when it holds the floor. */
-/* Two elements, one job each - never both changing at once, or neither is
-   a signal. The RING is identity: amber, always, never dimmed. The BARS
-   are state: amber while listening, red while recording - the one colour
-   everybody reads as "this is being captured" without being told. */
-body.companion-transparent .companion .rail .hex {
-  opacity: 1;
-  color: var(--amber);
-}
-body.companion-transparent .companion .hex .spectrum rect {
-  fill: var(--amber);
-  /* Full brightness while idle too: the microphone IS on, and a dimmed
-     spectrum implies it is not. Recording is said with colour, not with
-     how bright the bars are. */
-  opacity: 1;
-  transition: fill 120ms ease;
-}
-body.companion-transparent .companion .rail.active .hex .spectrum rect {
-  fill: #ff4d4d;
-}
-
-/* The heads sit on nothing now, so they need their own ground. */
-body.companion-transparent .companion .head {
-  background-color: #050e18;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-/* A frameless native window has no title bar, so the page has to say what
-   can be grabbed - and the CURSOR has to say it too, because a draggable
-   region that looks identical to a non-draggable one is a guessing game.
-   Three behaviours, matching what each area is FOR:
-     - anywhere on the widget: a grab hand, and it drags the window
-     - message text: a text cursor, and it selects - you may want to copy
-       what was said, and dragging the window instead would be maddening
-     - avatars and buttons: a pointer, and they click */
-body.companion-transparent .companion { cursor: default; }
-
-body.companion-transparent .msg,
-body.companion-transparent .msg * {
-  -webkit-app-region: no-drag;
-  cursor: text;
-  user-select: text;
-}
-
-body.companion-transparent button,
-body.companion-transparent .head {
-  -webkit-app-region: no-drag;
-  cursor: pointer;
-}
-
-/* Only the handle drags. Everything else keeps its own cursor, which an
-   OS drag region would override with an arrow. */
-body.companion-transparent .drag-strip {
-  -webkit-app-region: drag;
-}
-
-/* Opt-in transparency, applied by CompanionView when asked for. */
-body.companion-transparent,
-body.companion-transparent #app {
-  background: transparent !important;
-}
-body.companion-transparent::before {
-  display: none;
-}
-</style>
-
 <style scoped>
-.companion {
-  /* Fluid: fill whatever the host gives (the Electron window, the PiP
-     window, a story frame). 420px is the design width; BELOW it the widget
-     does not shrink the bubbles - it reflows: the hexagon and the avatar
-     rail drop under the last bubble (see the container query below), so
-     the true floor is just the bubbles themselves. For a widget squeezed
-     into a narrow strip of screen. */
-  width: 100%;
-  min-width: 280px;
-  /* Never taller than the host viewport: bottom-anchored, an overgrown box
-     used to overflow OUT THE TOP (measured: -178px) and its bubbles rode
-     over the drag strip. The thread scrolls internally; the box does not
-     escape the window. */
-  max-height: 100%;
-  overflow: hidden;
-  box-sizing: border-box;
-  background: rgba(5, 14, 24, 0.92);
-  border: 1px solid rgba(63, 216, 255, 0.25);
-  border-radius: 14px;
-  padding: 16px 4px 16px 16px; /* thread + scrollbar run to the right edge */
-  font-family: var(--mono);
-  /* wrap is ALWAYS on: above 420px nothing ever wraps (the thread flexes,
-     rails fit), and a container query cannot style its own container -
-     so the narrow-mode reflow relies on this base rule. */
-  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
-  position: relative;
-}
-
-/* --- rails: always there, dim until their side holds the floor ---------- */
-/* Dimming means "not talking right now" - it must not dim the whole rail
-   any more, because the rail now also carries the other conversations, and
-   the ACTIVE portrait has to stay legible whether or not it is speaking.
-   So dim the elements, not the container. */
-.rail { flex: none; }
-.rail .hex { opacity: 0.45; transition: opacity 0.3s ease; }
-.rail.active .hex { opacity: 1; }
-/* the head sits ON TOP of the thread, clear of the edge scrollbar */
-.rail.right { position: absolute; right: 22px; bottom: 16px; z-index: 1; }
-
-.hex { width: 52px; height: 52px; color: var(--amber); display: block; }
-.rail.active .hex { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--amber) 70%, transparent)); }
-/* Heights come from the mic level frame by frame - a keyframe animation
-   would fight the script for the same property. Dimmed at rest so the idle
-   breathing reads as "listening" rather than "something is happening". */
-.hex .spectrum rect {
-  fill: currentColor;
-  opacity: 0.45;
-  transition: opacity 180ms ease;
-}
-.rail.active .spectrum rect { opacity: 1; }
-
-/* The stack of other conversations, climbing away from the active one. */
-.rail.right { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-/* Two sizes, not a gradient: the conversation you are in, and every other
-   one. A ladder of shrinking heads implied an order that does not exist -
-   the other agents are peers, none is further away than another. */
-/* Two sizes, one order. The rail is the dashboard's tab strip turned
-   vertical: positions never change, so switching cannot shuffle anything -
-   the selected head simply grows and lights up where it already was. */
-.head.current {
-  width: 52px; height: 52px;
-  opacity: 1;
-  border-color: var(--violet);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--violet) 45%, transparent);
-}
-.head.other {
-  width: 34px; height: 34px;
-  padding: 0;
-  opacity: 0.55;
-  border-color: rgba(148, 163, 220, 0.4);
-  cursor: pointer;
-  transition: width 400ms ease, height 400ms ease, opacity 140ms ease,
-    transform 140ms ease, border-color 140ms ease;
-}
-.head.other:hover { opacity: 1 !important; transform: scale(1.08); border-color: var(--violet); }
-/* A dot, not a badge: at 30px there is no room for a number, and the point
-   is only "something happened here". */
-.head.other.unread { box-shadow: 0 0 0 2px var(--amber); }
-
-.head {
-  display: block; width: 44px; height: 44px;
-  border: 2px solid var(--violet);
-  border-radius: 50%;
-  position: relative;
-  /* Switching conversations: the old head shrinks as the new one grows -
-     a few hundred ms of motion instead of an instant jump. */
-  transition: width 400ms ease, height 400ms ease, opacity 140ms ease,
-    border-color 140ms ease;
-}
-/* Queued-to-speak counter: a small solid badge pinned to the head's edge.
-   Solid, not translucent - it has to survive any backdrop, like the
-   bubbles. Amber = "parked, waiting", the same language as UNHEARD. */
-.waiting {
-  position: absolute; top: -5px; right: -7px;
-  min-width: 15px; height: 15px; padding: 0 3px;
-  border-radius: 8px; box-sizing: border-box;
-  background: var(--amber, #ffb84d); color: #1a1205;
-  font: 700 10px/15px var(--mono, monospace); text-align: center;
-  pointer-events: none;
-}
-.rail.active .head {
-  box-shadow: 0 0 14px color-mix(in srgb, var(--violet) 60%, transparent);
-  animation: head-bob 1.6s ease-in-out infinite;
-}
-@keyframes head-bob { 50% { translate: 0 -2px; } }
-
-/* --- the thread ------------------------------------------------------------ */
-.thread {
-  flex: 1; min-width: 0;
-  overflow-y: auto;
-  display: flex; flex-direction: column; gap: 12px;
-  /* bubbles keep clear of the floating head and the edge scrollbar */
-  padding-right: 70px;
-  /* NOTE: no scrollbar-width/scrollbar-color here - when set, Chrome
-     switches to native scrollbars and IGNORES the ::-webkit-scrollbar
-     hairline below. Webkit styles alone cover our Chrome-based use. */
-  /* Reserve the 6px gutter even before the thread overflows - otherwise
-     the bubbles shift 6px left the moment a scrollbar appears (and the
-     narrow-mode avatar alignment below assumes the gutter is there). */
-  scrollbar-gutter: stable;
-  /* older messages melt away at the top edge */
-  /* The melt-away, tuned by eye on stream day 4: a dead-transparent band
-     first (nothing readable near the drag strip), then a long ramp - full
-     opacity only from 72px down. "Complete transparency must start
-     earlier, counting from the bottom." */
-  /* Ease-in-out, picked by eye in the Storybook fade lab (day 4):
-     dead zone 16px, full opacity at 52px - stops match the lab's
-     ease-in-out at those slider values. Overridable via
-     --companion-thread-mask so the lab can keep comparing live. */
-  /* Near-clip per the white-backdrop verdict: 16px dead zone, full opacity
-     already at 28px - the half-ghost band shrinks to ~12px, so light text
-     never hovers half-melted over a light desktop. */
-  /* ...but only on a thread that SCROLLS. The fade says "older messages are
-     up there"; with nothing hidden it just crops the first bubble and the
-     widget looks broken. */
-}
-.thread.scrollable {
-  mask-image: var(--companion-thread-mask, linear-gradient(to bottom,
-    transparent 0 16px,
-    rgba(0, 0, 0, 0.15) 19.6px,
-    rgba(0, 0, 0, 0.85) 24.4px,
-    black 28px));
-}
-/* Content clipped below the viewport gets a SHORT bottom melt too - but
-   only then: at full scroll the newest message ends sharp, and the fade
-   appearing is itself the "there is more below" signal. */
-.thread.scrollable.clipped-below {
-  mask-image: linear-gradient(to bottom,
-    transparent 0 16px,
-    rgba(0, 0, 0, 0.15) 19.6px,
-    rgba(0, 0, 0, 0.85) 24.4px,
-    black 28px,
-    black calc(100% - 20px),
-    transparent 100%);
-}
-/* Constant 6px gutter so nothing ever reflows; the thumb is DRAWN as a
-   hairline (transparent border + padding-box clip) and fills the gutter
-   only when the pointer is actually on the scrollbar - grab-ready, but
-   invisible-ish for the scroll-wheel case. */
-.thread::-webkit-scrollbar { width: 6px; }
-.thread::-webkit-scrollbar-track { background: transparent; }
-.thread::-webkit-scrollbar-thumb {
-  background: rgba(63, 216, 255, 0.2);
-  background-clip: padding-box;
-  border-left: 4.5px solid transparent;
-  border-radius: 3px;
-}
-.thread.nearscroll::-webkit-scrollbar-thumb,
-.thread::-webkit-scrollbar-thumb:active {
-  border-left-width: 0;
-  background: rgba(63, 216, 255, 0.5);
-}
-.msgs { display: flex; flex-direction: column; gap: 12px; }
-.msgs .older { opacity: 0.55; }
-/* Denser type, companion only.
- *
- * The widget is a glance at a corner of the screen, not a reading surface -
- * at the dashboard's size a couple of sentences fill it and the thread turns
- * into a scrollbar. Smaller text and tighter bubbles buy roughly twice the
- * history in the same pixels. Scoped to .companion so the same Bubble stays
- * full size everywhere else. */
-/* NOTE: target .msg, not .msg.compact. Bubble takes `compact` as a PROP and
-   uses it for v-if only - it never puts the class on the element, so every
-   `.msg.compact` rule (including Bubble's own) matches nothing. Cost me a
-   round of "the font is not changing" on stream. */
-/* Per-message sizing. A short line is meant to be read at a glance from
-   the corner of the eye; a long one has to fit, and you will look at it
-   properly anyway. */
-/* Waiting its turn: present, but clearly not yet said. */
-/* Awaiting pickup: the dashed border alone says "not settled yet" -
-   NO transparency, the text stays fully readable (and in transparent
-   mode a see-through bubble dissolved into the editor behind it). */
-.thread :deep(.pending) { border-style: dashed; }
-.thread :deep(.pending .txt) { color: var(--muted); }
-
-/* The busy line. Three dots that actually move, because a static "thinking"
-   label is indistinguishable from a frozen widget. */
-.activity {
-  /* Claude's side, shaped like one of his bubbles: it occupies the place
-     the reply will take, so the feed does not jump when it arrives.
-     Right-aligned inside, mirroring the dashboard's left. */
-  align-self: flex-end;
-  max-width: 88%;
-  padding: 5px 10px;
-  text-align: right;
-  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--violet); opacity: 0.9;
-  border: 1px dashed color-mix(in srgb, var(--violet) 35%, transparent);
-  border-right: 2px solid var(--violet);
-  background: color-mix(in srgb, var(--violet) 5%, transparent);
-  border-radius: 8px;
-}
-.activity i {
-  display: inline-block; width: 3px; height: 3px; margin-left: 3px;
-  border-radius: 50%; background: currentColor;
-  animation: dot 1.2s ease-in-out infinite;
-}
-.activity i:nth-child(2) { animation-delay: 0.15s; }
-.activity i:nth-child(3) { animation-delay: 0.3s; }
-@keyframes dot { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-
-.thread :deep(.size-l) { padding: 8px 12px; }
-.thread :deep(.size-l .txt) { font-size: 14px; line-height: 1.45; }
-
-.thread :deep(.size-m) { padding: 6px 10px; }
-.thread :deep(.size-m .txt) { font-size: 11.5px; line-height: 1.4; }
-
-.thread :deep(.size-s) { padding: 5px 9px; }
-.thread :deep(.size-s .txt) { font-size: 9.5px; line-height: 1.32; }
-.thread :deep(.size-s .who) { font-size: 8px; letter-spacing: 0.16em; }
-
-.msgs :deep(.msg.side-right), .thread :deep(.msg.side-right) { align-self: flex-end; }
-.msgs :deep(.msg.side-left), .thread :deep(.msg.side-left) { align-self: flex-start; }
-
-.arrive-enter-active { transition: all 0.35s ease; }
-.arrive-enter-from { opacity: 0; transform: translateY(14px); }
-.arrive-move { transition: transform 0.35s ease; }
-
-/* The in-progress message stays visible even when the thread is scrolled
-   up - sticky pins it to the scroller's bottom edge, same always-on-top
-   behavior as the dashboard's compose float. */
-.livebubble { flex: none; align-self: flex-start; position: sticky; bottom: 0; z-index: 2; }
-.listening {
-  flex: none;
-  align-self: flex-start;
-  font-size: 10px; letter-spacing: 0.34em; color: var(--amber);
-  text-shadow: var(--glow-amber);
-  animation: fade 1.4s ease-in-out infinite;
-}
-@keyframes fade { 50% { opacity: 0.45; } }
-
-/* NARROW MODE: under the 420px design width the side rails cost more than
-   they give - the thread takes the full width and both indicators move
-   into a bottom row: hexagon left, conversation heads right. */
-.companion.narrow .thread { flex-basis: 100%; order: 0; padding-right: 12px; }
-.companion.narrow .rail.left { order: 1; }
-.companion.narrow .rail.right {
-  position: static; order: 2; margin-left: auto;
-  /* Align the heads' right edge with the BUBBLES' right edge: the thread
-     keeps 12px of its own right padding PLUS the constant 6px scrollbar
-     gutter, the root only 4px - without the full 18px the avatars poke
-     out past Claude's messages. */
-  margin-right: 18px;
-  flex-direction: row; align-items: flex-end; gap: 6px;
-}
-/* Heads keep their NORMAL sizes in narrow mode - shrinking the active
-   avatar at the narrowest view read as a regression, not a savings. */
-/* the hexagon deliberately keeps its base 52px - one size in both modes */
-
+.companion { width:100%; min-width:0; max-height:100%; overflow:hidden; box-sizing:border-box; border:1px solid var(--line-strong); background:var(--panel-solid); color:var(--ink); border-radius:14px; padding:14px; font-family:var(--sans); display:flex; flex-wrap:wrap; gap:12px; align-items:center; position:relative; box-shadow:0 8px 28px #0003; }
+.companion-header { display:flex; justify-content:space-between; align-items:center; gap:12px; width:100%; padding-bottom:12px; border-bottom:1px solid var(--line); order:-2; }
+.companion-header strong { font-size:13px; font-weight:600; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.companion-state { flex:none; font-size:11px; color:var(--green); }
+.companion-state.warning { color:var(--amber); }
+.companion .companion-header.drag-strip { box-sizing:border-box; min-height:28px; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:6px; background:linear-gradient(#202226,#202226) padding-box, repeating-linear-gradient(90deg,#edeef0 0 7px,#151619 7px 14px) border-box; box-shadow:none; -webkit-app-region:drag; cursor:grab; user-select:none; }
+.drag-strip strong { margin-right:auto; font-size:12px; }
+.drag-hint { display:flex; flex:none; align-items:center; gap:5px; color:var(--muted); font-size:10px; white-space:nowrap; }
+.thread { order:-1; flex-basis:100%; min-width:0; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:2px 4px 2px 1px; scrollbar-gutter:stable; }
+.msgs { display:flex; flex-direction:column; gap:10px; }
+.thread :deep(.pending) { border-style:dashed; }
+.thread :deep(.size-l .txt) { font-size:14px; }
+.thread :deep(.size-m .txt), .thread :deep(.size-s .txt) { font-size:13px; }
+.rail { flex:none; }
+.rail.left { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); }
+.hex { width:30px; height:30px; color:var(--muted); }
+.spectrum rect { fill:currentColor; }
+.rail.active .hex, .rail.left.active { color:var(--amber); }
+.rail.right { display:flex; gap:7px; align-items:center; margin-left:auto; max-width:75%; padding:5px 4px; overflow-x:auto; }
+.head { position:relative; display:flex; flex:none; width:48px; height:48px; border:2px solid transparent; border-radius:12px; background-color:var(--surface-hover); padding:0; }
+.head.current { border-color:var(--cyan); }
+.head:hover { border-color:var(--ink); }
+.head.unread { border-bottom-color:var(--amber); }
+.rail.active .head.current { border-color:var(--green); }
+.waiting { position:absolute; top:-5px; right:-6px; min-width:14px; height:14px; padding:0 3px; background:var(--amber); color:var(--bg0); border-radius:7px; font:600 9px/14px var(--sans); }
+.listening { padding:16px 8px; color:var(--muted); font-size:13px; }
+.activity { color:var(--violet); font-size:12px; overflow-wrap:anywhere; align-self:flex-end; padding:6px 10px; }
+.activity i { display:inline-block; width:3px; height:3px; margin-left:3px; background:currentColor; border-radius:50%; animation:dot 1.2s infinite; }
+.activity i:nth-child(2) { animation-delay:.2s; }
+.activity i:nth-child(3) { animation-delay:.4s; }
+.livebubble { flex:none; position:sticky; bottom:0; z-index:2; }
+.arrive-enter-active { transition:opacity .18s ease, transform .18s ease; }
+.arrive-enter-from { opacity:0; transform:translateY(6px); }
+@keyframes dot { 50% { opacity:.4; } }
+.companion.narrow { padding:8px; gap:8px; }
+.companion.narrow .rail.left > span { display:none; }
 </style>

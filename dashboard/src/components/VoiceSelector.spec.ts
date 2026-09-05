@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import VoiceSelector from "./VoiceSelector.vue";
 
 describe("VoiceSelector", () => {
+  it("returns keyboard focus to the trigger when Escape closes the options", async () => {
+    const wrapper = mount(VoiceSelector, { props: { voice: "rex" }, attachTo: document.body });
+    await wrapper.get(".voicecur").trigger("click");
+    await wrapper.get(".voicelist .row").trigger("keydown", { key: "Escape" });
+    expect(document.activeElement).toBe(wrapper.get(".voicecur").element);
+    expect(wrapper.find(".voicelist").exists()).toBe(false);
+    wrapper.unmount();
+  });
   it("shows the current voice uppercase, without a gender label", () => {
     const wrapper = mount(VoiceSelector, { props: { voice: "altair" } });
 

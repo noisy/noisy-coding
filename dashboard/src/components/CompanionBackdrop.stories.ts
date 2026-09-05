@@ -68,9 +68,9 @@ const Backdrop = defineComponent({
   },
   template: `
     <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;gap:12px;align-items:center;font:13px/1.5 monospace;
-                  padding:8px 12px;border:1px solid #3fd8ff55;border-radius:8px;background:#0b1622;color:#cfe9f5">
-        <strong style="color:#3fd8ff">controls:</strong>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;font:13px/1.5 var(--sans);
+                  padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)">
+        <strong>Preview</strong>
         <label>backdrop
           <input type="range" min="0" max="100" v-model.number="level"
                  :disabled="mode !== 'grey'" style="vertical-align:middle" />
@@ -83,7 +83,7 @@ const Backdrop = defineComponent({
       </div>
 
       <div :style="{ background, padding: '28px', borderRadius: '10px' }">
-        <div>
+        <div style="max-width:420px;margin:auto">
           <Companion mode="claude" voice="lux" :feed="FEED" :agents="AGENTS"
                      :max-height="200" />
         </div>

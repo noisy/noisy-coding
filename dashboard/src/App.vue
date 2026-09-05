@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import "./styles/dashboard.css";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown } from "./api/client";
 import type { InputDevice } from "./types";
@@ -14,7 +15,7 @@ import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
 import EngineChoice from "./components/EngineChoice.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
-import SessionRing from "./components/SessionRing.vue";
+import TurnHistory from "./components/TurnHistory.vue";
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
@@ -386,7 +387,8 @@ async function pickMic(name: string) {
 }
 // Ticking countdown for the shutdown banner (0.5 s poll keeps it honest).
 const nowTick = ref(Date.now());
-setInterval(() => (nowTick.value = Date.now()), 500);
+const shutdownTimer = setInterval(() => (nowTick.value = Date.now()), 500);
+onUnmounted(() => clearInterval(shutdownTimer));
 const shutdownSeconds = computed(() => {
   const at = status.value?.shutdown_at ?? 0;
   if (!at) return null;
@@ -443,14 +445,12 @@ const LANGUAGES: Record<string, string> = {
 </script>
 
 <template>
-  <div class="scanlines" />
-  <div class="vignette" />
 
   <!-- First contact: the HUD itself is the demo — live scopes prove the
        mic works, API-dependent sections sit dimmed behind the key prompt. -->
-  <div v-if="unconfigured" class="setup-overlay">
+  <div v-if="unconfigured" class="setup-overlay" role="dialog" aria-modal="true" aria-labelledby="setup-title">
     <div class="setup-box">
-      <div class="setup-title">NOISY-CODING · FIRST CONTACT</div>
+      <div id="setup-title" class="setup-title">Welcome to Noisy Coding</div>
       <!-- Engine first, key second (#36/#37): the cards decide whether the
            key form below applies at all. -->
       <EngineChoice @mode="gateMode = $event" />
@@ -482,7 +482,7 @@ const LANGUAGES: Record<string, string> = {
         <input
           v-model="keyInput"
           type="password"
-          class="setup-input"
+          class="setup-input" aria-label="xAI API key" autofocus
           placeholder="xai-…"
           :disabled="checksRunning"
           @keyup.enter="submitKey"
@@ -508,7 +508,7 @@ const LANGUAGES: Record<string, string> = {
     </div>
   </div>
 
-  <div class="hud">
+  <div class="hud" :inert="unconfigured">
     <!-- The Docker path preselects the tab as mic/speaker, so the picker
          never fires a change event — and getUserMedia needs a user
          gesture anyway. This banner IS that gesture. -->
@@ -525,115 +525,12 @@ const LANGUAGES: Record<string, string> = {
       🎙 ENABLE TAB AUDIO — this tab is your {{ tabAudioRoles }}; click once to activate
       <span v-if="browserAudio.error.value" class="taberr">{{ browserAudio.error.value }}</span>
     </button>
-    <div class="cols">
-      <div class="col-left">
-        <!-- Panic-sized mute: quick muting must not require aiming at a
-             tiny control, so it gets widget-scale real estate up top. -->
-        <button class="bigmute" :class="{ muted: status?.muted, locked: unconfigured }" @click="toggleMute">
-          <span class="bm-label">{{ status?.muted ? "◉ MIC MUTED" : "MUTE MIC" }}</span>
-          <span class="bm-sub">{{ status?.muted ? "TAP TO UNMUTE" : "ONE TAP TO GO SILENT" }}</span>
-        </button>
-        <!-- Holding while muted records nothing — lock the button and say
-             why instead of silently eating the press. -->
-        <button
-          v-if="status?.detection_mode === 'ptt'"
-          class="bigmute talk"
-          :class="{ held: status?.ptt_held }"
-          :disabled="status?.muted"
-          @pointerdown="pttPress"
-          @pointerup="stopPtt"
-          @pointercancel="stopPtt"
-        >
-          <span class="bm-label">
-            {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "HOLD TO TALK" }}
-          </span>
-          <span class="bm-sub">
-            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST"
-               : status?.ptt_held ? (status?.ptt_toggle_key ? `LIVE — ${status.ptt_toggle_key.toUpperCase()} OR TAP HERE TO END` : "RELEASE TO SEND")
-               : "HOLD THIS OR THE SPACE BAR" }}
-          </span>
-        </button>
-        <HudPanel index="01" title="MIC INPUT · OSCILLOSCOPE" class="flexpanel">
-          <Oscilloscope :level="level" />
-          <div class="dbrow">
-            <span class="lbl">LEVEL</span>
-            <span class="dbbar"><i :style="{ width: levelPercent }" /></span>
-            <span class="val">{{ levelDb }}</span>
-          </div>
-        </HudPanel>
-        <HudPanel index="02" title="AUDIO SPECTRUM" class="flexpanel">
-          <SpectrumBars :level="level" />
-        </HudPanel>
-        <HudPanel index="03" title="CONTROLS" :class="{ locked: unconfigured }">
-          <div class="controls">
-            <!-- The two mode toggles sit together: same choice, two
-                 directions (Claude's voice out vs your voice in). -->
-            <div class="ctlrow" title="Agent speech: batch renders the whole clip first, live streams as it synthesizes">
-              <span class="lbl">TEXT TO SPEECH</span>
-              <button class="ctl small" :class="{ on: status?.tts_mode === 'batch' }" @click="setTtsMode('batch')">BATCH</button>
-              <button class="ctl small" :class="{ on: status?.tts_mode === 'live' }" @click="setTtsMode('live')">LIVE</button>
-            </div>
-            <div class="ctlrow" title="Your speech: batch transcribes after silence ($0.10/h), live streams while you talk ($0.20/h)">
-              <span class="lbl">SPEECH TO TEXT</span>
-              <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">BATCH</button>
-              <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">LIVE</button>
-            </div>
-            <div class="ctlrow" title="Subtle blips on conversation events; pick which in SETTINGS">
-              <span class="lbl">AUDIO CUES</span>
-              <button class="ctl small" :class="{ on: cuesEnabled }" @click="cuesEnabled = true">ON</button>
-              <button class="ctl small" :class="{ on: !cuesEnabled }" @click="cuesEnabled = false">OFF</button>
-            </div>
-            <div class="ctlcol" title="How your turn ends: auto = the VAD detects silence; push to talk = you hold the big button">
-              <span class="lbl">TURN DETECTION</span>
-              <div class="ctlbtns">
-                <button class="ctl small" :class="{ on: status?.detection_mode === 'auto' }" @click="setDetection('auto')">AUTO</button>
-                <button class="ctl small" :class="{ on: status?.detection_mode === 'ptt' }" @click="setDetection('ptt')">PUSH TO TALK</button>
-              </div>
-            </div>
-            <div class="ctlrow">
-              <span class="lbl">SILENCE</span>
-              <select class="ctl small" :value="status?.end_silence_ms" @change="setSilence">
-                <option v-for="ms in SILENCE_OPTIONS" :key="ms" :value="ms">{{ (ms / 1000).toFixed(1) }}s</option>
-              </select>
-            </div>
-            <div class="ctlrow" title="Noise gate: how loud a voice must be to trip the mic. Lower it in a noisy room (café, open office) so background sound stops triggering recordings.">
-              <span class="lbl">MIC SENSITIVITY</span>
-              <select class="ctl small" :value="status?.mic_sensitivity ?? 50" @change="setSensitivity">
-                <option v-for="[value, label] in SENSITIVITY_OPTIONS" :key="value" :value="value">{{ label }}</option>
-              </select>
-            </div>
-            <div class="ctlrow">
-              <span class="lbl">SMART TURN</span>
-              <select class="ctl small" :value="status?.smart_turn" @change="setSmartTurn">
-                <option v-for="v in SMART_TURN_OPTIONS" :key="v" :value="v">{{ v === 0 ? "OFF" : v.toFixed(1) }}</option>
-              </select>
-            </div>
-            <div class="ctlrow" title="Language for speech recognition and synthesis; auto-detect handles mixed Polish/English">
-              <span class="lbl">LANGUAGE</span>
-              <select class="ctl small" :value="status?.language ?? ''" @change="setLanguage">
-                <option v-for="(name, code) in LANGUAGES" :key="code" :value="code">{{ name }}</option>
-              </select>
-            </div>
-          </div>
-        </HudPanel>
-        <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
-             conversation frame — the daemon meters all conversations. -->
-        <HudPanel index="05" title="SYSTEM STATE · COST">
-          <StatusStrip :status="status" :offline="offline" />
-        </HudPanel>
-        <button class="ctl settingsbtn" :class="{ on: showSettings }" @click="showSettings = !showSettings">
-          ⚙ SETTINGS
-        </button>
-      </div>
-
-      <div class="col-mid" :class="{ locked: unconfigured }">
         <header class="topbar">
           <div class="topbar-logobox">
             <div class="logo" :class="{ dev: isDevInstance }">
               <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
-                <polygon points="23,2 41,12.5 41,33.5 23,44 5,33.5 5,12.5" fill="none" stroke="#3fd8ff" stroke-width="1.4" opacity="0.9" />
-                <polygon points="23,8 36,15.5 36,30.5 23,38 10,30.5 10,15.5" fill="rgba(63,216,255,0.08)" stroke="#3fd8ff" stroke-width="0.7" opacity="0.6" />
-                <g stroke="#3fd8ff" stroke-width="2" stroke-linecap="round">
+                <rect x="4" y="4" width="38" height="38" rx="11" fill="var(--surface-hover)" />
+                <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
                   <line x1="17" y1="20" x2="17" y2="26" />
                   <line x1="21" y1="16" x2="21" y2="30" />
                   <line x1="25" y1="19" x2="25" y2="27" />
@@ -641,25 +538,129 @@ const LANGUAGES: Record<string, string> = {
                 </g>
               </svg>
               <div>
-                <div class="title">NOISY-CODING</div>
-                <div class="sub">TALK WITH YOUR AGENT</div>
-                <div v-if="instanceLabel" class="devbadge">{{ instanceLabel }}</div>
+                <div class="title">Noisy Coding</div>
+                <div class="sub">Your voice, in the workflow</div>
               </div>
             </div>
+            <div v-if="instanceLabel" class="devbadge" title="Development instance — not production">{{ instanceLabel }}</div>
           </div>
 
           <div class="sysstate">
+            <button class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
             <button
-              class="voicemute header-mute"
+              class="ctl header-action header-mute" :disabled="offline" :aria-pressed="!!status?.voice_muted"
+              :title="status?.voice_muted ? 'Resume agent playback' : 'Mute playback and keep replies for later'"
               :class="{ muted: status?.voice_muted, locked: unconfigured }"
               @click="toggleVoiceMute"
             >
-              <span class="vm-label">{{ status?.voice_muted ? "◉ ALL MUTED" : "MUTE ALL AGENTS" }}</span>
-              <span class="vm-sub">{{ status?.voice_muted ? "TAP TO UNMUTE" : "SILENT NOW, CATCH UP LATER" }}</span>
+              {{ status?.voice_muted ? "Unmute all agents" : "Mute all agents" }}
             </button>
           </div>
         </header>
-        <HudPanel v-if="showSettings" index="08" title="SETTINGS">
+    <div class="cols">
+      <div class="col-left">
+        <!-- Panic-sized mute: quick muting must not require aiming at a
+             tiny control, so it gets widget-scale real estate up top. -->
+        <button class="bigmute" :disabled="offline" :aria-pressed="!!status?.muted" :class="{ muted: status?.muted, locked: unconfigured }" @click="toggleMute">
+          <span class="bm-label">{{ offline ? "Microphone unavailable" : status?.muted ? "Microphone muted" : "Mute microphone" }}</span>
+          <span class="bm-sub">{{ offline ? "Waiting for the voice service" : status?.muted ? "Click to unmute" : "Listening · click to pause" }}</span>
+        </button>
+        <!-- Holding while muted records nothing — lock the button and say
+             why instead of silently eating the press. -->
+        <button
+          v-if="status?.detection_mode === 'ptt'"
+          class="bigmute talk"
+          :class="{ held: status?.ptt_held }"
+          :disabled="status?.muted || offline"
+          @pointerdown="pttPress"
+          @pointerup="stopPtt"
+          @pointercancel="stopPtt"
+        >
+          <span class="bm-label">
+            {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "Hold to talk" }}
+          </span>
+          <span class="bm-sub">
+            {{ status?.muted ? "MIC MUTED — UNMUTE FIRST"
+               : status?.ptt_held ? (status?.ptt_toggle_key ? `LIVE — ${status.ptt_toggle_key.toUpperCase()} OR TAP HERE TO END` : "RELEASE TO SEND")
+               : "Hold this or the space bar" }}
+          </span>
+        </button>
+        <HudPanel index="01" title="Microphone" class="flexpanel">
+          <Oscilloscope :level="level" />
+          <div class="dbrow">
+            <span class="lbl">Level</span>
+            <span class="dbbar"><i :style="{ width: levelPercent }" /></span>
+            <span class="val">{{ levelDb }}</span>
+          </div>
+        </HudPanel>
+        <HudPanel index="02" title="Audio spectrum" class="spectrum-panel">
+          <SpectrumBars :level="level" />
+        </HudPanel>
+        <HudPanel index="03" title="Audio controls" :class="{ locked: unconfigured }">
+          <div class="controls">
+            <!-- The two mode toggles sit together: same choice, two
+                 directions (Claude's voice out vs your voice in). -->
+            <div class="ctlrow" title="Agent speech: batch renders the whole clip first, live streams as it synthesizes">
+              <span class="lbl">Agent speech</span>
+              <button class="ctl small" :class="{ on: status?.tts_mode === 'batch' }" @click="setTtsMode('batch')">Batch</button>
+              <button class="ctl small" :class="{ on: status?.tts_mode === 'live' }" @click="setTtsMode('live')">Live</button>
+            </div>
+            <div class="ctlrow" title="Your speech: batch transcribes after silence ($0.10/h), live streams while you talk ($0.20/h)">
+              <span class="lbl">Your speech</span>
+              <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">Batch</button>
+              <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">Live</button>
+            </div>
+            <div class="ctlrow" title="Subtle blips on conversation events; pick which in Settings">
+              <span class="lbl">Sound cues</span>
+              <button class="ctl small" :class="{ on: cuesEnabled }" @click="cuesEnabled = true">On</button>
+              <button class="ctl small" :class="{ on: !cuesEnabled }" @click="cuesEnabled = false">Off</button>
+            </div>
+            <div class="ctlcol" title="How your turn ends: auto = the VAD detects silence; push to talk = you hold the big button">
+              <span class="lbl">Turn detection</span>
+              <div class="ctlbtns">
+                <button class="ctl small" :class="{ on: status?.detection_mode === 'auto' }" @click="setDetection('auto')">Auto</button>
+                <button class="ctl small" :class="{ on: status?.detection_mode === 'ptt' }" @click="setDetection('ptt')">Push to talk</button>
+              </div>
+            </div>
+            <div class="ctlrow">
+              <span class="lbl">End silence</span>
+              <select class="ctl small" aria-label="End silence" :value="status?.end_silence_ms" @change="setSilence">
+                <option v-for="ms in SILENCE_OPTIONS" :key="ms" :value="ms">{{ (ms / 1000).toFixed(1) }}s</option>
+              </select>
+            </div>
+            <div class="ctlrow" title="Noise gate: how loud a voice must be to trip the mic. Lower it in a noisy room (café, open office) so background sound stops triggering recordings.">
+              <span class="lbl">Sensitivity</span>
+              <select class="ctl small" aria-label="Microphone sensitivity" :value="status?.mic_sensitivity ?? 50" @change="setSensitivity">
+                <option v-for="[value, label] in SENSITIVITY_OPTIONS" :key="value" :value="value">{{ label }}</option>
+              </select>
+            </div>
+            <div class="ctlrow">
+              <span class="lbl">Smart turn</span>
+              <select class="ctl small" aria-label="Smart turn" :value="status?.smart_turn" @change="setSmartTurn">
+                <option v-for="v in SMART_TURN_OPTIONS" :key="v" :value="v">{{ v === 0 ? "Off" : v.toFixed(1) }}</option>
+              </select>
+            </div>
+            <div class="ctlrow" title="Language for speech recognition and synthesis; auto-detect handles mixed Polish/English">
+              <span class="lbl">Language</span>
+              <select class="ctl small" aria-label="Language" :value="status?.language ?? ''" @change="setLanguage">
+                <option v-for="(name, code) in LANGUAGES" :key="code" :value="code">{{ name }}</option>
+              </select>
+            </div>
+          </div>
+        </HudPanel>
+        <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
+             conversation frame — the daemon meters all conversations. -->
+        <HudPanel index="05" title="Session usage">
+          <StatusStrip :status="status" :offline="offline" />
+        </HudPanel>
+        <button class="ctl settingsbtn" :class="{ on: showSettings }" @click="showSettings = !showSettings">
+          Settings
+        </button>
+      </div>
+
+      <div class="col-mid" :class="{ locked: unconfigured }">
+
+        <HudPanel v-if="showSettings" index="08" title="Settings">
           <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
           <SettingsView
             :api-key-hint="status?.api_key_hint ?? ''"
@@ -700,9 +701,11 @@ const LANGUAGES: Record<string, string> = {
             @reorder="reorderAgents"
           />
         </div>
-        <!-- No panel title: the tabs above ARE the title, and "utterance
-             stream" meant nothing to normal humans anyway. -->
         <HudPanel v-if="!showSettings" class="convo-panel">
+          <div class="conversation-heading">
+            <div><h1 :title="status?.agent_labels?.[viewedAgent ?? '']">{{ status?.agent_labels?.[viewedAgent ?? ''] ?? 'Conversation' }}</h1><p>{{ offline ? 'Reconnecting to the voice service…' : 'Your conversation, as it happens' }}</p></div>
+            <span class="recipient" :title="status?.agent_labels?.[status?.active_agent ?? '']">Receiving: {{ status?.agent_labels?.[status?.active_agent ?? ''] ?? 'No agent' }}</span>
+          </div>
           <!-- Everything below the tabs is THIS conversation: the log on
                the left, and the conversation-scoped rail (voice avatar,
                character, turn timeline) inside the same frame on the
@@ -711,15 +714,12 @@ const LANGUAGES: Record<string, string> = {
             <div class="convo-main">
               <!-- Catch-up spans the bubbles column only, like telemetry —
                    never the rail. -->
-              <!-- Catch-up stays the loud green invitation; skip-all is the
-                   quiet grey escape hatch beside it (it throws words away,
-                   so it earns the boring color and the smaller hitbox). -->
               <div v-if="unheard.length" class="catchup-row">
                 <button class="ctl catchup" @click="catchUp">
-                  ▶ CATCH UP ({{ unheard.length }} UNHEARD)
+                  ▶ Catch up ({{ unheard.length }} unheard)
                 </button>
                 <button class="ctl skipall" title="Dismiss all unheard messages without playing them" @click="skipAll">
-                  ⏭ SKIP ALL
+                  Skip all
                 </button>
               </div>
               <ConversationLog
@@ -754,13 +754,13 @@ const LANGUAGES: Record<string, string> = {
                 />
               </section>
               <section class="railbox">
-                <div class="railtitle">CHARACTER SETTINGS</div>
+                <div class="railtitle">Character</div>
                 <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
-                <p v-else class="todo">NO CHARACTER DATA</p>
+                <p v-else class="todo">Choose a conversation to see its character</p>
               </section>
               <section class="railbox">
-                <div class="railtitle">SESSION RING · TURN TIMELINE</div>
-                <SessionRing :utterances="utterances" />
+                <div class="railtitle">Turn history</div>
+                <TurnHistory :utterances="utterances" />
               </section>
             </aside>
           </div>
@@ -770,493 +770,21 @@ const LANGUAGES: Record<string, string> = {
     </div>
 
     <footer>
-      <span>DAEMON <b :class="offline ? 'bad' : 'ok'">{{ offline ? "OFFLINE" : "ONLINE" }}</b></span>
+      <span>Service <b :class="offline ? 'bad' : 'ok'">{{ offline ? "OFFLINE" : "ONLINE" }}</b></span>
       <span v-if="status?.input_device === 'browser'">
-        TAB MIC <b :class="status?.tab_audio ? 'ok' : 'bad'">{{ status?.tab_audio ? "LIVE" : "NO TAB" }}</b>
+        TAB MIC <b :class="status?.tab_audio ? 'ok' : 'bad'">{{ status?.tab_audio ? "Live" : "NO TAB" }}</b>
       </span>
-      <span>STT MODE <b>{{ status?.mode?.toUpperCase() ?? "—" }}</b></span>
-      <span>LANGUAGE <b>{{ status?.language || "AUTO" }}</b></span>
-      <span>QUEUE <b>{{ status?.queued ?? "—" }}</b></span>
-      <span v-if="lastError" class="lasterr" :title="`${errors.length} error(s) this session`">
+      <span>Recognition <b>{{ status?.mode?.toUpperCase() ?? "—" }}</b></span>
+      <span>Language <b>{{ status?.language || "Auto" }}</b></span>
+      <span>Queue <b>{{ status?.queued ?? "—" }}</b></span>
+      <span v-if="lastError" class="lasterr" :title="`${lastError.detail} (${errors.length} error(s) this session)`">
         ⚠ {{ eventTime(lastError.ts) }} {{ lastError.kind.toUpperCase() }} · {{ lastError.detail }}
       </span>
       <!-- Right edge order: version second-from-corner, system status in
            the corner itself. -->
       <CompanionFloat style="margin-left: auto" />
       <VersionBadge :daemon-version="status?.version" :latest-version="status?.latest_version" :dev-instance="isDevInstance" />
-      <span>{{ offline ? "◈ LINK DOWN" : lastError ? "◈ DEGRADED — SEE LAST ERROR" : "◈ ALL SYSTEMS NOMINAL" }}</span>
+      <span>{{ offline ? "Connection lost" : lastError ? "Needs attention" : "Ready" }}</span>
     </footer>
   </div>
 </template>
-
-<style scoped>
-.shutdown-banner {
-  display: flex; align-items: center; justify-content: center; gap: 20px;
-  /* Unmissable: SOLID red slab, dark text, tall - the loudest thing on
-     the page while it's up. */
-  background: var(--red);
-  border: 2px solid #ffffff;
-  color: #10040a;
-  font-size: 16px; letter-spacing: 0.14em; font-weight: 800;
-  padding: 18px 20px; margin-bottom: 10px;
-  box-shadow: 0 0 24px rgba(255, 95, 107, 0.8);
-  animation: blink 1.2s step-end infinite;
-}
-.shutdown-banner .ctl {
-  color: #10040a; border-color: #10040a; font-weight: 800;
-}
-.shutdown-banner .ctl { animation: none; }
-@keyframes blink { 50% { opacity: 0.75; } }
-.topbar {
-  display: flex;
-  align-items: stretch;
-  gap: 16px;
-  padding: 0;
-  min-height: 96px;
-  margin-bottom: 18px;
-  position: relative;
-  flex: none;
-}
-.topbar-logobox { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; }
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  /* Raised by the active tab's height so it reads as sitting above the
-     tab row — offset via `top`, not margin, so it doesn't pull the
-     conversation window (which sits below, unrelated to this box) up too. */
-  position: relative;
-  top: -18px;
-  transform: scale(1.3);
-  transform-origin: center;
-}
-.logo > div { position: relative; }
-.logo svg { display: block; }
-.logo .title { font-size: 19px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); font-weight: 700; }
-.logo .sub { font-size: 10px; letter-spacing: 0.393em; color: var(--muted); margin-top: 3px; }
-/* Dev-instance marker: recolor the logo and hang a badge under it, nothing else. */
-.logo.dev svg { stroke: #ffb84d; }
-.logo.dev svg polygon, .logo.dev svg line { stroke: #ffb84d; }
-.logo.dev svg polygon[fill^="rgba"] { fill: rgba(255, 184, 77, 0.08); }
-.logo.dev .title { color: #ffb84d; text-shadow: 0 0 12px rgba(255, 184, 77, 0.55); }
-.devbadge {
-  display: inline-block; margin-top: 4px; padding: 1px 6px; white-space: nowrap;
-  font-size: 9px; font-weight: 700; letter-spacing: 0.22em;
-  color: #1a1205; background: #ffb84d; border-radius: 3px;
-}
-.sysstate { width: 316px; flex: none; display: flex; align-items: stretch; }
-
-footer { flex: none; }
-.cols {
-  display: grid;
-  grid-template-columns: 300px minmax(640px, 1fr);
-  gap: 18px;
-  margin-top: 14px;
-  align-items: stretch;
-  flex: 1 1 auto;
-  min-height: 0; /* let the grid shrink so only the feed scrolls */
-}
-@media (max-width: 1180px) { .cols { grid-template-columns: 1fr; } .col-mid { order: -1; } }
-.col-left {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto; /* safety valve on short windows; invisible otherwise */
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-.col-left > * { flex: none; }
-.col-left .flexpanel {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.col-left .flexpanel :deep(.scope-canvas),
-.col-left .flexpanel :deep(.spectrum-canvas) { flex: 1; min-height: 0; }
-.col-left .flexpanel .dbrow { flex: none; }
-.col-left .settingsbtn { margin-top: auto; }
-/* Folder-tab bar: sits on top of the conversation frame, buttons overlap
-   its top border by 1px so the viewed tab visually fuses with the window
-   below — the frame reads as that tab's window, not a separate panel. */
-/* The whole bar rises over the page header's bottom line — the tabs
-   straddle the main separator, buying the conversation window that
-   vertical space back. z-index keeps them painting above the line. */
-.tabsbar { padding: 0 14px; margin-top: -36px; position: relative; z-index: 3; }
-.tabsbar :deep(.tabs) {
-  margin-bottom: -1px;
-  gap: 6px;
-  position: relative;
-  z-index: 1;
-  /* Bottom-aligned row: the taller selected tab grows UPWARD only. */
-  align-items: flex-end;
-}
-.tabsbar :deep(.tabs button) {
-  /* The window's bright top line PASSES UNDER inactive tabs… */
-  border-bottom: 1px solid var(--line-strong);
-  padding-top: 8px;
-  padding-bottom: 9px;
-  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
-}
-.tabsbar :deep(.tabs button.viewing) {
-  /* Glow like the component's own viewing style (cyan tint, bright
-     border), fading into the panel background at the bottom so the
-     fusion seam stays invisible. */
-  /* Ends OPAQUE (--panel-solid): the tab's overlapping bottom pixel must
-     actually cover the window's bright top line, or it ghosts through
-     the translucent panel color. */
-  background: linear-gradient(rgba(63, 216, 255, 0.1), rgba(63, 216, 255, 0.02) 60%, var(--panel-solid));
-  border-color: var(--line-strong);
-  /* …and BREAKS under the selected one, fusing tab and window. */
-  border-bottom-color: transparent;
-  /* Taller, never wider: extra height comes from top padding only, so
-     sibling tabs don't shift and the text keeps its baseline. */
-  padding-top: 14px;
-  position: relative;
-  z-index: 2;
-}
-/* The 1px overlap loses to the panel's own compositing (backdrop-filter),
-   so the gap in the line is painted explicitly: an opaque panel-colored
-   strip under the selected tab, covering the window's bright top border. */
-.tabsbar :deep(.tabs button.viewing)::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 3px;
-  background: var(--panel-solid);
-  z-index: 3;
-}
-/* The conversation window's own top edge matches the bright line. */
-.col-mid :deep(.convo-panel) { border-top-color: var(--line-strong); }
-
-/* The conversation frame owns everything conversation-scoped: log on the
-   left, the character rail on the right, both INSIDE the panel border and
-   starting below the tabs. */
-.convo-body { display: flex; gap: 16px; flex: 1; min-height: 0; }
-.convo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
-.convo-rail {
-  width: 300px;
-  flex: none;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-  border-left: 1px solid var(--line);
-  padding-left: 16px;
-  background: color-mix(in srgb, var(--violet) 6%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  /* Experiment: recolor this column's accent from cyan to violet — the
-     rail is "Claude's persona" territory, matching the header's violet
-     mute-all button. Custom properties cascade to every child component
-     (VoicePersona, CharacterReadout, SessionRing) that reads var(--cyan*). */
-  --cyan: var(--violet);
-  --cyan-hi: var(--violet-hi);
-  --cyan-dim: var(--violet-dim);
-  --glow-cyan: var(--glow-violet);
-  --line: color-mix(in srgb, var(--violet) 22%, transparent);
-  --line-strong: color-mix(in srgb, var(--violet) 55%, transparent);
-}
-@media (max-width: 980px) { .convo-body { flex-direction: column; } .convo-rail { width: auto; border-left: none; padding-left: 0; } }
-.railbox { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
-.railbox:last-child { border-bottom: none; }
-.railtitle { font-size: 9px; letter-spacing: 0.26em; color: var(--muted); margin-bottom: 10px; }
-.col-mid {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.col-mid :deep(.panel) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 0;
-}
-.todo { color: var(--muted); font-size: 10px; letter-spacing: 0.2em; padding: 22px 0; text-align: center; }
-
-.dbrow { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.dbrow .lbl { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); width: 52px; }
-.dbbar { flex: 1; height: 6px; background: rgba(63, 216, 255, 0.08); position: relative; overflow: hidden; }
-.dbbar i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  display: block;
-  background: linear-gradient(90deg, rgba(63, 216, 255, 0.35), var(--cyan) 70%, var(--amber));
-  box-shadow: 0 0 8px rgba(63, 216, 255, 0.5);
-  transition: width 80ms linear;
-}
-.dbrow .val { font-size: 10px; color: var(--cyan); width: 64px; text-align: right; }
-
-.bigmute {
-  width: 100%;
-  min-height: 96px;
-  margin-bottom: 18px;
-  font-family: var(--mono);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 6px;
-  color: var(--cyan);
-  background: rgba(63, 216, 255, 0.06);
-  border: 1px solid var(--line-strong);
-  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
-}
-.bigmute .bm-label { font-size: 19px; letter-spacing: 0.3em; text-shadow: 0 0 8px rgba(63, 216, 255, 0.5); }
-.bigmute .bm-sub { font-size: 9px; letter-spacing: 0.24em; color: var(--muted); }
-.bigmute:hover { color: var(--cyan-hi); border-color: var(--cyan); background: rgba(63, 216, 255, 0.1); }
-.bigmute.muted {
-  color: var(--red);
-  border-color: rgba(255, 95, 107, 0.65);
-  background: rgba(255, 95, 107, 0.1);
-  box-shadow: inset 0 0 26px rgba(255, 95, 107, 0.18);
-}
-.bigmute.muted .bm-label { text-shadow: 0 0 10px rgba(255, 95, 107, 0.7); animation: blink 1.6s step-end infinite; }
-.bigmute.muted .bm-sub { color: rgba(255, 95, 107, 0.7); }
-@keyframes blink { 50% { opacity: 0.45; } }
-.bigmute.talk { touch-action: none; user-select: none; }
-.bigmute.talk:disabled {
-  cursor: not-allowed;
-  color: var(--muted);
-  border-color: rgba(93, 127, 150, 0.35);
-  background: rgba(93, 127, 150, 0.05);
-}
-.bigmute.talk:disabled .bm-label { text-shadow: none; }
-.bigmute.talk.held {
-  color: var(--amber);
-  border-color: var(--amber);
-  background: rgba(255, 180, 84, 0.12);
-  box-shadow: inset 0 0 26px rgba(255, 180, 84, 0.2);
-}
-.bigmute.talk.held .bm-label { text-shadow: var(--glow-amber); }
-.bigmute.talk.held .bm-sub { color: rgba(255, 180, 84, 0.75); }
-
-.voicemute {
-  width: 100%;
-  min-height: 52px;
-  margin-bottom: 18px;
-  font-family: var(--mono);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 4px;
-  color: var(--violet);
-  background: color-mix(in srgb, var(--violet) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--violet) 40%, transparent);
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-}
-.voicemute .vm-label { font-size: 12px; letter-spacing: 0.26em; }
-.voicemute .vm-sub { font-size: 8px; letter-spacing: 0.2em; color: var(--muted); }
-.voicemute:hover { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 12%, transparent); }
-.voicemute.muted {
-  color: var(--red);
-  border-color: rgba(255, 95, 107, 0.6);
-  background: rgba(255, 95, 107, 0.08);
-}
-.voicemute.muted .vm-label { animation: blink 1.6s step-end infinite; }
-.voicemute.muted .vm-sub { color: rgba(255, 95, 107, 0.7); }
-.header-mute {
-  width: 100%;
-  flex: none;
-  align-self: stretch;
-  min-height: 96px;
-  margin-bottom: 0;
-  padding: 6px 14px;
-}
-.header-mute .vm-label { font-size: 19px; letter-spacing: 0.3em; }
-.header-mute .vm-sub { font-size: 9px; letter-spacing: 0.24em; }
-
-/* Must be unmissable when you come back to the desk: green (nothing else
-   in the HUD is a green button), tall, glowing and gently pulsing. */
-.catchup-row { display: flex; gap: 8px; margin-bottom: 12px; }
-.catchup-row .ctl.catchup { flex: 4; margin-bottom: 0; }
-.ctl.skipall {
-  flex: 1;
-  min-height: 44px;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: var(--amber);
-  border-color: rgba(255, 180, 84, 0.5);
-  background: rgba(255, 180, 84, 0.08);
-}
-.ctl.skipall:hover {
-  color: var(--red);
-  border-color: rgba(255, 95, 107, 0.6);
-  text-shadow: 0 0 6px rgba(255, 95, 107, 0.5);
-}
-.ctl.catchup {
-  width: 100%;
-  margin-bottom: 12px;
-  min-height: 44px;
-  font-size: 12px;
-  letter-spacing: 0.26em;
-  color: var(--green);
-  border-color: rgba(77, 255, 180, 0.7);
-  background: rgba(77, 255, 180, 0.12);
-  text-shadow: 0 0 8px rgba(77, 255, 180, 0.6);
-  box-shadow: 0 0 14px rgba(77, 255, 180, 0.25), inset 0 0 18px rgba(77, 255, 180, 0.12);
-  animation: catchup-pulse 1.6s ease-in-out infinite;
-}
-.ctl.catchup:hover {
-  color: #b3ffe0;
-  border-color: var(--green);
-  background: rgba(77, 255, 180, 0.2);
-  animation: none;
-}
-@keyframes catchup-pulse {
-  50% { box-shadow: 0 0 26px rgba(77, 255, 180, 0.5), inset 0 0 26px rgba(77, 255, 180, 0.2); }
-}
-
-/* Sections that need the API sit dimmed behind the first-contact prompt. */
-.locked { opacity: 0.35; pointer-events: none; filter: saturate(0.4); }
-
-
-.setup-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 60; /* above scanlines/vignette */
-  display: grid;
-  /* Anchored near the top, NOT vertically centered: the box grows as
-     check verdicts land, and a centered box would re-balance both edges
-     on every row — reading as jumping. Anchored, it only extends down. */
-  place-items: start center;
-  padding: 14vh 24px 24px;
-  pointer-events: none; /* the live scopes behind stay hoverable */
-  background: radial-gradient(560px 380px at 50% 46%, rgba(2, 6, 12, 0.88), rgba(2, 6, 12, 0.25) 75%, transparent);
-}
-.setup-box {
-  pointer-events: auto;
-  max-width: 480px;
-  width: 100%;
-  /* Never taller than the viewport allows (see the anchored overlay
-     padding) — worst case the box scrolls inside instead of overflowing. */
-  max-height: 82vh;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-  background: var(--panel-solid);
-  border: 1px solid var(--line-strong);
-  box-shadow: 0 0 40px rgba(63, 216, 255, 0.15);
-  padding: 26px 28px;
-  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
-}
-.setup-title { font-size: 13px; letter-spacing: 0.3em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); margin-bottom: 14px; }
-.setup-text { font-size: 11px; line-height: 1.7; color: var(--muted); margin-bottom: 14px; }
-.setup-pitch {
-  display: grid;
-  grid-template-rows: 1fr;
-  opacity: 1;
-  transition: grid-template-rows 0.45s ease, opacity 0.3s ease;
-}
-.setup-pitch.collapsed { grid-template-rows: 0fr; opacity: 0; }
-.setup-pitch-inner { overflow: hidden; min-height: 0; }
-.setup-error { font-size: 10px; letter-spacing: 0.14em; color: var(--red, #ff5f56); margin: 12px 0 0; }
-.setup-checks { margin-top: 12px; }
-.setup-hint { margin: 12px 0 0; }
-.setup-text b { color: var(--cyan); font-weight: 400; }
-.setup-text a { color: var(--amber); text-decoration: none; border-bottom: 1px dotted var(--amber-dim); }
-.setup-text a:hover { text-shadow: var(--glow-amber); }
-.setup-row { display: flex; gap: 8px; }
-.setup-input, .keyinput {
-  flex: 1;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink);
-  background: rgba(4, 12, 20, 0.9);
-  border: 1px solid var(--line-strong);
-  padding: 8px 12px;
-}
-.settingsbtn { width: 100%; letter-spacing: 0.24em; }
-.settings-x {
-  position: absolute;
-  top: 10px;
-  right: 14px;
-  z-index: 1;
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px 6px;
-}
-.settings-x:hover { color: var(--red); text-shadow: 0 0 8px rgba(255, 95, 107, 0.6); }
-.settingsbtn.on { color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); }
-
-.controls { display: grid; gap: 10px; }
-.ctlrow { display: flex; align-items: center; gap: 8px; }
-/* Label above full-width buttons — for choices whose names deserve to
-   stay unabbreviated ("PUSH TO TALK" won't fit next to a label). */
-.ctlcol { display: grid; gap: 6px; }
-.ctlcol .lbl { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
-.ctlbtns { display: flex; gap: 8px; }
-.ctlrow .lbl { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); width: 104px; flex: none; }
-.ctl {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: var(--cyan);
-  background: rgba(63, 216, 255, 0.06);
-  border: 1px solid var(--line-strong);
-  padding: 8px 12px;
-  cursor: pointer;
-  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
-}
-.ctl:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
-.ctl.small { padding: 5px 10px; flex: 1; min-width: 0; max-width: 100%; }
-.ctl.on { color: var(--amber); border-color: var(--amber-dim); background: rgba(255, 180, 84, 0.08); text-shadow: var(--glow-amber); }
-.ctl.danger { color: var(--red); border-color: rgba(255, 95, 107, 0.5); background: rgba(255, 95, 107, 0.08); }
-select.ctl { appearance: none; }
-
-footer {
-  margin-top: 6px;
-  padding: 12px 18px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  gap: 26px;
-  flex-wrap: wrap;
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  color: var(--muted);
-}
-footer b { color: var(--cyan-dim); font-weight: 400; }
-footer .ok { color: var(--green); }
-footer .bad { color: var(--red); }
-footer .lasterr {
-  color: var(--red);
-  text-shadow: 0 0 8px rgba(255, 95, 107, 0.4);
-  max-width: 46ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tabaudio {
-  /* The one action a fresh Docker install must take — impossible to miss. */
-  flex: none;
-  width: 100%;
-  padding: 12px 18px;
-  margin-bottom: 10px;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  color: #0a0f14;
-  background: var(--amber);
-  border: none;
-  cursor: pointer;
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-  animation: tabaudio-pulse 1.6s ease-in-out infinite;
-}
-.tabaudio .taberr {
-  display: block;
-  margin-top: 4px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: #5a1020;
-}
-@keyframes tabaudio-pulse { 50% { filter: brightness(0.82); } }
-</style>

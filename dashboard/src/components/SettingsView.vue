@@ -77,24 +77,25 @@ function submit() {
     <nav class="toolbar">
       <button
         v-for="t in TABS" :key="t" class="tabbtn" :class="{ on: tab === t }"
-        @click="tab = t"
-      >{{ t }}</button>
+        :aria-pressed="tab === t" @click="tab = t"
+      >{{ t.charAt(0) + t.slice(1).toLowerCase() }}</button>
     </nav>
 
     <template v-if="tab === 'AUDIO'">
     <!-- Microphone first: switched far more often than the API key. -->
     <section class="sec">
       <div class="keyrow">
-        <span class="lbl">MICROPHONE</span>
+        <span class="lbl">Microphone</span>
         <select
           class="keyinput"
           :value="selectedDevice"
+          aria-label="Microphone"
           @focus="emit('refreshDevices')"
           @change="emit('pickDevice', ($event.target as HTMLSelectElement).value)"
         >
-          <option value="">SYSTEM DEFAULT</option>
+          <option value="">System default</option>
           <option v-for="d in devices" :key="d.name" :value="d.value ?? d.name">
-            {{ d.name.toUpperCase() }}{{ d.default ? " ◆" : "" }}
+            {{ d.name }}{{ d.default ? " ◆" : "" }}
           </option>
         </select>
       </div>
@@ -103,7 +104,7 @@ function submit() {
           Which input the daemon listens to — switching swaps the audio stream
           live, no restart. ◆ marks the system default. A device plugged in
           after the daemon started shows on the list, but needs a daemon
-          restart before it can be opened. THIS BROWSER TAB makes this very
+          restart before it can be opened. This browser tab makes this very
           tab the microphone (asks for permission on pick).
         </p>
       </div>
@@ -111,19 +112,20 @@ function submit() {
 
     <section class="sec">
       <div class="keyrow">
-        <span class="lbl">OUTPUT</span>
+        <span class="lbl">Output</span>
         <select
           class="keyinput"
           :value="outputDevice"
+          aria-label="Audio output"
           @change="emit('pickOutput', ($event.target as HTMLSelectElement).value)"
         >
-          <option value="system">SYSTEM SPEAKERS</option>
-          <option value="browser">THIS BROWSER TAB</option>
+          <option value="system">System speakers</option>
+          <option value="browser">This browser tab</option>
         </select>
       </div>
       <div class="text">
         <p>
-          Where the agent’s voice plays. THIS BROWSER TAB routes speech through
+          Where the agent’s voice plays. This browser tab routes speech through
           this page — pair it with the tab microphone and the browser's echo
           cancellation lets you interrupt the agent mid-sentence.
         </p>
@@ -132,35 +134,38 @@ function submit() {
 
     <section class="sec">
       <div class="keyrow">
-        <span class="lbl">HOLD-TO-TALK KEY</span>
+        <span class="lbl">Hold-to-talk key</span>
         <select
           class="keyinput"
           :value="pttHoldKey"
+          aria-label="Hold-to-talk key"
           @change="emit('pickPttKey', 'hold', ($event.target as HTMLSelectElement).value)"
         >
-          <option value="">OFF</option>
+          <option value="">Off</option>
           <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
         </select>
       </div>
       <div class="keyrow">
-        <span class="lbl">TOGGLE-TO-TALK KEY</span>
+        <span class="lbl">Toggle-to-talk key</span>
         <select
           class="keyinput"
           :value="pttToggleKey"
+          aria-label="Toggle-to-talk key"
           @change="emit('pickPttKey', 'toggle', ($event.target as HTMLSelectElement).value)"
         >
-          <option value="">OFF</option>
+          <option value="">Off</option>
           <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
         </select>
       </div>
       <div class="keyrow">
-        <span class="lbl">SCRATCH KEY</span>
+        <span class="lbl">Scratch key</span>
         <select
           class="keyinput"
           :value="pttCancelKey"
+          aria-label="Scratch key"
           @change="emit('pickPttKey', 'cancel', ($event.target as HTMLSelectElement).value)"
         >
-          <option value="">OFF</option>
+          <option value="">Off</option>
           <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
         </select>
       </div>
@@ -183,23 +188,24 @@ function submit() {
     <SignalPath />
     <section class="sec">
       <div class="keyrow">
-        <span class="lbl">XAI API KEY</span>
+        <span class="lbl">xAI API key</span>
         <!-- Always an input-shaped field, so it reads as a form at a
              glance — readonly masked value until REPLACE is clicked. -->
         <template v-if="!editing">
-          <input class="keyinput stored" :value="`••••••••••••${apiKeyHint.replace(/·/g, '')}`" readonly @click="editing = true" />
-          <button class="btn" @click="editing = true">REPLACE</button>
+          <input class="keyinput stored" aria-label="Stored xAI API key" :value="`••••••••••••${apiKeyHint.replace(/·/g, '')}`" readonly @click="editing = true" />
+          <button class="btn" @click="editing = true">Replace</button>
         </template>
         <template v-else>
           <input
             v-model="keyInput"
+            aria-label="New xAI API key"
             type="password"
             class="keyinput"
             placeholder="xai-…"
             @keyup.enter="submit"
           />
-          <button class="btn" @click="submit">SAVE</button>
-          <button class="btn dim" @click="editing = false">CANCEL</button>
+          <button class="btn" @click="submit">Save</button>
+          <button class="btn dim" @click="editing = false">Cancel</button>
         </template>
       </div>
 
@@ -236,9 +242,9 @@ function submit() {
 
     <section class="sec">
       <div class="keyrow">
-        <span class="lbl">DIAGNOSTICS</span>
+        <span class="lbl">Diagnostics</span>
         <button class="btn" :disabled="checksRunning" @click="emit('runChecks')">
-          {{ checksRunning ? "RUNNING…" : "RUN CHECKS" }}
+          {{ checksRunning ? "Running…" : "Run checks" }}
         </button>
       </div>
       <DiagnosticChecklist v-if="checks" class="checks-indent" :checks="checks" />
@@ -256,17 +262,18 @@ function submit() {
     <template v-if="tab === 'SOUNDS'">
     <section v-if="cuePrefs" class="sec">
       <div class="keyrow">
-        <span class="lbl">RECORDING HUM</span>
+        <span class="lbl">Recording hum</span>
         <button
           class="btn" :class="{ dim: !(cuePrefs.recordingHum ?? true) }"
           @click="emit('setHum', { recordingHum: !(cuePrefs.recordingHum ?? true) })"
         >{{ (cuePrefs.recordingHum ?? true) ? "ON" : "OFF" }}</button>
       </div>
       <div class="keyrow">
-        <span class="lbl">NOISE</span>
+        <span class="lbl">Noise</span>
         <select
           class="keyinput"
           :value="cuePrefs.humNoise ?? 'pink'"
+          aria-label="Recording noise"
           @change="emit('setHum', { humNoise: ($event.target as HTMLSelectElement).value });
                    previewHum(($event.target as HTMLSelectElement).value, cuePrefs.humVolume ?? 0.25)"
         >
@@ -274,9 +281,10 @@ function submit() {
         </select>
       </div>
       <div class="keyrow">
-        <span class="lbl">VOLUME</span>
+        <span class="lbl">Volume</span>
         <input
           class="slider" type="range" min="0" max="1" step="0.05"
+          aria-label="Recording hum volume"
           :value="cuePrefs.humVolume ?? 0.25"
           @input="emit('setHum', { humVolume: Number(($event.target as HTMLInputElement).value) })"
           @change="previewHum(cuePrefs.humNoise ?? 'pink', Number(($event.target as HTMLInputElement).value))"
@@ -292,7 +300,7 @@ function submit() {
 
     <section v-if="cuePrefs" class="sec">
       <div class="keyrow">
-        <span class="lbl">AUDIO CUES</span>
+        <span class="lbl">Audio cues</span>
         <span class="cue-hint">{{ cuePrefs.enabled ? "ENABLED" : "DISABLED — TURN ON IN CONTROLS" }}</span>
       </div>
       <div class="cuegrid">
@@ -318,67 +326,67 @@ function submit() {
 </template>
 
 <style scoped>
-.settings { display: grid; gap: 22px; }
+.settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; min-width: 0; container-type: inline-size; }
+.sec { min-width: 0; }
 .toolbar { display: flex; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
 .tabbtn {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+  font-family: var(--sans); font-size: 11px; letter-spacing: normal;
   color: var(--muted); background: none; border: 1px solid transparent;
   padding: 4px 12px; cursor: pointer;
 }
-.tabbtn.on { color: var(--cyan); border-color: rgba(63, 216, 255, 0.4); }
+.tabbtn.on { color: var(--cyan); border-color: rgba(158, 188, 245, 0.4); }
 .tabbtn:hover { color: var(--cyan-hi); }
-.slider { flex: 1; accent-color: var(--cyan); }
+.slider { flex: 1; min-width: 0; accent-color: var(--cyan); }
 
 .keyrow { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-.keyrow .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); width: 92px; flex: none; }
+.keyrow .lbl { font-size: 11px; letter-spacing: normal; color: var(--muted); width: 92px; flex: none; }
 .keyinput {
   flex: 1;
-  font-family: var(--mono);
+  min-width: 0;
+  border-radius: 6px;
+  font-family: var(--sans);
   font-size: 12px;
   color: var(--ink);
-  background: rgba(4, 12, 20, 0.9);
+  background: var(--bg1);
   border: 1px solid var(--line-strong);
   padding: 8px 12px;
 }
-.keyinput.stored { color: var(--green); letter-spacing: 0.12em; cursor: pointer; }
+.keyinput.stored { color: var(--green); letter-spacing: normal; cursor: pointer; }
 .btn {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.2em;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: normal;
   color: var(--cyan);
-  background: rgba(63, 216, 255, 0.06);
+  background: rgba(158, 188, 245, 0.06);
   border: 1px solid var(--line-strong);
   padding: 7px 14px;
   cursor: pointer;
-  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+  border-radius: 8px;
 }
-.btn:hover { color: var(--cyan-hi); text-shadow: 0 0 6px rgba(63, 216, 255, 0.6); }
+.btn:hover { color: var(--cyan-hi); text-shadow: none; }
 .btn.dim { color: var(--muted); border-color: var(--line); }
 
 .checks-indent { margin: 4px 0 14px 102px; }
 
-.cue-hint { flex: 1; font-size: 9px; letter-spacing: 0.16em; color: var(--muted); }
+.cue-hint { flex: 1; font-size: 11px; letter-spacing: normal; color: var(--muted); }
 .cuegrid { display: grid; gap: 8px; margin: 4px 0 14px 102px; max-width: 420px; }
 .cuerow { display: flex; align-items: center; gap: 10px; }
 .cuerow .preview { padding: 4px 9px; }
-.cue-label { flex: 1; font-size: 10px; letter-spacing: 0.14em; color: var(--ink); }
-
-/* The form is the star of this screen; the guidance stays muted and is
-   indented to align with the input box. */
+.cue-label { flex: 1; font-size: 11px; letter-spacing: normal; color: var(--ink); }
 .text {
-  font-size: 10.5px;
+  font-size: 13px;
   line-height: 1.75;
   color: var(--muted);
   display: grid;
   gap: 10px;
   max-width: 640px;
-  margin-left: 102px; /* label width + gap — lines up with the field */
+  margin-left: 102px;
 }
 .costs summary {
   cursor: pointer;
   list-style: none;
-  font-size: 9.5px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  letter-spacing: normal;
   color: var(--cyan-dim);
 }
 .costs summary::-webkit-details-marker { display: none; }
@@ -387,7 +395,14 @@ function submit() {
 .costs p, .costs ul { margin-top: 6px; }
 .text b { color: var(--ink); font-weight: 400; }
 .text a { color: var(--amber-dim); text-decoration: none; border-bottom: 1px dotted var(--amber-dim); }
-.text a:hover { color: var(--amber); text-shadow: var(--glow-amber); }
+.text a:hover { color: var(--amber); text-shadow: none; }
 .text ul { margin: 0 0 0 18px; display: grid; gap: 4px; }
 .text li b { color: var(--ink); }
+@container (max-width: 560px) {
+  .keyrow { flex-wrap: wrap; gap: 8px; }
+  .keyrow .lbl { width: 100%; font-size: 12px; }
+  .keyinput { flex-basis: 60%; }
+  .text, .cuegrid, .checks-indent { margin-left: 0; }
+  .cue-hint { flex-basis: 100%; }
+}
 </style>

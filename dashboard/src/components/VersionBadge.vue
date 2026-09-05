@@ -83,18 +83,17 @@ const skew = computed(() => {
 </template>
 
 <style scoped>
-.ver { color: var(--muted); letter-spacing: 0.14em; }
-/* Good news, not an alarm: steady green, no blinking. */
+.ver { color: var(--muted); letter-spacing: normal; }
 .verupdate {
   color: var(--green, #4dffb4);
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 8px rgba(77, 255, 180, 0.35);
+  letter-spacing: normal;
+  text-shadow: none;
 }
 .verskew {
   color: var(--amber, #ffb454);
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 8px rgba(255, 180, 84, 0.4);
-  animation: ver-blink 1.6s step-end infinite;
+  letter-spacing: normal;
+  text-shadow: none;
+  animation: none;
 }
 @keyframes ver-blink { 50% { opacity: 0.55; } }
 </style>

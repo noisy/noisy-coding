@@ -22,16 +22,16 @@ describe("CharacterReadout", () => {
     expect(wrapper.find(".sv").text()).toBe("1.10×");
   });
 
-  it("draws gauge arcs proportional to trait values", () => {
+  it("emits the changed trait without changing other character values", async () => {
     const wrapper = mount(CharacterReadout, { props: { character } });
+    await wrapper.get('input[aria-label="Humor"]').setValue('80');
+    expect(wrapper.emitted('change')).toEqual([[{ humor: 80 }]]);
+  });
 
-    const gauges = wrapper.findAll(".gauge");
-    const arcOf = (gauge: (typeof gauges)[number]) =>
-      parseFloat(gauges && gauge.findAll("circle")[1].attributes("stroke-dasharray")!.split(" ")[0]);
-    const humorArc = arcOf(gauges[0]); // 50/100
-    const brevityArc = arcOf(gauges[2]); // 100/100
-
-    expect(brevityArc).toBeCloseTo(humorArc * 2, 3);
+  it("emits the selected speech rate", async () => {
+    const wrapper = mount(CharacterReadout, { props: { character } });
+    await wrapper.get('input[aria-label="Speech rate"]').setValue('1.25');
+    expect(wrapper.emitted('change')).toEqual([[{ speed: 1.25 }]]);
   });
 });
 

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import EngineChoice from "./EngineChoice.vue";
 import type { ProvidersInfo } from "../api/client";
+import { setProviderFixture } from "../storybook/daemon.fixture";
 
 /* The first-contact engine cards (#36/#37).
  *
@@ -9,21 +10,7 @@ import type { ProvidersInfo } from "../api/client";
  * the one where the local path is a dead end and must say why.
  */
 
-// Same self-contained pattern as ProviderSettings.stories: stub the fetch.
-function stubFetch(info: ProvidersInfo | null) {
-  const state = info ? structuredClone(info) : null;
-  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (state === null) return new Response("not found", { status: 404 });
-    if (init?.method === "POST") {
-      const body = JSON.parse(String(init.body ?? "{}"));
-      if (body.tts) state.active.tts = body.tts;
-      if (body.stt) state.active.stt = body.stt;
-      return Response.json(state.active);
-    }
-    return Response.json(state);
-  }) as typeof window.fetch;
-}
-
+// Shared isolated provider state preserves each story’s download scenario.
 const GROK = {
   name: "grok",
   kind: "cloud-api" as const,
@@ -56,7 +43,7 @@ function story(info: ProvidersInfo | null): StoryObj<typeof EngineChoice> {
   return {
     render: () => ({
       components: { EngineChoice },
-      setup: () => stubFetch(info),
+      setup: () => setProviderFixture(info),
       template: `<div style="max-width:560px"><EngineChoice /></div>`,
     }),
   };

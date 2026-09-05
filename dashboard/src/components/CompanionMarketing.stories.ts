@@ -101,9 +101,9 @@ const PRESETS: Record<string, Scenario> = {
 
 /* ---- the frame ------------------------------------------------------- */
 
-/** The frame WRAPS the widget: fit-content plus a consistent wallpaper
- *  border, so every preset gets the same modest margin regardless of how
- *  much text it carries. The page behind is painted a solid sentinel color
+/** The frame wraps a deliberately narrow widget with a consistent wallpaper
+ *  border, so message length cannot stretch the shot across the viewport.
+ *  The page behind is painted a solid sentinel color
  *  so the capture script can trim the screenshot to exactly this frame. */
 const SENTINEL_BG = "#010203";
 
@@ -112,6 +112,7 @@ const Shot = defineComponent({
   props: {
     backdrop: { type: String, required: true },
     preset: { type: String, required: true },
+    widgetWidth: { type: Number, required: true },
   },
   setup(props) {
     // The widget ships without chrome of its own; transparent mode is how
@@ -134,8 +135,10 @@ const Shot = defineComponent({
         background, borderRadius: '18px', overflow: 'hidden',
         boxShadow: 'inset 0 0 120px rgba(0,0,0,0.45)',
       }">
-        <Companion :mode="scene.mode" voice="lux" :feed="scene.feed"
-                   :agents="scene.agents" :max-height="220" />
+        <div :style="{ width: widgetWidth + 'px' }">
+          <Companion :mode="scene.mode" voice="lux" :feed="scene.feed"
+                     :agents="scene.agents" :max-height="220" />
+        </div>
       </div>
     </div>
   `,
@@ -145,11 +148,12 @@ export const Widget: StoryObj = {
   argTypes: {
     backdrop: { control: "select", options: Object.keys(BACKDROPS) },
     preset: { control: "select", options: Object.keys(PRESETS) },
+    widgetWidth: { control: { type: "range", min: 320, max: 800, step: 20 } },
   },
-  args: { backdrop: "space", preset: "fixing-tests" },
+  args: { backdrop: "space", preset: "fixing-tests", widgetWidth: 540 },
   render: (args) => ({
     components: { Shot },
     setup: () => ({ args }),
-    template: `<Shot :backdrop="args.backdrop" :preset="args.preset" />`,
+    template: `<Shot :backdrop="args.backdrop" :preset="args.preset" :widget-width="args.widgetWidth" />`,
   }),
 };

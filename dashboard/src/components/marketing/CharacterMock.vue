@@ -17,13 +17,13 @@ const CHARACTER: Character = { humor: 75, honesty: 90, brevity: 60, chatty: 35, 
 
 <template>
   <div class="charmock">
-    <HudPanel index="04" title="AGENT CHARACTER">
+    <HudPanel index="04" title="Agent character">
       <div class="rail">
         <div class="railbox">
           <VoicePersona voice="lux" :speaking="false" :muted="false" />
         </div>
         <div class="railbox">
-          <div class="railtitle">CHARACTER SETTINGS</div>
+          <div class="railtitle">Character settings</div>
           <CharacterReadout :character="CHARACTER" />
         </div>
       </div>
@@ -34,22 +34,16 @@ const CHARACTER: Character = { humor: 75, honesty: 90, brevity: 60, chatty: 35, 
 <style scoped>
 .charmock {
   width: 380px;
+  max-width: 100%;
   padding: 16px;
 }
-/* Same violet recolor the dashboard's persona rail applies. */
 .rail {
   padding: 4px 2px 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  --cyan: var(--violet);
-  --cyan-hi: var(--violet-hi);
-  --cyan-dim: var(--violet-dim);
-  --glow-cyan: var(--glow-violet);
-  --line: color-mix(in srgb, var(--violet) 22%, transparent);
-  --line-strong: color-mix(in srgb, var(--violet) 55%, transparent);
 }
 .railbox { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 .railbox:last-child { border-bottom: none; padding-bottom: 4px; }
-.railtitle { font-size: 9px; letter-spacing: 0.26em; color: var(--muted); margin-bottom: 10px; }
+.railtitle { font-size: 11px; letter-spacing: normal; color: var(--muted); margin-bottom: 10px; }
 </style>

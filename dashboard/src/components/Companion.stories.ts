@@ -2,16 +2,7 @@ import type { Meta, StoryObj } from "@storybook/vue3";
 import { defineComponent, ref } from "vue";
 import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 
-/* The companion widget (#28).
- *
- * The always-on-top panel that lives over the editor: a spectrum on the
- * left for the user's voice, the conversation in the middle, and a rail of
- * agent portraits on the right.
- *
- * Grouped by what a story is FOR - the states it can be in, the way it
- * sizes text, and the rail - so a change can be judged against the case it
- * was meant to affect rather than one general-purpose demo.
- */
+/* Compact conversation, status, and session controls across window sizes. */
 const meta: Meta<typeof Companion> = {
   title: "Companion/Widget",
   component: Companion,
@@ -23,16 +14,8 @@ export default meta;
 type Story = StoryObj<typeof Companion>;
 
 const SHORT = "On it.";
-const MEDIUM =
-  "Storybook first - you pick a variant, then I wire it to the daemon and we " +
-  "find out what the real data does to it.";
-const LONG =
-  "The type size is decided per message from its own length and never revisited: " +
-  "a short line gets big type, a long one gets small type, and neither changes " +
-  "after it appears. That replaced a thread-wide system that measured the whole " +
-  "conversation and resized everything at once, which is why a single short line " +
-  "used to come out tiny - it was being sized to fit a dozen messages that had " +
-  "already scrolled out of sight.";
+const MEDIUM = "The retry logic is ready. I’m checking that queued events survive a redeploy.";
+const LONG = "The event stays in the queue until the consumer confirms delivery. The regression test now covers a redeploy during processing, including recovery of pending messages. I’m checking the final dashboard state before wrapping up.";
 
 const FEED: CompanionMessage[] = [
   { id: 1, role: "claude", text: "I'm ready." },
@@ -73,7 +56,7 @@ export const ListeningSilent: Story = {
 
 /* ---- type sizing --------------------------------------------------- */
 
-/** Each message keeps its own size. The three tiers, one after another. */
+/** Short and long messages share a stable, readable type scale. */
 export const MessageSizes: Story = {
   args: {
     ...base,
@@ -87,8 +70,7 @@ export const MessageSizes: Story = {
   },
 };
 
-/** A short line after a long history: must be BIG, not sized for the
- *  messages that already scrolled away. */
+/** A short reply remains legible after a long history. */
 export const ShortAfterLong: Story = {
   args: {
     ...base,
@@ -234,8 +216,7 @@ export const LiveOverScroll: StoryObj = {
   }),
 };
 
-/** Narrow mode: under 420px the rails drop below the last bubble -
- *  hexagon left, heads right - so the widget fits a narrow screen strip. */
+/** Compact window: conversation and session controls must remain reachable. */
 export const NarrowStrip: StoryObj = {
   render: () => ({
     components: { Companion },
@@ -276,4 +257,14 @@ export const WaitingBadges: StoryObj = {
       </div>
     `,
   }),
+};
+
+export const Muted: Story = { args: { ...base, muted:true, voiceMuted:true, feed:FEED } };
+export const Offline: Story = { args: { ...base, offline:true, feed:FEED } };
+export const Working: Story = { args: { ...base, activity:'Running the dashboard tests', feed:FEED } };
+export const PendingReplies: Story = {
+  args:{...base, feed:[...FEED, {id:4,role:'claude',text:'The checks passed. Ready when you are.',zone:'pending',statusKind:'off',statusLabel:'Unheard'}]},
+};
+export const LongSessionName: Story = {
+  args:{...base,feed:FEED,agents:[{name:'codex / investigate-checkout-performance-and-retry-handling',voice:'lux',active:true}]},
 };

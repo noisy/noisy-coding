@@ -1,54 +1,19 @@
-/* NOISY-CODING HUD — global chrome. Design tokens live in tokens.css.
-   Style source of truth: design-concepts/scifi-hud.html */
 @import "./tokens.css";
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
-body {
-  background:
-    radial-gradient(1200px 700px at 50% -10%, rgba(21, 60, 92, 0.35), transparent 60%),
-    radial-gradient(900px 600px at 85% 110%, rgba(90, 40, 140, 0.18), transparent 60%),
-    var(--bg0);
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 13px;
-  /* The page itself never scrolls — only the conversation feed does. */
-  overflow: hidden;
-  min-height: 100vh;
-}
-/* faint blueprint grid */
-body::before {
-  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background-image:
-    linear-gradient(rgba(63, 216, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(63, 216, 255, 0.035) 1px, transparent 1px);
-  background-size: 42px 42px;
-}
-/* scanlines + vignette */
-.scanlines {
-  position: fixed; inset: 0; pointer-events: none; z-index: 50;
-  background: repeating-linear-gradient(
-    0deg, rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 2px, rgba(0, 8, 14, 0.14) 3px, rgba(0, 0, 0, 0) 4px);
-  mix-blend-mode: multiply;
-}
-.vignette {
-  position: fixed; inset: 0; pointer-events: none; z-index: 49;
-  box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.75);
-}
-.hud {
-  position: relative;
-  z-index: 1;
-  margin: 0 auto;
-  padding: 14px 22px 12px;
-  zoom: var(--ui-scale);
-  /* zoom shrinks rendered lengths, so compensate to keep exactly one
-     viewport of height — header and footer stay pinned on screen. */
-  height: calc(100dvh / var(--ui-scale));
-  display: flex;
-  flex-direction: column;
-}
-
+html, body, #app { height: 100%; }
+body { background: var(--bg0); color: var(--ink); font: 14px/1.5 var(--sans); overflow: hidden; }
+button, input, select, textarea { font: inherit; }
+button, select { cursor: pointer; }
+button { border-radius: 7px; }
+a { color: var(--cyan); }
+button:disabled { cursor: not-allowed; opacity: .55; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+input, select { accent-color: var(--cyan); }
+::selection { background: #455b7f; color: #fff; }
+.hud { height: 100dvh; padding: 20px 24px 0; display: flex; flex-direction: column; gap: 20px; }
 canvas { display: block; width: 100%; }
-
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+@media (max-width: 760px) { .hud { padding: 12px; overflow-y: auto; gap: 14px; } }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

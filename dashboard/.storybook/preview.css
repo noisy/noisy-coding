@@ -1,0 +1,2 @@
+/* Centered stories must shrink with the viewport, including long labels. */
+.sb-main-centered #storybook-root { min-width: 0; max-width: 100%; }
