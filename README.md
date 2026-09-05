@@ -1,6 +1,6 @@
 # noisy-coding
 
-**Talk to your coding agent while it works — voice support for Claude Code and Codex.**
+**Talk to your coding agent while it works — voice support for Claude Code, and Codex in preview.**
 It's your voice that's noisy, not your code.
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/noisy/noisy-coding)](https://hub.docker.com/r/noisy/noisy-coding)
@@ -35,26 +35,6 @@ Speech-to-text and text-to-speech run on the
 extremely cheap in practice (a small one-time budget lasts months of
 daily use).
 
-## Install for Codex
-
-Install the Codex plugin, then ask it to set up voice. You need local Codex
-with lifecycle hooks, `uv`, and a running noisy-coding daemon (app or Docker).
-See [the Codex guide](docs/codex.md) for pre-release checkout installation,
-endpoint selection, and a spoken round-trip check.
-
-```sh
-codex plugin marketplace add noisy/noisy-coding
-codex plugin add noisy-coding@noisy-coding
-```
-
-In a new session: **“Use noisy-coding to set up voice.”** Review its hooks
-through `/hooks`; the installer preserves unrelated settings. The chat uses
-registered agent labels, so multiple integrations can share one dashboard.
-
-**Codex's Stop hook holds a turn open while listening for up to one hour.**
-Use `--listen-seconds 60` for a shorter wait, or `0` to disable idle listening;
-see [idle listening](docs/codex.md#why-codex-can-look-busy-while-listening).
-
 ## Install for Claude Code
 
 The backend ships as a hardware-free Docker image
@@ -86,6 +66,26 @@ Prefer staying inside Claude Code? Same thing, four commands:
 Other setups — plain Docker without the plugin, native install with
 hardware mic/speakers, remote hosts, all configuration knobs — live in
 [docs/INSTALL.md](docs/INSTALL.md).
+
+## Install for Codex (preview)
+
+Install the Codex plugin, then ask it to set up voice. You need local Codex
+with lifecycle hooks, `uv`, and a running noisy-coding daemon (app or Docker).
+See [the Codex guide](docs/codex.md) for pre-release checkout installation,
+endpoint selection, and a spoken round-trip check.
+
+```sh
+codex plugin marketplace add noisy/noisy-coding
+codex plugin add noisy-coding@noisy-coding
+```
+
+In a new session: **“Use noisy-coding to set up voice.”** Review its hooks
+through `/hooks`; the installer preserves unrelated settings. The chat uses
+registered agent labels, so multiple integrations can share one dashboard.
+
+**Codex's Stop hook holds a turn open while listening for up to one hour.**
+Use `--listen-seconds 60` for a shorter wait, or `0` to disable idle listening;
+see [idle listening](docs/codex.md#why-codex-can-look-busy-while-listening).
 
 ## How it works
 
