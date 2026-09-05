@@ -149,6 +149,9 @@ async function refit() {
   grownHeight.value =
     content > room ? Math.min(content, props.maxHeight * 2.5, ceiling.value) : 0;
   await nextTick();
+  // The thread just changed size, so whether it scrolls at all may have
+  // flipped - scroll events alone never fire on a thread that never scrolls.
+  updateClipped();
 }
 
 /* The stack of heads is absolutely positioned (it floats over the thread,
@@ -296,9 +299,19 @@ const following = ref(true);
 /* True when content is CLIPPED below the viewport - the bottom fade shows
  * only then: fully scrolled down, the newest message must end SHARP. */
 const clippedBelow = ref(false);
+
+/* True only when the thread actually scrolls. Both fades mean "there is
+ * more conversation past this edge", so on a thread that fits entirely
+ * they are a lie: the top fade eats the first bubble and the widget reads
+ * as cropped and half-empty. Reported from the marketing hero, where a
+ * lone "I'm ready." bubble looked broken. */
+const overflowing = ref(false);
+
 function updateClipped() {
   const el = scroller.value;
-  if (el) clippedBelow.value = el.scrollHeight - el.scrollTop - el.clientHeight > 2;
+  if (!el) return;
+  overflowing.value = el.scrollHeight - el.clientHeight > 2;
+  clippedBelow.value = el.scrollHeight - el.scrollTop - el.clientHeight > 2;
 }
 
 function onScroll() {
@@ -357,7 +370,7 @@ watch(
     </div>
 
     <!-- The thread: pixel-clamped, scrollable, pinned to the newest. -->
-    <div ref="scroller" class="thread" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll, 'clipped-below': clippedBelow }" :style="{ maxHeight: threadHeight + 'px' }">
+    <div ref="scroller" class="thread" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll, scrollable: overflowing, 'clipped-below': clippedBelow }" :style="{ maxHeight: threadHeight + 'px' }">
       <transition-group
         :name="animateArrival ? 'arrive' : ''"
         tag="div"
@@ -717,6 +730,11 @@ body.companion-transparent::before {
   /* Near-clip per the white-backdrop verdict: 16px dead zone, full opacity
      already at 28px - the half-ghost band shrinks to ~12px, so light text
      never hovers half-melted over a light desktop. */
+  /* ...but only on a thread that SCROLLS. The fade says "older messages are
+     up there"; with nothing hidden it just crops the first bubble and the
+     widget looks broken. */
+}
+.thread.scrollable {
   mask-image: var(--companion-thread-mask, linear-gradient(to bottom,
     transparent 0 16px,
     rgba(0, 0, 0, 0.15) 19.6px,
@@ -726,7 +744,7 @@ body.companion-transparent::before {
 /* Content clipped below the viewport gets a SHORT bottom melt too - but
    only then: at full scroll the newest message ends sharp, and the fade
    appearing is itself the "there is more below" signal. */
-.thread.clipped-below {
+.thread.scrollable.clipped-below {
   mask-image: linear-gradient(to bottom,
     transparent 0 16px,
     rgba(0, 0, 0, 0.15) 19.6px,
