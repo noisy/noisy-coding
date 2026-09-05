@@ -34,12 +34,12 @@ function drawSpectrum(t: number) {
     const h = Math.max(3, (voice * 0.8 + 0.12) * n * amp * (H - 12));
     const x = i * bw + 1.5;
     const grad = ctx.createLinearGradient(0, H, 0, H - h);
-    grad.addColorStop(0, "rgba(63,216,255,0.25)");
-    grad.addColorStop(0.7, "rgba(63,216,255,0.85)");
-    grad.addColorStop(1, "#9aeeff");
+    grad.addColorStop(0, "rgba(158,188,245,0.25)");
+    grad.addColorStop(0.7, "rgba(158,188,245,0.85)");
+    grad.addColorStop(1, "#d7e4fc");
     ctx.fillStyle = grad;
     ctx.fillRect(x, H - h, bw - 3, h);
-    ctx.fillStyle = "rgba(255,180,84,0.9)";
+    ctx.fillStyle = "rgba(226,189,136,0.9)";
     ctx.fillRect(x, H - h - 4, bw - 3, 2);
   }
 }

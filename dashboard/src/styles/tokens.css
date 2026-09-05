@@ -1,31 +1,30 @@
-/* NOISY-CODING HUD - design tokens only (no chrome, no resets).
-   Imported by hud.css for the product and by the marketing site so the
-   shared components (Companion, ClaudeCodeMock) resolve the same palette
-   everywhere. Style source of truth: design-concepts/scifi-hud.html */
+/* Shared product tokens. Legacy color names remain compatible with consumers. */
 :root {
-  /* Global UI scale (like browser zoom, but baked in): the whole HUD
-     shrinks uniformly while still using the full screen width. */
-  --ui-scale: 0.9;
-  --bg0: #02060c;
-  --bg1: #050d18;
-  --panel: rgba(7, 19, 32, 0.78);
-  --panel-solid: #071626;
-  --line: rgba(64, 200, 255, 0.22);
-  --line-strong: rgba(64, 200, 255, 0.55);
-  --cyan: #3fd8ff;
-  --cyan-hi: #9aeeff;
-  --cyan-dim: rgba(63, 216, 255, 0.45);
-  --amber: #ffb454;
-  --amber-dim: rgba(255, 180, 84, 0.45);
-  --violet: #b98cff;
-  --violet-hi: #d9c2ff;
-  --violet-dim: rgba(185, 140, 255, 0.45);
-  --green: #4dffb4;
-  --red: #ff5f6b;
-  --muted: #5d7f96;
-  --ink: #cfeaf6;
+  color-scheme: dark;
+  --ui-scale: 1;
+  --bg0: #151619;
+  --bg1: #1b1d21;
+  --panel: #202226;
+  --panel-solid: #202226;
+  --surface-hover: #2c2f35;
+  --line: #363940;
+  --line-strong: #565c67;
+  --cyan: #9ebcf5;
+  --cyan-hi: #d7e4fc;
+  --cyan-dim: #8eabdb;
+  --amber: #e2bd88;
+  --amber-dim: #a98a62;
+  --violet: #c3b7e6;
+  --violet-hi: #e0d9f3;
+  --violet-dim: #a99bc9;
+  --green: #9bceb1;
+  --red: #f0a1a1;
+  --muted: #a3a8b2;
+  --ink: #edeef0;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  --glow-cyan: 0 0 6px rgba(63, 216, 255, 0.9), 0 0 18px rgba(63, 216, 255, 0.35);
-  --glow-amber: 0 0 6px rgba(255, 180, 84, 0.9), 0 0 18px rgba(255, 180, 84, 0.3);
-  --glow-violet: 0 0 6px rgba(185, 140, 255, 0.9), 0 0 18px rgba(185, 140, 255, 0.35);
+  --glow-cyan: none;
+  --glow-amber: none;
+  --glow-violet: none;
+  --radius: 12px;
 }
