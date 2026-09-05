@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import { defineComponent, onMounted, ref } from "vue";
 import Bubble from "./Bubble.vue";
-import { SPRITE_CELL, voiceSpriteStyle } from "./voiceSprites";
+import VoiceAvatar from "./VoiceAvatar.vue";
+import { VOICES } from "./characterMath";
 
 /* The pieces the companion is assembled from, in isolation.
  *
@@ -92,22 +93,18 @@ export const SpectrumSpeaking: StoryObj = {
   render: () => ({ components: { Spectrum }, template: `<Spectrum :level="0.75" />` }),
 };
 
-/** Every portrait in the sprite sheet, so a missing one is obvious.
- *
- * Voices in the pool without artwork render as a blank disc (#44) - this is
- * the story that makes that visible instead of it turning up on stream. */
+/** Every voice identity, using the same avatar as the dashboard and widget. */
 export const VoicePortraits: StoryObj = {
   render: () => ({
+    components: { VoiceAvatar },
     setup: () => ({
-      voices: Object.keys(SPRITE_CELL).sort(),
-      styleFor: (v: string) => voiceSpriteStyle(v) ?? {},
+      voices: Object.keys(VOICES).sort(),
     }),
     template: `
-      <div style="display:flex;flex-wrap:wrap;gap:10px;max-width:520px">
-        <div v-for="v in voices" :key="v" style="text-align:center;width:56px">
-          <span :style="styleFor(v)" style="display:block;width:44px;height:44px;
-            border:2px solid var(--violet);border-radius:50%;margin:0 auto" />
-          <small style="font-size:9px;opacity:0.7">{{ v }}</small>
+      <div style="display:flex;flex-wrap:wrap;gap:20px;max-width:600px;font-family:var(--sans)">
+        <div v-for="v in voices" :key="v" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:72px">
+          <VoiceAvatar :voice="v" :size="56" />
+          <small style="font-size:12px;color:var(--muted)">{{ v }}</small>
         </div>
       </div>
     `,

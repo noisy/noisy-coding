@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { VOICES } from "./characterMath";
-import { voiceSpriteStyle } from "./voiceSprites";
+import VoiceAvatar from "./VoiceAvatar.vue";
 
 // The voice picker: a collapsed current pick that unfolds into a
 // scrollable list (portrait thumb left, name right). Emits the new voice
@@ -11,9 +11,9 @@ const emit = defineEmits<{ change: [voice: string] }>();
 
 // The whole list geometry hangs off these two numbers — tune here, not
 // in the CSS below.
-const THUMB_PX = 76;
+const THUMB_PX = 44;
 const VISIBLE_ROWS = 7;
-const ROW_PX = THUMB_PX; // row = thumb, no breathing around the portrait
+const ROW_PX = THUMB_PX + 8;
 const listStyle = {
   "--thumb": `${THUMB_PX}px`,
   "--row": `${ROW_PX}px`,
@@ -21,17 +21,20 @@ const listStyle = {
 };
 
 const open = ref(false);
-function pick(name: string) {
+const trigger = ref<HTMLButtonElement | null>(null);
+function close() {
   open.value = false;
+  trigger.value?.focus();
+}
+function pick(name: string) {
+  close();
   if (name !== props.voice) emit("change", name);
 }
 </script>
 
 <template>
-  <!-- The unfolded list OVERLAYS whatever sits below (z-axis) instead of
-       pushing it down — the rail's height must not jump. -->
   <div class="voiceselector">
-    <div class="voicecur" @click="open = !open">
+    <button ref="trigger" class="voicecur" type="button" :aria-expanded="open" aria-label="Choose voice" @click="open = !open" @keydown.escape="close">
       <span class="lbl">VOICE</span>
       <svg width="14" height="14" viewBox="0 0 14 14">
         <circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--violet)" stroke-width="1" />
@@ -39,20 +42,19 @@ function pick(name: string) {
       </svg>
       <span class="vname">{{ voice.toUpperCase() || "—" }}</span>
       <span class="arrow">{{ open ? "▴" : "▾" }}</span>
-    </div>
+    </button>
     <div v-if="open" class="voicelist" :style="listStyle">
-      <div
+      <button
         v-for="(gender, name) in VOICES"
         :key="name"
-        class="row"
+        class="row" :aria-pressed="name === voice" @keydown.escape.stop="close"
         :class="{ sel: name === voice }"
         :title="gender"
         @click="pick(name)"
       >
-        <span v-if="voiceSpriteStyle(name)" class="thumb" :style="voiceSpriteStyle(name)!" />
-        <span v-else class="thumb blank">{{ name[0].toUpperCase() }}</span>
+        <VoiceAvatar class="thumb" :voice="name" :size="THUMB_PX" />
         <span class="name">{{ name.toUpperCase() }}</span>
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -60,19 +62,18 @@ function pick(name: string) {
 <style scoped>
 .voiceselector { position: relative; }
 .voicecur {
+  width:100%;
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--line-strong); padding: 7px 12px;
   background: color-mix(in srgb, var(--violet) 6%, transparent); cursor: pointer;
-  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+  border-radius: 8px;
 }
-.voicecur .lbl { font-size: 9px; letter-spacing: 0.22em; color: var(--muted); }
-.voicecur .vname { font-size: 13px; letter-spacing: 0.2em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); }
-.voicecur .arrow { margin-left: auto; color: var(--cyan-dim); font-size: 10px; }
-
-/* VISIBLE_ROWS rows visible (script constants), the rest scroll. */
+.voicecur .lbl { font-size: 11px; letter-spacing: normal; color: var(--muted); }
+.voicecur .vname { font-size: 13px; letter-spacing: normal; color: var(--cyan-hi); text-shadow: none; }
+.voicecur .arrow { margin-left: auto; color: var(--cyan-dim); font-size: 11px; }
 .voicelist {
-  position: absolute;
-  top: calc(100% + 6px);
+  position: relative;
+  margin-top:6px;
   left: 0;
   right: 0;
   z-index: 20;
@@ -81,31 +82,31 @@ function pick(name: string) {
   scrollbar-color: var(--line-strong) transparent;
   background: var(--panel-solid, #071626);
   border: 1px solid var(--line-strong);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  box-shadow: none;
+  border-radius: 8px;
 }
 .row {
+  width:100%; border:0; color:var(--ink); background:transparent; text-align:left; border-radius:0;
   display: flex;
   align-items: center;
   gap: 12px;
   height: var(--row);
-  box-sizing: border-box; /* the 1px separator lives INSIDE the row height */
-  /* Thumbs sit flush with the selector's left edge — no left padding. */
-  padding: 0 12px 0 0;
+  box-sizing: border-box;
+  padding: 4px 12px 4px 4px;
   cursor: pointer;
   border-bottom: 1px solid color-mix(in srgb, var(--violet) 8%, transparent);
 }
 .row:last-child { border-bottom: none; }
 .row:hover { background: color-mix(in srgb, var(--violet) 8%, transparent); }
 .row.sel { background: color-mix(in srgb, var(--violet) 14%, transparent); }
-.row.sel .name { color: var(--cyan-hi); text-shadow: 0 0 6px color-mix(in srgb, var(--violet) 60%, transparent); }
+.row.sel .name { color: var(--cyan-hi); text-shadow: none; }
 .thumb {
   width: var(--thumb);
   height: var(--thumb);
-  box-sizing: border-box; /* border inside — the box is EXACTLY --thumb */
+  box-sizing: border-box;
   flex: none;
   border: 1px solid var(--line);
-  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  border-radius: 8px;
 }
 .thumb.blank {
   display: inline-flex;
@@ -115,6 +116,6 @@ function pick(name: string) {
   font-weight: 700;
   color: var(--cyan-dim);
 }
-.name { font-size: 15px; letter-spacing: 0.22em; color: var(--muted); }
+.name { font-size: 15px; letter-spacing: normal; color: var(--muted); }
 .row:hover .name { color: var(--cyan); }
 </style>
