@@ -86,6 +86,7 @@ def main() -> int:
     bump_uv_lock(new_version)
     bump_json_version("dashboard/package.json", new_version)
     bump_json_version(".claude-plugin/plugin.json", new_version)
+    bump_json_version(".codex-plugin/plugin.json", new_version)
 
     print(f"bumped {current} -> {new_version} in pyproject.toml, uv.lock, "
           "dashboard/package.json, .claude-plugin/plugin.json")

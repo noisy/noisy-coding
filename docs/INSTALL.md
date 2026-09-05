@@ -110,3 +110,8 @@ uv run python scripts/smoke_test.py "Hello from Grok"
 Hacking on noisy-coding itself? See
 [local-development.md](local-development.md) for running a dev instance
 next to production.
+# Codex
+
+For Codex plugin installation, shared daemon selection, hook review, and
+removal, follow [Codex setup](codex.md). The Claude instructions below
+remain specific to that integration.

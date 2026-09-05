@@ -1,6 +1,6 @@
 # noisy-coding
 
-**Talk to Claude Code while it works — Jarvis-style voice coding.**
+**Talk to your coding agent while it works — voice support for Claude Code and Codex.**
 It's your voice that's noisy, not your code.
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/noisy/noisy-coding)](https://hub.docker.com/r/noisy/noisy-coding)
@@ -10,16 +10,16 @@ It's your voice that's noisy, not your code.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Glama score](https://glama.ai/mcp/servers/noisy/noisy-coding/badges/score.svg)](https://glama.ai/mcp/servers/noisy/noisy-coding)
 
-Claude speaks short summaries aloud. An always-on listener turns your
-speech into messages Claude receives **mid-task, without stopping it** —
+Your agent speaks short summaries aloud. An always-on listener turns your
+speech into messages it receives **mid-task, without stopping it** —
 no push-to-send, no copy-pasting transcripts. Step away from the keyboard
 and keep steering your agent.
 
 ## Why you'll like it
 
-- **Interrupt-free flow** — speak while Claude is working; your words land
+- **Interrupt-free flow** — speak while your agent is working; your words land
   in the running session, not a text box.
-- **Hands-free reviews** — Claude reads its findings aloud; you answer
+- **Hands-free reviews** — your agent reads its findings aloud; you answer
   from across the room.
 - **Live "tactical HUD" dashboard** — conversation log with replay/recall,
   real-time oscilloscope, mute buttons, costs and latencies at a glance.
@@ -35,7 +35,27 @@ Speech-to-text and text-to-speech run on the
 extremely cheap in practice (a small one-time budget lasts months of
 daily use).
 
-## Install in 2 minutes
+## Install for Codex
+
+Install the Codex plugin, then ask it to set up voice. You need local Codex
+with lifecycle hooks, `uv`, and a running noisy-coding daemon (app or Docker).
+See [the Codex guide](docs/codex.md) for pre-release checkout installation,
+endpoint selection, and a spoken round-trip check.
+
+```sh
+codex plugin marketplace add noisy/noisy-coding
+codex plugin add noisy-coding@noisy-coding
+```
+
+In a new session: **“Use noisy-coding to set up voice.”** Review its hooks
+through `/hooks`; the installer preserves unrelated settings. The chat uses
+registered agent labels, so multiple integrations can share one dashboard.
+
+**Codex's Stop hook holds a turn open while listening for up to one hour.**
+Use `--listen-seconds 60` for a shorter wait, or `0` to disable idle listening;
+see [idle listening](docs/codex.md#why-codex-can-look-busy-while-listening).
+
+## Install for Claude Code
 
 The backend ships as a hardware-free Docker image
 ([`noisy/noisy-coding`](https://hub.docker.com/r/noisy/noisy-coding)):
@@ -71,14 +91,14 @@ hardware mic/speakers, remote hosts, all configuration knobs — live in
 
 All speech logic lives in one **listener daemon** — the single owner of
 the microphone, the playback queue and the speakers. The MCP server is a
-thin messenger that forwards `speak` requests; Claude Code hooks deliver
+thin messenger that forwards `speak` requests; agent lifecycle hooks deliver
 your transcribed speech back into the session (see
 [docs/hooks.md](docs/hooks.md)).
 
 ```
 mic (hardware or browser tab via WS :8766)
   -> VAD -> Grok STT -> transcript queue -> HTTP :8765
-                              ^ polled by Claude Code hooks
+                              ^ drained by agent lifecycle hooks
 speak (MCP, stdio or HTTP :8767) -> POST /speak -> daemon queue
   -> Grok TTS -> speakers (hardware or browser tab)
 ```
@@ -97,6 +117,7 @@ speak (MCP, stdio or HTTP :8767) -> POST /speak -> daemon queue
 - [docs/INSTALL.md](docs/INSTALL.md) — plain Docker, native install,
   remote hosts, environment variables, development commands
 - [docs/hooks.md](docs/hooks.md) — how Claude hears you
+- [docs/codex.md](docs/codex.md) — Codex setup, hook trust, identity, and removal
 - [docs/ports.md](docs/ports.md) — what each port is for
 - [docs/local-development.md](docs/local-development.md) — hacking on
   noisy-coding itself

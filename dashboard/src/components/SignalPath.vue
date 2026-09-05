@@ -149,8 +149,8 @@ function megabytes(bytes: number): string {
       <span class="node">YOUR MIC</span><span class="wire" />
       <button class="pill" :disabled="busy" title="click to switch who transcribes you"
         @click="flip('stt')">{{ pillLabel("stt") }}</button>
-      <span class="wire" /><span class="node">CLAUDE</span><span class="wire" />
-      <button class="pill" :disabled="busy" title="click to switch who renders Claude's voice"
+      <span class="wire" /><span class="node">AGENT</span><span class="wire" />
+      <button class="pill" :disabled="busy" title="click to switch who renders the agent’s voice"
         @click="flip('tts')">{{ pillLabel("tts") }}</button>
       <span class="wire" /><span class="node">SPEAKERS</span>
     </div>

@@ -296,7 +296,7 @@ async function copyLog() {
           >{{ b.label }}</button>
         </div>
         <div class="group">
-          <div class="glabel">CLAUDE MESSAGE</div>
+          <div class="glabel">AGENT MESSAGE</div>
           <button class="ctl" @click="claudeNew">ARRIVES (QUEUED)</button>
           <button
             v-for="b in CLAUDE_BUTTONS"

@@ -1,6 +1,46 @@
 import json
 
+import httpx
+import pytest
+import respx
+
 from noisy_coding import server
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_shared_server_interleaves_two_codex_sessions_and_legacy_claude(tmp_path, monkeypatch):
+    _write_cwd_map(tmp_path, monkeypatch, "claude-session")
+    monkeypatch.delenv("NOISY_CODING_AGENT_NAME", raising=False)
+    monkeypatch.delenv("NOISY_CODING_REQUIRE_AGENT_ID", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "claude-session")
+    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    route = respx.post("http://127.0.0.1:12345/speak").mock(return_value=httpx.Response(200, json={"voice": "test"}))
+
+    await server.speak("A", agent_id="codex-a")
+    await server.speak("Claude")
+    await server.announce("B", agent_id="codex-b")
+    await server.speak("A again", agent_id="codex-a")
+
+    assert [json.loads(call.request.content) for call in route.calls] == [
+        {"text": "A", "interrupt": False, "wait": True, "agent": "codex-a"},
+        {"text": "Claude", "interrupt": False, "wait": True, "agent": "claude-session"},
+        {"text": "B", "wait": False, "agent": "codex-b"},
+        {"text": "A again", "interrupt": False, "wait": True, "agent": "codex-a"},
+    ]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_codex_server_without_hook_identity_reports_error_instead_of_speaking(monkeypatch):
+    monkeypatch.setenv("NOISY_CODING_REQUIRE_AGENT_ID", "1")
+    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    event = respx.post("http://127.0.0.1:12345/event").mock(return_value=httpx.Response(200, json={"ok": True}))
+
+    result = await server.speak("Never route this by cwd")
+
+    assert "identity is missing" in result
+    assert json.loads(event.calls[0].request.content)["kind"] == "voice_identity_error"
 
 
 def _write_cwd_map(tmp_path, monkeypatch, agent):

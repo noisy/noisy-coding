@@ -1,0 +1,8 @@
+{
+  "noisy-coding": {
+    "command": "uv",
+    "args": ["run", "--directory", "${PLUGIN_ROOT}", "--frozen", "--no-dev", "python", "${PLUGIN_ROOT}/hooks/codex_mcp.py"],
+    "startup_timeout_sec": 120,
+    "tool_timeout_sec": 180
+  }
+}

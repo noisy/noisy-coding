@@ -19,6 +19,23 @@ function utterance(id: number, role: "user" | "claude"): Utterance {
 }
 
 describe("ConversationLog", () => {
+  it("uses arbitrary agent metadata and preserves speaker labels", () => {
+    const wrapper = mount(ConversationLog, {
+      props: {
+        utterances: [
+          { ...utterance(1, "claude"), agent_label: "Build assistant" },
+          { ...utterance(2, "claude"), agent_label: "Review partner", speaker: "researcher" },
+          { ...utterance(3, "claude"), speaker: "viewer" },
+          utterance(4, "claude"),
+        ],
+        speakerLabels: { viewer: "YouTube · Alice" },
+      },
+    });
+
+    expect(wrapper.findAll(".who").map((element) => element.text())).toEqual([
+      "BUILD ASSISTANT", "RESEARCHER · REVIEW PARTNER", "YOUTUBE · ALICE", "AGENT",
+    ]);
+  });
   it("renders oldest first so the newest message is at the bottom", () => {
     const wrapper = mount(ConversationLog, {
       props: { utterances: [utterance(3, "user"), utterance(1, "claude"), utterance(2, "user")] },
@@ -45,7 +62,7 @@ describe("ConversationLog", () => {
     });
 
     const whos = wrapper.findAll(".who").map((n) => n.text());
-    expect(whos).toEqual(["NOISY-CODING", "CLAUDE"]);
+    expect(whos).toEqual(["NOISY-CODING", "AGENT"]);
     expect(wrapper.findAll(".msg")[0].classes()).toContain("accent-cyan");
   });
 

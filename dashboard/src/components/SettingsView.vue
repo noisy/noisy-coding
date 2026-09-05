@@ -123,9 +123,9 @@ function submit() {
       </div>
       <div class="text">
         <p>
-          Where Claude's voice plays. THIS BROWSER TAB routes speech through
+          Where the agent’s voice plays. THIS BROWSER TAB routes speech through
           this page — pair it with the tab microphone and the browser's echo
-          cancellation lets you interrupt Claude mid-sentence.
+          cancellation lets you interrupt the agent mid-sentence.
         </p>
       </div>
     </section>
@@ -206,7 +206,7 @@ function submit() {
       <div class="text">
         <p>
           The key powers everything this console does: transcribing your speech
-          (Grok STT) and giving Claude a voice (Grok TTS). Get one at
+          (Grok STT) and giving your agent a voice (Grok TTS). Get one at
           <a href="https://console.x.ai" target="_blank" rel="noreferrer">console.x.ai</a>
           → <b>API Keys</b> → <b>Create API key</b>, then paste it above.
         </p>
@@ -219,7 +219,7 @@ function submit() {
           </p>
           <ul>
             <li>a 15-second spoken command ≈ <b>$0.0004</b></li>
-            <li>a typical spoken Claude reply (~200 characters) ≈ <b>$0.0008</b></li>
+            <li>a typical spoken agent reply (~200 characters) ≈ <b>$0.0008</b></li>
             <li>a full hour of live conversation ≈ <b>$0.20–0.30</b> both ways</li>
             <li>an hour a day, every workday ≈ <b>$5–7 / month</b></li>
           </ul>

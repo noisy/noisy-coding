@@ -89,7 +89,7 @@ const portrait = computed(() => (props.voice ? voiceSpriteStyle(props.voice) : n
       <button
         v-if="cancelable"
         class="cancel"
-        title="Recall this message before Claude reads it"
+        title="Recall this message before the agent reads it"
         @click="$emit('cancel')"
       >✕</button>
       <span v-if="live" class="livebars"><i /><i /><i /><i /><i /></span>
