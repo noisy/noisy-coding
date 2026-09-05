@@ -30,6 +30,7 @@ STORIES=(
   "TerminalDiffReview:synthetic-screenshots-companion-over-claude-code--terminal-diff-review:1200x760"
   "TerminalHandsFree:synthetic-screenshots-companion-over-claude-code--terminal-hands-free:1200x760"
   "dashboard-content:synthetic-screenshots-app--content:1600x1000"
+  "character-panel:synthetic-screenshots-character--panel:420x690"
 )
 
 echo "==> building storybook"
@@ -72,7 +73,7 @@ for entry in "${STORIES[@]}"; do
     win="${size%x*},${size#*x}"
   fi
   "$CHROME" --headless --disable-gpu --hide-scrollbars \
-    --window-size="$win" "${scale[@]}" \
+    --window-size="$win" ${scale[@]+"${scale[@]}"} \
     --screenshot="$OUT/$name.png" \
     --virtual-time-budget=5000 \
     "http://127.0.0.1:$PORT/iframe.html?id=$id&viewMode=story" 2>/dev/null
