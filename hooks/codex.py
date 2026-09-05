@@ -59,8 +59,6 @@ def main():
         return
     os.environ["NOISY_CODING_AGENT_NAME"] = session_id
     os.environ["NOISY_CODING_SESSION_TITLE"] = f"{settings.get('agent_label', 'Codex')} · {session_id[:8]}"
-    if event == "Stop" and float(os.environ["NOISY_CODING_REWAKE_WAIT_SECONDS"]) == 0:
-        return
     script = SCRIPTS.get(event)
     if script:
         sys.stdin = io.StringIO(json.dumps(payload))

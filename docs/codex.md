@@ -20,7 +20,9 @@ codex plugin marketplace add noisy/noisy-coding
 codex plugin add noisy-coding@noisy-coding
 ```
 
-For a checkout before release, register the checkout instead:
+For a clean checkout before release, register the checkout instead. Use a
+checkout without `.venv` or `node_modules`: local marketplace installation
+copies the plugin directory, including local dependency caches.
 
 ```sh
 codex plugin marketplace add /absolute/path/to/noisy-coding
@@ -97,9 +99,14 @@ the same session ID. The MCP process can therefore be shared across
 sessions; directory names and shared environment variables do not route
 Codex speech. A missing identity produces a tool error and, when reachable,
 a dashboard error event. Review `/hooks` instead of hardcoding another name.
+Legacy Claude servers ignore this argument; only the Codex launcher enables
+host-injected identity. A duplicate listener reports its conflict in Codex
+and the dashboard, and exits without consuming another listener's queue.
 
 If speaking fails after first installation, ensure `uv` is on the PATH
-visible to Codex and start a new session. If voice only works one way,
+visible to Codex and start a new session. The MCP configuration uses a
+plugin-relative `cwd` and relative arguments; `${PLUGIN_ROOT}` is expanded
+for hooks, but not MCP arguments in the tested Codex version. If voice only works one way,
 verify hook trust and that both directions selected the same daemon. Do
 not install a second global hook set alongside the plugin. If you used
 the earlier manual prototype, remove only its noisy-coding entries after

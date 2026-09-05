@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Bump the project version in every file that carries it, in one shot.
 
-The version lives in four places that must never drift apart:
-pyproject.toml, uv.lock, dashboard/package.json and .claude-plugin/plugin.json.
+The version lives in five places that must never drift apart:
+pyproject.toml, uv.lock, dashboard/package.json, .claude-plugin/plugin.json,
+and .codex-plugin/plugin.json.
 Bumping them by hand is how .claude-plugin/plugin.json fell three releases
 behind (issue #7). Run this instead:
 

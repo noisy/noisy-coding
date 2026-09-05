@@ -13,6 +13,8 @@ def config_path():
 def configure():
     path = config_path()
     settings = json.loads(path.read_text()) if path.exists() else {}
+    if not isinstance(settings, dict):
+        raise ValueError("Codex settings must be a JSON object")
     port = int(os.environ.get("NOISY_CODING_LISTENER_PORT") or settings.get("port", 8765))
     seconds = float(settings.get("listen_seconds", 3600))
     if not 1 <= port <= 65535 or not 0 <= seconds <= 3600:

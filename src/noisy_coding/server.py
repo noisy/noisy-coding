@@ -91,6 +91,9 @@ async def _daemon_speak(body: dict, agent_id: str | None = None) -> dict | None:
     A daemon that is merely starting up must not turn speak into an
     exception — on the first failure we (re)spawn it and retry once.
     """
+    # Only a host with trusted identity injection may override legacy routing.
+    if not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
+        agent_id = None
     error = await _identity_error(agent_id)
     if error:
         return {"error": error}
@@ -206,6 +209,9 @@ async def change_voice(voice_id: str, speaker: str = "", agent_id: str | None = 
             held by someone else is refused rather than duplicated, so two
             speakers never become indistinguishable by ear.
     """
+    # Only a host with trusted identity injection may override legacy routing.
+    if not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
+        agent_id = None
     error = await _identity_error(agent_id)
     if error:
         return error
@@ -239,7 +245,7 @@ async def set_speaker_style(speaker: str, color: str = "", label: str = "") -> s
       - "default" clear the entry, back to guest green
 
     The label is FREE TEXT shown as the bubble's title instead of the
-    standard "<SPEAKER> · CLAUDE" - e.g. "YouTube · someRandomGuy" or
+    standard "<SPEAKER> · AGENT" - e.g. "YouTube · someRandomGuy" or
     "Luna - chat agent". Empty label leaves the current one; to clear a
     label set it to "-".
 

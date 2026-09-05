@@ -17,8 +17,11 @@ async def test_shared_server_interleaves_two_codex_sessions_and_legacy_claude(tm
     monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
     route = respx.post("http://127.0.0.1:12345/speak").mock(return_value=httpx.Response(200, json={"voice": "test"}))
 
+    monkeypatch.setenv("NOISY_CODING_REQUIRE_AGENT_ID", "1")
     await server.speak("A", agent_id="codex-a")
-    await server.speak("Claude")
+    monkeypatch.delenv("NOISY_CODING_REQUIRE_AGENT_ID")
+    await server.speak("Claude", agent_id="forged-other-session")
+    monkeypatch.setenv("NOISY_CODING_REQUIRE_AGENT_ID", "1")
     await server.announce("B", agent_id="codex-b")
     await server.speak("A again", agent_id="codex-a")
 
@@ -41,6 +44,23 @@ async def test_codex_server_without_hook_identity_reports_error_instead_of_speak
 
     assert "identity is missing" in result
     assert json.loads(event.calls[0].request.content)["kind"] == "voice_identity_error"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("require_identity, expected", [(False, "claude-session"), (True, "codex-session")])
+@respx.mock
+async def test_voice_change_only_accepts_host_injected_identity(monkeypatch, require_identity, expected):
+    monkeypatch.delenv("NOISY_CODING_REQUIRE_AGENT_ID", raising=False)
+    if require_identity:
+        monkeypatch.setenv("NOISY_CODING_REQUIRE_AGENT_ID", "1")
+    monkeypatch.setenv("NOISY_CODING_AGENT_NAME", "claude-session")
+    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    route = respx.post("http://127.0.0.1:12345/voice").mock(
+        return_value=httpx.Response(200, json={"voice": "test"}))
+
+    await server.change_voice("test", agent_id="codex-session")
+
+    assert json.loads(route.calls[0].request.content) == {"voice_id": "test", "agent": expected}
 
 
 def _write_cwd_map(tmp_path, monkeypatch, agent):
