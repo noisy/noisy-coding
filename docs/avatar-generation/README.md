@@ -17,7 +17,7 @@ These images were generated with the built-in `image_gen` tool, not the fallback
 
 The production PNGs live in `dashboard/src/assets/voice-avatars/`. Each sheet uses six columns and five rows. Cell indices are **zero-based**, row-major; the canonical ordering is `dashboard/src/avatars/voice-order.json`. Aurora and Liora occupy cells 26 and 27. Cells 28 and 29 are spare. Do not alphabetically reorder the artwork manifest: that would silently give existing voices different identities.
 
-`VoiceAvatar.vue` clips the selected cell in CSS. Actual row boundaries are recorded in `dashboard/src/avatars/crop-metadata.json` because generated grids are not pixel-perfect. Re-measure those boundaries when an atlas changes, then inspect every row for adjacent-art bleed. It retains the original generated image, including any alpha, without destructive cropping. The same component is used by the dashboard, voice picker, conversation bubbles and companion. The selected family is saved in `noisy-coding.avatar-set` in localStorage, shared across same-origin windows. It is a device/browser preference, not an account preference. Separate origins have separate preferences. The generated sheets are explicit Vite assets, so `/next/` deployments and the website resolve them correctly.
+`VoiceAvatar.vue` clips the selected cell in CSS. Actual row and per-row column boundaries are recorded in `dashboard/src/avatars/crop-metadata.json` because generated grids are not pixel-perfect. Re-measure those boundaries when an atlas changes, then inspect every row for adjacent-art bleed. It retains the original generated image, including any alpha, without destructive cropping. The same component is used by the dashboard, voice picker, conversation bubbles and companion. The selected family is saved in `noisy-coding.avatar-set` in localStorage, shared across same-origin windows. It is a device/browser preference, not an account preference. Separate origins have separate preferences. The generated sheets are explicit Vite assets, so `/next/` deployments and the website resolve them correctly.
 
 ## Adding another voice
 
@@ -31,3 +31,12 @@ The production PNGs live in `dashboard/src/assets/voice-avatars/`. Each sheet us
 ## Review
 
 Use Settings → Appearance to choose a family, or the Storybook All sets and Choose set stories to compare them. Names remain visible in the voice picker; artwork is an identity cue, not the only accessible label. Unknown voices and failed image loads retain their monogram fallback.
+
+## Verification (2026-09-07)
+
+- 213 frontend tests across 27 files pass, including backend voice coverage, missing-image fallback, preference persistence and complete-family preview switching.
+- Dashboard typecheck/build, production Storybook build and website build pass.
+- Rendered Settings / Appearance at 1280 × 800: all 28 selected avatars fit without right-panel scrolling (`clientHeight = scrollHeight = 480`); the family list scrolls independently.
+- Selecting an animal family updates an already-open companion in a second same-origin browser tab without reloading; all three companion images report loaded artwork. Reload preserves the family.
+- Opening the voice menu leaves Character at the same Y position and the rail height unchanged (`clientHeight = scrollHeight = 599`). Escape returns focus to the trigger. Avatar is 96 px and the text mute button is 76 × 48 px.
+- Native Electron window behavior and OS-level PiP remain outside these browser checks. Importing user-created families is not implemented; the scrollable list accommodates additional catalog entries.
