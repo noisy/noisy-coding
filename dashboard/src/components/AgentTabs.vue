@@ -132,7 +132,9 @@ function onDrop(target: Tab) {
         <span v-else class="dot" />
       </span>
       <span class="tab-label">{{ tab.label }}</span>
-      <span v-if="tab.name === active" class="mic-recipient" title="Receiving your speech">Mic</span>
+      <Transition name="mic-label">
+        <span v-if="tab.name === active" class="mic-recipient" :aria-hidden="tab.name !== active" title="Receiving your speech">Mic</span>
+      </Transition>
       <!-- Dismiss: offline conversations only; overlaid so hover never
            changes the tab's width. -->
       <span
@@ -151,7 +153,10 @@ function onDrop(target: Tab) {
 
 .tabs { display:flex; flex-wrap:wrap; gap:6px; }
 button { position:relative; display:inline-flex; align-items:center; gap:8px; font:13px var(--sans); color:var(--muted); border:1px solid transparent; background:transparent; padding:9px 12px; min-width:0; max-width:100%; }
-.mic-recipient { font-size:10px; color:var(--green); }
+.mic-recipient { font-size:10px; color:var(--green); max-width:3ch; margin-left:0; overflow:hidden; white-space:nowrap; }
+.mic-label-enter-active, .mic-label-leave-active { transition:max-width 220ms ease, margin-left 220ms ease, opacity 220ms ease; }
+.mic-label-enter-from, .mic-label-leave-to { max-width:0; margin-left:-8px; opacity:0; }
+@media (prefers-reduced-motion:reduce) { .mic-label-enter-active, .mic-label-leave-active { transition:none; } }
 .tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
 button:hover { color:var(--ink); background:var(--surface-hover); }
 button.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
