@@ -37,7 +37,8 @@ describe("AgentTabs", () => {
 
     const [a, b] = wrapper.findAll("button");
     expect(a.classes()).toContain("viewing");
-    expect(a.find(".mic-recipient").exists()).toBe(false);
+    expect(a.find(".mic-recipient").attributes("aria-hidden")).toBe("true");
+    expect(b.find(".mic-recipient").attributes("aria-hidden")).toBe("false");
     expect(b.find(".mic-recipient").text()).toBe("Mic");
     expect(b.find(".eq").exists()).toBe(true); // speaking = green equalizer
     expect(a.find(".eq").exists()).toBe(false);

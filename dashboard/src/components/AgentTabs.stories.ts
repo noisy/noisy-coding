@@ -99,3 +99,9 @@ export const TabsOnWindow: StoryObj<typeof AgentTabs> = {
     </main>`,
   }),
 };
+
+/** Slow motion makes conservation of total tab width easy to inspect. */
+export const SlowMicrophoneTransfer: StoryObj<typeof AgentTabs> = {
+  ...TabsOnWindow,
+  decorators: [() => ({ template: '<div style="--mic-transition-duration-ms:1800"><story /></div>' })],
+};

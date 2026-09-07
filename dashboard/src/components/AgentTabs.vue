@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { interpolateRecipientWeights } from "./recipientTransition";
 
 export interface AgentMeta {
   label: string;
@@ -22,6 +23,29 @@ const props = withDefaults(
   }>(),
   { thinking: () => [], queued: () => ({}), muted: () => [], meta: null },
 );
+
+// One clock redistributes the existing Mic space, including interrupted moves.
+const tabStrip = ref<HTMLElement | null>(null);
+const recipientWeights = ref<Record<string, number>>(props.active ? { [props.active]: 1 } : {});
+let recipientFrame = 0;
+watch(() => props.active, (recipient) => {
+  cancelAnimationFrame(recipientFrame);
+  const from = { ...recipientWeights.value };
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    recipientWeights.value = recipient ? { [recipient]: 1 } : {};
+    return;
+  }
+  const duration = Number(tabStrip.value && getComputedStyle(tabStrip.value).getPropertyValue('--mic-transition-duration-ms')) || 220;
+  const started = performance.now();
+  const animate = (now: number) => {
+    const progress = Math.min(1, (now - started) / duration);
+    recipientWeights.value = interpolateRecipientWeights(from, recipient, progress);
+    if (progress < 1) recipientFrame = requestAnimationFrame(animate);
+    else recipientWeights.value = recipient ? { [recipient]: 1 } : {};
+  };
+  recipientFrame = requestAnimationFrame(animate);
+});
+onBeforeUnmount(() => cancelAnimationFrame(recipientFrame));
 
 const emit = defineEmits<{
   select: [name: string];
@@ -87,7 +111,7 @@ function onDrop(target: Tab) {
 </script>
 
 <template>
-  <nav v-if="tabs.length" class="tabs" aria-label="Conversations">
+  <nav v-if="tabs.length" ref="tabStrip" class="tabs" aria-label="Conversations">
     <button
       v-for="tab in tabs"
       :key="tab.name"
@@ -132,9 +156,7 @@ function onDrop(target: Tab) {
         <span v-else class="dot" />
       </span>
       <span class="tab-label">{{ tab.label }}</span>
-      <Transition name="mic-label">
-        <span v-if="tab.name === active" class="mic-recipient" :aria-hidden="tab.name !== active" title="Receiving your speech">Mic</span>
-      </Transition>
+      <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[tab.name] ?? 0 }" :aria-hidden="tab.name !== active" title="Receiving your speech">Mic</span>
       <!-- Dismiss: offline conversations only; overlaid so hover never
            changes the tab's width. -->
       <span
@@ -153,10 +175,8 @@ function onDrop(target: Tab) {
 
 .tabs { display:flex; flex-wrap:wrap; gap:6px; }
 button { position:relative; display:inline-flex; align-items:center; gap:8px; font:13px var(--sans); color:var(--muted); border:1px solid transparent; background:transparent; padding:9px 12px; min-width:0; max-width:100%; }
-.mic-recipient { font-size:10px; color:var(--green); max-width:3ch; margin-left:0; overflow:hidden; white-space:nowrap; }
-.mic-label-enter-active, .mic-label-leave-active { transition:max-width 220ms ease, margin-left 220ms ease, opacity 220ms ease; }
-.mic-label-enter-from, .mic-label-leave-to { max-width:0; margin-left:-8px; opacity:0; }
-@media (prefers-reduced-motion:reduce) { .mic-label-enter-active, .mic-label-leave-active { transition:none; } }
+/* Explicit, complementary widths avoid max-width's content-size plateau. */
+.mic-recipient { font-size:10px; color:var(--green); flex:none; width:calc(3ch * var(--mic-weight)); margin-left:calc(-8px * (1 - var(--mic-weight))); overflow:hidden; white-space:nowrap; opacity:var(--mic-weight); }
 .tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
 button:hover { color:var(--ink); background:var(--surface-hover); }
 button.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
