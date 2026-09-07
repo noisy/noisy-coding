@@ -25,5 +25,7 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: dashboard/package-lock.json }
       - run: npm ci
       - run: npx vitest run
+      - name: Check desktop icon resources and modes
+        run: node --test ../desktop/icons.test.js
       - run: npx vue-tsc --noEmit
       - run: npx vite build

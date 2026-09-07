@@ -11,11 +11,9 @@
  */
 const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, dialog } = require("electron");
 const path = require("node:path");
+const { loadDesktopIcons } = require("./icons");
 const http = require("node:http");
 const { spawn } = require("node:child_process");
-
-/** Packaged, files live in the asar; in dev they sit next to this file. */
-const asset = (name) => path.join(__dirname, "build", name);
 
 // The daemon serves the built dashboard under /next/ - the bare /companion
 // path belongs to the vite dev server, not to the daemon.
@@ -418,6 +416,8 @@ app.whenReady().then(async () => {
    * and the widget is frameless, always-on-top and visible on every space,
    * which does not count. So the icon appeared at launch and vanished a
    * moment later, exactly as described. Asking for it explicitly keeps it. */
+  const { dockIcon, trayIcon } = loadDesktopIcons(MODE, nativeImage);
+  if (!dockIcon.isEmpty()) app.dock?.setIcon(dockIcon);
   app.dock?.show();
 
   createWindow();
@@ -430,10 +430,6 @@ app.whenReady().then(async () => {
    * what makes the production icon adapt to a light or dark menu bar. The
    * dev build deliberately opts out: a coloured icon cannot adapt, but it
    * also cannot be mistaken for the production one at a glance. */
-  const trayIcon = nativeImage.createFromPath(
-    asset(MODE === "local" ? "trayDev.png" : "trayTemplate.png"),
-  );
-  trayIcon.setTemplateImage(MODE !== "local");
   tray = new Tray(trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon);
   if (trayIcon.isEmpty()) tray.setTitle("◉");
   // Clicking the icon brings the widget back if it was closed or lost.
