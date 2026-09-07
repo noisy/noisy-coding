@@ -1,0 +1,29 @@
+Use case: stylized-concept. Production avatar sprite sheet for a compact graphite dark desktop voice coding interface. Exactly 6 columns and 5 rows of equal square cells, overall 6:5 aspect ratio. First 28 cells occupied in row-major order; bottom row last two cells fully empty transparent. TRUE transparent background. No text, letters, labels, borders, grid lines, props, scenery or watermark. Each subject centered in its cell, generous 15% clear padding on all sides; nothing crosses cells. Readable at 44px. Cohesive muted palette: slate, sage, cream, ochre, dusty coral, lavender. All artwork same lighting, viewpoint and style. Distinct silhouette for each identity. Set E: ANIMAL PORTRAITS. Stylized editorial animal head-and-neck illustrations, clean shapes with softly shaded matte details. Recognizably animals, not humans wearing costumes. Individual ears, beaks, horns, muzzles important. Sophisticated and warm, not children's stickers. All faces at same scale. Exact ordered subjects:
+1. altair: falcon
+2. ara: red fox
+3. atlas: elephant
+4. carina: raccoon
+5. castor: beaver
+6. celeste: white swan
+7. cosmo: octopus
+8. eve: doe
+9. helios: rooster
+10. helix: chameleon
+11. iris: cat
+12. kepler: owl
+13. leo: lion
+14. lumen: firefly
+15. luna: rabbit
+16. lux: moth
+17. naksh: peacock
+18. orion: wolf
+19. perseus: ram
+20. rex: tiger
+21. rigel: kingfisher
+22. sal: seal
+23. sirius: husky
+24. ursa: brown bear
+25. zagan: dragon lizard
+26. zenith: mountain goat
+27. aurora: arctic fox
+28. liora: otter

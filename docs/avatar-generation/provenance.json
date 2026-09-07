@@ -1,0 +1,44 @@
+[
+  {
+    "id": "editorial",
+    "tool": "image_gen",
+    "source": "/Users/krzysztofszumny/.codex/generated_images/01a0706d-986b-74d0-874b-3844dc0c02e4/exec-5f8a54af-25e9-4600-aeca-d3cb3efdfde3.png",
+    "prompt": "prompts/editorial.txt",
+    "asset": "dashboard/src/assets/voice-avatars/editorial.png"
+  },
+  {
+    "id": "matte",
+    "tool": "image_gen",
+    "source": "/Users/krzysztofszumny/.codex/generated_images/01a0706d-986b-74d0-874b-3844dc0c02e4/exec-e6fbc91a-dec4-4805-bdb0-a72a94bdcaed.png",
+    "prompt": "prompts/matte.txt",
+    "asset": "dashboard/src/assets/voice-avatars/matte.png"
+  },
+  {
+    "id": "painted",
+    "tool": "image_gen",
+    "source": "/Users/krzysztofszumny/.codex/generated_images/01a0706d-986b-74d0-874b-3844dc0c02e4/exec-935e0538-5827-484a-8946-7daa6c968eb2.png",
+    "prompt": "prompts/painted.txt",
+    "asset": "dashboard/src/assets/voice-avatars/painted.png"
+  },
+  {
+    "id": "mineral",
+    "tool": "image_gen",
+    "source": "/Users/krzysztofszumny/.codex/generated_images/01a0706d-986b-74d0-874b-3844dc0c02e4/exec-491a4ffb-d002-4a31-abce-1e97b2cf4240.png",
+    "prompt": "prompts/mineral.txt",
+    "asset": "dashboard/src/assets/voice-avatars/mineral.png"
+  },
+  {
+    "id": "animals",
+    "tool": "image_gen",
+    "source": "/Users/krzysztofszumny/.codex/generated_images/01a0706d-986b-74d0-874b-3844dc0c02e4/exec-aef106a5-522f-4306-8c35-7980631a5052.png",
+    "prompt": "prompts/animals.txt",
+    "asset": "dashboard/src/assets/voice-avatars/animals.png"
+  },
+  {
+    "id": "blobs",
+    "tool": "image_gen",
+    "source": "/Users/krzysztofszumny/.codex/generated_images/01a0706d-986b-74d0-874b-3844dc0c02e4/exec-4937a83c-bbf6-42cf-b5bd-414d22d21418.png",
+    "prompt": "prompts/blobs.txt",
+    "asset": "dashboard/src/assets/voice-avatars/blobs.png"
+  }
+]

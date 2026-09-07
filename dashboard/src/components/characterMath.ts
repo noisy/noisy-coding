@@ -83,9 +83,9 @@ export function speedFromAngle(angleDeg: number): number {
 
 /** All Grok voices, as on the legacy dashboard. */
 export const VOICES: Record<string, string> = {
-  altair: "male", ara: "female", atlas: "male", carina: "female", castor: "male",
+  altair: "male", ara: "female", atlas: "male", aurora: "female", carina: "female", castor: "male",
   celeste: "female", cosmo: "male", eve: "female", helios: "male", helix: "male",
-  iris: "female", kepler: "male", leo: "male", lumen: "male", luna: "female",
+  iris: "female", kepler: "male", leo: "male", liora: "female", lumen: "male", luna: "female",
   lux: "male", naksh: "male", orion: "male", perseus: "male", rex: "male",
   rigel: "male", sal: "male", sirius: "male", ursa: "female", zagan: "male",
   zenith: "male",
