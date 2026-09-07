@@ -78,3 +78,11 @@ The dashboard and Storybook builds passed after these fixes, alongside the 202-t
 - [Compact unheard replies](http://localhost:6007/?path=/story/companion-widget--pending-replies)
 
 Product controls were exercised against fixtures. The user's daemon, live credentials/devices, original checkout, and other worktrees were not modified. Native Electron dragging, always-on-top behavior, and a real browser PiP window were not exercised; the shared window component and desktop entry-point syntax were checked. Reduced-motion rules were reviewed in source and the companion tests use the reduced-motion branch; the host OS preference was not changed. This is not a complete screen-reader audit. No merge, deployment, or release was performed.
+
+## Laptop density follow-up — 2026-09-07
+
+Reduced dashboard chrome, microphone plot height, sidebar panel padding, audio-control row spacing, and character/history spacing. Trait descriptions now share the heading row with their values. Push-to-talk and microphone mute share a row; the duplicate lower Settings button was removed while the header action remains. Voice avatars remain 72 px. Overflow remains available for smaller windows or unusually long content.
+
+Browser measurements and rendered screenshots confirmed both sidebars fit without vertical overflow at 1280 × 800 (including push-to-talk) and 1496 × 838 (automatic detection). At 1280 × 800 the left sidebar measured clientHeight/scrollHeight 675/675 and the right 520/520. The offline scenario also fitted. At 390 × 844 the document had no horizontal overflow. Keyboard ArrowRight changed Humor from 40 to 60 and updated its description to playful.
+
+Added Product/Dashboard/Laptop with a 1280 × 800 viewport preset and verified that the Storybook toolbar applies those dimensions. The original 114-story smoke check above predates this additional story; this follow-up used focused render checks. All 202 tests in 23 files passed; dashboard typecheck/build, Storybook build, and website build passed. The native desktop application was not restarted or modified during validation.

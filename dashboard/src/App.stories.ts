@@ -19,3 +19,16 @@ export const Empty=story('empty');
 export const Setup=story('setup');
 export const Shutdown=story('shutdown');
 export const LongContent=story('long');
+
+// A full dashboard, including the extra push-to-talk action, at laptop height.
+export const Laptop:StoryObj = {
+  ...story('conversation'),
+  parameters: {
+    viewport: {
+      defaultViewport: 'laptop',
+      viewports: {
+        laptop: { name: 'Laptop 1280 × 800', styles: { width: '1280px', height: '800px' }, type: 'desktop' },
+      },
+    },
+  },
+};
