@@ -376,7 +376,7 @@ watch(
     </div>
 
     <!-- The thread: pixel-clamped, scrollable, pinned to the newest. -->
-    <div ref="scroller" class="thread" tabindex="0" role="region" aria-label="Conversation history" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll, scrollable: overflowing, 'clipped-below': clippedBelow }" :style="{ maxHeight: threadHeight + 'px' }">
+    <div ref="scroller" class="thread" tabindex="0" role="region" aria-label="Conversation history" @scroll.passive="onScroll" :class="{ nearscroll: nearScroll, scrollable: overflowing, 'clipped-below': clippedBelow }" :style="{ maxHeight: draggable ? undefined : threadHeight + 'px' }">
       <transition-group
         :name="animateArrival ? 'arrive' : ''"
         tag="div"
@@ -445,6 +445,17 @@ watch(
 <style>
 body.companion-transparent, body.companion-transparent #app { background:transparent; }
 body.companion-transparent .companion { background:transparent; border-color:transparent; box-shadow:none; }
+/* Reveal the fixed window boundary and drag bar only when reached for. */
+body.companion-transparent .companion-window::after { content:""; position:absolute; inset:1px; border:1px solid #f3f4f5b3; border-radius:10px; box-shadow:inset 0 0 0 1px #151619cc; pointer-events:none; opacity:0; transition:opacity .15s; }
+body.companion-transparent .companion-window .companion-header { opacity:0; pointer-events:none; transition:opacity .15s; }
+body.companion-transparent .companion-window:hover::after,
+body.companion-transparent.hovering .companion-window::after,
+body.companion-transparent .companion-window:focus-within::after { opacity:1; }
+body.companion-transparent .companion-window:hover .companion-header,
+body.companion-transparent.hovering .companion-window .companion-header,
+body.companion-transparent .companion-window:focus-within .companion-header { opacity:1; pointer-events:auto; }
+body.companion-transparent .companion-window .thread { scrollbar-width:none; scrollbar-gutter:auto; mask-image:linear-gradient(transparent, black 18px); }
+body.companion-transparent .companion-window .thread::-webkit-scrollbar { display:none; }
 body.companion-transparent .companion-header,
 body.companion-transparent .rail { background:rgba(27,29,33,.94); border-radius:10px; box-shadow:0 0 0 1px #f3f4f580, 0 0 0 2px #151619b3; }
 body.companion-transparent .companion-header { padding:7px 10px; border-bottom:0; }
@@ -463,7 +474,7 @@ body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 .companion-header strong { font-size:13px; font-weight:600; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .companion-state { flex:none; font-size:11px; color:var(--green); }
 .companion-state.warning { color:var(--amber); }
-.companion .companion-header.drag-strip { box-sizing:border-box; min-height:28px; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:6px; background:linear-gradient(#202226,#202226) padding-box, repeating-linear-gradient(90deg,#edeef0 0 7px,#151619 7px 14px) border-box; box-shadow:none; -webkit-app-region:drag; cursor:grab; user-select:none; }
+.companion .companion-header.drag-strip { box-sizing:border-box; min-height:28px; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:6px; background:#202226; box-shadow:none; -webkit-app-region:drag; cursor:grab; user-select:none; }
 .drag-strip strong { margin-right:auto; font-size:12px; }
 .drag-hint { display:flex; flex:none; align-items:center; gap:5px; color:var(--muted); font-size:10px; white-space:nowrap; }
 .thread { order:-1; flex-basis:100%; min-width:0; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:2px 4px 2px 1px; scrollbar-gutter:stable; }

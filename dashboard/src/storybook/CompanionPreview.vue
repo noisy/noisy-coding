@@ -33,7 +33,7 @@ onUnmounted(() => document.body.classList.remove('companion-transparent'));
         <CompanionView />
       </div>
     </div>
-    <p class="preview-note">The labeled bar moves the desktop window; its edges resize it. This browser preview demonstrates the same window contents and transparency.</p>
+    <p class="preview-note">Hover over the companion to reveal its frame and drag bar. Its size stays fixed while messages scroll. This browser preview demonstrates the same window contents and transparency.</p>
   </div>
 </template>
 

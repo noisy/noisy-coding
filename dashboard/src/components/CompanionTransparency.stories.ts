@@ -23,3 +23,4 @@ export const Light: Story = {};
 export const Dark: Story = { args: { backdrop: 'dark' } };
 export const Colorful: Story = { args: { backdrop: 'colorful' } };
 export const SmallestWindow: Story = { args: { width: 280, height: 200 } };
+export const UserSizedWindow: Story = { args: { height: 500 }, parameters: { docs: { description: { story: 'The user-sized window keeps its full height when switching between populated and empty conversations. Hover reveals the fixed frame and drag bar.' } } } };
