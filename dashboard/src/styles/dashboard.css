@@ -38,8 +38,10 @@
 .hud .col-left .scope-canvas { height:32px; min-height:32px; }
 .hud .spectrum-panel { display:none; }
 .hud .tabsbar { position:relative; z-index:1; margin-bottom:-1px; }
-.hud .tabsbar .tabs { flex-wrap:nowrap; overflow-x:auto; gap:4px; padding:2px 2px 0; }
+.hud .tabsbar .tabs { flex-wrap:nowrap; overflow-x:auto; gap:4px; padding:2px 0 0; }
 .hud .tabsbar button { flex:none; border-radius:8px 8px 0 0; padding:10px 12px; }
+/* The selected tab already identifies focus; PTT keystrokes must not add a clipped outer ring. */
+.hud .tabsbar button.viewing:focus-visible { outline:none; }
 .hud .tabsbar button.viewing { background:var(--panel); border-color:var(--line); border-bottom-color:var(--panel); }
 .hud .col-mid > .convo-panel { border-top-left-radius:0; }
 .hud .conversation-connection { color:var(--muted); font-size:12px; margin-bottom:8px; }
