@@ -10,7 +10,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 input, select { accent-color: var(--cyan); }
 ::selection { background: #455b7f; color: #fff; }
-.hud { height: 100dvh; padding: 20px 24px 0; display: flex; flex-direction: column; gap: 20px; }
+.hud { height: 100dvh; padding: 12px 20px 0; display: flex; flex-direction: column; gap: 12px; }
 canvas { display: block; width: 100%; }
 * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 @media (max-width: 760px) { .hud { padding: 12px; overflow-y: auto; gap: 14px; } }
