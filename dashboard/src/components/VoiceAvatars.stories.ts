@@ -11,7 +11,7 @@ export const AllSets: StoryObj = {
     setup: () => ({ sets: AVATAR_SETS, voices: AVATAR_VOICES }),
     template: `<main style="height:100dvh;overflow:auto;box-sizing:border-box;padding:24px;background:var(--bg0);color:var(--ink)">
       <h1 style="font-size:22px">Voice avatar families</h1>
-      <p style="margin:8px 0 24px;color:var(--muted)">28 voices · six styles · 72 px and 44 px previews</p>
+      <p style="margin:8px 0 24px;color:var(--muted)">{{ voices.length }} voices · {{ sets.length }} styles · 72 px and 44 px previews</p>
       <section v-for="set in sets" :key="set.id" style="margin-bottom:32px">
         <h2 style="font-size:16px;margin-bottom:12px">{{ set.name }} — {{ set.description }}</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px">

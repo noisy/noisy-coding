@@ -1,0 +1,29 @@
+Use case: stylized-concept. Production avatar atlas for a graphite-dark voice coding interface. Exactly six columns and five equal rows (6:5 aspect ratio), first 28 cells occupied row-major, final two bottom-right cells empty. TRUE transparent background. No grid, text, letters, labels, logos, frames, scenery or watermark. EACH subject centered with at least 15% clear margin on ALL sides, no crossing between cells. Large readable silhouettes at 44px. Cohesive sophisticated editorial illustration, gently shaded matte surfaces, restrained slate, graphite, sage, cream and muted ochre accents. Every avatar is a head and a little shoulder, consistent scale, lighting and framing. ROBOTS collection: 28 original robot personalities. Subtle affectionate nods to classic science-fiction robots, retro service droids, animated companions and industrial androids, translated into ONE original interface illustration style, never movie photographs or copied screenshots. Each visibly mechanically constructed with distinct head geometry and eye arrangement, restrained simple details. Do not add humans. Exact order:
+1. altair: sleek visor helmet with single horizontal amber eye
+2. ara: small rounded dome, two cream eye lenses
+3. atlas: broad industrial square head, recessed eyes
+4. carina: slim porcelain oval head, narrow eye slots
+5. castor: retro box head with tiny aerial
+6. celeste: smooth silver faceplate with round amber eyes
+7. cosmo: asymmetric barrel-shaped head with one large lens
+8. eve: cream capsule head with pair of rectangular eyes
+9. helios: circular bronze head, sun-like side fins
+10. helix: angular folded metal head, one diagonal visor
+11. iris: soft rounded cube with two calm eyes
+12. kepler: vintage riveted head with small round glasses-like lenses
+13. leo: broad graphite head with split mane-like panels
+14. lumen: slender black cylinder head, single cream eye strip
+15. luna: crescent-sided compact helmet with two lenses
+16. lux: elegant chrome diamond face, tiny amber eyes
+17. naksh: layered polygon head with three panels around two eyes
+18. orion: sleek dark helmet with sage V visor
+19. perseus: heavy steel wedge head, square glowing eyes
+20. rex: sturdy old service robot with broad jaw plate
+21. rigel: tall rectangular head with offset two lenses
+22. sal: round retro diving helmet with two inset eyes
+23. sirius: narrow black racing helmet with circular temple discs
+24. ursa: chunky plush-shaped metal bear-like head with square eyes
+25. zagan: angular bronze head with two short aerials
+26. zenith: long ivory android face with segmented forehead
+27. aurora: small pearl dome, upright thin antenna
+28. liora: oval copper service robot head with cheek vents
