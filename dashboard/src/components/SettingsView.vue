@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import AvatarSetPicker from "./AvatarSetPicker.vue";
 
-// The panel got crowded - a toolbar splits it into three homes. AUDIO is
+// The panel got crowded - a toolbar splits it into four homes. AUDIO is
 // first: it's what gets touched mid-session.
-const TABS = ["AUDIO", "SOUNDS", "SYSTEM"] as const;
+const TABS = ["AUDIO", "SOUNDS", "APPEARANCE", "SYSTEM"] as const;
 const tab = ref<(typeof TABS)[number]>("AUDIO");
 
 // Mirrors KEYCODES in listener/hotkey.py - keys that never type characters.
@@ -80,6 +81,8 @@ function submit() {
         :aria-pressed="tab === t" @click="tab = t"
       >{{ t.charAt(0) + t.slice(1).toLowerCase() }}</button>
     </nav>
+
+    <AvatarSetPicker v-if="tab === 'APPEARANCE'" />
 
     <template v-if="tab === 'AUDIO'">
     <!-- Microphone first: switched far more often than the API key. -->

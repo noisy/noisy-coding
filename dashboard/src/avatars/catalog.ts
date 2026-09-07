@@ -5,12 +5,12 @@ export const AVATAR_COLUMNS = 6;
 export const AVATAR_ROWS = 5;
 export const AVATAR_VOICES: readonly string[] = voiceOrder;
 export const AVATAR_SETS = [
-  { id: 'editorial', name: 'A · Editorial', description: 'Clean illustrated portraits', image: new URL('../assets/voice-avatars/editorial.png', import.meta.url).href },
-  { id: 'matte', name: 'B · Matte', description: 'Softly sculpted people', image: new URL('../assets/voice-avatars/matte.png', import.meta.url).href },
-  { id: 'painted', name: 'C · Painted', description: 'Expressive painted portraits', image: new URL('../assets/voice-avatars/painted.png', import.meta.url).href },
-  { id: 'mineral', name: 'D · Mineral', description: 'Distinctive stone forms', image: new URL('../assets/voice-avatars/mineral.png', import.meta.url).href },
-  { id: 'animals', name: 'E · Animals', description: 'Distinctive animal portraits', image: new URL('../assets/voice-avatars/animals.png', import.meta.url).href },
-  { id: 'blobs', name: 'F · Blobs', description: 'Expressive little creatures', image: new URL('../assets/voice-avatars/blobs.png', import.meta.url).href },
+  { id: 'editorial', name: 'Illustrated portraits', description: 'Clean illustrated portraits', image: new URL('../assets/voice-avatars/editorial.png', import.meta.url).href },
+  { id: 'matte', name: 'Matte portraits', description: 'Softly sculpted people', image: new URL('../assets/voice-avatars/matte.png', import.meta.url).href },
+  { id: 'painted', name: 'Painted portraits', description: 'Expressive painted portraits', image: new URL('../assets/voice-avatars/painted.png', import.meta.url).href },
+  { id: 'mineral', name: 'Minerals', description: 'Distinctive stone forms', image: new URL('../assets/voice-avatars/mineral.png', import.meta.url).href },
+  { id: 'animals', name: 'Animals', description: 'Distinctive animal portraits', image: new URL('../assets/voice-avatars/animals.png', import.meta.url).href },
+  { id: 'blobs', name: 'Blobs', description: 'Expressive little creatures', image: new URL('../assets/voice-avatars/blobs.png', import.meta.url).href },
 ] as const;
 export type AvatarSetId = typeof AVATAR_SETS[number]['id'];
 export const DEFAULT_AVATAR_SET: AvatarSetId = 'editorial';
@@ -27,8 +27,11 @@ export function avatarImageStyle(set: AvatarSetId, cell: number) {
   const row = Math.floor(cell / AVATAR_COLUMNS);
   const top = crop.rows[row];
   const height = crop.rows[row + 1] - top;
+  const column = cell % AVATAR_COLUMNS;
+  const left = crop.columns[row][column];
+  const width = crop.columns[row][column + 1] - left;
   return {
-    width: `${AVATAR_COLUMNS * 100}%`, height: `${crop.height / height * 100}%`,
-    left: `${-(cell % AVATAR_COLUMNS) * 100}%`, top: `${-top / height * 100}%`,
+    width: `${crop.width / width * 100}%`, height: `${crop.height / height * 100}%`,
+    left: `${-left / width * 100}%`, top: `${-top / height * 100}%`,
   };
 }
