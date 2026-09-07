@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { VOICES } from "./characterMath";
 import VoiceAvatar from "./VoiceAvatar.vue";
 
@@ -9,16 +9,43 @@ import VoiceAvatar from "./VoiceAvatar.vue";
 const props = defineProps<{ voice: string }>();
 const emit = defineEmits<{ change: [voice: string] }>();
 
-// The whole list geometry hangs off these two numbers — tune here, not
-// in the CSS below.
 const THUMB_PX = 44;
-const VISIBLE_ROWS = 7;
 const ROW_PX = THUMB_PX + 8;
-const listStyle = {
-  "--thumb": `${THUMB_PX}px`,
-  "--row": `${ROW_PX}px`,
-  maxHeight: `${VISIBLE_ROWS * ROW_PX}px`,
-};
+const availableHeight = ref(364);
+const listStyle = computed(() => ({
+  "--thumb": `${THUMB_PX}px`, "--row": `${ROW_PX}px`,
+  maxHeight: `${availableHeight.value}px`,
+}));
+const root = ref<HTMLElement | null>(null);
+function measureAvailableHeight() {
+  const button = trigger.value;
+  if (button) {
+    const rail = button.closest('.convo-rail');
+    const bottom = Math.min(window.innerHeight, rail?.getBoundingClientRect().bottom ?? window.innerHeight);
+    availableHeight.value = Math.max(ROW_PX, bottom - button.getBoundingClientRect().bottom - 8);
+  }
+}
+async function toggle() {
+  if (open.value) { close(); return; }
+  measureAvailableHeight();
+  open.value = true;
+  await nextTick();
+  const selected = root.value?.querySelector<HTMLButtonElement>('.row.sel');
+  selected?.focus({ preventScroll: true });
+  selected?.scrollIntoView?.({ block: 'nearest' });
+}
+function dismissOutside(event: PointerEvent) {
+  if (open.value && event.target instanceof Node && !root.value?.contains(event.target)) open.value = false;
+}
+function updateOnResize() { if (open.value) measureAvailableHeight(); }
+onMounted(() => {
+  document.addEventListener('pointerdown', dismissOutside);
+  window.addEventListener('resize', updateOnResize);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', dismissOutside);
+  window.removeEventListener('resize', updateOnResize);
+});
 
 const open = ref(false);
 const trigger = ref<HTMLButtonElement | null>(null);
@@ -33,8 +60,8 @@ function pick(name: string) {
 </script>
 
 <template>
-  <div class="voiceselector">
-    <button ref="trigger" class="voicecur" type="button" :aria-expanded="open" aria-label="Choose voice" @click="open = !open" @keydown.escape="close">
+  <div ref="root" class="voiceselector">
+    <button ref="trigger" class="voicecur" type="button" :aria-expanded="open" aria-label="Choose voice" @click="toggle" @keydown.escape="close">
       <span class="lbl">VOICE</span>
       <svg width="14" height="14" viewBox="0 0 14 14">
         <circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--violet)" stroke-width="1" />
@@ -72,8 +99,8 @@ function pick(name: string) {
 .voicecur .vname { font-size: 13px; letter-spacing: normal; color: var(--cyan-hi); text-shadow: none; }
 .voicecur .arrow { margin-left: auto; color: var(--cyan-dim); font-size: 11px; }
 .voicelist {
-  position: relative;
-  margin-top:6px;
+  position: absolute;
+  top:calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 20;
@@ -82,7 +109,7 @@ function pick(name: string) {
   scrollbar-color: var(--line-strong) transparent;
   background: var(--panel-solid, #071626);
   border: 1px solid var(--line-strong);
-  box-shadow: none;
+  box-shadow: 0 12px 28px #0006;
   border-radius: 8px;
 }
 .row {

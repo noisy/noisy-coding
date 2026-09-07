@@ -19,7 +19,7 @@ defineEmits<{ change: [voice: string]; "toggle-mute": [] }>();
       <button class="portrait"
         :aria-label="muted ? 'Unmute this conversation' : 'Mute this conversation'"
         :aria-pressed="!!muted" @click="$emit('toggle-mute')">
-        <VoiceAvatar :voice="voice" :size="72" />
+        <VoiceAvatar :voice="voice" :size="96" />
       </button>
       <span v-if="speaking && !muted" class="onair">Speaking</span>
       <button
@@ -36,9 +36,9 @@ defineEmits<{ change: [voice: string]; "toggle-mute": [] }>();
 <style scoped>
 
 .persona { display:flex; flex-direction:column; gap:14px; }
-.frame { position:relative; display:flex; align-items:center; gap:12px; }
+.frame { position:relative; display:flex; align-items:center; gap:8px; }
 .portrait { display:flex; flex:none; border:0; background:none; border-radius:18px; }
-.mutebtn { margin-left:auto; padding:7px 10px; font:12px var(--sans); background:var(--bg1); border:1px solid var(--line); color:var(--ink); }
+.mutebtn { margin-left:auto; min-width:76px; min-height:48px; padding:10px 12px; font:14px var(--sans); background:var(--bg1); border:1px solid var(--line); color:var(--ink); }
 .mutebtn:hover { border-color:var(--line-strong); }
 .mutebtn.on { color:var(--red); border-color:var(--red); }
 .muted .portrait { filter:grayscale(.7); }
