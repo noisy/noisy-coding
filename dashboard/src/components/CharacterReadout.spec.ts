@@ -28,9 +28,24 @@ describe("CharacterReadout", () => {
     expect(wrapper.emitted('change')).toEqual([[{ humor: 80 }]]);
   });
 
+  it('displays existing brevity as inverse verbosity without changing the character', () => {
+    const wrapper = mount(CharacterReadout, { props: { character } });
+    const slider = wrapper.get('input[aria-label="Verbosity"]');
+    expect((slider.element as HTMLInputElement).value).toBe('0');
+    expect(slider.attributes('aria-valuetext')).toBe('0 · minimal');
+    expect(wrapper.emitted('change')).toBeUndefined();
+  });
+
+  it('translates higher verbosity into lower backend brevity', async () => {
+    const wrapper = mount(CharacterReadout, { props: { character } });
+    await wrapper.get('input[aria-label="Verbosity"]').setValue('80');
+    expect(wrapper.emitted('change')).toEqual([[{ brevity: 20 }]]);
+    expect(wrapper.get('input[aria-label="Verbosity"]').attributes('aria-valuetext')).toBe('80 · detailed');
+  });
+
   it("emits the selected speech rate", async () => {
     const wrapper = mount(CharacterReadout, { props: { character } });
-    await wrapper.get('input[aria-label="Speech rate"]').setValue('1.25');
+    await wrapper.get('input[aria-label="Speed"]').setValue('1.25');
     expect(wrapper.emitted('change')).toEqual([[{ speed: 1.25 }]]);
   });
 });

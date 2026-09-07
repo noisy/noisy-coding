@@ -66,6 +66,7 @@ export const TRAIT_WORDS: Record<string, readonly [string, string, string, strin
   humor: ["sterile", "dry", "warm", "playful", "witty", "absurd"],
   honesty: ["courtier", "soft", "diplomatic", "frank", "candid", "no filter"],
   brevity: ["lecture", "generous", "balanced", "tight", "terse", "clicks"],
+  verbosity: ["minimal", "very short", "short", "balanced", "detailed", "expansive"],
   chatty: ["silent", "milestones", "colleague", "aloud", "narrating", "commentary"],
 };
 

@@ -24,16 +24,20 @@ const shown = computed<Character>(() => ({ ...props.character, ...preview.value 
 const TRAITS: { key: Trait; label: string; color: string }[] = [
   { key: "humor", label: "Humor", color: "var(--cyan)" },
   { key: "honesty", label: "Honesty", color: "var(--green)" },
-  { key: "brevity", label: "Brevity", color: "var(--amber)" },
-  { key: "chatty", label: "Chatty", color: "var(--violet)" },
+  { key: "brevity", label: "Verbosity", color: "var(--amber)" },
+  { key: "chatty", label: "Talkative", color: "var(--violet)" },
 ];
 
 const dials = computed(() =>
-  TRAITS.map((t) => ({ ...t, value: shown.value[t.key], word: traitWord(t.key, shown.value[t.key]) })),
+  TRAITS.map((t) => {
+    // Preserve the daemon's brevity setting while presenting its inverse as verbosity.
+    const value = t.key === 'brevity' ? 100 - shown.value.brevity : shown.value[t.key];
+    return { ...t, value, word: traitWord(t.key === 'brevity' ? 'verbosity' : t.key, value) };
+  }),
 );
 
 function setTrait(trait: Trait, value: number) {
-  preview.value = { ...preview.value, [trait]: value };
+  preview.value = { ...preview.value, [trait]: trait === 'brevity' ? 100 - value : value };
 }
 function commitTrait(trait: Trait) {
   const value = preview.value[trait];
@@ -63,8 +67,8 @@ function setSpeed(event: Event) {
     </div>
 
     <label class="charline">
-      <span class="speed-heading"><span>Speech rate</span><span class="sv">{{ shown.speed.toFixed(2) }}×</span></span>
-      <input type="range" min="0.7" max="1.5" step="0.05" :value="shown.speed" aria-label="Speech rate" @change="setSpeed" />
+      <span class="speed-heading"><span>Speed</span><span class="sv">{{ shown.speed.toFixed(2) }}×</span></span>
+      <input type="range" min="0.7" max="1.5" step="0.05" :value="shown.speed" aria-label="Speed" @change="setSpeed" />
       <span class="sr">0.70× — 1.50×</span>
     </label>
   </div>
