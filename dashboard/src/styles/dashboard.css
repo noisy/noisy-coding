@@ -37,7 +37,12 @@
 .hud .col-mid > .panel:not(.convo-panel) { overflow-y:auto; }
 .hud .col-left .scope-canvas { height:32px; min-height:32px; }
 .hud .spectrum-panel { display:none; }
-.hud .tabsbar { margin-bottom:12px; }
+.hud .tabsbar { position:relative; z-index:1; margin-bottom:-1px; }
+.hud .tabsbar .tabs { flex-wrap:nowrap; overflow-x:auto; gap:4px; padding:2px 2px 0; }
+.hud .tabsbar button { flex:none; border-radius:8px 8px 0 0; padding:10px 12px; }
+.hud .tabsbar button.viewing { background:var(--panel); border-color:var(--line); border-bottom-color:var(--panel); }
+.hud .col-mid > .convo-panel { border-top-left-radius:0; }
+.hud .conversation-connection { color:var(--muted); font-size:12px; margin-bottom:8px; }
 .hud .conversation-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:0 0 10px; border-bottom:1px solid var(--line); margin-bottom:12px; }
 .hud .conversation-heading > div { min-width:0; }
 .hud h1 { font-size:19px; font-weight:600; overflow-wrap:anywhere; letter-spacing:-.35px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }

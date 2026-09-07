@@ -562,9 +562,9 @@ const LANGUAGES: Record<string, string> = {
         <div class="microphone-actions" :class="{ 'with-ptt': status?.detection_mode === 'ptt' }">
           <!-- Panic-sized mute: quick muting must not require aiming at a
                tiny control, so it gets widget-scale real estate up top. -->
-          <button class="bigmute" :disabled="offline" :aria-pressed="!!status?.muted" :class="{ muted: status?.muted, locked: unconfigured }" @click="toggleMute">
-            <span class="bm-label">{{ offline ? "Microphone unavailable" : status?.muted ? "Microphone muted" : "Mute microphone" }}</span>
-            <span class="bm-sub">{{ offline ? "Waiting for the voice service" : status?.muted ? "Click to unmute" : "Listening · click to pause" }}</span>
+          <button class="bigmute" :disabled="offline" :aria-label="status?.muted ? 'Unmute microphone' : 'Mute microphone'" :aria-pressed="!!status?.muted" :class="{ muted: status?.muted, locked: unconfigured }" @click="toggleMute">
+            <span class="bm-label">{{ offline ? "Microphone unavailable" : status?.muted ? "Microphone muted" : status?.detection_mode === "ptt" ? "Mute mic" : "Mute microphone" }}</span>
+            <span class="bm-sub">{{ offline ? "Waiting for the voice service" : status?.muted ? "Click to unmute" : status?.detection_mode === "ptt" ? "Click to pause" : "Listening · click to pause" }}</span>
           </button>
           <!-- Holding while muted records nothing — lock the button and say
                why instead of silently eating the press. -->
@@ -583,7 +583,7 @@ const LANGUAGES: Record<string, string> = {
             <span class="bm-sub">
               {{ status?.muted ? "MIC MUTED — UNMUTE FIRST"
                  : status?.ptt_held ? (status?.ptt_toggle_key ? `LIVE — ${status.ptt_toggle_key.toUpperCase()} OR TAP HERE TO END` : "RELEASE TO SEND")
-                 : "Hold this or the space bar" }}
+                 : "or hold Space" }}
             </span>
           </button>
         </div>
@@ -700,11 +700,8 @@ const LANGUAGES: Record<string, string> = {
             @reorder="reorderAgents"
           />
         </div>
-        <HudPanel v-if="!showSettings" class="convo-panel">
-          <div class="conversation-heading">
-            <div><h1 :title="status?.agent_labels?.[viewedAgent ?? '']">{{ status?.agent_labels?.[viewedAgent ?? ''] ?? 'Conversation' }}</h1><p>{{ offline ? 'Reconnecting to the voice service…' : 'Your conversation, as it happens' }}</p></div>
-            <span class="recipient" :title="status?.agent_labels?.[status?.active_agent ?? '']">Receiving: {{ status?.agent_labels?.[status?.active_agent ?? ''] ?? 'No agent' }}</span>
-          </div>
+        <HudPanel v-if="!showSettings" class="convo-panel" :aria-label="status?.agent_labels?.[viewedAgent ?? ''] ?? 'Conversation'">
+          <p v-if="offline" class="conversation-connection" role="status">Reconnecting to the voice service…</p>
           <!-- Everything below the tabs is THIS conversation: the log on
                the left, and the conversation-scoped rail (voice avatar,
                character, turn timeline) inside the same frame on the

@@ -10,7 +10,7 @@ describe("AgentTabs", () => {
       props: { agents, active: "id-a", viewed: "id-a", speaking: [] },
     });
 
-    const labels = wrapper.findAll("button").map((b) => b.text());
+    const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
     expect(labels).toEqual(["noisy-coding-stabilization", "personal"]);
   });
 
@@ -37,6 +37,8 @@ describe("AgentTabs", () => {
 
     const [a, b] = wrapper.findAll("button");
     expect(a.classes()).toContain("viewing");
+    expect(a.find(".mic-recipient").exists()).toBe(false);
+    expect(b.find(".mic-recipient").text()).toBe("Mic");
     expect(b.find(".eq").exists()).toBe(true); // speaking = green equalizer
     expect(a.find(".eq").exists()).toBe(false);
     expect(a.find(".dot.think").exists()).toBe(true); // working = violet pulse
@@ -107,7 +109,7 @@ describe("AgentTabs", () => {
       },
     });
 
-    const labels = wrapper.findAll("button").map((b) => b.text().replace("✕", "").trim());
+    const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
     expect(labels).toEqual(["old", "young", "dead2", "dead1"]);
   });
 
@@ -150,7 +152,7 @@ describe("AgentTabs", () => {
       },
     });
 
-    const labels = wrapper.findAll("button").map((b) => b.text());
+    const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
     expect(labels).toEqual(["c", "b", "a"]);
   });
 

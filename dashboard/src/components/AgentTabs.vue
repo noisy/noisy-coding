@@ -132,6 +132,7 @@ function onDrop(target: Tab) {
         <span v-else class="dot" />
       </span>
       <span class="tab-label">{{ tab.label }}</span>
+      <span v-if="tab.name === active" class="mic-recipient" title="Receiving your speech">Mic</span>
       <!-- Dismiss: offline conversations only; overlaid so hover never
            changes the tab's width. -->
       <span
@@ -150,6 +151,7 @@ function onDrop(target: Tab) {
 
 .tabs { display:flex; flex-wrap:wrap; gap:6px; }
 button { position:relative; display:inline-flex; align-items:center; gap:8px; font:13px var(--sans); color:var(--muted); border:1px solid transparent; background:transparent; padding:9px 12px; min-width:0; max-width:100%; }
+.mic-recipient { font-size:10px; color:var(--green); }
 .tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
 button:hover { color:var(--ink); background:var(--surface-hover); }
 button.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }

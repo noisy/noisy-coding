@@ -70,19 +70,18 @@ function formatChars(chars: number): string {
 
 <style scoped>
 .telemetry {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 0;
-  margin-top: 14px;
-  flex: none;
-  border: 1px solid var(--line);
-  background: var(--bg1);
-  border-radius: 8px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:4px 16px;
+  margin-top:8px;
+  padding-top:6px;
+  flex:none;
+  border-top:1px solid var(--line);
 }
-.telemetry > div { min-width:0; padding: 9px 12px; border-right: 1px solid rgba(158, 188, 245, 0.12); }
-.telemetry > div:last-child { border-right: none; }
-.telemetry .k { font-size: 11px; letter-spacing: normal; color: var(--muted); }
-.telemetry .v { font-size: 14px; color: var(--cyan); margin-top: 3px; text-shadow: none; }
+.telemetry > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px; min-width:0; }
+.telemetry .k { font-size:11px; color:var(--muted); }
+.telemetry .v { font-size:12px; color:var(--cyan); }
 .telemetry .v small { font-size: 11px; color: var(--muted); }
 .telemetry .v.warn { color: var(--amber); text-shadow: none; }
 .telemetry .v.violet { color: var(--violet); text-shadow: none; }
