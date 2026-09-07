@@ -42,10 +42,10 @@ const label = computed(() => {
   <div
     v-if="activity"
     class="busyrow"
-    title="Claude reads your speech while working; the reply comes when he's done."
+    title="The agent receives your speech while working and replies when ready."
   >
     <span class="pulse" />
-    <span class="txt">CLAUDE IS BUSY — {{ label }}</span>
+    <span class="txt">Agent activity — {{ label }}</span>
     <span class="age">{{ age }}</span>
   </div>
 </template>
