@@ -1,0 +1,37 @@
+# Website Product Showcase Implementation Plan
+
+**Goal:** Replace the tactical marketing site with a graphite product showcase and current screenshots.
+
+**Architecture:** Vue page sections compose current product components through the existing Vite alias. Static screenshot assets provide portable demonstrations; interactive character controls use local fixture state.
+
+**Tech Stack:** Vue 3, TypeScript, CSS, Vite, Storybook.
+
+## Global constraints
+
+Keep Noisy Coding branding, synthetic screenshots and disabled live microphone demo. Base work on merged v3-desktop. Do not modify the daemon or original checkout. No automatic speech or deployment. Support reduced motion, keyboard access, root and subpath builds.
+
+## 1. Visual foundation
+
+- [ ] Replace website/src/App.vue and website/src/style.css with a responsive showcase shell: navigation, large hero, product screenshots, companion stories, character section, setup and FAQ.
+- [ ] Use current waveform logo and product colors. Remove legacy avatar override and rotating slogans.
+- [ ] Build with `npm run build` in website; inspect browser at desktop width.
+- [ ] Commit the functional visual pass.
+
+## 2. Current demonstration assets
+
+- [ ] Capture current dashboard and companion synthetic Storybook stories through the browser tooling. Save to website/src/assets/shots and inspect each image.
+- [ ] Correct scripts/marketing-shots.sh asset output synchronization and document source story/dimensions.
+- [ ] Verify the page uses new assets without broken images; build and commit.
+
+## 3. Character and messaging
+
+- [ ] Simplify website/src/CharacterSection.vue into deliberate preset selection using current VoiceAvatar and CharacterReadout. Connect slider update events to local state. Avoid automatic preset changes.
+- [ ] Validate Claude Code and Codex-preview setup copy against README and docs/codex.md. Replace inaccurate offline, voice-count and installation-duration claims.
+- [ ] Verify presets, sliders, navigation and FAQ using browser controls. Commit.
+
+## 4. Final verification
+
+- [ ] Build root and PAGES_BASE=/noisy-coding/ variants and inspect image requests.
+- [ ] Inspect page at 1440, 1280, 768 and 390 CSS pixels; resolve overflow and contrast issues.
+- [ ] Run relevant dashboard tests and inspect browser errors.
+- [ ] Record validation, push branch and prepare a PR against v3-desktop. Do not merge or deploy.
