@@ -646,3 +646,30 @@ img {
     gap: 8px;
   }
 }
+
+/* Keep the live product in the first viewport, alongside a compact introduction. */
+.site-header { height:76px; }
+.hero { padding-top:22px; }
+.hero-intro { display:grid; grid-template-columns:1.1fr 1fr; gap:48px; align-items:center; margin-bottom:24px; }
+.hero-heading .eyebrow { margin-bottom:14px; font-size:10px; }
+.hero h1 { font-size:clamp(40px,4.3vw,62px); }
+.hero-bottom { display:block; margin:0; }
+.hero-bottom > p { font-size:15px; max-width:470px; }
+.hero-actions { flex-direction:row; align-items:center; gap:16px; margin-top:18px; }
+.hero-actions .button { padding:10px 15px; gap:16px; font-size:12px; }
+.hero-actions > span { max-width:130px; font-size:10px; }
+.hero-desktop { width:min(100%,1100px,calc((100svh - 280px) * 1.5789)); margin-inline:auto; }
+@media(max-width:900px) {
+  .hero-intro { gap:24px; }
+  .hero-actions { flex-wrap:wrap; gap:8px; }
+  .hero-bottom > p { font-size:14px; }
+}
+@media(max-width:600px) {
+  .site-header { height:68px; }
+  .hero { padding-top:16px; }
+  .hero-intro { grid-template-columns:1fr; gap:16px; margin-bottom:22px; }
+  .hero h1 { font-size:42px; }
+  .hero-heading .eyebrow { margin-bottom:10px; }
+  .hero-actions { margin-top:14px; flex-direction:row; }
+  .hero-desktop { width:100%; }
+}
