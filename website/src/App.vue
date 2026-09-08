@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import CharacterSection from "./CharacterSection.vue";
-import VoiceAvatar from "@dashboard/components/VoiceAvatar.vue";
+import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
 import dashboardShot from "./assets/shots/dashboard-content.png";
-import reviewShot from "./assets/shots/CodeReviewSpace.png";
-import refactorShot from "./assets/shots/LongRefactorMesh.png";
 const source = "https://github.com/noisy/noisy-coding";
-const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
 </script>
 
 <template>
@@ -22,7 +19,7 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
       Noisy Coding
     </a>
     <nav aria-label="Main navigation">
-      <a href="#workflow">Product</a><a href="#character">Character</a
+      <a href="#voices">Hear it</a><a href="#character">Character</a
       ><a :href="source">GitHub ↗</a>
     </nav>
     <a class="button small" href="#install"
@@ -31,124 +28,26 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
   </header>
   <main id="main">
     <HeroShowcase />
-    <section id="workflow" class="section wrap">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Keep your train of thought</p>
-          <h2>
-            The work keeps moving.<br /><span>So does the conversation.</span>
-          </h2>
-        </div>
-        <p>
-          A question shouldn’t require finding a terminal, switching windows,
-          and typing a message. Just say it.
-        </p>
-      </div>
-      <div class="workflow-grid">
-        <article>
-          <span class="step">01 / Listen</span>
-          <h3>Updates you can hear.</h3>
-          <p>
-            Your agent shares progress, findings, and questions in short spoken
-            updates.
-          </p>
-        </article>
-        <article>
-          <span class="step">02 / Respond</span>
-          <h3>Direction in your own words.</h3>
-          <p>
-            Answer by voice. Steer the next step while your coding session
-            continues.
-          </p>
-        </article>
-        <article>
-          <span class="step">03 / Stay in flow</span>
-          <h3>Room to think.</h3>
-          <p>
-            Read a diff, sketch an idea, or step away from the keyboard. Keep
-            the conversation close.
-          </p>
-        </article>
-      </div>
+    <section
+      id="workflow"
+      class="wrap workflow-summary"
+      aria-label="How it works"
+    >
+      <p><span>01 / Hear</span> Updates without checking the terminal.</p>
+      <p><span>02 / Answer</span> Give direction in your own words.</p>
+      <p><span>03 / Continue</span> Keep your attention on the work.</p>
     </section>
-    <section class="section companion-section">
-      <div class="wrap">
-        <p class="eyebrow">A presence on your desktop</p>
-        <h2>Small window.<br /><em>Ongoing conversation.</em></h2>
-        <p class="section-intro">
-          The companion lives alongside your work. Messages stay in view; window
-          controls appear when you reach for them.
-        </p>
-        <div class="story-grid">
-          <figure>
-            <a :href="reviewShot"
-              ><img
-                :src="reviewShot"
-                alt="Synthetic code review conversation in the current floating companion."
-                loading="lazy"
-            /></a>
-            <figcaption>
-              <span>01 — Review together</span>
-              <h3>Hear the finding. Make the call.</h3>
-              <p>
-                Turn a code review into a conversation, with decisions given by
-                voice.
-              </p>
-            </figcaption>
-          </figure>
-          <figure>
-            <a :href="refactorShot"
-              ><img
-                :src="refactorShot"
-                alt="Synthetic long refactor progress exchange in the current floating companion."
-                loading="lazy"
-            /></a>
-            <figcaption>
-              <span>02 — Keep the long run moving</span>
-              <h3>Stay informed without checking in.</h3>
-              <p>
-                Spoken progress keeps you connected while an agent works through
-                a larger task.
-              </p>
-            </figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-    <section class="section wrap crew-section">
-      <div>
-        <p class="eyebrow">Distinct voices. Shared conversation.</p>
-        <h2>Know who’s talking.<br /><span>Before you look.</span></h2>
-        <p class="section-intro">
-          Give each agent a voice and a face. Queued speech takes turns, and
-          conversation history lets you revisit what you missed.
-        </p>
-      </div>
-      <div class="voice-line">
-        <div
-          v-for="(voice, i) in voices"
-          :key="voice"
-          class="voice-tile"
-          :style="{ '--tile-angle': `${(i - 2) * 4}deg` }"
-        >
-          <VoiceAvatar :voice="voice" :size="88" set="editorial" /><span>{{
-            voice
-          }}</span>
-        </div>
-      </div>
-    </section>
+    <CrewSection />
     <CharacterSection />
     <section id="dashboard" class="section wrap">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">The whole conversation, at a glance</p>
-          <h2>
-            A little more control.<br /><span>A lot less guesswork.</span>
-          </h2>
+          <p class="eyebrow">A home for what you heard</p>
+          <h2>Missed a moment?<br /><span>Pick up the conversation.</span></h2>
         </div>
         <p>
-          Replay an exchange. Adjust your microphone. Check voice usage and
-          latency. Everything has a place.
+          The companion keeps you in the flow. The full application keeps the
+          record: revisit messages, replay an answer, and adjust how you listen.
         </p>
       </div>
       <a
@@ -170,8 +69,8 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
           <p class="eyebrow">Make yourself heard</p>
           <h2>Your next session<br />could sound <em>different.</em></h2>
           <p class="section-intro">
-            Start with your coding agent. Bring your voice API key. Follow the
-            setup guide for your environment.
+            Give your coding agent a voice. Choose your environment and follow
+            the setup guide to start your first conversation.
           </p>
         </div>
         <div class="install-options">
@@ -201,13 +100,6 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
           <p>
             The application runs on your machine. Speech processing uses an
             external voice provider; it is not an offline voice system.
-          </p>
-        </details>
-        <details>
-          <summary>Do I need an API key?</summary>
-          <p>
-            Yes. Bring your own voice-provider API key. Provider usage is billed
-            separately, and the dashboard shows usage and cost information.
           </p>
         </details>
         <details>

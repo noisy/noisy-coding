@@ -22,7 +22,4 @@ behaves - you hear the agents, not yourself.
 Synthesis parameters: `language: "en"`, `speed: 1.1`. Re-encoded to mono
 64 kbps mp3; each clip is under 22 KB.
 
-They live in `public/` rather than beside the story because the dashboard's
-tsconfig has no `vite/client` types, so importing an `.mp3` from TypeScript
-would not type-check. `public/` is served at the root by both Vite and
-Storybook - the same way `voiceSprites.ts` reaches `/avatars.png`.
+Clips are imported beside the shared scene through Vite, so generated URLs work under website deployment subpaths.

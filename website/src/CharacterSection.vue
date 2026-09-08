@@ -157,7 +157,10 @@ function update(patch: Partial<Character>) {
   background: #2b2b32;
 }
 .character-demo {
-  padding: 30px;
+  width: 100%;
+  max-width: 360px;
+  justify-self: center;
+  padding: 20px;
   background: #26282d;
   border: 1px solid #50505a;
   border-radius: 18px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import HeroSceneG from "./scenes/HeroSceneG.vue";
 const variants = [
   {
@@ -32,8 +32,18 @@ type Variant = (typeof variants)[number]["id"];
 const query = new URLSearchParams(window.location.search);
 const requested = query.get("hero");
 const selected = ref<Variant>(
-  variants.find((v) => v.id === requested)?.id ?? "centered",
+  variants.find((v) => v.id === requested)?.id ?? "left",
 );
+const hero = ref<HTMLElement | null>(null);
+const inView = ref(true);
+let visibility: IntersectionObserver | undefined;
+onMounted(() => {
+  visibility = new IntersectionObserver(([entry]) => {
+    inView.value = entry.isIntersecting;
+  });
+  if (hero.value) visibility.observe(hero.value);
+});
+onBeforeUnmount(() => visibility?.disconnect());
 const compare = import.meta.env.DEV || query.get("compare") === "1";
 function select(id: Variant) {
   selected.value = id;
@@ -45,7 +55,7 @@ function select(id: Variant) {
 </script>
 <template>
   <div
-    v-if="compare"
+    v-if="compare && inView"
     class="hero-comparison"
     aria-label="Hero layout comparison"
   >
@@ -62,7 +72,11 @@ function select(id: Variant) {
     </div>
     <p>{{ variants.find((v) => v.id === selected)?.detail }}</p>
   </div>
-  <section class="hero hero-variants wrap" :class="`hero-${selected}`">
+  <section
+    ref="hero"
+    class="hero hero-variants wrap"
+    :class="`hero-${selected}`"
+  >
     <div class="hero-intro">
       <div class="hero-heading">
         <div class="eyebrow">

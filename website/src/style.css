@@ -505,3 +505,8 @@ img {
     gap: 8px;
   }
 }
+
+.workflow-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:32px; padding-block:32px 56px; }
+.workflow-summary p { border-top:1px solid var(--line-strong); padding-top:20px; font-size:14px; }
+.workflow-summary span { display:block; font:11px var(--mono); color:var(--amber); margin-bottom:10px; }
+@media(max-width:600px) { .workflow-summary { grid-template-columns:1fr; gap:20px; } }

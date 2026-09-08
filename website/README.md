@@ -20,6 +20,10 @@ The hero and production CompanionView share `dashboard/src/styles/companion-wind
 
 ## Hero layout comparison
 
-The development preview shows five layout buttons. Production keeps the selector hidden unless `?compare=1` is present. Direct links use `?hero=centered`, `left`, `right`, `product-first`, or `editorial`. The same HeroSceneG instance stays mounted when switching; only the surrounding layout changes. Centered is the provisional default while the variants are reviewed.
+The development preview shows five layout buttons. Production keeps the selector hidden unless `?compare=1` is present. Direct links use `?hero=centered`, `left`, `right`, `product-first`, or `editorial`. The same HeroSceneG instance stays mounted when switching; only the surrounding layout changes. Text left is the default. The floating selector is visible only while the hero is in view.
 
 All five were checked at 1280px and 390px widths with no horizontal document overflow or browser errors.
+
+## Voice demonstration
+
+`CrewSection.vue` presents the shared `CompanionCrewScene.vue` and its original five xAI recordings. Click a portrait for its scenario beat or Hear the conversation for the full sequence. Audio starts only after a click and mutes when the scene leaves view. Mobile uses a tighter static camera; desktop retains the original handover zooms. The recordings ship as Vite assets and need no runtime API key. This is explicitly a scripted example, not a live microphone session.
