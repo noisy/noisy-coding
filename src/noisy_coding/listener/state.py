@@ -22,12 +22,20 @@ DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
 DEFAULT_END_SILENCE_MS = 2000
 MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
-# An agent whose heartbeat (drain polls every 0.5 s, tool hooks during a
-# turn) has been silent this long is shown OFFLINE — never deleted (#11).
-# Generous on purpose: a brief hiccup must not bounce a tab out of the
-# active group (and thereby scramble its position); the flip back to
-# online is immediate on the first heartbeat.
-AGENT_OFFLINE_AFTER_SECONDS = 30.0
+# An agent with NO sign of life for this long is shown OFFLINE — never
+# deleted (#11). The flip back to online is immediate on the next
+# heartbeat, and a brief hiccup must not bounce a tab out of the active
+# group (which would scramble its position).
+#
+# 30s was far too short and produced the "no listener" lie in live use
+# (2026-09-05): the two signs of life are the drain heartbeat and the
+# activity line, and BOTH go quiet during a single long operation - one
+# lengthy tool call, a long think, or an agent speaking a paragraph. A
+# 57-second utterance was stamped undelivered while its addressee was
+# mid-sentence. With two independent signals a generous window is safe:
+# an agent that has neither polled nor reported activity for three
+# minutes really is gone.
+AGENT_OFFLINE_AFTER_SECONDS = 180.0
 DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
 # Push-to-talk hold is a LEASE, not a latch: the UI renews it (~2×/s) while
 # the button is physically held, so a crashed page or lost connection can
