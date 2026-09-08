@@ -111,11 +111,12 @@ function update(patch: Partial<Character>) {
 }
 .character-layout {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 100px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--layout-gap);
   align-items: center;
 }
 .preset-list {
+  max-width: 600px;
   display: grid;
   gap: 8px;
   margin-top: 30px;

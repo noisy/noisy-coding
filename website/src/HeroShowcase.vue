@@ -89,6 +89,38 @@ function select(id: Variant) {
   </section>
 </template>
 <style scoped>
+.hero-intro {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+.hero-bottom {
+  margin: 0;
+}
+.hero-bottom > p {
+  max-width: 470px;
+}
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.hero-actions .button {
+  padding: 11px 16px;
+  gap: 16px;
+  font-size: 13px;
+}
+.hero-actions > span {
+  max-width: 130px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.hero-desktop {
+  margin-inline: auto;
+}
+
 .hero-comparison {
   position: fixed;
   left: 16px;
@@ -133,7 +165,6 @@ function select(id: Variant) {
 }
 .hero-variants {
   padding-top: 16px;
-  width: min(1760px, calc(100% - 64px));
 }
 .hero-variants .hero-intro {
   margin-bottom: 24px;
@@ -312,6 +343,9 @@ function select(id: Variant) {
   }
 }
 @media (max-width: 600px) {
+  .hero-actions {
+    flex-wrap: wrap;
+  }
   .hero-comparison {
     padding-top: 5px;
   }
@@ -381,13 +415,8 @@ function select(id: Variant) {
     max-width: none;
   }
 }
-</style>
 
-<style scoped>
 @media (max-width: 600px) {
-  .hero-variants {
-    width: calc(100% - 36px);
-  }
   .hero-comparison {
     left: 8px;
     bottom: 8px;
