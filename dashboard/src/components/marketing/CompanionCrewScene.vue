@@ -534,12 +534,7 @@ const agents = computed<CompanionAgent[]>(() =>
         unread: waiting > 0,
         waiting,
       };
-    })
-    // Rail order only, so the first conversation sits at the BOTTOM,
-    // nearest the newest bubble. Nothing else reads this order: who is
-    // lit, who carries a badge, and which lines are on screen all come
-    // from the beat's own `holder`, never from a position in this array.
-    .reverse(),
+    }),
 );
 
 
