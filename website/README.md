@@ -17,3 +17,9 @@ The page imports `src/assets/shots/*.png`. See that directory's README for sourc
 The existing deploy-website workflow publishes `website/dist` on matching changes to main or v3-desktop. It does not serve source, the daemon, or website-backend. Feature branches are previewed locally and are not deployed by this workflow.
 
 The hero and production CompanionView share `dashboard/src/styles/companion-window.css`. The hero supplies a fixed 420 × 400 window and marks it inert: it demonstrates the resting widget, not hover interactions. Its title-bar row stays reserved but invisible; the real component scrolls overflowing messages inside the available thread space.
+
+## Hero layout comparison
+
+The development preview shows five layout buttons. Production keeps the selector hidden unless `?compare=1` is present. Direct links use `?hero=centered`, `left`, `right`, `product-first`, or `editorial`. The same HeroSceneG instance stays mounted when switching; only the surrounding layout changes. Centered is the provisional default while the variants are reviewed.
+
+All five were checked at 1280px and 390px widths with no horizontal document overflow or browser errors.

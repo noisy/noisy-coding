@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CharacterSection from "./CharacterSection.vue";
 import VoiceAvatar from "@dashboard/components/VoiceAvatar.vue";
-import HeroSceneG from "./scenes/HeroSceneG.vue";
+import HeroShowcase from "./HeroShowcase.vue";
 import dashboardShot from "./assets/shots/dashboard-content.png";
 import reviewShot from "./assets/shots/CodeReviewSpace.png";
 import refactorShot from "./assets/shots/LongRefactorMesh.png";
@@ -30,30 +30,7 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
     >
   </header>
   <main id="main">
-    <section class="hero wrap">
-      <div class="hero-intro">
-      <div class="hero-heading">
-      <div class="eyebrow">
-        <span class="signal-dot"></span> Your voice, in the workflow
-      </div>
-      <h1>Less typing.<br />More <em>conversation.</em></h1>
-      </div>
-      <div class="hero-bottom">
-        <p>
-          Talk to your coding agent while it works. Hear what matters. Give it
-          direction. Keep your hands—and your attention—where you want them.
-        </p>
-        <div class="hero-actions">
-          <a class="button primary" href="#install"
-            >Give your agent a voice <span aria-hidden="true">↗</span></a
-          ><span>Claude Code · Codex preview</span>
-        </div>
-      </div>
-      </div>
-      <div class="hero-desktop">
-        <HeroSceneG />
-      </div>
-    </section>
+    <HeroShowcase />
     <section id="workflow" class="section wrap">
       <div class="section-heading">
         <div>
