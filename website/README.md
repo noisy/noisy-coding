@@ -1,42 +1,17 @@
-# noisy-coding website
+# Noisy Coding website
 
-The marketing site. It renders the REAL product components (Companion, the
-marketing terminal mock) from `dashboard/src` through the `@dashboard`
-alias - nothing copied, nothing reimplemented.
+Vue/Vite product showcase using the application's graphite tokens, VoiceAvatar and CharacterReadout components through the `@dashboard` alias. Character demo state is local to the page. It never connects to the voice daemon or requests microphone access. The earlier backend/live-audio demonstration and scene experiments remain dormant and are not imported by the landing page.
 
-## Dev
+## Development
 
-```
-npm install
-npm run dev        # port 5199
-```
+Run `npm ci` then `npm run dev` in `website/` (default port 5199). Use `npm run dev -- --port 5201 --strictPort` for an isolated preview when the original checkout is already running.
 
-## Deploy (GitHub Pages)
+## Product screenshots
 
-Deploys automatically via `.github/workflows/deploy-website.yml` on every
-push to `main` that touches `website/` or the dashboard components the site
-renders (also runnable by hand: Actions > deploy-website > Run workflow).
+The page imports `src/assets/shots/*.png`. See that directory's README for source stories and capture dimensions. `scripts/marketing-shots.sh` regenerates the Storybook shots and copies the four website assets into that directory. It requires Chrome and Python/Pillow. `scripts/build-website.sh` regenerates them before building the website. Browser tooling can also capture the same stories; inspect rendered output before replacing assets.
 
-- The Pages artifact is EXACTLY `website/dist` - the compiled bundle only.
-  No source, no backend, no other repo files are ever served.
-- One-time setup: repo Settings > Pages > Source: **GitHub Actions**.
-- The build runs with `PAGES_BASE=/<repo>/` because a project Pages site is
-  served from that prefix; `vite.config.ts` reads it as `base`. Sourcemaps
-  are off (Vite default).
-- Portrait sprite note: product code references `/avatars.png` absolutely;
-  `App.vue` overrides it with a base-aware Vite asset so portraits work
-  under the Pages prefix.
+## Build and deployment
 
-### Custom domain later
+`npm run build` emits only the static site in `website/dist`. `PAGES_BASE=/noisy-coding/ npm run build` builds for GitHub Pages project hosting. Vite resolves the imported portraits, favicon and screenshots with the configured base.
 
-1. Settings > Pages > Custom domain (plus the DNS CNAME/A records).
-2. Set `PAGES_BASE: /` in the workflow (or remove the env - `/` is the
-   default) and redeploy: on a custom domain the site is served from the
-   root, so no base prefix.
-
-## TRY IT LIVE (dormant in v1)
-
-The live demo section is feature-flagged off - `TRY_LIVE_ENABLED` in
-`src/App.vue`. See `src/demo/live-demo-architecture.md` for how to bring it
-back (flag + website-backend with a key). The dormant code tree-shakes out
-of the production bundle: the built site makes no `/api` calls.
+The existing deploy-website workflow publishes `website/dist` on matching changes to main or v3-desktop. It does not serve source, the daemon, or website-backend. Feature branches are previewed locally and are not deployed by this workflow.

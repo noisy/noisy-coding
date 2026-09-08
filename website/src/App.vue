@@ -217,7 +217,8 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
           </p>
         </div>
         <div class="install-options">
-          <a :href="`${source}/blob/v3-desktop/README.md#quick-start`"
+          <a
+            :href="`${source}/blob/v3-desktop/README.md#install-for-claude-code`"
             ><span>Claude Code</span
             ><strong
               >Installation & setup <span aria-hidden="true">↗</span></strong

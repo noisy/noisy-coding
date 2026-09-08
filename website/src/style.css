@@ -288,7 +288,7 @@ img {
 .story-grid img {
   width: 100%;
   aspect-ratio: 1.35;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   border: 1px solid var(--line-strong);
   border-radius: 14px;
@@ -627,5 +627,21 @@ img {
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+/* Keep the off-screen skip link out of full-page renders until keyboard focus. */
+.skip-link {
+  visibility: hidden;
+}
+.skip-link:focus {
+  visibility: visible;
+}
+@media (max-width: 600px) {
+  .voice-tile .voice-avatar {
+    width: 72px !important;
+    height: 72px !important;
+  }
+  .voice-line {
+    gap: 8px;
   }
 }
