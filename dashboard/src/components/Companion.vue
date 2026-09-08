@@ -447,13 +447,13 @@ body.companion-transparent, body.companion-transparent #app { background:transpa
 body.companion-transparent .companion { background:transparent; border-color:transparent; box-shadow:none; }
 /* Reveal the fixed window boundary and drag bar only when reached for. */
 body.companion-transparent .companion-window::after { content:""; position:absolute; inset:1px; border:1px solid #f3f4f5b3; border-radius:10px; box-shadow:inset 0 0 0 1px #151619cc; pointer-events:none; opacity:0; transition:opacity .15s; }
-body.companion-transparent .companion-window .companion-header { opacity:0; pointer-events:none; transition:opacity .15s; }
+body.companion-transparent .companion-window .companion-header { opacity:0; transition:opacity .15s; }
 body.companion-transparent .companion-window:hover::after,
 body.companion-transparent.hovering .companion-window::after,
 body.companion-transparent .companion-window:focus-within::after { opacity:1; }
 body.companion-transparent .companion-window:hover .companion-header,
 body.companion-transparent.hovering .companion-window .companion-header,
-body.companion-transparent .companion-window:focus-within .companion-header { opacity:1; pointer-events:auto; }
+body.companion-transparent .companion-window:focus-within .companion-header { opacity:1; }
 body.companion-transparent .companion-window .thread { scrollbar-width:none; scrollbar-gutter:auto; mask-image:linear-gradient(transparent, black 18px); }
 body.companion-transparent .companion-window .thread::-webkit-scrollbar { display:none; }
 body.companion-transparent .companion-header,
@@ -464,8 +464,20 @@ body.companion-transparent .msg { background:rgba(27,29,33,.94); border-color:#f
 body.companion-transparent .msg.side-left { background:rgba(41,40,37,.94); }
 body.companion-transparent .listening,
 body.companion-transparent .activity { background:rgba(27,29,33,.94); border-radius:8px; padding:6px 10px; }
-body.companion-transparent .msg, body.companion-transparent .msg * { -webkit-app-region:no-drag; cursor:text; user-select:text; }
-body.companion-transparent button { -webkit-app-region:no-drag; cursor:pointer; }
+/* NO-DRAG BELONGS TO THE SCROLL CONTAINER, NEVER TO WHAT SCROLLS INSIDE IT.
+ *
+ * Chromium builds the window's drag region from the UNCLIPPED border box of
+ * every element that declares -webkit-app-region, in document order: drag
+ * adds, no-drag subtracts. A message scrolled up out of the thread is still
+ * laid out - above the thread, invisible, and geometrically on top of the
+ * title bar - so a no-drag on .msg subtracted the bar itself, leaving a one
+ * or two pixel sliver that moved with the scroll position (#63). Excluding
+ * the thread's own box excludes everything in it and never overflows it.
+ * Same for buttons: bubbles carry some, so only the rail's are excluded. */
+body.companion-transparent .msg, body.companion-transparent .msg * { cursor:text; user-select:text; }
+body.companion-transparent .thread { -webkit-app-region:no-drag; }
+body.companion-transparent button { cursor:pointer; }
+body.companion-transparent .rail button { -webkit-app-region:no-drag; }
 body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 </style>
 <style scoped>
