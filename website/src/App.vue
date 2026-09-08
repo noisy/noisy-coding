@@ -2,7 +2,7 @@
 import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
-import dashboardShot from "./assets/shots/dashboard-content.png";
+import DashboardShowcase from "./DashboardShowcase.vue";
 const source = "https://github.com/noisy/noisy-coding";
 </script>
 
@@ -50,18 +50,7 @@ const source = "https://github.com/noisy/noisy-coding";
           record: revisit messages, replay an answer, and adjust how you listen.
         </p>
       </div>
-      <a
-        class="dashboard-art"
-        :href="dashboardShot"
-        aria-label="Open full-size dashboard demonstration"
-        ><img
-          :src="dashboardShot"
-          alt="Current Noisy Coding dashboard with conversation tabs, voice controls, character settings and usage information."
-          loading="lazy"
-      /></a>
-      <p class="image-caption">
-        The real interface, rendered with demonstration data.
-      </p>
+      <DashboardShowcase />
     </section>
     <section id="install" class="section install-section">
       <div class="wrap install-grid">

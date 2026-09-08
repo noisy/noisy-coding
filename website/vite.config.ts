@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import dashboardPackage from "../dashboard/package.json";
 import { fileURLToPath, URL } from "node:url";
 
 // The website reuses the dashboard's REAL components (Companion, the
@@ -14,12 +15,19 @@ export default defineConfig({
   // both use the default "/" (a custom domain needs no base at all).
   base: process.env.PAGES_BASE ?? "/",
   plugins: [vue()],
+  define: { __APP_VERSION__: JSON.stringify(dashboardPackage.version) },
+  build: { rollupOptions: { input: { main: repo("./index.html"), dashboardDemo: repo("./dashboard-demo.html") } } },
   // The avatars sprite (public/avatars.png) is resolved at runtime by
   // voiceSprites.ts as an absolute /avatars.png - serve the dashboard's
   // public dir so the same URL works here.
   publicDir: repo("../dashboard/public"),
   resolve: {
-    alias: { "@dashboard": repo("../dashboard/src") },
+    alias: [
+      { find: /^.*\/api\/client$/, replacement: repo("../dashboard/src/storybook/daemon.fixture.ts") },
+      { find: /^.*\/composables\/useMicStream$/, replacement: repo("../dashboard/src/storybook/mic.fixture.ts") },
+      { find: /^.*\/composables\/useBrowserAudio$/, replacement: repo("./src/dashboard-demo/audio.fixture.ts") },
+      { find: "@dashboard", replacement: repo("../dashboard/src") },
+    ],
     // Two node_modules trees are in play (website/ and dashboard/); make
     // sure only one Vue instance ever loads.
     dedupe: ["vue"],

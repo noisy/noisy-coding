@@ -27,3 +27,7 @@ All five were checked at 1280px and 390px widths with no horizontal document ove
 ## Voice demonstration
 
 `CrewSection.vue` presents the shared `CompanionCrewScene.vue` and its original five xAI recordings. Click a portrait for its scenario beat or Hear the conversation for the full sequence. Audio starts only after a click and mutes when the scene leaves view. Mobile uses a tighter static camera; desktop retains the original handover zooms. The recordings ship as Vite assets and need no runtime API key. This is explicitly a scripted example, not a live microphone session.
+
+## Embedded dashboard
+
+`DashboardShowcase.vue` embeds `dashboard-demo.html`, a second Vite entry that mounts the production dashboard App with Storybook daemon and microphone fixtures. Browser audio is replaced by a local stub, and initial avatars use the human editorial set. The iframe isolates dashboard styles and offers a full-size link. Both HTML entries are shipped by the website build; URLs respect PAGES_BASE.
