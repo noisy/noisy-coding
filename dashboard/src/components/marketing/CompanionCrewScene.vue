@@ -555,7 +555,7 @@ const agents = computed<CompanionAgent[]>(() =>
  * bubbles wrap. */
 const cameraStyle = computed(() => ({
   transform: props.camera && !reducedMotion.value && beat.value.zoom ? "scale(2)" : "scale(1)",
-  transformOrigin: "94% 88%",
+  transformOrigin: "94% 100%",
   transition: "transform 0.75s cubic-bezier(0.22, 0.61, 0.36, 1)",
 }));
 
