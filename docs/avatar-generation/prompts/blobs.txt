@@ -1,0 +1,29 @@
+Use case: stylized-concept. Production avatar sprite sheet for a compact graphite dark desktop voice coding interface. Exactly 6 columns and 5 rows of equal square cells, overall 6:5 aspect ratio. First 28 cells occupied in row-major order; bottom row last two cells fully empty transparent. TRUE transparent background. No text, letters, labels, borders, grid lines, props, scenery or watermark. Each subject centered in its cell, generous 15% clear padding on all sides; nothing crosses cells. Readable at 44px. Cohesive muted palette: slate, sage, cream, ochre, dusty coral, lavender. All artwork same lighting, viewpoint and style. Distinct silhouette for each identity. Set F: ORIGINAL LITTLE BLOB CREATURES WITH EYES, inspired by friendly minimal assistant mascots. No humans, no animals, no limbs or clothing. Matte softly sculpted squishy silhouettes. Each has two clear expressive eyes, dark pupils with cream sclera; eyes prominent enough at tiny size. Personality via eye spacing and eyelids. Avoid generic identical balls, avoid logos or copied mascot. Exact ordered silhouettes:
+1. altair: tall teardrop, two eyes
+2. ara: wide bean, two eyes
+3. atlas: square cushion, two eyes
+4. carina: three lobed cloud, two eyes
+5. castor: pear, two eyes
+6. celeste: crescent, two eyes
+7. cosmo: squat star, two eyes
+8. eve: rounded triangle, two eyes
+9. helios: sunburst, two eyes
+10. helix: spiral tail blob, two eyes
+11. iris: small dome, two eyes
+12. kepler: capsule, two eyes
+13. leo: wavy crown, two eyes
+14. lumen: tiny floating droplet, two eyes
+15. luna: pillowy crescent, two eyes
+16. lux: kite shape, two eyes
+17. naksh: five petal puff, two eyes
+18. orion: angular pebble, two eyes
+19. perseus: twin lobed heart, two eyes
+20. rex: heavy trapezoid, two eyes
+21. rigel: diagonal lozenge, two eyes
+22. sal: flat pancake, two eyes
+23. sirius: long rounded diamond, two eyes
+24. ursa: large oval, two eyes
+25. zagan: zigzag cushion, two eyes
+26. zenith: pointed mountain blob, two eyes
+27. aurora: soft flame, two eyes
+28. liora: stacked double bubble, two eyes

@@ -1,11 +1,12 @@
 import type { Preview } from "@storybook/vue3";
 import "../src/styles/hud.css";
+import "./preview.css";
 
-// Stories render on the HUD's dark chrome so components look like they do
-// in the real app.
+// Render the same graphite surfaces as the desktop product.
 const preview: Preview = {
   parameters: {
     backgrounds: { disable: true },
+    options: { storySort: { order: ['Product', 'Companion', 'HUD', 'Synthetic Screenshots'] } },
   },
 };
 

@@ -61,15 +61,13 @@ const keyFineServiceDegraded = computed(() => {
 <style scoped>
 .checkgrid { display: grid; gap: 4px; max-width: 640px; }
 .checkrow { display: flex; align-items: baseline; gap: 8px; height: 18px; }
-.check-label { flex: none; font-size: 10px; letter-spacing: 0.14em; color: var(--ink); }
+.check-label { flex: none; font-size: 11px; letter-spacing: normal; color: var(--ink); }
 .leader { flex: 1; border-bottom: 1px dotted var(--line-strong); transform: translateY(-3px); }
-.check-verdict { flex: none; font-size: 10px; letter-spacing: 0.1em; }
+.check-verdict { flex: none; font-size: 11px; letter-spacing: normal; }
 .check-verdict.pass { color: var(--green); }
 .check-verdict.fail { color: var(--red, #ff5f56); }
-.check-verdict.pending { color: var(--cyan-dim); animation: checkpulse 1s ease-in-out infinite; }
+.check-verdict.pending { color: var(--cyan-dim); animation: none; }
 @keyframes checkpulse { 50% { opacity: 0.3; } }
-
-/* Failure details unfold without re-centering the modal: 0fr → 1fr rows. */
 .errwrap {
   display: grid;
   grid-template-rows: 0fr;
@@ -79,7 +77,7 @@ const keyFineServiceDegraded = computed(() => {
 .errinner {
   overflow: hidden;
   min-height: 0;
-  font-size: 9.5px;
+  font-size: 11px;
   line-height: 1.6;
   color: var(--muted);
   white-space: nowrap;
@@ -89,7 +87,7 @@ const keyFineServiceDegraded = computed(() => {
 
 .check-note {
   margin-top: 8px;
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.7;
   color: var(--amber);
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { interpolateRecipientWeights } from "./recipientTransition";
 
 export interface AgentMeta {
   label: string;
@@ -22,6 +23,29 @@ const props = withDefaults(
   }>(),
   { thinking: () => [], queued: () => ({}), muted: () => [], meta: null },
 );
+
+// One clock redistributes the existing Mic space, including interrupted moves.
+const tabStrip = ref<HTMLElement | null>(null);
+const recipientWeights = ref<Record<string, number>>(props.active ? { [props.active]: 1 } : {});
+let recipientFrame = 0;
+watch(() => props.active, (recipient) => {
+  cancelAnimationFrame(recipientFrame);
+  const from = { ...recipientWeights.value };
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    recipientWeights.value = recipient ? { [recipient]: 1 } : {};
+    return;
+  }
+  const duration = Number(tabStrip.value && getComputedStyle(tabStrip.value).getPropertyValue('--mic-transition-duration-ms')) || 220;
+  const started = performance.now();
+  const animate = (now: number) => {
+    const progress = Math.min(1, (now - started) / duration);
+    recipientWeights.value = interpolateRecipientWeights(from, recipient, progress);
+    if (progress < 1) recipientFrame = requestAnimationFrame(animate);
+    else recipientWeights.value = recipient ? { [recipient]: 1 } : {};
+  };
+  recipientFrame = requestAnimationFrame(animate);
+});
+onBeforeUnmount(() => cancelAnimationFrame(recipientFrame));
 
 const emit = defineEmits<{
   select: [name: string];
@@ -87,11 +111,13 @@ function onDrop(target: Tab) {
 </script>
 
 <template>
-  <nav v-if="tabs.length" class="tabs">
+  <nav v-if="tabs.length" ref="tabStrip" class="tabs" aria-label="Conversations">
     <button
       v-for="tab in tabs"
       :key="tab.name"
       draggable="true"
+      :aria-pressed="tab.name === viewed"
+      :title="[tab.label, tab.name === active ? 'Receiving your speech' : '', !tab.online ? 'Offline' : muted.includes(tab.name) ? 'Muted' : speaking.includes(tab.name) ? 'Speaking' : thinking.includes(tab.name) ? 'Working' : 'Ready'].filter(Boolean).join(' · ')"
       :class="{
         viewing: tab.name === viewed,
         speaking: speaking.includes(tab.name),
@@ -129,13 +155,14 @@ function onDrop(target: Tab) {
         <span v-else-if="thinking.includes(tab.name)" class="dot think" title="Working" />
         <span v-else class="dot" />
       </span>
-      {{ tab.label }}
+      <span class="tab-label">{{ tab.label }}</span>
+      <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[tab.name] ?? 0 }" :aria-hidden="tab.name !== active" title="Receiving your speech">Mic</span>
       <!-- Dismiss: offline conversations only; overlaid so hover never
            changes the tab's width. -->
       <span
         v-if="!tab.online"
         class="dismiss"
-        role="button"
+        role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('dismiss', tab.name)" @keydown.space.stop.prevent="$emit('dismiss', tab.name)"
         title="Dismiss this conversation"
         @click.stop="$emit('dismiss', tab.name)"
         >✕</span
@@ -145,104 +172,27 @@ function onDrop(target: Tab) {
 </template>
 
 <style scoped>
-.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-button {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--muted);
-  background: rgba(4, 12, 20, 0.9);
-  border: 1px solid var(--line);
-  padding: 7px 14px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-}
-button:hover { color: var(--cyan); border-color: var(--cyan-dim); }
-button .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(93, 127, 150, 0.5); }
-button .dot.think {
-  background: var(--violet, #b48cff);
-  box-shadow: 0 0 6px var(--violet, #b48cff);
-  animation: think-pulse 1.2s ease-in-out infinite;
-}
-@keyframes think-pulse { 50% { opacity: 0.35; } }
-button.viewing {
-  color: var(--cyan-hi);
-  border-color: var(--line-strong);
-  background: rgba(63, 216, 255, 0.08);
-  text-shadow: 0 0 6px rgba(63, 216, 255, 0.6);
-}
-button.offline { opacity: 0.45; }
-button.dragging { opacity: 0.3; border-style: dashed; }
-button.offline .dot { background: rgba(93, 127, 150, 0.35); }
-/* Fixed-size status slot on the left: idle dot, thinking pulse or the
-   speaking equalizer all render inside the same box, so the tab never
-   changes size when the state does. */
-.statusslot {
-  width: 13px;
-  height: 10px;
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 100%; }
-.eq i {
-  width: 3px;
-  background: var(--green, #6dff9e);
-  box-shadow: 0 0 5px var(--green, #6dff9e);
-  transform-origin: bottom;
-  animation: eq-bounce 0.8s ease-in-out infinite;
-}
-.eq i:nth-child(1) { height: 50%; }
-.eq i:nth-child(2) { height: 100%; animation-delay: 0.2s; }
-.eq i:nth-child(3) { height: 70%; animation-delay: 0.4s; }
-@keyframes eq-bounce { 50% { transform: scaleY(0.45); } }
-.waitcount {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--amber, #ffb454);
-  text-shadow: 0 0 6px var(--amber, #ffb454);
-}
-/* Muted with a backlog: the count itself goes red and blinks — no
-   strikethrough; red already says "silenced" and the pulse nags. */
-.mutecount {
-  padding: 0 2px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--red, #ff5f6b);
-  text-shadow: 0 0 6px rgba(255, 95, 107, 0.6);
-  animation: mute-nag 1.6s step-end infinite;
-}
-@keyframes mute-nag { 50% { opacity: 0.45; } }
-/* Muted, empty queue: a red crossed-out speaker. */
-.mutespk {
-  width: 13px;
-  height: 13px;
-  color: var(--red, #ff5f6b);
-  filter: drop-shadow(0 0 4px rgba(255, 95, 107, 0.5));
-}
-/* Overlaid in the top-right corner: appearing on hover must not resize
-   the tab (a layout shift under the cursor makes the ✕ unclickable). */
-.dismiss {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
-  padding: 3px 5px;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--amber);
-  background: rgba(4, 12, 20, 0.92);
-  text-shadow: 0 0 6px var(--amber);
-  opacity: 0;
-  pointer-events: none;
-}
-button:hover .dismiss { opacity: 1; pointer-events: auto; }
-.dismiss:hover { color: #fff; text-shadow: 0 0 8px var(--amber); }
+
+.tabs { display:flex; flex-wrap:wrap; gap:6px; }
+button { position:relative; display:inline-flex; align-items:center; gap:8px; font:13px var(--sans); color:var(--muted); border:1px solid transparent; background:transparent; padding:9px 12px; min-width:0; max-width:100%; }
+/* Explicit, complementary widths avoid max-width's content-size plateau. */
+.mic-recipient { font-size:10px; color:var(--green); flex:none; width:calc(3ch * var(--mic-weight)); margin-left:calc(-8px * (1 - var(--mic-weight))); overflow:hidden; white-space:nowrap; opacity:var(--mic-weight); }
+.tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
+button:hover { color:var(--ink); background:var(--surface-hover); }
+button.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
+button.offline { border-style:dashed; padding-right:34px; }
+button.dragging { opacity:.5; }
+.statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; }
+.dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }
+.think { background:var(--violet); }
+.eq { height:12px; display:flex; gap:2px; align-items:center; }
+.eq i { width:2px; height:9px; background:var(--green); animation:eq 1s ease-in-out infinite; }
+.eq i:nth-child(2) { height:13px; animation-delay:.2s; }
+.waitcount { color:var(--amber); font-size:11px; }
+.mutecount, .mutespk { color:var(--red); }
+.mutespk { width:14px; height:14px; }
+.dismiss { position:absolute; right:5px; padding:4px; color:var(--muted); }
+.dismiss:hover, .dismiss:focus-visible { color:var(--red); }
+@keyframes eq { 50% { transform:scaleY(.5); } }
+
 </style>

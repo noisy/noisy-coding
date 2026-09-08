@@ -36,33 +36,33 @@ function formatChars(chars: number): string {
 <template>
   <div class="telemetry">
     <div>
-      <div class="k">STT LATENCY</div>
+      <div class="k">Transcription</div>
       <div class="v" :class="latencyTone('stt', sttLatencyMs)">
         {{ sttLatencyMs != null ? sttLatencyMs : "—" }}<small v-if="sttLatencyMs != null"> ms</small>
       </div>
     </div>
     <div>
-      <div class="k">TTS RENDER</div>
+      <div class="k">Voice response</div>
       <div class="v" :class="latencyTone('tts', ttsLatencyMs)">
         {{ ttsLatencyMs != null ? ttsLatencyMs : "—" }}<small v-if="ttsLatencyMs != null"> ms</small>
       </div>
     </div>
     <div>
-      <div class="k">YOU · STT</div>
+      <div class="k">Your speech</div>
       <div class="v warn">
         ${{ userCostUsd.toFixed(4) }}
-        <small>· {{ formatAudioTime(sttSeconds) }} AUDIO</small>
+        <small>· {{ formatAudioTime(sttSeconds) }} audio</small>
       </div>
     </div>
     <div>
-      <div class="k">CLAUDE · TTS</div>
+      <div class="k">Agent speech</div>
       <div class="v violet">
         ${{ claudeCostUsd.toFixed(4) }}
-        <small>· {{ formatChars(ttsChars) }} CHARS</small>
+        <small>· {{ formatChars(ttsChars) }} characters</small>
       </div>
     </div>
     <div>
-      <div class="k">CONVERSATION TOTAL</div>
+      <div class="k">Conversation total</div>
       <div class="v">${{ (userCostUsd + claudeCostUsd).toFixed(4) }}</div>
     </div>
   </div>
@@ -70,21 +70,21 @@ function formatChars(chars: number): string {
 
 <style scoped>
 .telemetry {
-  display: flex;
-  gap: 0;
-  margin-top: 14px;
-  flex: none;
-  border: 1px solid var(--line);
-  background: rgba(4, 11, 19, 0.9);
-  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:4px 16px;
+  margin-top:8px;
+  padding-top:6px;
+  flex:none;
+  border-top:1px solid var(--line);
 }
-.telemetry > div { flex: 1; padding: 9px 12px; border-right: 1px solid rgba(63, 216, 255, 0.12); }
-.telemetry > div:last-child { border-right: none; }
-.telemetry .k { font-size: 8.5px; letter-spacing: 0.22em; color: var(--muted); }
-.telemetry .v { font-size: 14px; color: var(--cyan); margin-top: 3px; text-shadow: 0 0 8px rgba(63, 216, 255, 0.35); }
-.telemetry .v small { font-size: 9px; color: var(--muted); }
-.telemetry .v.warn { color: var(--amber); text-shadow: 0 0 8px rgba(255, 180, 84, 0.35); }
-.telemetry .v.violet { color: var(--violet); text-shadow: 0 0 8px color-mix(in srgb, var(--violet) 35%, transparent); }
-.telemetry .v.ok { color: var(--green); text-shadow: 0 0 8px rgba(77, 255, 180, 0.35); }
-.telemetry .v.bad { color: var(--red); text-shadow: 0 0 8px rgba(255, 95, 107, 0.45); }
+.telemetry > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px; min-width:0; }
+.telemetry .k { font-size:11px; color:var(--muted); }
+.telemetry .v { font-size:12px; color:var(--cyan); }
+.telemetry .v small { font-size: 11px; color: var(--muted); }
+.telemetry .v.warn { color: var(--amber); text-shadow: none; }
+.telemetry .v.violet { color: var(--violet); text-shadow: none; }
+.telemetry .v.ok { color: var(--green); text-shadow: none; }
+.telemetry .v.bad { color: var(--red); text-shadow: none; }
 </style>

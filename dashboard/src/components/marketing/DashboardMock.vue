@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import "../../styles/dashboard.css";
 /* The dashboard, content only - no OS chrome.
  *
  * Marketing prop for the website hero: the landing page wraps screenshots
@@ -14,7 +15,7 @@ import ConversationLog from "../ConversationLog.vue";
 import ConversationTelemetry from "../ConversationTelemetry.vue";
 import HudPanel from "../HudPanel.vue";
 import Oscilloscope from "../Oscilloscope.vue";
-import SessionRing from "../SessionRing.vue";
+import TurnHistory from "../TurnHistory.vue";
 import SpectrumBars from "../SpectrumBars.vue";
 import StatusStrip from "../StatusStrip.vue";
 import VoicePersona from "../VoicePersona.vue";
@@ -65,31 +66,12 @@ const noop = () => {};
 </script>
 
 <template>
-  <div class="mock">
-    <div class="cols">
-      <div class="col-left">
-        <button class="bigmute">
-          <span class="bm-label">MUTE MIC</span>
-          <span class="bm-sub">ONE TAP TO GO SILENT</span>
-        </button>
-        <HudPanel index="01" title="MIC INPUT - OSCILLOSCOPE">
-          <Oscilloscope :level="level" />
-        </HudPanel>
-        <HudPanel index="02" title="AUDIO SPECTRUM">
-          <SpectrumBars :level="level" />
-        </HudPanel>
-        <HudPanel index="05" title="SYSTEM STATE - COST">
-          <StatusStrip :status="STATUS" :offline="false" />
-        </HudPanel>
-      </div>
-
-      <div class="col-mid">
+  <div class="hud mock">
         <header class="topbar">
           <div class="logo">
             <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
-              <polygon points="23,2 41,12.5 41,33.5 23,44 5,33.5 5,12.5" fill="none" stroke="#3fd8ff" stroke-width="1.4" opacity="0.9" />
-              <polygon points="23,8 36,15.5 36,30.5 23,38 10,30.5 10,15.5" fill="rgba(63,216,255,0.08)" stroke="#3fd8ff" stroke-width="0.7" opacity="0.6" />
-              <g stroke="#3fd8ff" stroke-width="2" stroke-linecap="round">
+              <rect x="4" y="4" width="38" height="38" rx="11" fill="var(--surface-hover)" />
+              <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <line x1="17" y1="20" x2="17" y2="26" />
                 <line x1="21" y1="16" x2="21" y2="30" />
                 <line x1="25" y1="19" x2="25" y2="27" />
@@ -97,15 +79,31 @@ const noop = () => {};
               </g>
             </svg>
             <div>
-              <div class="title">NOISY-CODING</div>
-              <div class="sub">TALK WITH YOUR AGENT</div>
+              <div class="title">Noisy Coding</div>
+              <div class="sub">Your voice, in the workflow</div>
             </div>
           </div>
-          <button class="voicemute">
-            <span class="vm-label">MUTE ALL AGENTS</span>
-            <span class="vm-sub">SILENT NOW, CATCH UP LATER</span>
-          </button>
+          <button class="ctl header-action">Mute all agents</button>
         </header>
+    <div class="cols">
+      <div class="col-left">
+        <button class="bigmute">
+          <span class="bm-label">Mute microphone</span>
+          <span class="bm-sub">Listening · click to pause</span>
+        </button>
+        <HudPanel index="01" title="Microphone">
+          <Oscilloscope :level="level" />
+        </HudPanel>
+        <HudPanel index="02" title="Audio spectrum" class="spectrum-panel">
+          <SpectrumBars :level="level" />
+        </HudPanel>
+        <HudPanel index="05" title="Session usage">
+          <StatusStrip :status="STATUS" :offline="false" />
+        </HudPanel>
+      </div>
+
+      <div class="col-mid">
+
 
         <div class="tabsbar">
           <AgentTabs
@@ -121,6 +119,10 @@ const noop = () => {};
           />
         </div>
         <HudPanel class="convo-panel">
+          <div class="conversation-heading">
+            <div><h1>Payment retries</h1><p>Your conversation, as it happens</p></div>
+            <span class="recipient">Receiving: Payment retries</span>
+          </div>
           <div class="convo-body">
             <div class="convo-main">
               <ConversationLog :utterances="UTTERANCES" :playing-id="0" />
@@ -138,12 +140,12 @@ const noop = () => {};
                 <VoicePersona voice="lux" :speaking="false" :muted="false" />
               </section>
               <section class="railbox">
-                <div class="railtitle">CHARACTER SETTINGS</div>
+                <div class="railtitle">Character</div>
                 <CharacterReadout :character="CHARACTER" />
               </section>
               <section class="railbox">
-                <div class="railtitle">SESSION RING - TURN TIMELINE</div>
-                <SessionRing :utterances="UTTERANCES" />
+                <div class="railtitle">Turn history</div>
+                <TurnHistory :utterances="UTTERANCES" />
               </section>
             </aside>
           </div>
@@ -163,81 +165,5 @@ const noop = () => {};
 </template>
 
 <style scoped>
-.mock {
-  width: 1600px;
-  height: 1000px;
-  padding: 20px 22px 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.cols {
-  display: grid;
-  grid-template-columns: 300px minmax(640px, 1fr);
-  gap: 18px;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-.col-left { min-height: 0; display: flex; flex-direction: column; }
-.col-left > * { flex: none; }
-.col-mid { min-height: 0; display: flex; flex-direction: column; }
-.col-mid :deep(.panel) { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
-
-.topbar { display: flex; align-items: stretch; gap: 16px; min-height: 96px; margin-bottom: 18px; flex: none; }
-.logo { flex: 1; display: flex; align-items: center; justify-content: center; gap: 14px; transform: scale(1.3); }
-.logo .title { font-size: 19px; letter-spacing: 0.28em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); font-weight: 700; }
-.logo .sub { font-size: 10px; letter-spacing: 0.393em; color: var(--muted); margin-top: 3px; }
-
-.bigmute {
-  width: 100%; min-height: 96px; margin-bottom: 18px;
-  font-family: var(--mono); cursor: default;
-  display: grid; place-items: center; align-content: center; gap: 6px;
-  color: var(--cyan); background: rgba(63, 216, 255, 0.06);
-  border: 1px solid var(--line-strong);
-  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
-}
-.bigmute .bm-label { font-size: 19px; letter-spacing: 0.3em; text-shadow: 0 0 8px rgba(63, 216, 255, 0.5); }
-.bigmute .bm-sub { font-size: 9px; letter-spacing: 0.24em; color: var(--muted); }
-
-.voicemute {
-  width: 316px; flex: none; min-height: 96px;
-  font-family: var(--mono); cursor: default;
-  display: grid; place-items: center; align-content: center; gap: 4px;
-  color: var(--violet);
-  background: color-mix(in srgb, var(--violet) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--violet) 40%, transparent);
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-}
-.voicemute .vm-label { font-size: 19px; letter-spacing: 0.3em; }
-.voicemute .vm-sub { font-size: 9px; letter-spacing: 0.24em; color: var(--muted); }
-
-.tabsbar { padding: 0 14px; position: relative; z-index: 3; }
-.tabsbar :deep(.tabs) { margin-bottom: -1px; gap: 6px; align-items: flex-end; }
-
-.convo-body { display: flex; gap: 16px; flex: 1; min-height: 0; }
-.convo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
-.convo-rail {
-  width: 300px; flex: none; overflow: hidden;
-  border-left: 1px solid var(--line); padding-left: 16px;
-  background: color-mix(in srgb, var(--violet) 6%, transparent);
-  display: flex; flex-direction: column; gap: 14px;
-  --cyan: var(--violet);
-  --cyan-hi: var(--violet-hi);
-  --cyan-dim: var(--violet-dim);
-  --glow-cyan: var(--glow-violet);
-  --line: color-mix(in srgb, var(--violet) 22%, transparent);
-  --line-strong: color-mix(in srgb, var(--violet) 55%, transparent);
-}
-.railbox { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
-.railbox:last-child { border-bottom: none; }
-.railtitle { font-size: 9px; letter-spacing: 0.26em; color: var(--muted); margin-bottom: 10px; }
-
-footer {
-  flex: none; margin-top: 6px; padding: 12px 18px;
-  border-top: 1px solid var(--line);
-  display: flex; gap: 26px; flex-wrap: wrap;
-  font-size: 9px; letter-spacing: 0.18em; color: var(--muted);
-}
-footer b { color: var(--cyan-dim); font-weight: 400; }
-footer .ok { color: var(--green); }
+.mock { width:100%; height:100dvh; }
 </style>

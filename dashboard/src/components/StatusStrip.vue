@@ -60,34 +60,34 @@ const fuelOn = computed(() => {
 .ringwrap { position: relative; width: 34px; height: 34px; }
 .ringwrap .core {
   position: absolute; inset: 11px; border-radius: 50%;
-  background: var(--cyan); box-shadow: 0 0 10px var(--cyan), 0 0 26px rgba(63, 216, 255, 0.6);
-  animation: corepulse 2.2s ease-in-out infinite;
+  background: var(--cyan); box-shadow: none;
+  animation: none;
 }
 .ringwrap .orbit {
   position: absolute; inset: 0; border-radius: 50%;
   border: 1px solid var(--cyan-dim); border-top-color: var(--cyan);
   animation: spin 3.2s linear infinite;
 }
-.ringwrap.warn .core { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
-.ringwrap.off .core { background: var(--red); box-shadow: 0 0 10px var(--red); animation: none; }
-.ringwrap.off .orbit { animation: none; border-color: rgba(255, 95, 107, 0.4); }
-.label { font-size: 15px; letter-spacing: 0.22em; color: var(--cyan-hi); text-shadow: var(--glow-cyan); }
-.label.warn { color: var(--amber); text-shadow: var(--glow-amber); }
-.label.off { color: var(--red); text-shadow: 0 0 8px rgba(255, 95, 107, 0.6); }
-.det { font-size: 10px; letter-spacing: 0.18em; color: var(--muted); margin-top: 3px; }
+.ringwrap.warn .core { background: var(--amber); box-shadow: none; }
+.ringwrap.off .core { background: var(--red); box-shadow: none; animation: none; }
+.ringwrap.off .orbit { animation: none; border-color: rgba(240, 161, 161, 0.4); }
+.label { font-size: 15px; letter-spacing: normal; color: var(--cyan-hi); text-shadow: none; }
+.label.warn { color: var(--amber); text-shadow: none; }
+.label.off { color: var(--red); text-shadow: none; }
+.det { font-size: 11px; letter-spacing: normal; color: var(--muted); margin-top: 3px; }
 @keyframes corepulse { 50% { opacity: 0.45; transform: scale(0.82); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .costs { text-align: center; }
-.total { font-size: 24px; color: var(--cyan-hi); text-shadow: var(--glow-cyan); letter-spacing: 0.08em; }
-.split { display: flex; justify-content: space-around; font-size: 10px; letter-spacing: 0.1em; margin-top: 8px; }
+.total { font-size: 24px; color: var(--cyan-hi); text-shadow: none; letter-spacing: normal; }
+.split { display: flex; justify-content: space-around; font-size: 11px; letter-spacing: normal; margin-top: 8px; }
 .split .you-c { color: var(--amber); }
 .split .cl-c { color: var(--violet); }
-.split small { color: var(--muted); display: block; font-size: 8.5px; letter-spacing: 0.2em; margin-bottom: 3px; }
+.split small { color: var(--muted); display: block; font-size: 11px; letter-spacing: normal; margin-bottom: 3px; }
 
-.fuel .frow { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 0.16em; color: var(--muted); margin-bottom: 5px; }
-.fuel .frow b { color: var(--green); font-weight: 400; text-shadow: 0 0 8px rgba(77, 255, 180, 0.4); }
+.fuel .frow { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: normal; color: var(--muted); margin-bottom: 5px; }
+.fuel .frow b { color: var(--green); font-weight: 400; text-shadow: none; }
 .fuelbar { height: 10px; border: 1px solid var(--line); padding: 1px; display: flex; gap: 2px; }
-.fuelbar i { flex: 1; background: rgba(77, 255, 180, 0.75); box-shadow: 0 0 6px rgba(77, 255, 180, 0.5); }
-.fuelbar i.off { background: rgba(63, 216, 255, 0.07); box-shadow: none; }
+.fuelbar i { flex: 1; background: rgba(155, 206, 177, 0.75); box-shadow: none; }
+.fuelbar i.off { background: rgba(158, 188, 245, 0.07); box-shadow: none; }
 </style>

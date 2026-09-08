@@ -111,10 +111,11 @@ async function retryDownloads() {
       <button
         class="card"
         :class="{ on: chosen === 'cloud' }"
+        :aria-pressed="chosen === 'cloud'"
         :disabled="busy"
         @click="setChosen('cloud')"
       >
-        <span class="card-title">CLOUD · GROK (xAI)</span>
+        <span class="card-title">Cloud · Grok (xAI)</span>
         <span class="card-text">
           The full experience: natural voices, live streaming both ways.
           Needs an API key — runs on pennies.
@@ -123,10 +124,11 @@ async function retryDownloads() {
       <button
         class="card"
         :class="{ on: chosen === 'local' }"
+        :aria-pressed="chosen === 'local'"
         :disabled="busy"
         @click="pickLocal"
       >
-        <span class="card-title">LOCAL · OFFLINE</span>
+        <span class="card-title">Local · Offline</span>
         <span class="card-text">
           No key needed: whisper transcribes you on this machine — faster
           than the cloud. One click; the models download while you watch.
@@ -178,36 +180,37 @@ async function retryDownloads() {
 .engines { display: grid; gap: 12px; margin-bottom: 14px; }
 .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .card {
-  display: grid; gap: 6px; text-align: left; cursor: pointer;
-  font-family: var(--mono); color: var(--ink);
-  background: rgba(4, 12, 20, 0.9);
+  display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer;
+  font-family: var(--sans); color: var(--ink);
+  background: var(--bg1);
   border: 1px solid var(--line-strong);
   padding: 12px 14px;
 }
-.card.on { border-color: var(--cyan); box-shadow: 0 0 8px rgba(63, 216, 255, 0.25); }
+.card.on { border-color: var(--cyan); box-shadow: none; }
 .card:hover { border-color: var(--cyan-dim); }
-.card-title { font-size: 10px; letter-spacing: 0.2em; color: var(--cyan); }
-.card-text { font-size: 10px; line-height: 1.6; color: var(--muted); }
+.card-title { font-size: 13px; letter-spacing: normal; color: var(--cyan); }
+.card-text { font-size: 12px; line-height: 1.6; color: var(--muted); }
 
-.remedy { font-size: 10.5px; color: var(--amber); margin: 0; }
-.ok-line { font-size: 10.5px; color: var(--green); margin: 0; }
+.remedy { font-size: 11px; color: var(--amber); margin: 0; }
+.ok-line { font-size: 11px; color: var(--green); margin: 0; }
 
 .downloads { display: grid; gap: 8px; }
 .dlrow { display: flex; align-items: center; gap: 10px; }
-.dl-label { font-size: 9px; letter-spacing: 0.18em; color: var(--muted); flex: none; }
+.dl-label { font-size: 11px; letter-spacing: normal; color: var(--muted); flex: none; }
 .bar {
-  flex: 1; height: 6px; background: rgba(4, 12, 20, 0.9);
+  flex: 1; height: 6px; background: var(--bg1);
   border: 1px solid var(--line-strong); overflow: hidden;
 }
 .fill { height: 100%; background: var(--cyan); transition: width 0.4s linear; }
-.fill.pulse { animation: dl-pulse 1.2s ease-in-out infinite; }
+.fill.pulse { animation: none; }
 @keyframes dl-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
-.dl-state { font-size: 9px; letter-spacing: 0.14em; color: var(--cyan-dim); flex: none; }
+.dl-state { font-size: 11px; letter-spacing: normal; color: var(--cyan-dim); flex: none; }
 .dl-state.ok { color: var(--green); }
 .dl-state.err { color: var(--amber); }
 .retry {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-  color: var(--cyan); background: rgba(63, 216, 255, 0.06);
+  font-family: var(--sans); font-size: 11px; letter-spacing: normal;
+  color: var(--cyan); background: rgba(158, 188, 245, 0.06);
   border: 1px solid var(--line-strong); padding: 4px 10px; cursor: pointer;
 }
+@media (max-width: 520px) { .cards { grid-template-columns: minmax(0, 1fr); } .dlrow { flex-wrap: wrap; } }
 </style>

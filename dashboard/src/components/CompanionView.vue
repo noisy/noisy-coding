@@ -22,7 +22,7 @@ import { useDocumentPip } from "../composables/useDocumentPip";
  * instantly, the conversation arrived a beat later. `allUtterances` already
  * holds every agent's messages in memory, so filtering it against the
  * selected agent switches in the same frame as the click. */
-const { status, allUtterances, character, viewedAgent, selectAgent } = useDaemonState();
+const { status, offline, allUtterances, character, viewedAgent, selectAgent } = useDaemonState();
 
 const mine = computed(() =>
   allUtterances.value.filter((u) => u.agent === viewedAgent.value),
@@ -90,35 +90,14 @@ if (new URLSearchParams(window.location.search).has("transparent")) {
 const nativeShell =
   typeof navigator !== "undefined" && navigator.userAgent.includes("Electron");
 
-/* Hover on the WINDOW, not on any element: a frameless window needs to
- * advertise its own edges, and parts of it (padding, the gap beside the
- * rail) belong to no child at all. */
-if (typeof window !== "undefined") {
-  const mark = (on: boolean) => document.body.classList.toggle("hovering", on);
-  window.addEventListener("mouseover", () => mark(true));
-  // In a native shell the main process owns this (see watchHover): it can
-  // see the cursor even over an OS drag region, which the page cannot.
-  // These stay for the browser, where there is no drag region to hide in.
-  // Browser only. In the native shell the main process owns the hover
-  // state (see watchHover) - it can see the cursor over an OS drag region,
-  // where the page's own events stop arriving.
-  if (!nativeShell) {
-    window.addEventListener("mouseout", (e) => {
-      if (!e.relatedTarget) mark(false);
-    });
-  }
-  window.addEventListener("blur", () => mark(false));
-}
-
+// Native hover comes from the shell's cursor watcher. Browser previews use
+// the window element's :hover state, so hovering the backdrop reveals nothing.
 const host = ref<HTMLElement | null>(null);
 const anchor = ref<HTMLElement | null>(null);
 const { supported: pipSupported, open: pipOpen, popOut } = useDocumentPip(host, anchor);
 
-/* Every conversation, in the dashboard's own tab order.
- *
- * Offline agents are dropped: the widget has room for a handful of heads,
- * and a tab you cannot talk to is not worth one of those slots. Unread is
- * anything waiting to be delivered there. */
+/* Every conversation, in the dashboard's own tab order, including offline
+ * sessions. Unread marks anything waiting to be delivered there. */
 const others = computed<CompanionAgent[]>(() => {
   const s = status.value;
   if (!s) return [];
@@ -163,32 +142,29 @@ const mode = computed<"claude" | "user" | "idle">(() => {
   <div ref="anchor" class="companion-window">
     <div ref="host" class="companion-host">
       <Companion
+        draggable
         :mode="mode"
+        :muted="status?.muted"
+        :voice-muted="status?.voice_muted || (!!viewedAgent && status?.muted_agents?.includes(viewedAgent))"
+        :offline="offline"
         :voice="character?.voice ?? 'rex'"
         :feed="feed"
         :live-text="liveText"
         :max-height="220"
-      :level="level"
-      :activity="activity"
-      :agents="others"
-      @select="selectAgent"
-              />
+        :level="level"
+        :activity="activity"
+        :agents="others"
+        @select="selectAgent"
+      />
     </div>
-    <!-- The drag handle: a full-width bar, not a few dots. macOS owns the
-         click inside an app-region (cursor included), so the handle has to
-         announce itself by being big and obvious rather than by changing
-         the pointer. Its whole width drags. -->
-    <div class="drag-strip" title="Drag to move">
-      <span /><span /><span /><span /><span /><span />
-    </div>
-
     <button
       v-if="pipSupported && !pipOpen && !nativeShell"
       class="pop-out"
+      aria-label="Float above every window"
       title="Float above every window"
       @click="popOut"
     >
-      float
+      ↗
     </button>
   </div>
 </template>
@@ -204,85 +180,47 @@ body,
 }
 </style>
 
-<style>
-</style>
-
 <style scoped>
-/* Hidden until wanted, like the outline: a permanent grip on a widget this
-   small is one more thing competing for attention. */
-.drag-strip {
-  position: absolute;
-  /* Flush with the window's own outline, so the bar has no left, right or
-     top edge of its own - it REUSES the window's. Only its underside is
-     drawn, as a divider. A box inside a box reads as accidental; a strip
-     bounded by the frame reads like a title bar. */
-  top: 2px;
-  left: 2px;
-  right: 2px;
-  z-index: 200;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  opacity: 0;
-  transition: opacity 140ms ease;
-  background-image:
-    repeating-linear-gradient(90deg, #fff 0 5px, #10151f 5px 10px);
-  background-size: 100% 1px;
-  background-position: 0 100%;
-  background-repeat: no-repeat;
-}
-body.hovering .drag-strip { opacity: 1; }
-/* The dots are the only solid thing left, so they carry both colours too:
-   a white core inside a dark ring. Bigger, because a 3px dot with a border
-   is mostly border. */
-.drag-strip span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #fff;
-  border: 1.5px solid #10151f;
-  box-sizing: border-box;
-}
 .companion-window {
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   height: 100%;
-  /* The drag strip is the window's title bar (22px + 2px inset): content
-     must never render under it, so the viewport starts below - with a few
-     px of breathing room. */
-  padding: 32px 8px 8px;
+  padding: 8px;
   box-sizing: border-box;
 }
-/* The widget is fluid (width: 100%), so every wrapper between it and the
-   window must pass the width down - a shrink-to-fit host collapses the
-   widget to its content and falsely triggers narrow mode. */
-.companion-host { width: 100%; }
+.companion-host { width:100%; height:100%; min-height:0; }
+/* Window geometry is user-owned; only the message viewport scrolls. */
+.companion-host :deep(.companion) { height:100%; display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:28px minmax(0,1fr) auto; gap:8px; padding:6px; align-items:stretch; }
+.companion-host :deep(.companion-header) { grid-column:1 / -1; grid-row:1; }
+.companion-host :deep(.thread) { grid-column:1 / -1; grid-row:2; height:100%; }
+.companion-host :deep(.msgs) { flex:none; margin-top:auto; }
+.companion-host :deep(.rail) { grid-row:3; align-self:end; }
+.companion-host :deep(.rail.right) { max-width:100%; }
+.companion-host :deep(.drag-hint) { font-size:0; gap:0; }
+.companion-host :deep(.drag-hint svg) { width:10px; }
 
-/* Out of the way until wanted: the widget is meant to be glanced at, and a
-   permanent button in the corner is one more thing competing for attention. */
+/* Reserve space beside the microphone for the browser-only PiP control. */
+.companion-window:has(.pop-out) :deep(.rail.right) { max-width:calc(100% - 80px); }
 .pop-out {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 2px 8px;
+  bottom: 30px;
+  left: 60px;
+  z-index: 201;
+  padding: 0;
+  width: 24px;
+  height: 24px;
   font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #cbd5f5;
-  background: rgba(15, 18, 32, 0.55);
-  border: 1px solid rgba(148, 163, 220, 0.35);
+  font-size: 16px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
+  background: #202226;
+  border: 1px solid var(--muted);
   border-radius: 4px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-.companion-window:hover .pop-out {
-  opacity: 1;
+  -webkit-app-region: no-drag;
 }
 .pop-out:hover {
   color: #fff;

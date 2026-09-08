@@ -42,19 +42,16 @@ const label = computed(() => {
   <div
     v-if="activity"
     class="busyrow"
-    title="Claude reads your speech while working; the reply comes when he's done."
+    title="The agent receives your speech while working and replies when ready."
   >
     <span class="pulse" />
-    <span class="txt">CLAUDE IS BUSY — {{ label }}</span>
+    <span class="txt">Agent activity — {{ label }}</span>
     <span class="age">{{ age }}</span>
   </div>
 </template>
 
 <style scoped>
 .busyrow {
-  /* Claude's side, like his replies - it stands in for the reply that has
-     not arrived yet, so it must not sit where the user's messages do.
-     The text inside stays left-aligned: it is a line to read, not a label. */
   align-self: flex-end;
   display: flex;
   align-items: center;
@@ -63,13 +60,13 @@ const label = computed(() => {
   gap: 9px;
   max-width: 88%;
   padding: 6px 12px;
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: normal;
   color: var(--muted);
   border: 1px dashed color-mix(in srgb, var(--violet) 35%, transparent);
   border-left: 2px solid var(--violet-dim);
   background: color-mix(in srgb, var(--violet) 4%, transparent);
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  border-radius: 8px;
 }
 .pulse {
   width: 6px;
@@ -77,8 +74,8 @@ const label = computed(() => {
   border-radius: 50%;
   flex: none;
   background: var(--violet);
-  box-shadow: 0 0 6px var(--violet);
-  animation: act-pulse 1.2s ease-in-out infinite;
+  box-shadow: none;
+  animation: none;
 }
 .txt {
   color: color-mix(in srgb, var(--violet) 75%, transparent);

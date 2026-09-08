@@ -22,7 +22,7 @@ import { useDocumentPip } from "../composables/useDocumentPip";
  * instantly, the conversation arrived a beat later. `allUtterances` already
  * holds every agent's messages in memory, so filtering it against the
  * selected agent switches in the same frame as the click. */
-const { status, allUtterances, character, viewedAgent, selectAgent } = useDaemonState();
+const { status, offline, allUtterances, character, viewedAgent, selectAgent } = useDaemonState();
 
 const mine = computed(() =>
   allUtterances.value.filter((u) => u.agent === viewedAgent.value),
@@ -123,10 +123,13 @@ const mode = computed<"claude" | "user" | "idle">(() => {
   </button>
 
     <!-- Parked off-screen until it pops out; the PiP window adopts this node. -->
-    <div ref="anchor" class="float-anchor">
+    <div ref="anchor" class="float-anchor" :inert="!open">
       <div ref="host" class="float-host">
         <Companion
           :mode="mode"
+          :muted="status?.muted"
+          :voice-muted="status?.voice_muted || (!!viewedAgent && status?.muted_agents?.includes(viewedAgent))"
+          :offline="offline"
           :voice="character?.voice ?? 'rex'"
           :feed="feed"
           :live-text="liveText"
@@ -150,8 +153,8 @@ const mode = computed<"claude" | "user" | "idle">(() => {
   padding: 2px 8px;
   font: inherit;
   font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   color: #cbd5f5;
   background: rgba(15, 18, 32, 0.55);
   border: 1px solid rgba(148, 163, 220, 0.35);
@@ -164,19 +167,13 @@ const mode = computed<"claude" | "user" | "idle">(() => {
 }
 .float-btn.on {
   color: #3fd8ff;
-  border-color: rgba(63, 216, 255, 0.6);
+  border-color: rgba(158, 188, 245, 0.6);
 }
-
-/* Hidden, but still laid out - a display:none subtree has no size, and the
-   companion clamps its thread by pixel height. */
 .float-anchor {
   position: fixed;
   left: -10000px;
   top: 0;
   width: 420px;
 }
-/* In the PiP window the host is the widget's only parent - it must span
-   the window, or the fluid widget shrinks to content and false-triggers
-   narrow mode. */
 .float-host { width: 100%; }
 </style>

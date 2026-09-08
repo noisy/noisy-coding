@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import StatusView from "./StatusView.vue";
+import { useSpeechFixture } from "../storybook/speech.fixture";
 
 /** The status board's speech-to-text section, endpoint mocked - no daemon,
  *  no real transcriptions. Covers list, parallel running, pass and fail. */
@@ -19,23 +20,11 @@ const TESTS = {
   ],
 };
 
-function mock(runDelayMs: number, runPayload: (body: { file: string; path: string }) => unknown) {
-  window.fetch = ((url: RequestInfo | URL, init?: RequestInit) => {
-    const path = String(url);
-    if (path.endsWith("/tests/speech"))
-      return Promise.resolve(new Response(JSON.stringify(TESTS)));
-    const body = JSON.parse(String(init?.body ?? "{}"));
-    return new Promise((resolve) =>
-      setTimeout(() => resolve(new Response(JSON.stringify(runPayload(body)))), runDelayMs),
-    );
-  }) as typeof fetch;
-}
-
 export const PassingRuns: StoryObj = {
   render: () => ({
     components: { StatusView },
     setup: () =>
-      mock(800, ({ file, path }) => ({
+      useSpeechFixture(TESTS, 800, ({ file, path }) => ({
         file, path, engine: "Grok STT", ms: 812,
         actual: "I would like to run those tests interactively.",
         expected: "I would like to run those tests interactively.",
@@ -49,7 +38,7 @@ export const FailingLivePipeline: StoryObj = {
   render: () => ({
     components: { StatusView },
     setup: () =>
-      mock(1200, ({ file, path }) =>
+      useSpeechFixture(TESTS, 1200, ({ file, path }) =>
         path === "live"
           ? { file, path, ms: 2400, ratio: 0.71, ok: false,
               actual: "I would like to run those Tests. Interactively.",

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import SignalPath from "./SignalPath.vue";
 import type { ProvidersInfo } from "../api/client";
+import { setProviderFixture } from "../storybook/daemon.fixture";
 
 /* The wired provider chooser — concept D from ProviderChooserConcepts,
  * picked because the benchmarks made mixing the BEST configuration:
@@ -8,21 +9,7 @@ import type { ProvidersInfo } from "../api/client";
  * (~5 s per reply locally). The pills make that mix legible.
  */
 
-// Self-contained component — stub the fetch, POSTs echo the switch back.
-function stubFetch(info: ProvidersInfo | null) {
-  const state = info ? structuredClone(info) : null;
-  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (state === null) return new Response("not found", { status: 404 });
-    if (init?.method === "POST") {
-      const body = JSON.parse(String(init.body ?? "{}"));
-      if (body.tts) state.active.tts = body.tts;
-      if (body.stt) state.active.stt = body.stt;
-      return Response.json(state.active);
-    }
-    return Response.json(state);
-  }) as typeof window.fetch;
-}
-
+// Shared isolated provider state preserves each story’s download scenario.
 const GROK = {
   name: "grok",
   kind: "cloud-api" as const,
@@ -73,7 +60,7 @@ function story(info: ProvidersInfo | null): StoryObj<typeof SignalPath> {
   return {
     render: () => ({
       components: { SignalPath },
-      setup: () => stubFetch(info),
+      setup: () => setProviderFixture(info),
       template: `<div style="max-width:720px"><SignalPath /></div>`,
     }),
   };

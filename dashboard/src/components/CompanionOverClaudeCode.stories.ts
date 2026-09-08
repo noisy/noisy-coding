@@ -8,12 +8,14 @@ import ClaudeCodeMock from "./marketing/ClaudeCodeMock.vue";
  *
  * The terminal (marketing/ClaudeCodeMock.vue) is the full-bleed backdrop of
  * the whole 1200x760 frame - fresh-session ASCII banner on top, transcript
- * in the left ~58%, the widget docked in the clear space on the right. The
+ * in the left ~58%, a compact widget docked on the right. The
  * widget text deliberately differs from the wallpaper variants.
  */
 const meta: Meta = {
   title: "Synthetic Screenshots/Companion over Claude Code",
   parameters: { layout: "fullscreen" },
+  args: { widgetWidth: 540 },
+  argTypes: { widgetWidth: { control: { type: "range", min: 320, max: 800, step: 20 } } },
 };
 export default meta;
 
@@ -46,6 +48,7 @@ const TerminalShot = defineComponent({
     feed: { type: Array as PropType<CompanionMessage[]>, required: true },
     mode: { type: String as PropType<"claude" | "idle">, default: "claude" },
     banner: { type: String as PropType<"mascot" | "both">, default: "mascot" },
+    widgetWidth: { type: Number, required: true },
   },
   setup() {
     onMounted(() => document.body.classList.add("companion-transparent"));
@@ -60,7 +63,7 @@ const TerminalShot = defineComponent({
       <div style="position:absolute; inset:26px 30px">
         <ClaudeCodeMock full-bleed :banner="banner" />
       </div>
-      <div style="position:absolute; right:32px; bottom:28px">
+      <div :style="{ position: 'absolute', right: '32px', bottom: '28px', width: widgetWidth + 'px' }">
         <Companion :mode="mode" voice="lux" :feed="feed" :max-height="200"
                    :agents="[
                      { name: 'orderflow-api', voice: 'lux', active: true },
@@ -76,10 +79,10 @@ const terminalShot = (
   mode: "claude" | "idle" = "claude",
   banner: "mascot" | "both" = "mascot",
 ): StoryObj => ({
-  render: () => ({
+  render: (args) => ({
     components: { TerminalShot },
-    setup: () => ({ feed, mode, banner }),
-    template: `<TerminalShot :feed="feed" :mode="mode" :banner="banner" />`,
+    setup: () => ({ feed, mode, banner, args }),
+    template: `<TerminalShot :feed="feed" :mode="mode" :banner="banner" :widget-width="args.widgetWidth" />`,
   }),
 });
 

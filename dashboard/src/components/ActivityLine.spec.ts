@@ -8,7 +8,7 @@ describe("ActivityLine", () => {
       props: { activity: { text: "Edit · App.vue", at: Date.now() / 1000 - 3 } },
     });
 
-    expect(wrapper.find(".txt").text()).toBe("CLAUDE IS BUSY — Edit · App.vue");
+    expect(wrapper.find(".txt").text()).toBe("Agent activity — Edit · App.vue");
     expect(wrapper.find(".age").text()).toMatch(/^\d+s$/);
   });
 
@@ -17,7 +17,7 @@ describe("ActivityLine", () => {
     const withCard = mount(ActivityLine, {
       props: { activity: speaking, playingCardVisible: true },
     });
-    expect(withCard.find(".txt").text()).toBe("CLAUDE IS BUSY — SPEAKING");
+    expect(withCard.find(".txt").text()).toBe("Agent activity — SPEAKING");
 
     // The full quote stays when the card isn't in this feed (another tab).
     const withoutCard = mount(ActivityLine, { props: { activity: speaking } });

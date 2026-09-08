@@ -137,7 +137,7 @@ function clear() {
   flex-direction: column;
   background: var(--bg0);
   color: var(--ink);
-  font-family: var(--mono, ui-monospace, monospace);
+  font-family: var(--sans);
 }
 .bar {
   display: flex;
@@ -149,9 +149,9 @@ function clear() {
 }
 .title {
   font-size: 11px;
-  letter-spacing: 0.24em;
+  letter-spacing: normal;
   color: var(--cyan);
-  text-shadow: var(--glow-cyan);
+  text-shadow: none;
 }
 .controls {
   display: flex;
@@ -162,8 +162,8 @@ function clear() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 9px;
-  letter-spacing: 0.18em;
+  font-size: 11px;
+  letter-spacing: normal;
   color: var(--muted);
 }
 .flt select {
@@ -172,7 +172,7 @@ function clear() {
   border: 1px solid var(--cyan-dim);
   border-radius: 4px;
   padding: 2px 6px;
-  font-family: inherit;
+  font-family: var(--sans);
   font-size: 11px;
 }
 .btn {
@@ -181,9 +181,9 @@ function clear() {
   color: var(--muted);
   border-radius: 4px;
   padding: 3px 10px;
-  font-family: inherit;
-  font-size: 9px;
-  letter-spacing: 0.16em;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: normal;
   cursor: pointer;
 }
 .btn.live {
@@ -214,7 +214,7 @@ function clear() {
 }
 .cname {
   color: var(--cyan-hi);
-  letter-spacing: 0.06em;
+  letter-spacing: normal;
 }
 .cval {
   color: var(--muted);
@@ -222,8 +222,8 @@ function clear() {
 }
 .cflag {
   margin-left: 8px;
-  font-size: 8px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: normal;
   text-transform: uppercase;
   color: var(--muted);
   border: 1px solid currentColor;
@@ -242,12 +242,12 @@ function clear() {
 .mfill {
   height: 100%;
   background: var(--violet);
-  box-shadow: 0 0 6px var(--violet);
+  box-shadow: none;
   transition: width 0.4s ease;
 }
 .clock.over .mfill {
   background: var(--amber);
-  box-shadow: 0 0 6px var(--amber);
+  box-shadow: none;
 }
 .clock.over .cval {
   color: var(--amber);
@@ -285,8 +285,8 @@ function clear() {
   font-size: 11px;
 }
 .kind {
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: normal;
   text-align: center;
   border: 1px solid;
   border-radius: 3px;

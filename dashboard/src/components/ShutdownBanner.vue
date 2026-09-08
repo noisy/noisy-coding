@@ -42,48 +42,13 @@ function restartNow() {
 </template>
 
 <style scoped>
-/* D5: page-top bar, three columns left to right:
-   [ countdown ] [ restart now ] [ CANCEL - amber, eats the rest ] */
-.sb {
-  display: flex; gap: 16px; align-items: stretch; font-family: var(--mono);
-  width: 100%;
-  background: rgba(20, 6, 10, 0.95); border: 1px solid rgba(255, 95, 107, 0.4);
-  padding: 12px 16px; color: var(--red);
-}
-.col-count { flex: none; display: flex; flex-direction: column; gap: 2px; text-align: center; padding: 0 8px; }
-.msg { display: flex; flex-direction: column; gap: 1px; }
-.msg b { font-size: 10px; letter-spacing: 0.16em; }
-.msg i { font-style: normal; font-size: 8px; letter-spacing: 0.08em; opacity: 0.75; }
-.count {
-  font-size: 44px; font-weight: 800; line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.act { font-family: var(--mono); letter-spacing: 0.14em; cursor: pointer; }
-.act.now {
-  flex: none; width: 330px; align-self: stretch;
-  font-size: 15px; line-height: 1.6; background: none;
-  color: var(--red); border: 1px solid rgba(255, 95, 107, 0.4);
-}
-.act.now:hover { border-color: var(--red); }
-/* Clicked: unmistakable acknowledgement - solid fill, animated ellipsis,
-   and every button (this one included) stops taking further clicks. */
-.act.now.restarting {
-  background: var(--red); color: #1a0508; font-weight: 800;
-  border-color: var(--red); cursor: default;
-}
-.act:disabled { opacity: 0.45; cursor: default; }
-.act.now.restarting:disabled { opacity: 1; }
-.dots i { animation: dot-blink 1.2s infinite; }
-.dots i:nth-child(2) { animation-delay: 0.2s; }
-.dots i:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dot-blink { 0%, 60% { opacity: 1; } 80%, 100% { opacity: 0.15; } }
-.act.postpone { width: 150px; color: var(--cyan-dim); border-color: rgba(63, 216, 255, 0.35); }
-.act.postpone:hover { color: var(--cyan-hi); border-color: var(--cyan); }
-.act.cancel {
-  flex: 1; align-self: stretch; border: none;
-  font-size: 24px; font-weight: 800; letter-spacing: 0.24em;
-  color: #10040a; background: var(--amber);
-  box-shadow: 0 0 18px rgba(255, 180, 84, 0.5);
-}
-.act.cancel:hover { filter: brightness(1.12); }
+.sb { display:flex; flex-wrap:wrap; align-items:center; gap:10px; width:100%; padding:12px 16px; border:1px solid var(--amber-dim); border-radius:10px; background:#302a22; color:var(--amber); }
+.col-count { display:flex; align-items:center; gap:16px; margin-right:auto; }
+.msg { display:flex; flex-direction:column; font-size:12px; }
+.msg i { font-size:11px; font-style:normal; color:var(--muted); }
+.count { font:600 22px var(--mono); }
+.act { padding:9px 14px; background:var(--panel); color:var(--ink); border:1px solid var(--line-strong); font-size:12px; }
+.act:hover { border-color:var(--amber); }
+.act.cancel { background:var(--amber); color:var(--bg0); border-color:var(--amber); }
+.dots i { font-style:normal; }
 </style>

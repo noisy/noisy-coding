@@ -52,10 +52,10 @@ function sysTime(epochSeconds: number): string {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 8.5px;
-  letter-spacing: 0.22em;
+  font-size: 11px;
+  letter-spacing: normal;
   color: var(--muted);
-  text-transform: uppercase;
+  text-transform: none;
 }
 .sysrow::before,
 .sysrow::after {

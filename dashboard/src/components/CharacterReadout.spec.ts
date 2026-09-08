@@ -22,16 +22,31 @@ describe("CharacterReadout", () => {
     expect(wrapper.find(".sv").text()).toBe("1.10×");
   });
 
-  it("draws gauge arcs proportional to trait values", () => {
+  it("emits the changed trait without changing other character values", async () => {
     const wrapper = mount(CharacterReadout, { props: { character } });
+    await wrapper.get('input[aria-label="Humor"]').setValue('80');
+    expect(wrapper.emitted('change')).toEqual([[{ humor: 80 }]]);
+  });
 
-    const gauges = wrapper.findAll(".gauge");
-    const arcOf = (gauge: (typeof gauges)[number]) =>
-      parseFloat(gauges && gauge.findAll("circle")[1].attributes("stroke-dasharray")!.split(" ")[0]);
-    const humorArc = arcOf(gauges[0]); // 50/100
-    const brevityArc = arcOf(gauges[2]); // 100/100
+  it('displays existing brevity as inverse verbosity without changing the character', () => {
+    const wrapper = mount(CharacterReadout, { props: { character } });
+    const slider = wrapper.get('input[aria-label="Verbosity"]');
+    expect((slider.element as HTMLInputElement).value).toBe('0');
+    expect(slider.attributes('aria-valuetext')).toBe('0 · minimal');
+    expect(wrapper.emitted('change')).toBeUndefined();
+  });
 
-    expect(brevityArc).toBeCloseTo(humorArc * 2, 3);
+  it('translates higher verbosity into lower backend brevity', async () => {
+    const wrapper = mount(CharacterReadout, { props: { character } });
+    await wrapper.get('input[aria-label="Verbosity"]').setValue('80');
+    expect(wrapper.emitted('change')).toEqual([[{ brevity: 20 }]]);
+    expect(wrapper.get('input[aria-label="Verbosity"]').attributes('aria-valuetext')).toBe('80 · detailed');
+  });
+
+  it("emits the selected speech rate", async () => {
+    const wrapper = mount(CharacterReadout, { props: { character } });
+    await wrapper.get('input[aria-label="Speed"]').setValue('1.25');
+    expect(wrapper.emitted('change')).toEqual([[{ speed: 1.25 }]]);
   });
 });
 
