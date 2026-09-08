@@ -575,7 +575,7 @@ defineExpose({ previewAgent, soundOn, toggleSound, step, restart, readout, beats
 </script>
 
 <template>
-  <div class="crew-frame" :style="{ background: BACKDROP, width: compact ? '600px' : '900px', height: compact ? '500px' : '600px' }">
+  <div class="crew-frame" :style="{ background: BACKDROP, width: compact ? '600px' : '760px', height: '440px' }">
     <div class="crew-stage" :class="{ masked }" :style="[cameraStyle, SLOT]">
       <div class="companion-window" inert><div class="companion-host"><Companion
         draggable

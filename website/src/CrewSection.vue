@@ -13,7 +13,7 @@ onMounted(() => {
   if (!frame.value) return;
   observer = new ResizeObserver(() => {
     compact.value = frame.value!.clientWidth < 600;
-    scale.value = frame.value!.clientWidth / (compact.value ? 600 : 900);
+    scale.value = frame.value!.clientWidth / (compact.value ? 600 : 760);
   });
   observer.observe(frame.value);
   visibility = new IntersectionObserver(([entry]) => {
@@ -97,7 +97,7 @@ function listen() {
         <div
           ref="frame"
           class="voice-stage"
-          :style="{ height: `${(compact ? 500 : 600) * scale}px` }"
+          :style="{ height: `${440 * scale}px` }"
         >
           <div
             :style="{
@@ -163,6 +163,9 @@ function listen() {
   text-align: center;
 }
 .voice-stage {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid var(--line-strong);
