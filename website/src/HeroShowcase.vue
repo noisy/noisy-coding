@@ -13,7 +13,7 @@ const current = ref(0);
 const paused = ref(false);
 const inView = ref(true);
 const hero = ref<HTMLElement | null>(null);
-const HEADLINE_INTERVAL_MS = 7000;
+const HEADLINE_INTERVAL_MS = 6000;
 let timer: ReturnType<typeof setInterval> | undefined;
 let observer: IntersectionObserver | undefined;
 let motion: MediaQueryList | undefined;
