@@ -10,7 +10,6 @@ const headlines = [
   ["Your next idea.", "Just say it."],
 ];
 const current = ref(0);
-const paused = ref(false);
 const inView = ref(true);
 const hero = ref<HTMLElement | null>(null);
 const HEADLINE_INTERVAL_MS = 6000;
@@ -21,7 +20,7 @@ function startRotation() {
   clearInterval(timer);
   if (motion?.matches) return;
   timer = setInterval(() => {
-    if (!paused.value && inView.value && !document.hidden)
+    if (inView.value && !document.hidden)
       current.value = (current.value + 1) % headlines.length;
   }, HEADLINE_INTERVAL_MS);
 }
@@ -67,14 +66,6 @@ onBeforeUnmount(() => {
         >
         <span>Claude Code · Codex preview</span>
       </div>
-      <button
-        class="headline-pause"
-        type="button"
-        :aria-pressed="paused"
-        @click="paused = !paused"
-      >
-        {{ paused ? "Resume headlines" : "Pause headlines" }}
-      </button>
     </div>
     <div class="hero-desktop"><HeroSceneG /></div>
   </section>
@@ -144,18 +135,6 @@ onBeforeUnmount(() => {
   min-width: 0;
   justify-self: end;
 }
-.headline-pause {
-  display: block;
-  margin-top: 18px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font: 11px var(--sans);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
 @media (max-width: 1000px) {
   .hero-heading h1 {
     font-size: 36px;
@@ -188,9 +167,6 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .headline {
     transition: none;
-  }
-  .headline-pause {
-    display: none;
   }
 }
 </style>

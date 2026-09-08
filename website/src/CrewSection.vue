@@ -28,10 +28,6 @@ onBeforeUnmount(() => {
   observer?.disconnect();
   visibility?.disconnect();
 });
-function previewVoice(index: number) {
-  scene.value?.previewAgent(index);
-  sound.value = true;
-}
 function listen() {
   if (!sound.value) scene.value?.restart();
   scene.value?.toggleSound();
@@ -48,7 +44,7 @@ function listen() {
           A deployment update. A PR worth celebrating. A personal reminder.
           Recognize the voice, know the context—and answer when you’re ready.
         </p>
-        <VoiceCarousel @preview="previewVoice" />
+        <VoiceCarousel />
         <button
           class="button primary"
           type="button"

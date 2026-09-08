@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import VoiceAvatar from '@dashboard/components/VoiceAvatar.vue';
-const emit = defineEmits<{ preview: [index: number] }>();
 const voices = [
-  { name: 'Lux', role: 'Development', sample: 0 },
-  { name: 'Rex', role: 'Pull requests', sample: 1 },
-  { name: 'Luna', role: 'Personal', sample: 2 },
-  { name: 'Atlas', role: 'Voice portrait', sample: null },
-  { name: 'Cosmo', role: 'Voice portrait', sample: null },
-  { name: 'Celeste', role: 'Voice portrait', sample: null },
+  { name: 'Lux', role: 'Development' },
+  { name: 'Rex', role: 'Pull requests' },
+  { name: 'Luna', role: 'Personal' },
+  { name: 'Atlas', role: 'Voice portrait' },
+  { name: 'Cosmo', role: 'Voice portrait' },
+  { name: 'Celeste', role: 'Voice portrait' },
 ];
 const track = ref<HTMLElement | null>(null);
 const atStart = ref(true);
@@ -37,13 +36,9 @@ onBeforeUnmount(() => observer?.disconnect());
   <div class="voice-carousel" role="region" aria-label="Explore agent voices">
     <div ref="track" class="voice-track" :class="{ 'more-right': !atEnd }" @scroll="update">
       <article v-for="voice in voices" :key="voice.name" class="voice-card">
-        <button v-if="voice.sample !== null" type="button" :aria-label="`Hear ${voice.name}`" @click="emit('preview', voice.sample)">
+        <div class="portrait-only">
           <VoiceAvatar :voice="voice.name.toLowerCase()" set="editorial" :size="88" />
-          <strong>{{ voice.name }}</strong><small>{{ voice.role }}</small><span class="sample">▶ Listen</span>
-        </button>
-        <div v-else class="portrait-only">
-          <VoiceAvatar :voice="voice.name.toLowerCase()" set="editorial" :size="88" />
-          <strong>{{ voice.name }}</strong><small>{{ voice.role }}</small><span class="sample">No sample yet</span>
+          <strong>{{ voice.name }}</strong><small>{{ voice.role }}</small>
         </div>
       </article>
     </div>
@@ -60,14 +55,10 @@ onBeforeUnmount(() => observer?.disconnect());
 .voice-track::-webkit-scrollbar { display:none; }
 .voice-track.more-right { mask-image:linear-gradient(to right,#000 0%,#000 86%,rgba(0,0,0,.2) 100%); }
 .voice-card { flex:0 0 calc((100% - 36px) / 3.35); min-width:0; scroll-snap-align:start; background:#282a30; border:1px solid var(--line-strong); border-radius:14px; overflow:hidden; }
-.voice-card button,.portrait-only { display:flex; flex-direction:column; align-items:center; width:100%; padding:12px 6px; color:var(--ink); background:none; border:0; text-align:center; font:inherit; }
-.voice-card button { cursor:pointer; }
-.voice-card button:hover { background:var(--surface-hover); }
+.portrait-only { display:flex; flex-direction:column; align-items:center; width:100%; padding:12px 6px; color:var(--ink); background:none; border:0; text-align:center; font:inherit; }
 .voice-card :deep(.voice-avatar) { width:100% !important; height:auto !important; aspect-ratio:1; max-width:88px; margin-bottom:10px; }
 strong { font-size:13px; font-weight:550; }
 small { font-size:10px; color:var(--muted); white-space:nowrap; }
-.sample { margin-top:10px; font-size:10px; color:var(--amber); }
-.portrait-only .sample { color:var(--muted); }
 .carousel-controls { display:flex; align-items:center; gap:6px; margin-top:10px; }
 .carousel-controls span { margin-right:auto; font-size:11px; color:var(--muted); }
 .carousel-controls button { border:1px solid var(--line-strong); border-radius:7px; background:var(--bg0); color:var(--ink); width:32px; height:30px; cursor:pointer; }

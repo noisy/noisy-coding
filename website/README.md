@@ -20,13 +20,13 @@ The hero and production CompanionView share `dashboard/src/styles/companion-wind
 
 ## Hero layout comparison
 
-The hero uses the chosen top-aligned layout. The layout selector and variant query parameters have been removed. Six draft headlines rotate every six seconds with a stable text area and a pause control. Rotation stops off-screen, in background tabs, and for reduced-motion preferences.
+The hero uses the chosen top-aligned layout. The layout selector and variant query parameters have been removed. Six draft headlines rotate every six seconds with a stable text area. Rotation stops off-screen, in background tabs, and for reduced-motion preferences.
 
 All five were checked at 1280px and 390px widths with no horizontal document overflow or browser errors.
 
 ## Voice demonstration
 
-`CrewSection.vue` presents the shared `CompanionCrewScene.vue` and its original five xAI recordings. Click a portrait for its scenario beat or Hear the conversation for the full sequence. Audio starts only after a click and mutes when the scene leaves view. Mobile uses a tighter static camera; desktop retains the original handover zooms. The recordings ship as Vite assets and need no runtime API key. This is explicitly a scripted example, not a live microphone session.
+`CrewSection.vue` presents the shared `CompanionCrewScene.vue` and its original five xAI recordings. Portrait cards can be browsed with arrows or swipes. Use Hear the conversation for the scripted voice sequence. Audio starts only after a click and mutes when the scene leaves view. Mobile uses a tighter static camera; desktop retains the original handover zooms. The recordings ship as Vite assets and need no runtime API key. This is explicitly a scripted example, not a live microphone session.
 
 ## Embedded dashboard
 
