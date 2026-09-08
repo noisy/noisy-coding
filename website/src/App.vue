@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CharacterSection from "./CharacterSection.vue";
 import VoiceAvatar from "@dashboard/components/VoiceAvatar.vue";
-import terminalShot from "./assets/shots/TerminalVoiceFix.png";
+import HeroSceneG from "./scenes/HeroSceneG.vue";
 import dashboardShot from "./assets/shots/dashboard-content.png";
 import reviewShot from "./assets/shots/CodeReviewSpace.png";
 import refactorShot from "./assets/shots/LongRefactorMesh.png";
@@ -51,26 +51,7 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
           <span class="signal-dot"></span> A conversation, in context
           <span>Synthetic product demo</span>
         </div>
-        <a
-          :href="terminalShot"
-          aria-label="Open full-size companion and terminal demonstration"
-          ><img
-            :src="terminalShot"
-            alt="The current Noisy Coding companion over a Claude Code terminal, showing a spoken exchange about fixing a webhook."
-            fetchpriority="high"
-        /></a>
-        <div class="identity-note">
-          <div class="avatar-stack">
-            <VoiceAvatar
-              v-for="voice in voices.slice(0, 3)"
-              :key="voice"
-              :voice="voice"
-              :size="40"
-              set="editorial"
-            />
-          </div>
-          <span>A familiar voice.<br /><strong>For every agent.</strong></span>
-        </div>
+        <HeroSceneG />
       </div>
     </section>
     <section id="workflow" class="section wrap">

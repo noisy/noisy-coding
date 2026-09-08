@@ -49,3 +49,7 @@ Create small coherent commits for the design foundation, refreshed showcase asse
 ## Self-review
 
 The plan preserves synthetic screenshots, shares product styling, includes visual flair and separates design from copy refinement. The active implementation branch contains the merged product components. All website claims must be checked against current repository documentation. Native app functionality is outside this website change.
+
+## Hero correction approved 2026-09-08
+
+The user clarified that the hero must be a live synthetic composition of real components rather than a flattened PNG. Restore the Mac wallpaper, centered companion entrance, and Claude Code terminal sliding in from the left before the companion settles alongside it. A second Codex console is explicitly deferred. The hero uses HeroSceneG with current Companion and ClaudeCodeMock; static assets remain for the other sections in this increment.
