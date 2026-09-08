@@ -1,7 +1,7 @@
 @import "@dashboard/styles/tokens.css";
 :root {
-  --page-width: 1760px;
-  --page-gutter: clamp(24px, 2.25vw, 48px);
+  --page-width: 1520px;
+  --page-gutter: clamp(24px, 3.5vw, 64px);
   --section-space: clamp(64px, 7vw, 110px);
   --layout-gap: clamp(32px, 5vw, 80px);
 }

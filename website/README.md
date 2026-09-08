@@ -20,7 +20,7 @@ The hero and production CompanionView share `dashboard/src/styles/companion-wind
 
 ## Hero layout comparison
 
-The development preview shows five layout buttons. Production keeps the selector hidden unless `?compare=1` is present. Direct links use `?hero=centered`, `left`, `right`, `product-first`, or `editorial`. The same HeroSceneG instance stays mounted when switching; only the surrounding layout changes. Text left is the default. The floating selector is visible only while the hero is in view.
+The development preview shows five new hero layouts: `briefing`, `top-aligned`, `caption-side`, `inset`, and `ribbon`. Use `?hero=top-aligned&compare=1` to compare them in production. Briefing is the initial default; the floating selector appears only while the hero is visible. All layouts keep the same HeroSceneG instance mounted. The previous five layouts have been removed.
 
 All five were checked at 1280px and 390px widths with no horizontal document overflow or browser errors.
 
