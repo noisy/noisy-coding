@@ -53,3 +53,5 @@ The plan preserves synthetic screenshots, shares product styling, includes visua
 ## Hero correction approved 2026-09-08
 
 The user clarified that the hero must be a live synthetic composition of real components rather than a flattened PNG. Restore the Mac wallpaper, centered companion entrance, and Claude Code terminal sliding in from the left before the companion settles alongside it. A second Codex console is explicitly deferred. The hero uses HeroSceneG with current Companion and ClaudeCodeMock; static assets remain for the other sections in this increment.
+
+The user subsequently requested no outer frame around the Mac wallpaper, no synthetic-demo labels, and no visible replay controls. The scene loops automatically; reduced-motion visitors still receive a static composition.

@@ -46,11 +46,7 @@ const voices = ["lux", "atlas", "cosmo", "orion", "celeste"];
           ><span>Claude Code · Codex preview</span>
         </div>
       </div>
-      <div class="hero-art">
-        <div class="art-label">
-          <span class="signal-dot"></span> A conversation, in context
-          <span>Synthetic product demo</span>
-        </div>
+      <div class="hero-desktop">
         <HeroSceneG />
       </div>
     </section>

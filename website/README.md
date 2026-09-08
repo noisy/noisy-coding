@@ -1,6 +1,6 @@
 # Noisy Coding website
 
-Vue/Vite product showcase using the application's graphite tokens, VoiceAvatar and CharacterReadout components through the `@dashboard` alias. Character demo state is local to the page. It never connects to the voice daemon or requests microphone access. The hero renders HeroSceneG using the actual Companion and ClaudeCodeMock on a Mac desktop backdrop. It starts when visible, offers stop/replay controls, and shows a static final scene for reduced motion. The backend/live-audio demonstration and other scene experiments remain dormant.
+Vue/Vite product showcase using the application's graphite tokens, VoiceAvatar and CharacterReadout components through the `@dashboard` alias. Character demo state is local to the page. It never connects to the voice daemon or requests microphone access. The hero renders HeroSceneG using the actual Companion and ClaudeCodeMock on a Mac desktop backdrop. It starts when visible, loops automatically without labels or playback controls, and shows a static final scene for reduced motion. The wallpaper has no outer window frame. The backend/live-audio demonstration and other scene experiments remain dormant.
 
 ## Development
 

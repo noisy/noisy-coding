@@ -31,7 +31,6 @@ const level = ref(0);
 const mode = ref<"idle" | "user" | "claude">("idle");
 const activity = ref<string | null>(null);
 const faded = ref(false);
-const playing = ref(false);
 let visibilityObserver: IntersectionObserver | undefined;
 
 let jitter: number | undefined;
@@ -110,7 +109,6 @@ function agentReply(reply: string) {
 }
 
 function runLoop() {
-  playing.value = true;
   // 1 - the widget alone, larger than life, already speaking
   at(300, () => {
     widgetIn.value = true;
@@ -214,7 +212,6 @@ function showFinalScene() {
   visibilityObserver?.disconnect();
   clear();
   clearSpeechTimers();
-  playing.value = false;
   faded.value = false;
   widgetIn.value = true;
   aloft.value = false;
@@ -225,24 +222,6 @@ function showFinalScene() {
   activity.value = null;
   level.value = 0;
   mode.value = "idle";
-}
-
-function replay() {
-  if (prefersReducedMotion()) {
-    showFinalScene();
-    return;
-  }
-  clear();
-  clearSpeechTimers();
-  widgetIn.value = false;
-  aloft.value = true;
-  terminalIn.value = false;
-  visibleLines.value = 0;
-  feed.value = [];
-  liveText.value = "";
-  activity.value = null;
-  faded.value = false;
-  runLoop();
 }
 
 onMounted(() => {
@@ -304,12 +283,7 @@ onBeforeUnmount(() => {
         </transition>
       </div>
     </div>
-    <div class="demo-controls">
-      <span>Live components · Demonstration data · No audio</span
-      ><button type="button" @click="playing ? showFinalScene() : replay()">
-        {{ playing ? "Stop animation" : "Replay animation" }}
-      </button>
-    </div>
+
   </div>
 </template>
 
@@ -327,29 +301,6 @@ onBeforeUnmount(() => {
   width: 1200px;
   height: 760px;
   transform-origin: top left;
-}
-.demo-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 4px 0;
-  color: var(--ink);
-  font-size: 11px;
-}
-.demo-controls button {
-  background: var(--bg1);
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  padding: 7px 10px;
-  cursor: pointer;
-}
-@media (max-width: 600px) {
-  .demo-controls > span {
-    max-width: 170px;
-    font-size: 9px;
-  }
 }
 /* the scene IS a Mac desktop from frame zero - the widget lives on it */
 .scene-stage {
