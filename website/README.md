@@ -20,7 +20,7 @@ The hero and production CompanionView share `dashboard/src/styles/companion-wind
 
 ## Hero layout comparison
 
-The development preview shows five new hero layouts: `briefing`, `top-aligned`, `caption-side`, `inset`, and `ribbon`. Use `?hero=top-aligned&compare=1` to compare them in production. Top aligned is the selected default; the floating selector appears only while the hero is visible. All layouts keep the same HeroSceneG instance mounted. The previous five layouts have been removed.
+The hero uses the chosen top-aligned layout. The layout selector and variant query parameters have been removed. Six draft headlines rotate every seven seconds with a stable text area and a pause control. Rotation stops off-screen, in background tabs, and for reduced-motion preferences.
 
 All five were checked at 1280px and 390px widths with no horizontal document overflow or browser errors.
 
