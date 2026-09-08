@@ -15,3 +15,5 @@ The page imports `src/assets/shots/*.png`. See that directory's README for sourc
 `npm run build` emits only the static site in `website/dist`. `PAGES_BASE=/noisy-coding/ npm run build` builds for GitHub Pages project hosting. Vite resolves the imported portraits, favicon and screenshots with the configured base.
 
 The existing deploy-website workflow publishes `website/dist` on matching changes to main or v3-desktop. It does not serve source, the daemon, or website-backend. Feature branches are previewed locally and are not deployed by this workflow.
+
+The hero and production CompanionView share `dashboard/src/styles/companion-window.css`. The hero supplies a fixed 420 × 400 window and marks it inert: it demonstrates the resting widget, not hover interactions. Its title-bar row stays reserved but invisible; the real component scrolls overflowing messages inside the available thread space.

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /** Variant G - widget-first landing:
- *  the companion appears alone, center stage, slightly larger than life and
+ *  the companion appears alone, center stage, at its fixed window size and
  *  already alive (spectrum + first words) -> the dimmed terminal rises in
  *  underneath -> the widget settles down onto it, shrinking to its docked
  *  bottom-right size -> a short voice-driven exchange plays -> reset, loop.
  */
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import "@dashboard/styles/companion-window.css";
 import ClaudeCodeMock from "@dashboard/components/marketing/ClaudeCodeMock.vue";
 import Companion, {
   type CompanionMessage,
@@ -109,7 +110,7 @@ function agentReply(reply: string) {
 }
 
 function runLoop() {
-  // 1 - the widget alone, larger than life, already speaking
+  // 1 - the fixed-size widget alone, already speaking
   at(300, () => {
     widgetIn.value = true;
     aloft.value = true;
@@ -269,16 +270,21 @@ onBeforeUnmount(() => {
         </div>
         <transition name="widget">
           <div v-if="widgetIn" class="widget-slot" :class="{ aloft }">
+            <div class="companion-window" inert>
+            <div class="companion-host">
             <Companion
+              draggable
               :mode="mode"
               voice="lux"
               :feed="feed"
               :live-text="liveText"
               :level="level"
               :activity="activity"
-              :max-height="420"
+              :max-height="220"
               :agents="AGENTS"
             />
+            </div>
+            </div>
           </div>
         </transition>
       </div>
@@ -331,7 +337,7 @@ onBeforeUnmount(() => {
   transform: translateX(0);
 }
 /* the product: docked bottom-right; while aloft it hovers center stage,
-   slightly larger than its final size, and lands with one transform */
+   at the same size, and lands with one translation */
 .widget-slot {
   position: absolute;
   right: 32px;
@@ -340,13 +346,18 @@ onBeforeUnmount(() => {
      420px - an absolutely-positioned slot would otherwise shrink-to-fit
      and GROW with every longer bubble. Constant width, bubbles wrap. */
   width: 420px;
+  height: 400px;
   transform-origin: bottom right;
   transition: transform 1.15s cubic-bezier(0.22, 0.8, 0.3, 1);
   /* no glow in this variant - the widget looks exactly like the product */
 }
 .widget-slot.aloft {
-  transform: translate(-320px, -240px) scale(1.25);
+  transform: translate(-358px, -128px);
 }
+/* A synthetic scene represents the untouched widget, even under the cursor.
+   Keep its header row reserved while hiding all hover-only window chrome. */
+.widget-slot :deep(.companion-header) { visibility:hidden; }
+.widget-slot :deep(.companion-window::after) { display:none; }
 /* (The 22px thread padding workaround for the top fade mask was removed:
    Companion now scopes its masks under a `scrollable` state, so a thread
    that fits renders every bubble full strength.) */
