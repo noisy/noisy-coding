@@ -1,0 +1,21 @@
+/* Fixed window geometry shared by production and synthetic scenes. */
+.companion-window {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.companion-window .companion-host { width:100%; height:100%; min-height:0; }
+/* Window geometry is user-owned; only the message viewport scrolls. */
+.companion-window .companion-host .companion { height:100%; display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:28px minmax(0,1fr) auto; gap:8px; padding:6px; align-items:stretch; }
+.companion-window .companion-host .companion-header { grid-column:1 / -1; grid-row:1; }
+.companion-window .companion-host .thread { grid-column:1 / -1; grid-row:2; height:100%; }
+.companion-window .companion-host .msgs { flex:none; margin-top:auto; }
+.companion-window .companion-host .rail { grid-row:3; align-self:end; }
+.companion-window .companion-host .rail.right { max-width:100%; }
+.companion-window .companion-host .drag-hint { font-size:0; gap:0; }
+.companion-window .companion-host .drag-hint svg { width:10px; }
+

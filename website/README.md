@@ -1,42 +1,33 @@
-# noisy-coding website
+# Noisy Coding website
 
-The marketing site. It renders the REAL product components (Companion, the
-marketing terminal mock) from `dashboard/src` through the `@dashboard`
-alias - nothing copied, nothing reimplemented.
+Vue/Vite product showcase using the application's graphite tokens, VoiceAvatar and CharacterReadout components through the `@dashboard` alias. Character demo state is local to the page. It never connects to the voice daemon or requests microphone access. The hero renders HeroSceneG using the actual Companion and ClaudeCodeMock on a Mac desktop backdrop. It starts when visible, loops automatically without labels or playback controls, and shows a static final scene for reduced motion. The wallpaper has no outer window frame. The backend/live-audio demonstration and other scene experiments remain dormant.
 
-## Dev
+## Development
 
-```
-npm install
-npm run dev        # port 5199
-```
+Run `npm ci` then `npm run dev` in `website/` (default port 5199). Use `npm run dev -- --port 5201 --strictPort` for an isolated preview when the original checkout is already running.
 
-## Deploy (GitHub Pages)
+## Product screenshots
 
-Deploys automatically via `.github/workflows/deploy-website.yml` on every
-push to `main` that touches `website/` or the dashboard components the site
-renders (also runnable by hand: Actions > deploy-website > Run workflow).
+The page imports `src/assets/shots/*.png`. See that directory's README for source stories and capture dimensions. `scripts/marketing-shots.sh` regenerates the Storybook shots and copies the four website assets into that directory. It requires Chrome and Python/Pillow. `scripts/build-website.sh` regenerates them before building the website. Browser tooling can also capture the same stories; inspect rendered output before replacing assets.
 
-- The Pages artifact is EXACTLY `website/dist` - the compiled bundle only.
-  No source, no backend, no other repo files are ever served.
-- One-time setup: repo Settings > Pages > Source: **GitHub Actions**.
-- The build runs with `PAGES_BASE=/<repo>/` because a project Pages site is
-  served from that prefix; `vite.config.ts` reads it as `base`. Sourcemaps
-  are off (Vite default).
-- Portrait sprite note: product code references `/avatars.png` absolutely;
-  `App.vue` overrides it with a base-aware Vite asset so portraits work
-  under the Pages prefix.
+## Build and deployment
 
-### Custom domain later
+`npm run build` emits only the static site in `website/dist`. `PAGES_BASE=/noisy-coding/ npm run build` builds for GitHub Pages project hosting. Vite resolves the imported portraits, favicon and screenshots with the configured base.
 
-1. Settings > Pages > Custom domain (plus the DNS CNAME/A records).
-2. Set `PAGES_BASE: /` in the workflow (or remove the env - `/` is the
-   default) and redeploy: on a custom domain the site is served from the
-   root, so no base prefix.
+The existing deploy-website workflow publishes `website/dist` on matching changes to main or v3-desktop. It does not serve source, the daemon, or website-backend. Feature branches are previewed locally and are not deployed by this workflow.
 
-## TRY IT LIVE (dormant in v1)
+The hero and production CompanionView share `dashboard/src/styles/companion-window.css`. The hero supplies a fixed 420 × 400 window and marks it inert: it demonstrates the resting widget, not hover interactions. Its title-bar row stays reserved but invisible; the real component scrolls overflowing messages inside the available thread space.
 
-The live demo section is feature-flagged off - `TRY_LIVE_ENABLED` in
-`src/App.vue`. See `src/demo/live-demo-architecture.md` for how to bring it
-back (flag + website-backend with a key). The dormant code tree-shakes out
-of the production bundle: the built site makes no `/api` calls.
+## Hero layout comparison
+
+The hero uses the chosen top-aligned layout. The layout selector and variant query parameters have been removed. Six draft headlines rotate every six seconds with a stable text area. Rotation stops off-screen, in background tabs, and for reduced-motion preferences.
+
+All five were checked at 1280px and 390px widths with no horizontal document overflow or browser errors.
+
+## Voice demonstration
+
+`CrewSection.vue` presents the shared `CompanionCrewScene.vue` and its original five xAI recordings. Portrait cards can be browsed with arrows or swipes. Use Hear the conversation for the scripted voice sequence. Audio starts only after a click and mutes when the scene leaves view. Mobile uses a tighter static camera; desktop retains the original handover zooms. The recordings ship as Vite assets and need no runtime API key. This is explicitly a scripted example, not a live microphone session.
+
+## Embedded dashboard
+
+`DashboardShowcase.vue` embeds `dashboard-demo.html`, a second Vite entry that mounts the production dashboard App with Storybook daemon and microphone fixtures. Browser audio is replaced by a local stub, and initial avatars use the human editorial set. The iframe isolates dashboard styles and offers a full-size link. Both HTML entries are shipped by the website build; URLs respect PAGES_BASE.

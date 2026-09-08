@@ -92,5 +92,10 @@ PYEOF
   fi
 done
 
+# Keep the files imported by Vite in sync with the generated capture set.
+for name in TerminalVoiceFix CodeReviewSpace LongRefactorMesh dashboard-content; do
+  cp "$OUT/$name.png" "$ROOT/website/src/assets/shots/$name.png"
+done
+
 echo "==> done: $OUT"
 ls -la "$OUT"

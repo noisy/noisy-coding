@@ -8,6 +8,7 @@
  * by the daemon instead of Storybook fixtures.
  */
 import { computed, ref } from "vue";
+import "../styles/companion-window.css";
 import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 import { useDaemonState } from "../composables/useDaemonState";
 import { statusChip } from "./bubbleStatus";
@@ -206,25 +207,6 @@ body,
   z-index: 1;
 }
 .companion-window:active::before { cursor: grabbing; }
-.companion-window {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  height: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-}
-.companion-host { width:100%; height:100%; min-height:0; }
-/* Window geometry is user-owned; only the message viewport scrolls. */
-.companion-host :deep(.companion) { height:100%; display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:28px minmax(0,1fr) auto; gap:8px; padding:6px; align-items:stretch; }
-.companion-host :deep(.companion-header) { grid-column:1 / -1; grid-row:1; }
-.companion-host :deep(.thread) { grid-column:1 / -1; grid-row:2; height:100%; }
-.companion-host :deep(.msgs) { flex:none; margin-top:auto; }
-.companion-host :deep(.rail) { grid-row:3; align-self:end; }
-.companion-host :deep(.rail.right) { max-width:100%; }
-.companion-host :deep(.drag-hint) { font-size:0; gap:0; }
-.companion-host :deep(.drag-hint svg) { width:10px; }
 
 /* Reserve space beside the microphone for the browser-only PiP control. */
 .companion-window:has(.pop-out) :deep(.rail.right) { max-width:calc(100% - 80px); }

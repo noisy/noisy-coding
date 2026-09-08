@@ -1,15 +1,23 @@
 <script setup lang="ts">
 /** Variant G - widget-first landing:
- *  the companion appears alone, center stage, slightly larger than life and
+ *  the companion appears alone, center stage, at its fixed window size and
  *  already alive (spectrum + first words) -> the dimmed terminal rises in
  *  underneath -> the widget settles down onto it, shrinking to its docked
  *  bottom-right size -> a short voice-driven exchange plays -> reset, loop.
  */
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
+import "@dashboard/styles/companion-window.css";
 import ClaudeCodeMock from "@dashboard/components/marketing/ClaudeCodeMock.vue";
-import Companion, { type CompanionMessage } from "@dashboard/components/Companion.vue";
-import { AGENTS, FULL_FEED, prefersReducedMotion, useStage, useTimeline } from "./shared";
-import macDesktop from "../assets/mac-desktop.png";
+import Companion, {
+  type CompanionMessage,
+} from "@dashboard/components/Companion.vue";
+import {
+  AGENTS,
+  FULL_FEED,
+  prefersReducedMotion,
+  useStage,
+  useTimeline,
+} from "./shared";
 
 const { frame, scale } = useStage();
 const { at, clear } = useTimeline();
@@ -24,6 +32,7 @@ const level = ref(0);
 const mode = ref<"idle" | "user" | "claude">("idle");
 const activity = ref<string | null>(null);
 const faded = ref(false);
+let visibilityObserver: IntersectionObserver | undefined;
 
 let jitter: number | undefined;
 let revealTimers: number[] = [];
@@ -35,12 +44,18 @@ let currentUtterance = "";
  *  terminal, not speech). `revise` optionally mis-hears one word and
  *  corrects it on the next partial, the way a streaming model fixes its
  *  guess mid-utterance - used once per loop, sparingly. */
-function startTalking(text: string, revise?: { wordIndex: number; misheard: string }) {
+function startTalking(
+  text: string,
+  revise?: { wordIndex: number; misheard: string },
+) {
   mode.value = "user";
   liveText.value = "";
   currentUtterance = text;
   level.value = 0.5;
-  jitter = window.setInterval(() => (level.value = 0.3 + Math.random() * 0.5), 150);
+  jitter = window.setInterval(
+    () => (level.value = 0.3 + Math.random() * 0.5),
+    150,
+  );
 
   const words = text.split(" ");
   let shownCount = 0;
@@ -56,7 +71,8 @@ function startTalking(text: string, revise?: { wordIndex: number; misheard: stri
     liveText.value = shown.join(" ");
     // keep stepping while words remain, plus one corrective pass while the
     // misheard word is still on screen
-    const needsCorrection = liveText.value !== words.slice(0, shownCount).join(" ");
+    const needsCorrection =
+      liveText.value !== words.slice(0, shownCount).join(" ");
     if (shownCount < words.length || needsCorrection) {
       const perWord = 90 + Math.random() * 70; // 90-160ms per word, jittered
       revealTimers.push(window.setTimeout(step, Math.round(perWord * chunk)));
@@ -73,7 +89,11 @@ function commitUser(working: string) {
   revealTimers = [];
   feed.value = [
     ...feed.value,
-    { id: feed.value.length + 1, role: "user", text: currentUtterance || liveText.value },
+    {
+      id: feed.value.length + 1,
+      role: "user",
+      text: currentUtterance || liveText.value,
+    },
   ];
   liveText.value = "";
   level.value = 0;
@@ -83,11 +103,14 @@ function commitUser(working: string) {
 function agentReply(reply: string) {
   activity.value = null;
   mode.value = "claude";
-  feed.value = [...feed.value, { id: feed.value.length + 1, role: "claude", text: reply }];
+  feed.value = [
+    ...feed.value,
+    { id: feed.value.length + 1, role: "claude", text: reply },
+  ];
 }
 
 function runLoop() {
-  // 1 - the widget alone, larger than life, already speaking
+  // 1 - the fixed-size widget alone, already speaking
   at(300, () => {
     widgetIn.value = true;
     aloft.value = true;
@@ -96,7 +119,14 @@ function runLoop() {
     level.value = 0.4;
   });
   at(1800, () => {
-    feed.value = [...feed.value, { id: 1, role: "claude", text: "Your session is running. I'll keep you posted."}];
+    feed.value = [
+      ...feed.value,
+      {
+        id: 1,
+        role: "claude",
+        text: "Your session is running. I'll keep you posted.",
+      },
+    ];
   });
   // 2 - the terminal rises in underneath and the widget lands on it
   at(3200, () => {
@@ -118,13 +148,20 @@ function runLoop() {
   // fillers ("um,"/"uh,") are part of the transcript, revealed like any
   // other word - one per utterance, start only, so it stays human rather
   // than caricature
-  at(6200, () => startTalking("um, what's wrong with the webhook?", { wordIndex: 5, misheard: "web hook?" }));
+  at(6200, () =>
+    startTalking("um, what's wrong with the webhook?", {
+      wordIndex: 5,
+      misheard: "web hook?",
+    }),
+  );
   at(7600, () => commitUser("reading webhooks/handler.ts"));
   at(8300, () => (visibleLines.value = 5));
   at(9500, () => (visibleLines.value = 6));
   // ~3.6s of visible thinking before the diagnosis lands - the terminal
   // keeps working underneath, so the pause reads as real investigation
-  at(11200, () => agentReply("Bad signatures were retried forever. I made them fail fast."));
+  at(11200, () =>
+    agentReply("Bad signatures were retried forever. I made them fail fast."),
+  );
   at(12000, () => (visibleLines.value = 7));
   // REACTION PAUSE: a real person reads the diagnosis and thinks before
   // answering - the user starts ~3.2s after the reply lands, not instantly
@@ -132,7 +169,9 @@ function runLoop() {
   at(15700, () => commitUser("running npm test"));
   at(16300, () => (visibleLines.value = 8));
   // ~2s beat - kicking off tests takes less thought than a diagnosis
-  at(17700, () => agentReply("Running - both paths are pinned by the new test."));
+  at(17700, () =>
+    agentReply("Running - both paths are pinned by the new test."),
+  );
   at(18400, () => {
     visibleLines.value = 9;
     mode.value = "idle";
@@ -163,98 +202,195 @@ function runLoop() {
   });
 }
 
+function clearSpeechTimers() {
+  if (jitter) window.clearInterval(jitter);
+  jitter = undefined;
+  revealTimers.forEach((timer) => window.clearTimeout(timer));
+  revealTimers = [];
+}
+
+function showFinalScene() {
+  visibilityObserver?.disconnect();
+  clear();
+  clearSpeechTimers();
+  faded.value = false;
+  widgetIn.value = true;
+  aloft.value = false;
+  terminalIn.value = true;
+  visibleLines.value = Infinity;
+  feed.value = [...FULL_FEED];
+  liveText.value = "";
+  activity.value = null;
+  level.value = 0;
+  mode.value = "idle";
+}
+
 onMounted(() => {
   if (prefersReducedMotion()) {
-    widgetIn.value = true;
-    aloft.value = false;
-    terminalIn.value = true;
-    visibleLines.value = Infinity;
-    feed.value = FULL_FEED;
-    mode.value = "claude";
+    showFinalScene();
     return;
   }
-  runLoop();
+  visibilityObserver = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        visibilityObserver?.disconnect();
+        runLoop();
+      }
+    },
+    { threshold: 0.35 },
+  );
+  if (frame.value) visibilityObserver.observe(frame.value);
+});
+onBeforeUnmount(() => {
+  visibilityObserver?.disconnect();
+  clearSpeechTimers();
 });
 </script>
 
 <template>
-  <div ref="frame" class="scene-frame" :style="{ height: `${760 * scale}px` }">
+  <div class="hero-demo">
     <div
-      class="scene-stage"
-      :class="{ faded }"
-      :style="{ transform: `scale(${scale})` }"
-      role="img"
-      aria-label="The NOISY-CODING companion widget appears alone and alive, then settles down onto a running Claude Code terminal session, carrying the spoken exchange from its docked spot"
+      ref="frame"
+      class="scene-frame"
+      :style="{ height: `${760 * scale}px` }"
     >
-      <div class="terminal-slot" :class="{ in: terminalIn }">
-        <ClaudeCodeMock full-bleed banner="both" :visible-lines="visibleLines" />
-      </div>
-      <transition name="widget">
-        <div v-if="widgetIn" class="widget-slot" :class="{ aloft }">
-          <Companion
-            :mode="mode"
-            voice="lux"
-            :feed="feed"
-            :live-text="liveText"
-            :level="level"
-            :activity="activity"
-            :max-height="420"
-            :agents="AGENTS"
+      <div
+        class="scene-stage"
+        :class="{ faded }"
+        :style="{ transform: `scale(${scale})` }"
+        role="img"
+        aria-label="The NOISY-CODING companion widget appears alone and alive, then settles down onto a running Claude Code terminal session, carrying the spoken exchange from its docked spot"
+      >
+        <div class="terminal-slot" :class="{ in: terminalIn }">
+          <ClaudeCodeMock
+            full-bleed
+            banner="both"
+            :visible-lines="visibleLines"
           />
         </div>
-      </transition>
+        <transition name="widget">
+          <div v-if="widgetIn" class="widget-slot" :class="{ aloft }">
+            <div class="companion-window" inert>
+              <div class="companion-host">
+                <Companion
+                  draggable
+                  :mode="mode"
+                  voice="lux"
+                  :feed="feed"
+                  :live-text="liveText"
+                  :level="level"
+                  :activity="activity"
+                  :max-height="220"
+                  :agents="AGENTS"
+                />
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.hero-demo {
+  min-width: 0;
+}
+.scene-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.scene-stage {
+  position: relative;
+  width: 1200px;
+  height: 760px;
+  transform-origin: top left;
+}
 /* the scene IS a Mac desktop from frame zero - the widget lives on it */
 .scene-stage {
-  opacity: 1; transition: opacity 0.35s ease;
+  opacity: 1;
+  transition: opacity 0.35s ease;
   background: url("../assets/mac-desktop.png") center / cover no-repeat;
   box-shadow: none;
 }
-.scene-stage.faded { opacity: 0; }
+.scene-stage.faded {
+  opacity: 0;
+}
 /* the base: always a notch dimmer than the widget; it slides in from
    off-stage left like a window being brought over */
 .terminal-slot {
   /* 10% smaller than the previous 1140x664 slot, centered between the
      desktop's menu bar and dock so more of it shows around the window */
-  position: absolute; inset: 73px 87px 89px;
-  opacity: 0; transform: translateX(-1260px);
+  position: absolute;
+  inset: 73px 87px 89px;
+  opacity: 0;
+  transform: translateX(-1260px);
   filter: saturate(0.4) brightness(0.68);
-  transition: opacity 0.5s ease, transform 1s cubic-bezier(0.22, 0.8, 0.3, 1);
+  transition:
+    opacity 0.5s ease,
+    transform 1s cubic-bezier(0.22, 0.8, 0.3, 1);
 }
-.terminal-slot.in { opacity: 1; transform: translateX(0); }
+.terminal-slot.in {
+  opacity: 1;
+  transform: translateX(0);
+}
 /* the product: docked bottom-right; while aloft it hovers center stage,
-   slightly larger than its final size, and lands with one transform */
+   at the same size, and lands with one translation */
 .widget-slot {
-  position: absolute; right: 32px; bottom: 52px;
+  position: absolute;
+  right: 32px;
+  bottom: 52px;
   /* FIXED width, product parity: CompanionFloat pins the widget window at
      420px - an absolutely-positioned slot would otherwise shrink-to-fit
      and GROW with every longer bubble. Constant width, bubbles wrap. */
   width: 420px;
+  height: 400px;
   transform-origin: bottom right;
+  transform: scale(1.2);
   transition: transform 1.15s cubic-bezier(0.22, 0.8, 0.3, 1);
   /* no glow in this variant - the widget looks exactly like the product */
 }
 .widget-slot.aloft {
-  transform: translate(-320px, -240px) scale(1.25);
+  transform: translate(-316px, -88px) scale(1.2);
+}
+/* A synthetic scene represents the untouched widget, even under the cursor.
+   Keep its header row reserved while hiding all hover-only window chrome. */
+.widget-slot :deep(.companion-header) {
+  visibility: hidden;
+}
+.widget-slot :deep(.companion-window::after) {
+  display: none;
 }
 /* (The 22px thread padding workaround for the top fade mask was removed:
    Companion now scopes its masks under a `scrollable` state, so a thread
    that fits renders every bubble full strength.) */
-.widget-enter-active { transition: opacity 0.8s ease, transform 1.15s cubic-bezier(0.22, 0.8, 0.3, 1); }
-.widget-enter-from { opacity: 0; }
+.widget-enter-active {
+  transition:
+    opacity 0.8s ease,
+    transform 1.15s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+.widget-enter-from {
+  opacity: 0;
+}
 /* Leave must be INSTANT: the slot's own 1.15s transform transition would
    otherwise stretch Vue's leave phase, and a leaving vnode no longer
    receives prop updates - so the old widget lingered with its stale
    bubbles into the next cycle's fade-in (the loop-restart glitch). The
    reset happens while the stage is faded to zero anyway; there is nothing
    to animate. */
-.widget-leave-active { transition: none !important; }
+.widget-leave-active {
+  transition: none !important;
+}
 @media (prefers-reduced-motion: reduce) {
-  .terminal-slot { opacity: 1 !important; transform: translateX(0) !important; filter: saturate(0.4) brightness(0.68) !important; }
-  .scene-frame * { animation: none !important; transition: none !important; }
+  .terminal-slot {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+    filter: saturate(0.4) brightness(0.68) !important;
+  }
+  .scene-frame * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 </style>

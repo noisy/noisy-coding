@@ -1,21 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
-import DashboardMock from "./marketing/DashboardMock.vue";
+import App from "../App.vue";
+import { resetScenario } from "../storybook/daemon.fixture";
 
-/* The website hero shot: dashboard CONTENT only, no OS chrome.
- *
- * The landing pages wrap screenshots in their own CSS window frame, so a
- * capture that carries a macOS title bar ends up double-framed. This story
- * renders the bare dashboard at 1600x1000 for scripts/marketing-shots.sh.
- */
+// Capture the actual application layout with isolated demonstration data.
+// A parallel marketing layout drifts whenever the product changes.
 const meta: Meta = {
   title: "Synthetic Screenshots/App",
+  component: App,
   parameters: { layout: "fullscreen" },
 };
 export default meta;
 
 export const Content: StoryObj = {
-  render: () => ({
-    components: { DashboardMock },
-    template: `<DashboardMock />`,
-  }),
+  render: () => {
+    resetScenario("conversation");
+    return { components: { App }, template: "<App />" };
+  },
 };
