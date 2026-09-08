@@ -23,7 +23,12 @@ export interface CompanionMessage {
 
 /** One conversation in the rail, in the dashboard's own tab order. */
 export interface CompanionAgent {
+  /** The agent's ID - a session hash. Identity, never shown to a human. */
   name: string;
+  /** The human title of the conversation, as the dashboard tabs show it.
+   *  Falls back to the id only when the daemon has no label yet, which is
+   *  the brief window right after a session registers. */
+  label?: string;
   voice: string;
   /** The conversation currently on screen: bigger, lit, never dimmed. */
   active?: boolean;
@@ -149,8 +154,29 @@ async function refit() {
   updateClipped();
 }
 
-const sessionName = computed(() => props.agents.find(a => a.active)?.name ?? 'Companion');
-const waitingCount = computed(() => props.agents.find(a => a.active)?.waiting || props.waiting || props.feed.filter(m => m.zone === 'pending').length);
+/* Never show the raw session id. The dashboard titles its tabs from
+ * agent_labels; the widget used the agents map's KEYS, which are the ids -
+ * so the same conversation read "stream-day-7" in one place and a hash in
+ * the other, in the title bar and on every bubble. */
+const activeAgent = computed(() => props.agents.find(a => a.active));
+const sessionName = computed(
+  () => activeAgent.value?.label || activeAgent.value?.name || 'Companion',
+);
+
+/* Where the pointer is, in the widget's own coordinates, so the tooltip can
+ * be drawn OUTSIDE the avatar rail. The rail scrolls horizontally, and
+ * anything painted inside it is clipped - which is why the leftmost
+ * avatar's tooltip vanished when it lived there. */
+const tip = ref<{ text: string; x: number; y: number } | null>(null);
+function showTip(event: Event, text: string) {
+  const btn = event.currentTarget as HTMLElement;
+  const box = root.value;
+  if (!box) return;
+  const b = btn.getBoundingClientRect();
+  const r = box.getBoundingClientRect();
+  tip.value = { text, x: b.left - r.left + b.width / 2, y: b.top - r.top };
+}
+const waitingCount = computed(() => activeAgent.value?.waiting || props.waiting || props.feed.filter(m => m.zone === 'pending').length);
 const stateLabel = computed(() => {
   if (props.offline) return 'Offline';
   if (props.muted) return 'Microphone muted';
@@ -424,6 +450,11 @@ watch(
       <span v-if="waitingExtra" class="listening">+{{ waitingExtra }} waiting</span>
     </div>
 
+    <!-- Drawn here, not in the rail: the rail scrolls and would clip it.
+         Sits above everything so a full-screen widget still names the
+         avatar under the pointer, where the pointer already is. -->
+    <div v-if="tip" class="avatar-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }">{{ tip.text }}</div>
+
     <!-- Session controls stay below the scrollable conversation. -->
     <div class="rail right" :class="{ active: mode === 'claude' }">
       <!-- Selection preserves the session order and button sizes. -->
@@ -432,7 +463,9 @@ watch(
         :key="a.name"
         class="head"
         :class="{ other: !a.active, current: a.active, unread: a.unread }"
-        :title="a.name" :aria-label="a.name" :aria-pressed="!!a.active"
+        :aria-label="a.label || a.name" :aria-pressed="!!a.active"
+        @mouseenter="showTip($event, a.label || a.name)" @mouseleave="tip = null"
+        @focus="showTip($event, a.label || a.name)" @blur="tip = null"
         @click="$emit('select', a.name)"
       ><VoiceAvatar :voice="a.voice" :size="44" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->
@@ -447,13 +480,20 @@ body.companion-transparent, body.companion-transparent #app { background:transpa
 body.companion-transparent .companion { background:transparent; border-color:transparent; box-shadow:none; }
 /* Reveal the fixed window boundary and drag bar only when reached for. */
 body.companion-transparent .companion-window::after { content:""; position:absolute; inset:1px; border:1px solid #f3f4f5b3; border-radius:10px; box-shadow:inset 0 0 0 1px #151619cc; pointer-events:none; opacity:0; transition:opacity .15s; }
-body.companion-transparent .companion-window .companion-header { opacity:0; pointer-events:none; transition:opacity .15s; }
+/* Invisible at rest, but NOT pointer-events:none.
+ *
+ * A bar that ignores the pointer cannot trigger the :hover that reveals it,
+ * so approaching the widget from ABOVE - the natural way to reach a title
+ * bar - left it hidden, while approaching across a bubble lit it up. Same
+ * gesture, opposite result. (This is NOT what broke dragging; see the
+ * drag-region note below for that.) */
+body.companion-transparent .companion-window .companion-header { opacity:0; transition:opacity .15s; }
 body.companion-transparent .companion-window:hover::after,
 body.companion-transparent.hovering .companion-window::after,
 body.companion-transparent .companion-window:focus-within::after { opacity:1; }
 body.companion-transparent .companion-window:hover .companion-header,
 body.companion-transparent.hovering .companion-window .companion-header,
-body.companion-transparent .companion-window:focus-within .companion-header { opacity:1; pointer-events:auto; }
+body.companion-transparent .companion-window:focus-within .companion-header { opacity:1; }
 body.companion-transparent .companion-window .thread { scrollbar-width:none; scrollbar-gutter:auto; mask-image:linear-gradient(transparent, black 18px); }
 body.companion-transparent .companion-window .thread::-webkit-scrollbar { display:none; }
 body.companion-transparent .companion-header,
@@ -464,8 +504,20 @@ body.companion-transparent .msg { background:rgba(27,29,33,.94); border-color:#f
 body.companion-transparent .msg.side-left { background:rgba(41,40,37,.94); }
 body.companion-transparent .listening,
 body.companion-transparent .activity { background:rgba(27,29,33,.94); border-radius:8px; padding:6px 10px; }
-body.companion-transparent .msg, body.companion-transparent .msg * { -webkit-app-region:no-drag; cursor:text; user-select:text; }
-body.companion-transparent button { -webkit-app-region:no-drag; cursor:pointer; }
+/* NO-DRAG BELONGS TO THE SCROLL CONTAINER, NEVER TO WHAT SCROLLS INSIDE IT.
+ *
+ * Chromium builds the window's drag region from the UNCLIPPED border box of
+ * every element that declares -webkit-app-region, in document order: drag
+ * adds, no-drag subtracts. A message scrolled up out of the thread is still
+ * laid out - above the thread, invisible, and geometrically on top of the
+ * title bar - so a no-drag on .msg subtracted the bar itself, leaving a one
+ * or two pixel sliver that moved with the scroll position (#63). Excluding
+ * the thread's own box excludes everything in it and never overflows it.
+ * Same for buttons: bubbles carry some, so only the rail's are excluded. */
+body.companion-transparent .msg, body.companion-transparent .msg * { cursor:text; user-select:text; }
+body.companion-transparent .thread { -webkit-app-region:no-drag; }
+body.companion-transparent button { cursor:pointer; }
+body.companion-transparent .rail button { -webkit-app-region:no-drag; }
 body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 </style>
 <style scoped>
@@ -474,8 +526,17 @@ body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 .companion-header strong { font-size:13px; font-weight:600; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .companion-state { flex:none; font-size:11px; color:var(--green); }
 .companion-state.warning { color:var(--amber); }
-.companion .companion-header.drag-strip { box-sizing:border-box; min-height:28px; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:6px; background:#202226; box-shadow:none; -webkit-app-region:drag; cursor:grab; user-select:none; }
+.companion .companion-header.drag-strip { box-sizing:border-box; min-height:34px; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:6px; background:#202226; box-shadow:none; -webkit-app-region:drag; cursor:grab; user-select:none; }
 .drag-strip strong { margin-right:auto; font-size:12px; }
+/* The whole bar reads as a handle, children included - a text cursor over
+   the title says "select me", which is the opposite of what it does. */
+.drag-strip, .drag-strip * { cursor:grab; }
+.drag-strip:active, .drag-strip:active * { cursor:grabbing; }
+/* Text inside the bar must not become a selection target - a click that
+   starts selecting is a click that does not drag. */
+.drag-strip strong, .drag-strip .drag-hint, .drag-strip .companion-state {
+  -webkit-app-region: drag; user-select: none; pointer-events: none;
+}
 .drag-hint { display:flex; flex:none; align-items:center; gap:5px; color:var(--muted); font-size:10px; white-space:nowrap; }
 .thread { order:-1; flex-basis:100%; min-width:0; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:2px 4px 2px 1px; scrollbar-gutter:stable; }
 .msgs { display:flex; flex-direction:column; gap:10px; }
@@ -491,6 +552,21 @@ body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 .head { position:relative; display:flex; flex:none; width:48px; height:48px; border:2px solid transparent; border-radius:12px; background-color:var(--surface-hover); padding:0; }
 .head.current { border-color:var(--cyan); }
 .head:hover { border-color:var(--ink); }
+.avatar-tip {
+  position:absolute; transform:translate(-50%, -100%); margin-top:-8px;
+  padding:5px 9px; border-radius:8px; background:rgba(20,22,26,.97);
+  box-shadow:0 0 0 1px rgba(243,244,245,.35), 0 6px 20px rgba(0,0,0,.5);
+  color:#f3f4f5; font-size:12px; line-height:1; white-space:nowrap;
+  pointer-events:none; z-index:50;
+}
+/* The title bar is showing a name you are POINTING AT, not the one you are
+   in - dim it slightly so the two are never confused. */
+/* Naming the hovered avatar happens in the TITLE BAR, not in a tooltip
+ * beside the rail: this rail scrolls horizontally (overflow-x), which
+ * clips anything drawn outside it - the leftmost avatar's tooltip had
+ * nowhere to go and simply vanished. The title bar is already visible on
+ * hover, already says which conversation you are in, and is the place the
+ * eye is anyway. */
 .head.unread { border-bottom-color:var(--amber); }
 .rail.active .head.current { border-color:var(--green); }
 .waiting { position:absolute; top:-5px; right:-6px; min-width:14px; height:14px; padding:0 3px; background:var(--amber); color:var(--bg0); border-radius:7px; font:600 9px/14px var(--sans); }

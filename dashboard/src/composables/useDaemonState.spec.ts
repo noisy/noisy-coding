@@ -2,7 +2,7 @@ import { mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import type { DaemonState } from "./useDaemonState";
-import { useDaemonState } from "./useDaemonState";
+import { resetDaemonState, useDaemonState } from "./useDaemonState";
 
 const STATUS = {
   active_agent: "agent-a",
@@ -34,6 +34,7 @@ async function flush() {
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
+  resetDaemonState(); // the state is now app-wide; each case starts clean
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -150,9 +151,14 @@ describe("useDaemonState", () => {
     unmount();
   });
 
-  it("selectAgent pins the viewed agent and posts the switch", async () => {
-    const fetchMock = vi.fn(async (url: string) => {
-      if (url.startsWith("/status")) return jsonResponse({ ...STATUS, active_agent: "agent-a" });
+  it("selectAgent posts the switch and then follows the daemon's answer", async () => {
+    let active = "agent-a";
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.startsWith("/status")) return jsonResponse({ ...STATUS, active_agent: active });
+      if (url.startsWith("/active-agent")) {
+        active = JSON.parse(String(init?.body)).name;
+        return jsonResponse({ active_agent: active });
+      }
       if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
       if (url.startsWith("/events")) return jsonResponse({ events: [] });
       return jsonResponse({ character: {} });
@@ -163,16 +169,69 @@ describe("useDaemonState", () => {
     await flush();
     state.selectAgent("agent-b");
 
-    expect(state.viewedAgent.value).toBe("agent-b");
+    expect(state.viewedAgent.value).toBe("agent-b"); // optimistic preview
     expect(fetchMock).toHaveBeenCalledWith("/active-agent", {
       method: "POST",
       body: JSON.stringify({ name: "agent-b" }),
     });
-
-    // Next poll keeps the pin even though active_agent is still agent-a.
+    await flush();
     await vi.advanceTimersByTimeAsync(400);
     await flush();
+    expect(state.viewedAgent.value).toBe("agent-b"); // the daemon agreed
+    unmount();
+  });
+
+  /* #65: the dashboard and the desktop companion are separate Electron
+   * windows, so separate copies of this module. The only state they share is
+   * the daemon's active_agent - a selection made in the OTHER window arrives
+   * here as a status change and must win over anything chosen locally. */
+  it("follows a switch made elsewhere, even after a local selection", async () => {
+    let active = "agent-a";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.startsWith("/status")) return jsonResponse({ ...STATUS, active_agent: active });
+        if (url.startsWith("/active-agent")) {
+          active = JSON.parse(String(init?.body)).name;
+          return jsonResponse({ active_agent: active });
+        }
+        if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
+        if (url.startsWith("/events")) return jsonResponse({ events: [] });
+        return jsonResponse({ character: {} });
+      }),
+    );
+
+    const { state, unmount } = mountComposable();
+    await flush();
+    state.selectAgent("agent-b");
+    await flush();
     expect(state.viewedAgent.value).toBe("agent-b");
+
+    active = "agent-a"; // the other window clicked its tab
+    await vi.advanceTimersByTimeAsync(400);
+    await flush();
+    expect(state.viewedAgent.value).toBe("agent-a");
+    unmount();
+  });
+
+  it("shows who the daemon actually gave the mic to when it refuses a click", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.startsWith("/status")) return jsonResponse({ ...STATUS, active_agent: "agent-a" });
+        if (url.startsWith("/active-agent")) return jsonResponse({ active_agent: "agent-a" });
+        if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
+        if (url.startsWith("/events")) return jsonResponse({ events: [] });
+        return jsonResponse({ character: {} });
+      }),
+    );
+
+    const { state, unmount } = mountComposable();
+    await flush();
+    state.selectAgent("agent-gone");
+    expect(state.viewedAgent.value).toBe("agent-gone");
+    await flush();
+    expect(state.viewedAgent.value).toBe("agent-a");
     unmount();
   });
 });

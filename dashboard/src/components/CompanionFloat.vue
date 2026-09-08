@@ -82,6 +82,7 @@ const others = computed<CompanionAgent[]>(() => {
     .sort((a, b) => (meta[a]?.activated_at ?? 0) - (meta[b]?.activated_at ?? 0))
     .map((name) => ({
       name,
+      label: s.agent_labels?.[name] ?? "",
       voice: s.agent_voices?.[name] ?? "rex",
       active: name === viewedAgent.value,
       unread: (queued[name] ?? 0) > 0,

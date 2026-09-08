@@ -111,6 +111,11 @@ const others = computed<CompanionAgent[]>(() => {
     .sort((a, b) => (meta[a]?.activated_at ?? 0) - (meta[b]?.activated_at ?? 0))
     .map((name) => ({
       name,
+      // The dashboard titles its tabs from agent_labels; the keys of the
+      // agents map are SESSION IDS. Without this the widget shows a hash
+      // where the dashboard shows a name - and looks correct only for an
+      // agent whose id happens to be readable, like "codex".
+      label: s.agent_labels?.[name] ?? "",
       voice: s.agent_voices?.[name] ?? "rex",
       active: name === viewedAgent.value,
       unread: (queued[name] ?? 0) > 0,
@@ -182,6 +187,27 @@ body,
 </style>
 
 <style scoped>
+/* Everything ABOVE the title bar's lower edge drags the window.
+ *
+ * The bar does not touch the window's top edge - the window has its own
+ * padding - so there was a strip of dead pixels exactly where a hand
+ * naturally goes when reaching for a title bar. This covers the bar and
+ * everything above it, so the whole top band behaves as one handle, with
+ * the grab cursor to say so. Elements below (thread, rail) declare
+ * no-drag for themselves. */
+.companion-window::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  /* window padding (8) + bar height (34) + a hair, so the region ends ON
+     the bar's lower edge rather than short of it. */
+  height: 43px;
+  -webkit-app-region: drag;
+  cursor: grab;
+  z-index: 1;
+}
+.companion-window:active::before { cursor: grabbing; }
+
 /* Reserve space beside the microphone for the browser-only PiP control. */
 .companion-window:has(.pop-out) :deep(.rail.right) { max-width:calc(100% - 80px); }
 .pop-out {
