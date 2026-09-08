@@ -46,7 +46,7 @@ function select(id: Variant) {
 <template>
   <div
     v-if="compare"
-    class="hero-comparison wrap"
+    class="hero-comparison"
     aria-label="Hero layout comparison"
   >
     <div class="variant-buttons" role="group" aria-label="Choose hero layout">
@@ -90,7 +90,16 @@ function select(id: Variant) {
 </template>
 <style scoped>
 .hero-comparison {
-  padding-block: 6px 12px;
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 100;
+  width: 210px;
+  padding: 12px;
+  background: rgba(27, 29, 33, 0.96);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px #0005;
 }
 .variant-buttons {
   display: flex;
@@ -124,6 +133,7 @@ function select(id: Variant) {
 }
 .hero-variants {
   padding-top: 16px;
+  width: min(1760px, calc(100% - 64px));
 }
 .hero-variants .hero-intro {
   margin-bottom: 24px;
@@ -167,17 +177,17 @@ function select(id: Variant) {
   margin-top: 14px;
 }
 .hero-centered .hero-desktop {
-  max-width: min(100%, calc((100svh - 400px) * 1.5789));
+  max-width: min(100%, calc((100svh - 310px) * 1.5789));
   margin: auto;
 }
 /* 2 and 3: product and copy share the first screen instead of stacking. */
 .hero-left,
 .hero-right {
   display: grid;
-  grid-template-columns: minmax(270px, 0.72fr) minmax(0, 1.6fr);
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
   align-items: center;
   gap: 40px;
-  min-height: calc(100svh - 190px);
+  min-height: calc(100svh - 110px);
 }
 .hero-left .hero-intro,
 .hero-right .hero-intro {
@@ -199,7 +209,7 @@ function select(id: Variant) {
   max-width: none;
 }
 .hero-right {
-  grid-template-columns: minmax(0, 1.6fr) minmax(270px, 0.72fr);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
 }
 .hero-right .hero-desktop {
   grid-column: 1;
@@ -216,7 +226,7 @@ function select(id: Variant) {
 }
 .hero-product-first .hero-desktop {
   order: -1;
-  max-width: min(100%, calc((100svh - 330px) * 1.5789));
+  max-width: min(100%, calc((100svh - 245px) * 1.5789));
   margin: auto;
 }
 .hero-product-first .hero-intro {
@@ -369,6 +379,23 @@ function select(id: Variant) {
   }
   .hero-variants .hero-actions > span {
     max-width: none;
+  }
+}
+</style>
+
+<style scoped>
+@media (max-width: 600px) {
+  .hero-variants {
+    width: calc(100% - 36px);
+  }
+  .hero-comparison {
+    left: 8px;
+    bottom: 8px;
+    width: 180px;
+    padding: 8px;
+  }
+  .hero-comparison p {
+    display: none;
   }
 }
 </style>

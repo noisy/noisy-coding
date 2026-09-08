@@ -271,25 +271,24 @@ onBeforeUnmount(() => {
         <transition name="widget">
           <div v-if="widgetIn" class="widget-slot" :class="{ aloft }">
             <div class="companion-window" inert>
-            <div class="companion-host">
-            <Companion
-              draggable
-              :mode="mode"
-              voice="lux"
-              :feed="feed"
-              :live-text="liveText"
-              :level="level"
-              :activity="activity"
-              :max-height="220"
-              :agents="AGENTS"
-            />
-            </div>
+              <div class="companion-host">
+                <Companion
+                  draggable
+                  :mode="mode"
+                  voice="lux"
+                  :feed="feed"
+                  :live-text="liveText"
+                  :level="level"
+                  :activity="activity"
+                  :max-height="220"
+                  :agents="AGENTS"
+                />
+              </div>
             </div>
           </div>
         </transition>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -348,16 +347,21 @@ onBeforeUnmount(() => {
   width: 420px;
   height: 400px;
   transform-origin: bottom right;
+  transform: scale(1.2);
   transition: transform 1.15s cubic-bezier(0.22, 0.8, 0.3, 1);
   /* no glow in this variant - the widget looks exactly like the product */
 }
 .widget-slot.aloft {
-  transform: translate(-358px, -128px);
+  transform: translate(-316px, -88px) scale(1.2);
 }
 /* A synthetic scene represents the untouched widget, even under the cursor.
    Keep its header row reserved while hiding all hover-only window chrome. */
-.widget-slot :deep(.companion-header) { visibility:hidden; }
-.widget-slot :deep(.companion-window::after) { display:none; }
+.widget-slot :deep(.companion-header) {
+  visibility: hidden;
+}
+.widget-slot :deep(.companion-window::after) {
+  display: none;
+}
 /* (The 22px thread padding workaround for the top fade mask was removed:
    Companion now scopes its masks under a `scrollable` state, so a thread
    that fits renders every bubble full strength.) */
