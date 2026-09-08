@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import CompanionCrewScene from "@dashboard/components/marketing/CompanionCrewScene.vue";
-import VoiceAvatar from "@dashboard/components/VoiceAvatar.vue";
+import VoiceCarousel from "./VoiceCarousel.vue";
 const scene = ref<InstanceType<typeof CompanionCrewScene> | null>(null);
 const frame = ref<HTMLElement | null>(null);
 const scale = ref(0.7);
@@ -48,38 +48,7 @@ function listen() {
           A deployment update. A PR worth celebrating. A personal reminder.
           Recognize the voice, know the context—and answer when you’re ready.
         </p>
-        <div class="voice-cast">
-          <button
-            class="cast-voice"
-            type="button"
-            aria-label="Hear Lux"
-            @click="previewVoice(0)"
-          >
-            <VoiceAvatar voice="lux" set="editorial" :size="56" /><span
-              >Development<small>Lux</small></span
-            >
-          </button>
-          <button
-            class="cast-voice"
-            type="button"
-            aria-label="Hear Rex"
-            @click="previewVoice(1)"
-          >
-            <VoiceAvatar voice="rex" set="editorial" :size="56" /><span
-              >Pull requests<small>Rex</small></span
-            >
-          </button>
-          <button
-            class="cast-voice"
-            type="button"
-            aria-label="Hear Luna"
-            @click="previewVoice(2)"
-          >
-            <VoiceAvatar voice="luna" set="editorial" :size="56" /><span
-              >Personal<small>Luna</small></span
-            >
-          </button>
-        </div>
+        <VoiceCarousel @preview="previewVoice" />
         <button
           class="button primary"
           type="button"
@@ -130,29 +99,6 @@ function listen() {
 .voice-layout > div { min-width: 0; }
 .voice-copy h2 {
   font-size: clamp(36px, 3.5vw, 56px);
-}
-.voice-cast {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin: 30px 0;
-}
-.cast-voice {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px;
-  background: var(--bg0);
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  font-size: 12px;
-}
-.voice-cast small {
-  display: block;
-  color: var(--muted);
 }
 .voice-note,
 .voice-caption {
