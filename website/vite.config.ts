@@ -30,7 +30,7 @@ export default defineConfig({
     ],
     // Two node_modules trees are in play (website/ and dashboard/); make
     // sure only one Vue instance ever loads.
-    dedupe: ["vue"],
+    dedupe: ["vue", "xstate"],
   },
   server: {
     port: 5199,
