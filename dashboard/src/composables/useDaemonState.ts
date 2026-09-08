@@ -60,9 +60,18 @@ function createDaemonState(pollMs: number): SharedDaemonState {
   const errors = ref<DaemonEvent[]>([]);
   let lastEventSeq = 0;
 
-  // Like the legacy dashboard: follow the active agent until the user pins
-  // a tab by clicking it.
-  let pinned = false;
+  /* THE DAEMON'S active_agent IS THE SELECTION. There is no local pin.
+   *
+   * The dashboard and the companion are two Electron windows, so two renderer
+   * processes, so two copies of this module - a module-level singleton can
+   * only unify views inside ONE window (the browser float). A local "pinned"
+   * flag that outlived the daemon's answer was therefore a second source of
+   * truth per window, and the two windows drifted (#65). Now every window
+   * follows the daemon; a click is an optimistic preview that holds only
+   * until the daemon has answered, and status polled before that answer is
+   * not allowed to overwrite it. */
+  let selecting = 0; // in-flight selectAgent calls
+  let settledAt = 0; // when the last selection was answered
 
   // Assumption detector: every observed status change must be a path in
   // the chat machine (see machines/chat.ts). A change the model can't
@@ -90,13 +99,15 @@ function createDaemonState(pollMs: number): SharedDaemonState {
 
   async function tick() {
     try {
+      const askedAt = Date.now();
       const s = await getStatus();
       status.value = s;
       offline.value = false;
-      if (!pinned) viewedAgent.value = s.active_agent;
+      // A poll that left before the daemon confirmed a click may still
+      // carry the previous agent; only a poll issued afterwards may speak.
+      if (!selecting && askedAt >= settledAt) viewedAgent.value = s.active_agent;
       if (viewedAgent.value && !(viewedAgent.value in s.agents)) {
         viewedAgent.value = s.active_agent;
-        pinned = false;
       }
       const agent = viewedAgent.value ?? undefined;
       // One unfiltered fetch serves both the viewed log and the unread
@@ -127,18 +138,21 @@ function createDaemonState(pollMs: number): SharedDaemonState {
   }
 
   function selectAgent(name: string) {
-    pinned = true;
-    viewedAgent.value = name;
+    selecting += 1;
+    viewedAgent.value = name; // preview; the daemon's answer replaces it
     // The daemon has the last word on who holds the mic, and it can refuse
     // (an agent that dropped out of its table). Believing the click instead
     // of the answer is what let the dashboard tab and the companion widget
-    // drift apart - the widget renders active_agent, the tabs rendered a
-    // pinned local guess - and worse, the mic then fed the OTHER agent.
+    // drift apart - and worse, the mic then fed the OTHER agent.
     setActiveAgent(name)
       .then((active) => {
-        if (active && active !== name) viewedAgent.value = active;
+        if (active) viewedAgent.value = active;
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        selecting -= 1;
+        settledAt = Date.now();
+      });
   }
 
   function reorderAgents(order: string[]) {
@@ -172,15 +186,15 @@ function createDaemonState(pollMs: number): SharedDaemonState {
   return { status, utterances, utterancesFor, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents, subscribe, unsubscribe };
 }
 
-/* ONE state for the whole app, not one per component.
+/* ONE state per window, not one per component.
  *
  * This used to be a plain factory, so App.vue, CompanionView and
- * CompanionFloat each built their own refs, their own poller and - the bug -
- * their own `pinned` flag and `viewedAgent`. Clicking a tab in the dashboard
- * pinned only the dashboard's copy; the widget's copy kept following whatever
- * it had last pinned, so the two showed different agents and stayed that way.
- * Sharing the state makes disagreement impossible, and drops two redundant
- * 400ms polling loops. */
+ * CompanionFloat each built their own refs and their own poller. Sharing the
+ * instance drops the redundant 400ms polling loops and keeps the views inside
+ * a window in step. It does NOT make the dashboard and the desktop companion
+ * agree - those are separate Electron windows and separate processes, each
+ * with its own copy of `shared`. Agreement between windows comes from the
+ * daemon's active_agent alone (see createDaemonState). */
 let shared: SharedDaemonState | null = null;
 
 export function useDaemonState(pollMs = 400): DaemonState {
