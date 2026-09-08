@@ -23,7 +23,12 @@ export interface CompanionMessage {
 
 /** One conversation in the rail, in the dashboard's own tab order. */
 export interface CompanionAgent {
+  /** The agent's ID - a session hash. Identity, never shown to a human. */
   name: string;
+  /** The human title of the conversation, as the dashboard tabs show it.
+   *  Falls back to the id only when the daemon has no label yet, which is
+   *  the brief window right after a session registers. */
+  label?: string;
   voice: string;
   /** The conversation currently on screen: bigger, lit, never dimmed. */
   active?: boolean;
@@ -149,8 +154,21 @@ async function refit() {
   updateClipped();
 }
 
-const sessionName = computed(() => props.agents.find(a => a.active)?.name ?? 'Companion');
-const waitingCount = computed(() => props.agents.find(a => a.active)?.waiting || props.waiting || props.feed.filter(m => m.zone === 'pending').length);
+/* Never show the raw session id. The dashboard titles its tabs from
+ * agent_labels; the widget used the agents map's KEYS, which are the ids -
+ * so the same conversation read "stream-day-7" in one place and a hash in
+ * the other, in the title bar and on every bubble. */
+const activeAgent = computed(() => props.agents.find(a => a.active));
+const sessionName = computed(
+  () => activeAgent.value?.label || activeAgent.value?.name || 'Companion',
+);
+
+/* Which avatar the pointer is over. Clicking one SWITCHES CONVERSATION, so
+ * the user must know what they are about to click before they click it -
+ * a wrong guess sends the next thing they say to the wrong agent. */
+const hovered = ref('');
+const titleText = computed(() => hovered.value || sessionName.value);
+const waitingCount = computed(() => activeAgent.value?.waiting || props.waiting || props.feed.filter(m => m.zone === 'pending').length);
 const stateLabel = computed(() => {
   if (props.offline) return 'Offline';
   if (props.muted) return 'Microphone muted';
@@ -359,7 +377,7 @@ watch(
         </svg>
         Drag to move
       </span>
-      <strong :title="sessionName">{{ sessionName }}</strong><span class="companion-state" :class="{ warning: offline || muted || voiceMuted }" role="status">{{ stateLabel }}</span>
+      <strong :title="titleText" :class="{ previewing: hovered }">{{ titleText }}</strong><span class="companion-state" :class="{ warning: offline || muted || voiceMuted }" role="status">{{ stateLabel }}</span>
     </header>
     <!-- Left rail: the user's indicator. Lights up while they talk. -->
     <div class="rail left" :class="{ active: mode === 'user' }">
@@ -432,7 +450,9 @@ watch(
         :key="a.name"
         class="head"
         :class="{ other: !a.active, current: a.active, unread: a.unread }"
-        :title="a.name" :aria-label="a.name" :aria-pressed="!!a.active"
+        :title="a.label || a.name" :aria-label="a.label || a.name" :aria-pressed="!!a.active"
+        @mouseenter="hovered = a.label || a.name" @mouseleave="hovered = ''"
+        @focus="hovered = a.label || a.name" @blur="hovered = ''"
         @click="$emit('select', a.name)"
       ><VoiceAvatar :voice="a.voice" :size="44" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->
@@ -447,6 +467,13 @@ body.companion-transparent, body.companion-transparent #app { background:transpa
 body.companion-transparent .companion { background:transparent; border-color:transparent; box-shadow:none; }
 /* Reveal the fixed window boundary and drag bar only when reached for. */
 body.companion-transparent .companion-window::after { content:""; position:absolute; inset:1px; border:1px solid #f3f4f5b3; border-radius:10px; box-shadow:inset 0 0 0 1px #151619cc; pointer-events:none; opacity:0; transition:opacity .15s; }
+/* Invisible at rest, but NOT pointer-events:none.
+ *
+ * A bar that ignores the pointer cannot trigger the :hover that reveals it,
+ * so approaching the widget from ABOVE - the natural way to reach a title
+ * bar - left it hidden, while approaching across a bubble lit it up. Same
+ * gesture, opposite result. (This is NOT what broke dragging; see the
+ * drag-region note below for that.) */
 body.companion-transparent .companion-window .companion-header { opacity:0; transition:opacity .15s; }
 body.companion-transparent .companion-window:hover::after,
 body.companion-transparent.hovering .companion-window::after,
@@ -486,8 +513,17 @@ body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 .companion-header strong { font-size:13px; font-weight:600; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .companion-state { flex:none; font-size:11px; color:var(--green); }
 .companion-state.warning { color:var(--amber); }
-.companion .companion-header.drag-strip { box-sizing:border-box; min-height:28px; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:6px; background:#202226; box-shadow:none; -webkit-app-region:drag; cursor:grab; user-select:none; }
+.companion .companion-header.drag-strip { box-sizing:border-box; min-height:34px; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:6px; background:#202226; box-shadow:none; -webkit-app-region:drag; cursor:grab; user-select:none; }
 .drag-strip strong { margin-right:auto; font-size:12px; }
+/* The whole bar reads as a handle, children included - a text cursor over
+   the title says "select me", which is the opposite of what it does. */
+.drag-strip, .drag-strip * { cursor:grab; }
+.drag-strip:active, .drag-strip:active * { cursor:grabbing; }
+/* Text inside the bar must not become a selection target - a click that
+   starts selecting is a click that does not drag. */
+.drag-strip strong, .drag-strip .drag-hint, .drag-strip .companion-state {
+  -webkit-app-region: drag; user-select: none; pointer-events: none;
+}
 .drag-hint { display:flex; flex:none; align-items:center; gap:5px; color:var(--muted); font-size:10px; white-space:nowrap; }
 .thread { order:-1; flex-basis:100%; min-width:0; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:2px 4px 2px 1px; scrollbar-gutter:stable; }
 .msgs { display:flex; flex-direction:column; gap:10px; }
@@ -503,6 +539,15 @@ body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 .head { position:relative; display:flex; flex:none; width:48px; height:48px; border:2px solid transparent; border-radius:12px; background-color:var(--surface-hover); padding:0; }
 .head.current { border-color:var(--cyan); }
 .head:hover { border-color:var(--ink); }
+/* The title bar is showing a name you are POINTING AT, not the one you are
+   in - dim it slightly so the two are never confused. */
+.companion-header strong.previewing { opacity: 0.72; }
+/* Naming the hovered avatar happens in the TITLE BAR, not in a tooltip
+ * beside the rail: this rail scrolls horizontally (overflow-x), which
+ * clips anything drawn outside it - the leftmost avatar's tooltip had
+ * nowhere to go and simply vanished. The title bar is already visible on
+ * hover, already says which conversation you are in, and is the place the
+ * eye is anyway. */
 .head.unread { border-bottom-color:var(--amber); }
 .rail.active .head.current { border-color:var(--green); }
 .waiting { position:absolute; top:-5px; right:-6px; min-width:14px; height:14px; padding:0 3px; background:var(--amber); color:var(--bg0); border-radius:7px; font:600 9px/14px var(--sans); }
