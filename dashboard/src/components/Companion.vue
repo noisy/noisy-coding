@@ -163,11 +163,19 @@ const sessionName = computed(
   () => activeAgent.value?.label || activeAgent.value?.name || 'Companion',
 );
 
-/* Which avatar the pointer is over. Clicking one SWITCHES CONVERSATION, so
- * the user must know what they are about to click before they click it -
- * a wrong guess sends the next thing they say to the wrong agent. */
-const hovered = ref('');
-const titleText = computed(() => hovered.value || sessionName.value);
+/* Where the pointer is, in the widget's own coordinates, so the tooltip can
+ * be drawn OUTSIDE the avatar rail. The rail scrolls horizontally, and
+ * anything painted inside it is clipped - which is why the leftmost
+ * avatar's tooltip vanished when it lived there. */
+const tip = ref<{ text: string; x: number; y: number } | null>(null);
+function showTip(event: Event, text: string) {
+  const btn = event.currentTarget as HTMLElement;
+  const box = root.value;
+  if (!box) return;
+  const b = btn.getBoundingClientRect();
+  const r = box.getBoundingClientRect();
+  tip.value = { text, x: b.left - r.left + b.width / 2, y: b.top - r.top };
+}
 const waitingCount = computed(() => activeAgent.value?.waiting || props.waiting || props.feed.filter(m => m.zone === 'pending').length);
 const stateLabel = computed(() => {
   if (props.offline) return 'Offline';
@@ -377,7 +385,7 @@ watch(
         </svg>
         Drag to move
       </span>
-      <strong :title="titleText" :class="{ previewing: hovered }">{{ titleText }}</strong><span class="companion-state" :class="{ warning: offline || muted || voiceMuted }" role="status">{{ stateLabel }}</span>
+      <strong :title="sessionName">{{ sessionName }}</strong><span class="companion-state" :class="{ warning: offline || muted || voiceMuted }" role="status">{{ stateLabel }}</span>
     </header>
     <!-- Left rail: the user's indicator. Lights up while they talk. -->
     <div class="rail left" :class="{ active: mode === 'user' }">
@@ -442,6 +450,11 @@ watch(
       <span v-if="waitingExtra" class="listening">+{{ waitingExtra }} waiting</span>
     </div>
 
+    <!-- Drawn here, not in the rail: the rail scrolls and would clip it.
+         Sits above everything so a full-screen widget still names the
+         avatar under the pointer, where the pointer already is. -->
+    <div v-if="tip" class="avatar-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }">{{ tip.text }}</div>
+
     <!-- Session controls stay below the scrollable conversation. -->
     <div class="rail right" :class="{ active: mode === 'claude' }">
       <!-- Selection preserves the session order and button sizes. -->
@@ -450,9 +463,9 @@ watch(
         :key="a.name"
         class="head"
         :class="{ other: !a.active, current: a.active, unread: a.unread }"
-        :title="a.label || a.name" :aria-label="a.label || a.name" :aria-pressed="!!a.active"
-        @mouseenter="hovered = a.label || a.name" @mouseleave="hovered = ''"
-        @focus="hovered = a.label || a.name" @blur="hovered = ''"
+        :aria-label="a.label || a.name" :aria-pressed="!!a.active"
+        @mouseenter="showTip($event, a.label || a.name)" @mouseleave="tip = null"
+        @focus="showTip($event, a.label || a.name)" @blur="tip = null"
         @click="$emit('select', a.name)"
       ><VoiceAvatar :voice="a.voice" :size="44" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->
@@ -539,9 +552,15 @@ body.companion-transparent .drag-strip { -webkit-app-region:drag; }
 .head { position:relative; display:flex; flex:none; width:48px; height:48px; border:2px solid transparent; border-radius:12px; background-color:var(--surface-hover); padding:0; }
 .head.current { border-color:var(--cyan); }
 .head:hover { border-color:var(--ink); }
+.avatar-tip {
+  position:absolute; transform:translate(-50%, -100%); margin-top:-8px;
+  padding:5px 9px; border-radius:8px; background:rgba(20,22,26,.97);
+  box-shadow:0 0 0 1px rgba(243,244,245,.35), 0 6px 20px rgba(0,0,0,.5);
+  color:#f3f4f5; font-size:12px; line-height:1; white-space:nowrap;
+  pointer-events:none; z-index:50;
+}
 /* The title bar is showing a name you are POINTING AT, not the one you are
    in - dim it slightly so the two are never confused. */
-.companion-header strong.previewing { opacity: 0.72; }
 /* Naming the hovered avatar happens in the TITLE BAR, not in a tooltip
  * beside the rail: this rail scrolls horizontally (overflow-x), which
  * clips anything drawn outside it - the leftmost avatar's tooltip had
