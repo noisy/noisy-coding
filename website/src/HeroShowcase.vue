@@ -32,7 +32,7 @@ type Variant = (typeof variants)[number]["id"];
 const query = new URLSearchParams(window.location.search);
 const requested = query.get("hero");
 const selected = ref<Variant>(
-  variants.find((v) => v.id === requested)?.id ?? "briefing",
+  variants.find((v) => v.id === requested)?.id ?? "top-aligned",
 );
 const hero = ref<HTMLElement | null>(null);
 const inView = ref(true);
