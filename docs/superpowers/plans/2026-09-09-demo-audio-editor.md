@@ -6,9 +6,9 @@
 
 **Tech Stack:** Vanilla browser JavaScript, Canvas, Web Audio, existing loopback Python server, Node tests.
 
-- [ ] Add pure range/document validation and tests for invalid ranges, source identity, overlapping repairs and room-tone conflicts.
-- [ ] Add editor page with video, zoomable waveform, draggable selection, exact start/end inputs, mark-at-playhead controls, selected-range audition, repair list and room-tone selection.
-- [ ] Add JSON export/reopen, unsaved-change protection, waveform loading/error states, local navigation and documentation.
-- [ ] Verify browser rendering and interaction using the original hero V1 file, run appropriate checks, commit and push.
+- [x] Add pure range/document validation and tests for invalid ranges, source identity, overlapping repairs and room-tone conflicts.
+- [x] Add editor page with video, zoomable waveform, draggable selection, exact start/end inputs, mark-at-playhead controls, selected-range audition, repair list and room-tone selection.
+- [x] Add JSON export/reopen, unsaved-change protection, waveform loading/error states, local navigation and documentation.
+- [x] Verify browser rendering and interaction using the original hero V1 file, run appropriate checks, commit and push.
 
 Room tone is recorded ambient sound, not generated white noise. Export its interval separately for replacement and possible later noise profiling. All intervals refer to the original recording clock; edits never shorten the recording. Preserve source filename, size and SHA-256 and validate them on reopening. Do not change the live voice daemon or the source recording.

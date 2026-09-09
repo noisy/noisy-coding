@@ -16,7 +16,11 @@ CLIPS = ROOT.parent.parent / "dashboard/src/components/marketing/crew-voice"
 ASSETS = {
     "/clips/hero-lux-search-production.mp3": (ROOT / "clips/hero-lux-search-production.mp3", "audio/mpeg"),
     "/": (ROOT / "index.html", "text/html"),
+    "/audio-editor": (ROOT / "audio-editor.html", "text/html"),
     **{f"/{name}": (ROOT / name, mime) for name, mime in [
+        ("audio-editor.mjs", "text/javascript"),
+        ("audio-edits.mjs", "text/javascript"),
+        ("audio-editor.css", "text/css"),
         ("recorder.mjs", "text/javascript"),
         ("timeline.mjs", "text/javascript"),
         ("scenarios.mjs", "text/javascript"),

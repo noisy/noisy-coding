@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Demo Studio · Audio cleanup</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/audio-editor.css"></head>
+<body><main>
+<header><div><p class="eyebrow">DEMO STUDIO / AUDIO CLEANUP</p><h1>Keep the conversation. Mark the noise.</h1><p>Choose repair intervals and a clean background sample. Your original stays unchanged.</p></div><a href="/">← Recorder</a></header>
+<div class="controls"><label class="file-button primary">Open original recording<input id="open-media" type="file" accept="video/*,audio/*,.webm,.mp4,.wav"></label><label class="file-button">Reopen markers<input id="open-markers" type="file" accept=".json"></label><button id="save" disabled>Save markers JSON</button></div>
+<p id="status" role="status">Open the original camera + microphone file, before Lux was mixed in. Everything stays in your browser.</p><p id="error" role="alert"></p>
+<section class="editor-top"><video id="video" controls playsinline preload="auto" aria-label="Original recording preview"></video><div class="guide"><p class="eyebrow">HOW TO MARK</p><p>Drag across the waveform. Zoom in to refine the edges, or enter exact milliseconds.</p><p><strong>Repair:</strong> a click, swallow or other unwanted sound.<br><strong>Clean background:</strong> quiet room sound without speech, breaths or clicks.</p><p>Shortcuts: <kbd>Space</kbd> play/pause · <kbd>I</kbd> start · <kbd>O</kbd> end · <kbd>P</kbd> play selection.</p><p id="source-info">No recording loaded.</p></div></section>
+<fieldset id="editor" disabled>
+<div class="wave-controls"><label>Zoom <input id="zoom" type="range" min="1" max="30" step="1" value="1"><output id="zoom-value">1×</output></label><button id="follow">Show playhead</button><label>Wave height <input id="gain" type="range" min="1" max="10" step="0.5" value="1"></label><output id="clock">0 ms</output></div>
+<div id="wave-scroll"><div id="wave-stage"><canvas id="wave" aria-label="Audio waveform. Drag to select a time range."></canvas><div id="selection"></div><div id="playhead"></div></div></div>
+<div id="ruler" aria-hidden="true"></div>
+<div class="selection-controls"><label>Start (ms)<input id="start" type="number" min="0" step="1" value="0"></label><button id="mark-start">Start at playhead · I</button><label>End (ms)<input id="end" type="number" min="0" step="1" value="0"></label><button id="mark-end">End at playhead · O</button><button id="audition">Play selection · P</button><label class="loop"><input id="loop" type="checkbox"> Loop selection</label></div>
+<div class="controls"><button id="add" class="primary">Add repair interval</button><button id="background">Use selection as clean background</button><button id="cancel-edit" hidden>Cancel interval edit</button></div>
+<section class="marker-columns"><div><h2>Repair intervals <span id="count">0</span></h2><p>Each interval keeps its original position and duration.</p><ol id="repairs"></ol></div><div><h2>Clean background sample</h2><p>This sample can fill repaired gaps and serve as a noise reference later.</p><div id="room-tone">No sample selected.</div></div></section>
+</fieldset>
+<footer><p>Save the JSON and keep it with the original recording. It stores millisecond ranges and a fingerprint of the source. This page marks and auditions the original audio; it does not apply cleanup or alter your files.</p></footer>
+</main><script type="module" src="/audio-editor.mjs"></script></body></html>

@@ -100,3 +100,26 @@ Tests replace recording/STT browser APIs and the provider at their boundaries.
 They verify a continuous three-turn/five-reply recording, arrival identity,
 cleanup, error redaction, transcript-only offsets and seeking agent intervals.
 A live hardware/provider take still needs a deliberate recording by the user.
+
+## Audio cleanup markers
+
+Open `/audio-editor` (or Audio cleanup in Demo Studio). Load the **original**
+camera/microphone file, before mixing agent audio. No upload or microphone
+permission is involved. The browser decodes a waveform and fingerprints the
+original file; it never writes to or re-encodes it.
+
+Drag on the waveform, zoom up to 30×, or set Start/End in whole milliseconds.
+I/O mark boundaries at the playhead, P auditions the selection, and Space
+plays/pauses when focus is outside a form control or native video player.
+Loop selection repeats the original interval. Add each unwanted sound as a
+repair interval; choose a separate clean background interval as room tone.
+It must not overlap repairs. Clean background means recorded room sound without
+speech, breaths or clicks, not generated white noise. Wave height changes only
+the visualization, not playback volume.
+
+Save markers JSON and keep it with the source. Reopen the original first,
+then its JSON; mismatched source fingerprints are rejected. Draft markers
+are also stored locally in the browser, when storage is available. This page
+does not apply repair or denoising: the exported intervals are input for a
+later, reversible cleanup pass. Preview stopping uses browser playback timing;
+the exported millisecond boundaries are the authoritative edit coordinates.
