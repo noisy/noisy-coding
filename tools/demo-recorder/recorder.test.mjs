@@ -2,7 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-test('a complete take retains continuous microphone video and logs all three turns and five replies', async () => {
+for (const scenario of [
+  { id: 'crew', users: ['u1', 'u2', 'u3'], clips: ['lux-1', 'lux-2', 'rex-1', 'luna-1', 'luna-2'] },
+  { id: 'hero', users: ['u1', 'u2'], clips: ['hero-lux-1', 'hero-lux-2', 'hero-lux-3', 'hero-lux-4'] },
+]) test(`${scenario.id}: continuous recording preserves every user turn and reply`, async () => {
   const elements = new Map();
   const element = () => ({
     textContent: '', value: '', disabled: false, currentTime: 0, paused: true,
@@ -75,21 +78,32 @@ test('a complete take retains continuous microphone video and logs all three tur
   const createURL = URL.createObjectURL;
   URL.createObjectURL = blob => { blobs.push(blob); return 'blob:test'; };
   try {
-    await import('./recorder.mjs');
+    await import(`./recorder.mjs?scenario=${scenario.id}`);
     const get = id => document.getElementById(id);
+    get('scenario').value = scenario.id;
+    get('scenario').onchange();
     await get('record').onclick();
-    await get('next').onclick();
-    await get('next').onclick();
-    await get('next').onclick();
+    for (const user of scenario.users) {
+      for (let attempt = 0; get('next').disabled && attempt < 100; attempt++) {
+        await new Promise(resolve => realSetTimeout(resolve, 1));
+      }
+      assert.equal(get('next').disabled, false);
+      await get('next').onclick();
+    }
     await new Promise(resolve => realSetTimeout(resolve, 0));
     get('save-timing').onclick();
     const saved = JSON.parse(await blobs.at(-1).text());
 
+    assert.equal(saved.scenario.id, scenario.id);
+    if (scenario.id === 'hero') {
+      const firstUser = saved.events.findIndex(e => e.type === 'user-start');
+      assert.equal(saved.events.slice(0, firstUser).filter(e => e.type === 'agent-end').length, 2);
+    }
     assert.equal(recordings.length, 1);
     assert.equal(recordings[0].input, stream);
-    assert.deepEqual(saved.events.filter(e => e.type === 'user-start').map(e => e.utterance), ['u1', 'u2', 'u3']);
-    assert.deepEqual(saved.events.filter(e => e.type === 'agent-start').map(e => e.clip), ['lux-1', 'lux-2', 'rex-1', 'luna-1', 'luna-2']);
-    assert.deepEqual(saved.events.filter(e => e.type === 'transcript').map(e => e.utterance), ['u1', 'u2', 'u3']);
+    assert.deepEqual(saved.events.filter(e => e.type === 'user-start').map(e => e.utterance), scenario.users);
+    assert.deepEqual(saved.events.filter(e => e.type === 'agent-start').map(e => e.clip), scenario.clips);
+    assert.deepEqual(saved.events.filter(e => e.type === 'transcript').map(e => e.utterance), scenario.users);
     assert.equal(get('state').textContent, 'Review');
   } finally {
     globalThis.setTimeout = realSetTimeout;

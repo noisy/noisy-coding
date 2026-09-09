@@ -1,4 +1,4 @@
-# Demo session recorder
+# Demo Studio
 
 Local authoring tool for one continuous webcam/microphone take, live Grok
 transcript revisions and the existing Lux/Rex/Luna audio. This is not part of
@@ -17,6 +17,23 @@ Open **http://127.0.0.1:8790** in Chrome. The server binds only to loopback;
 websocket on the next port. It uses the same STT credential lookup as the app.
 No key is sent to the browser. Camera/microphone access starts only after Record.
 Microphone audio goes to the app's Grok STT provider; video stays in browser memory.
+
+## Scenarios
+
+Choose a scenario above the camera. **1 · Meet your crew** keeps the original
+Lux/Rex/Luna exchange. **2 · Hero — fix the webhook** follows the hero widget:
+
+1. Listen to Lux: “I'm ready.” / “Your session is running. I'll keep you posted.”
+2. Say “What's wrong with the webhook?” and press Space.
+3. Lux: “Bad signatures were retried forever. I made them fail fast.”
+4. Say “Good. Run the full suite.” and press Space.
+5. Lux: “Running - both paths are pinned by the new test.” The take ends.
+
+The camera records the introduction too. Agent playback arrivals and a
+`terminal-enter` scene cue are recorded before the first user turn. The JSON
+includes the selected scenario snapshot; old JSON without it remains supported.
+Hero clips use Grok Lux, English, speed 1.1. They live in this local authoring
+tool; the existing website hero stays unchanged until a take is selected.
 
 ## Record
 

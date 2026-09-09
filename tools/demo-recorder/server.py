@@ -18,11 +18,14 @@ ASSETS = {
     **{f"/{name}": (ROOT / name, mime) for name, mime in [
         ("recorder.mjs", "text/javascript"),
         ("timeline.mjs", "text/javascript"),
+        ("scenarios.mjs", "text/javascript"),
         ("pcm-worklet.js", "text/javascript"),
         ("style.css", "text/css"),
     ]},
     **{f"/clips/{name}.mp3": (CLIPS / f"{name}.mp3", "audio/mpeg")
        for name in ("lux-1", "lux-2", "rex-1", "luna-1", "luna-2")},
+    **{f"/clips/hero-lux-{index}.mp3": (ROOT / "clips" / f"hero-lux-{index}.mp3", "audio/mpeg")
+       for index in range(1, 5)},
 }
 
 

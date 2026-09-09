@@ -1,8 +1,10 @@
-import { TURNS, presentationEvents, transcriptsAt, activeClipAt } from './timeline.mjs';
+import { SCENARIOS } from './scenarios.mjs';
+import { presentationEvents, transcriptsAt, activeClipAt } from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const video = $('video');
 let phase = 'idle';
+let takeScenario = SCENARIOS[0];
 let stream, context, pcm, source, socket, recorder, currentAudio;
 let origin = null;
 let events = [];
@@ -49,6 +51,7 @@ async function within(promise, ms, message) {
 
 function setPhase(next) {
   phase = next;
+  $('scenario').disabled = !['idle', 'review'].includes(next);
   $('state').textContent = { idle: 'Ready', preparing: 'Preparing', recording: 'Recording', stopping: 'Saving take', review: 'Review' }[next];
   $('record').disabled = !['idle', 'review'].includes(next);
   $('stop').disabled = next !== 'recording';
@@ -97,9 +100,9 @@ async function openUtterance() {
 }
 
 function promptUser() {
-  log('user-start', { utterance: identity(), prompt: TURNS[turn].prompt, voice: TURNS[turn].agent });
-  $('turn-label').textContent = `YOUR TURN ${turn + 1} / ${TURNS.length} · TALKING TO ${TURNS[turn].agent.toUpperCase()}`;
-  $('prompt').textContent = `“${TURNS[turn].prompt}”`;
+  log('user-start', { utterance: identity(), prompt: takeScenario.turns[turn].prompt, voice: takeScenario.turns[turn].agent });
+  $('turn-label').textContent = `YOUR TURN ${turn + 1} / ${takeScenario.turns.length} · TALKING TO ${takeScenario.turns[turn].agent.toUpperCase()}`;
+  $('prompt').textContent = `“${takeScenario.turns[turn].prompt}”`;
   $('guidance').textContent = 'Say this naturally. Press Space when you have finished; keep the recording running while you listen.';
   listening = true;
   $('next').disabled = false;
@@ -109,6 +112,7 @@ function promptUser() {
 async function startTake() {
   if (!['idle', 'review'].includes(phase)) return;
   if (takeBlob && (!downloadedVideo || !downloadedTiming) && !confirm('The current take has not been fully downloaded. Replace it?')) return;
+  takeScenario = SCENARIOS.find(scenario => scenario.id === $('scenario').value) ?? SCENARIOS[0];
   setPhase('preparing');
   error('');
   video.pause();
@@ -169,11 +173,11 @@ async function startTake() {
       events = [];
       offsets = {};
       origin = performance.now();
-      takeName = `crew-${new Date().toISOString().replaceAll(':', '-')}`;
+      takeName = `${takeScenario.id}-${new Date().toISOString().replaceAll(':', '-')}`;
       setPhase('recording');
       $('record').blur();
-      log('recording-start', { sampleRate: context.sampleRate });
-      promptUser();
+      log('recording-start', { sampleRate: context.sampleRate, scenario: takeScenario.id });
+      beginScenario();
     };
     chunks = [];
     recorder.start(1000);
@@ -182,6 +186,24 @@ async function startTake() {
     releaseDevices();
     error(exception.message);
     if (takeBlob) restoreReview();
+  }
+}
+
+async function beginScenario() {
+  try {
+    if (takeScenario.intro.length) {
+      status('Listen to Lux first. Your camera and microphone are already recording.');
+      for (const reply of takeScenario.intro) {
+        await playReply(reply);
+        if (!recording()) return;
+        await new Promise(resolve => setTimeout(resolve, 650));
+      }
+      if (!recording()) return;
+      log('scene-cue', { cue: 'terminal-enter' });
+    }
+    promptUser();
+  } catch (exception) {
+    if (recording()) { log('take-error', { message: exception.message }); error(exception.message); }
   }
 }
 
@@ -217,7 +239,7 @@ async function finishTurn() {
   const finalText = within(awaitingFinal.promise, 13000, 'Final transcript timed out. Stop and keep this take.');
   finalText.catch(() => {});
   try {
-    for (const reply of TURNS[turn].replies) {
+    for (const reply of takeScenario.turns[turn].replies) {
       await playReply(reply);
       if (!recording()) return;
       await new Promise(resolve => setTimeout(resolve, 650));
@@ -226,7 +248,7 @@ async function finishTurn() {
     await finalText;
     if (!recording()) return;
     turn += 1;
-    if (turn === TURNS.length) { stopTake(); return; }
+    if (turn === takeScenario.turns.length) { stopTake(); return; }
     await openUtterance();
     if (recording()) promptUser();
   } catch (exception) {
@@ -353,7 +375,7 @@ $('save-video').onclick = () => {
 };
 $('save-timing').onclick = () => {
   const take = {
-    version: 1, name: takeName, durationMs: takeDurationMs,
+    version: 1, name: takeName, durationMs: takeDurationMs, scenario: takeScenario,
     clock: 'milliseconds since MediaRecorder start event; browser arrival times, not provider word timestamps',
     media: { mimeType: takeBlob.type, audio: 'microphone only; agent clips are separate assets' },
     transcriptOffsetsMs: offsets, events, presentation: presentationEvents(events, offsets),
@@ -378,6 +400,7 @@ $('import').onchange = async ({ target }) => {
     events = take.events;
     offsets = take.transcriptOffsetsMs ?? {};
     takeName = take.name;
+    takeScenario = take.scenario ?? SCENARIOS[0];
     takeDurationMs = take.durationMs;
     takeBlob = media;
     downloadedVideo = true; downloadedTiming = true;
@@ -387,7 +410,7 @@ $('import').onchange = async ({ target }) => {
 };
 
 document.addEventListener('keydown', event => {
-  if (event.code !== 'Space' || event.repeat || /INPUT|TEXTAREA|VIDEO|SUMMARY/.test(event.target.tagName)) return;
+  if (event.code !== 'Space' || event.repeat || /INPUT|TEXTAREA|SELECT|VIDEO|SUMMARY/.test(event.target.tagName)) return;
   if (event.target === $('stop')) return;
   if (recording()) { event.preventDefault(); finishTurn(); }
 });
@@ -403,3 +426,27 @@ setInterval(() => {
   $('clock').textContent = `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${(ms / 1000 % 60).toFixed(1).padStart(4, '0')}`;
   reviewTick();
 }, 50);
+
+function showScenario() {
+  const scenario = SCENARIOS.find(item => item.id === $('scenario').value) ?? SCENARIOS[0];
+  $('script').replaceChildren();
+  const lines = [
+    ...scenario.intro.map(reply => `${reply.voice}: ${reply.text}`),
+    ...scenario.turns.flatMap(turn => [`You: ${turn.prompt}`, ...turn.replies.map(reply => `${reply.voice}: ${reply.text}`)]),
+  ];
+  for (const line of lines) {
+    const item = document.createElement('li');
+    item.textContent = line;
+    $('script').append(item);
+  }
+  if (phase === 'idle') $('turn-label').textContent = `${scenario.title} · ${scenario.turns.length} USER TURNS`;
+}
+for (const scenario of SCENARIOS) {
+  const option = document.createElement('option');
+  option.value = scenario.id;
+  option.textContent = scenario.title;
+  $('scenario').append(option);
+}
+$('scenario').value = 'crew';
+$('scenario').onchange = showScenario;
+showScenario();

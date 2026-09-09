@@ -27,16 +27,3 @@ export function activeClipAt(events, timeMs) {
   }
   return current;
 }
-
-export const TURNS = [
-  { prompt: "how's staging?", agent: 'Lux', replies: [
-    { voice: 'Lux', clip: 'lux-1', text: 'Green! Ready to promote.' },
-  ] },
-  { prompt: 'do it', agent: 'Lux', replies: [
-    { voice: 'Lux', clip: 'lux-2', text: 'on it!' },
-    { voice: 'Rex', clip: 'rex-1', text: "Last week's PR - finally approved!!!", handover: true },
-    { voice: 'Luna', clip: 'luna-1', text: 'Alarm went off! It was the courier.', handover: true },
-    { voice: 'Luna', clip: 'luna-2', text: 'Package is big - probably the printer.' },
-  ] },
-  { prompt: 'thanks', agent: 'Luna', replies: [] },
-];
