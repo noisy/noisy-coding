@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "durationMs": 30591,
+  "events": [
+    {
+      "sequence": 0,
+      "atMs": 0.10000000149011612,
+      "type": "recording-start",
+      "sampleRate": 44100
+    },
+    {
+      "sequence": 1,
+      "atMs": 0.20000000298023224,
+      "type": "user-start",
+      "utterance": "u1",
+      "prompt": "how's staging?",
+      "voice": "Lux"
+    },
+    {
+      "sequence": 2,
+      "atMs": 2784.9000000059605,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How",
+      "final": false
+    },
+    {
+      "sequence": 3,
+      "atMs": 3753.3000000044703,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false
+    },
+    {
+      "sequence": 4,
+      "atMs": 4134.10000000149,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false
+    },
+    {
+      "sequence": 5,
+      "atMs": 4655.70000000298,
+      "type": "user-end",
+      "utterance": "u1"
+    },
+    {
+      "sequence": 6,
+      "atMs": 4664,
+      "type": "agent-start",
+      "voice": "Lux",
+      "clip": "lux-1",
+      "text": "Green! Ready to promote."
+    },
+    {
+      "sequence": 7,
+      "atMs": 4682.80000000447,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false
+    },
+    {
+      "sequence": 8,
+      "atMs": 4862.4000000059605,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": true
+    },
+    {
+      "sequence": 9,
+      "atMs": 6528.10000000149,
+      "type": "agent-end",
+      "clip": "lux-1"
+    },
+    {
+      "sequence": 10,
+      "atMs": 7943,
+      "type": "user-start",
+      "utterance": "u2",
+      "prompt": "do it",
+      "voice": "Lux"
+    },
+    {
+      "sequence": 11,
+      "atMs": 9211.60000000149,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Do it!",
+      "final": false
+    },
+    {
+      "sequence": 12,
+      "atMs": 9976.30000000447,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Do it!",
+      "final": false
+    },
+    {
+      "sequence": 13,
+      "atMs": 9977.20000000298,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Do it!",
+      "final": false
+    },
+    {
+      "sequence": 14,
+      "atMs": 11565.30000000447,
+      "type": "user-end",
+      "utterance": "u2"
+    },
+    {
+      "sequence": 15,
+      "atMs": 11573.20000000298,
+      "type": "agent-start",
+      "voice": "Lux",
+      "clip": "lux-2",
+      "text": "on it!"
+    },
+    {
+      "sequence": 16,
+      "atMs": 11787.70000000298,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Do it!",
+      "final": true
+    },
+    {
+      "sequence": 17,
+      "atMs": 12286.40000000596,
+      "type": "agent-end",
+      "clip": "lux-2"
+    },
+    {
+      "sequence": 18,
+      "atMs": 12939.20000000298,
+      "type": "camera-zoom",
+      "target": "avatar-rail"
+    },
+    {
+      "sequence": 19,
+      "atMs": 13840,
+      "type": "agent-switch",
+      "voice": "Rex"
+    },
+    {
+      "sequence": 20,
+      "atMs": 13850,
+      "type": "agent-start",
+      "voice": "Rex",
+      "clip": "rex-1",
+      "text": "Last week's PR - finally approved!!!",
+      "handover": true
+    },
+    {
+      "sequence": 21,
+      "atMs": 16465.90000000596,
+      "type": "agent-end",
+      "clip": "rex-1"
+    },
+    {
+      "sequence": 22,
+      "atMs": 16466,
+      "type": "camera-reset"
+    },
+    {
+      "sequence": 23,
+      "atMs": 17117.40000000596,
+      "type": "camera-zoom",
+      "target": "avatar-rail"
+    },
+    {
+      "sequence": 24,
+      "atMs": 18019,
+      "type": "agent-switch",
+      "voice": "Luna"
+    },
+    {
+      "sequence": 25,
+      "atMs": 18027.10000000149,
+      "type": "agent-start",
+      "voice": "Luna",
+      "clip": "luna-1",
+      "text": "Alarm went off! It was the courier.",
+      "handover": true
+    },
+    {
+      "sequence": 26,
+      "atMs": 20576,
+      "type": "agent-end",
+      "clip": "luna-1"
+    },
+    {
+      "sequence": 27,
+      "atMs": 20576.20000000298,
+      "type": "camera-reset"
+    },
+    {
+      "sequence": 28,
+      "atMs": 21237.10000000149,
+      "type": "agent-start",
+      "voice": "Luna",
+      "clip": "luna-2",
+      "text": "Package is big - probably the printer."
+    },
+    {
+      "sequence": 29,
+      "atMs": 23617.90000000596,
+      "type": "agent-end",
+      "clip": "luna-2"
+    },
+    {
+      "sequence": 30,
+      "atMs": 25028.30000000447,
+      "type": "user-start",
+      "utterance": "u3",
+      "prompt": "thanks",
+      "voice": "Luna"
+    },
+    {
+      "sequence": 31,
+      "atMs": 26308.70000000298,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thanks.",
+      "final": false
+    },
+    {
+      "sequence": 32,
+      "atMs": 27412.60000000149,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thanks!",
+      "final": false
+    },
+    {
+      "sequence": 33,
+      "atMs": 27412.90000000596,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thanks!",
+      "final": false
+    },
+    {
+      "sequence": 34,
+      "atMs": 30364.90000000596,
+      "type": "user-end",
+      "utterance": "u3"
+    },
+    {
+      "sequence": 35,
+      "atMs": 30590.80000000447,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thanks!",
+      "final": true
+    },
+    {
+      "sequence": 36,
+      "atMs": 30591,
+      "type": "recording-stop"
+    }
+  ],
+  "transcriptOffsetsMs": {}
+}
