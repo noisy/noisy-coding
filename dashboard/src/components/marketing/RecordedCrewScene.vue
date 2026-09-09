@@ -141,7 +141,7 @@ defineExpose({ restart, toggleSound, soundOn });
 .hero .recorded-widget { top: auto; right: 32px; bottom: 52px; transform: scale(1.2); transform-origin: bottom right; }
 .hero .recorded-widget.aloft { transform: translate(-316px, -88px) scale(1.2); }
 .hero .recorded-camera { width: 260px; left: 24px; top: auto; bottom: 24px; }
-.hero .scene-sound { left: 300px; bottom: 24px; }
+.hero .scene-sound { left: 24px; top: 24px; bottom: auto; }
 .recorded-widget {
   position: absolute; right: 20px; top: 20px; width: 420px; height: 400px;
   transform-origin: 94% 100%; transition: transform .75s cubic-bezier(.22,.61,.36,1);
