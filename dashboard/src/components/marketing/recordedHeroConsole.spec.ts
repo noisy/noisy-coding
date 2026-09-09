@@ -8,5 +8,5 @@ it('keeps production success after its recorded confirmation and restores earlie
   expect(recordedHeroConsoleAt(take, confirmation)).toContainEqual({ kind: 'pass', text: 'Production deployment complete. Search health check passed.' });
   expect(recordedHeroConsoleAt(take, 35000)).toContainEqual({ kind: 'tool', tool: 'Edit', arg: 'src/search.ts' });
   expect(recordedHeroConsoleAt(take, 35000).some(line => line.kind === 'tool' && line.arg.includes('deploy'))).toBe(false);
-  expect(recordedHeroConsoleAt(take, 0)).toEqual([]);
+  expect(recordedHeroConsoleAt(take, 0).some(line => line.kind === 'tool' && line.arg.includes('deploy'))).toBe(false);
 });

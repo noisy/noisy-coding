@@ -62,24 +62,27 @@
       "atMs": 8809.89999999851,
       "type": "transcript",
       "utterance": "u1",
-      "text": "part of a name",
-      "final": false
+      "text": "The search stopped working after the last change. It finds exact names, but part of a name",
+      "final": false,
+      "originalText": "part of a name"
     },
     {
       "sequence": 8,
       "atMs": 9809.5,
       "type": "transcript",
       "utterance": "u1",
-      "text": "part of a name gives me nothing.",
-      "final": false
+      "text": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+      "final": false,
+      "originalText": "part of a name gives me nothing."
     },
     {
       "sequence": 9,
       "atMs": 10470.70000000298,
       "type": "transcript",
       "utterance": "u1",
-      "text": "part of a name gives me nothing.",
-      "final": false
+      "text": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+      "final": false,
+      "originalText": "part of a name gives me nothing."
     },
     {
       "sequence": 10,
@@ -238,32 +241,36 @@
       "atMs": 41218.89999999851,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Add a test for both",
-      "final": false
+      "text": "Great. Add a test for both",
+      "final": false,
+      "originalText": "Add a test for both"
     },
     {
       "sequence": 31,
       "atMs": 42234.5,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Add a test for both cases so we don't",
-      "final": false
+      "text": "Great. Add a test for both cases so we don't",
+      "final": false,
+      "originalText": "Add a test for both cases so we don't"
     },
     {
       "sequence": 32,
       "atMs": 43322.29999999702,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Add a test for both cases so we don't break this again.",
-      "final": false
+      "text": "Great. Add a test for both cases so we don't break this again.",
+      "final": false,
+      "originalText": "Add a test for both cases so we don't break this again."
     },
     {
       "sequence": 33,
       "atMs": 43909,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Add a test for both cases so we don't break this again.",
-      "final": false
+      "text": "Great. Add a test for both cases so we don't break this again.",
+      "final": false,
+      "originalText": "Add a test for both cases so we don't break this again."
     },
     {
       "sequence": 34,
@@ -346,24 +353,27 @@
       "atMs": 57759.60000000149,
       "type": "transcript",
       "utterance": "u4",
-      "text": ". Can you deploy that to production?",
-      "final": false
+      "text": "Great. My hands are full. Can you deploy that to production?",
+      "final": false,
+      "originalText": ". Can you deploy that to production?"
     },
     {
       "sequence": 45,
       "atMs": 58793.20000000298,
       "type": "transcript",
       "utterance": "u4",
-      "text": ". Can you deploy that to production for me?",
-      "final": false
+      "text": "Great. My hands are full. Can you deploy that to production for me?",
+      "final": false,
+      "originalText": ". Can you deploy that to production for me?"
     },
     {
       "sequence": 46,
       "atMs": 58971.10000000149,
       "type": "transcript",
       "utterance": "u4",
-      "text": ". Can you deploy that to production for me?",
-      "final": false
+      "text": "Great. My hands are full. Can you deploy that to production for me?",
+      "final": false,
+      "originalText": ". Can you deploy that to production for me?"
     },
     {
       "sequence": 47,

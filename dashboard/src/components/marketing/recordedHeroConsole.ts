@@ -7,7 +7,11 @@ type TerminalLine =
 /** Console milestones follow the recorded reply boundaries, not independent
  * timers. More precise thinking/activity cues can be authored separately. */
 export function recordedHeroConsoleAt(take: RecordedTake, timeMs: number): TerminalLine[] {
-  const lines: TerminalLine[] = [];
+  const lines: TerminalLine[] = [
+    { kind: 'prompt', text: 'Simplify the search filter.' },
+    { kind: 'tool', tool: 'Edit', arg: 'src/search.ts' },
+    { kind: 'text', text: 'Search filter updated. Ready for review.' },
+  ];
   for (const event of take.events) {
     if (event.atMs > timeMs) continue;
     if (event.type === 'user-end') {
