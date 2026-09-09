@@ -34,9 +34,9 @@ export const SCENARIOS = [
     { prompt: "Great. Add a test for both cases so we don't break this again.", agent: 'Lux', replies: [
       { voice: 'Lux', clip: 'hero-lux-search-3', text: 'Both tests pass. The fix is ready.' },
     ] },
-    { prompt: 'Great. My hands are full. Can you deploy that to staging for me?', agent: 'Lux', replies: [
+    { prompt: 'Great. My hands are full. Can you deploy that to production for me?', agent: 'Lux', replies: [
       { voice: 'Lux', clip: 'hero-lux-search-4', text: 'On it.' },
-      { voice: 'Lux', clip: 'hero-lux-search-5', text: "It's live on staging. Search is working.", pauseBeforeMs: 2200 },
+      { voice: 'Lux', clip: 'hero-lux-search-production', text: "It's live in production. Search is working.", pauseBeforeMs: 2200 },
     ] },
     { prompt: 'Perfect. Thanks.', agent: 'Lux', replies: [] },
   ] },

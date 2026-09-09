@@ -39,9 +39,9 @@ tool; the existing website hero stays unchanged until a take is selected.
 
 **3 · Hero — fix search and deploy** is the longer hands-free take: report
 broken partial search, ask for case-insensitive matches, request tests, deploy
-to staging, then say thanks. The complete approved dialogue is shown in the
+to production, then say thanks. The complete approved dialogue is shown in the
 scenario selector. Five prerecorded Lux clips accompany five user turns.
-A short pause separates “On it” from the staging confirmation; its actual
+A short pause separates “On it” from the production confirmation; its actual
 playback timing is captured like every other reply. No real deployment runs.
 
 ## Record

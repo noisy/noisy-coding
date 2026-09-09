@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 
 for (const scenario of [
   { id: 'crew', users: ['u1', 'u2', 'u3'], clips: ['lux-1', 'lux-2', 'rex-1', 'luna-1', 'luna-2'] },
-  { id: 'hero-search', users: ['u1', 'u2', 'u3', 'u4', 'u5'], clips: ['hero-lux-search-1', 'hero-lux-search-2', 'hero-lux-search-3', 'hero-lux-search-4', 'hero-lux-search-5'] },
+  { id: 'hero-search', users: ['u1', 'u2', 'u3', 'u4', 'u5'], clips: ['hero-lux-search-1', 'hero-lux-search-2', 'hero-lux-search-3', 'hero-lux-search-4', 'hero-lux-search-production'] },
   { id: 'hero', users: ['u1', 'u2'], clips: ['hero-lux-1', 'hero-lux-2', 'hero-lux-3', 'hero-lux-4'] },
 ]) test(`${scenario.id}: continuous recording preserves every user turn and reply`, async () => {
   const elements = new Map();

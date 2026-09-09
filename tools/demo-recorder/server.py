@@ -14,6 +14,7 @@ from noisy_coding.listener.stt_stream import StreamingSession
 ROOT = Path(__file__).resolve().parent
 CLIPS = ROOT.parent.parent / "dashboard/src/components/marketing/crew-voice"
 ASSETS = {
+    "/clips/hero-lux-search-production.mp3": (ROOT / "clips/hero-lux-search-production.mp3", "audio/mpeg"),
     "/": (ROOT / "index.html", "text/html"),
     **{f"/{name}": (ROOT / name, mime) for name, mime in [
         ("recorder.mjs", "text/javascript"),
