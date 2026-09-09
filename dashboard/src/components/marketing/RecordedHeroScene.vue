@@ -23,7 +23,7 @@ defineExpose({ seek: (ms: number) => scene.value?.seek(ms), pause: () => scene.v
     :camera-zoom="cameraZoom" :camera-offset-x="cameraOffsetX" :camera-offset-y="cameraOffsetY">
     <template #default="{ timeMs }">
       <div class="hero-terminal" :class="{ visible: timeMs >= 1800 }">
-        <ClaudeCodeMock full-bleed banner="mascot" title="claude - search-app" project-name="search-app" :transcript="recordedHeroConsoleAt(adjustedTake, timeMs, presentationEdits, activityBlocks)" />
+        <ClaudeCodeMock full-bleed banner="mascot" title="workspace" project-name="workspace" :transcript="recordedHeroConsoleAt(adjustedTake, timeMs, presentationEdits, activityBlocks)" />
       </div>
     </template>
   </RecordedCrewScene>

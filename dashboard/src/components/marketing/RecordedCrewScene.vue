@@ -112,7 +112,7 @@ defineExpose({ restart, toggleSound, soundOn, seek, pause, play: () => setSound(
     }">
       <div class="companion-window" inert><div class="companion-host">
         <Companion draggable avatar-set="editorial" :mode="state.mode" :voice="state.voice" :feed="state.feed"
-          :activity="activityAtTime?.(timeMs) ?? null" :live-text="state.liveText" :agents="layout === 'hero' ? [{ name: 'search-app', voice: 'lux', active: true }] : state.agents" :max-height="200" />
+          :activity="activityAtTime?.(timeMs) ?? null" :live-text="state.liveText" :agents="layout === 'hero' ? [{ name: 'workspace', label: 'Claude', voice: 'lux', active: true }] : state.agents" :max-height="200" />
       </div></div>
     </div>
     <!-- The camera is a sibling of the zooming widget: anchored to the
