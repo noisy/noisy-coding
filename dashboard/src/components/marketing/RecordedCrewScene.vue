@@ -7,16 +7,19 @@ import poster from "./recorded-crew/crew-v1-poster.jpg";
 import take from "./recorded-crew/crew-v1.json";
 import { recordedCrewAt } from "./recordedCrewTimeline";
 
-const props = withDefaults(defineProps<{ compact?: boolean; camera?: boolean }>(), { camera: true });
+const props = withDefaults(defineProps<{ compact?: boolean; camera?: boolean; cameraZoom?: number }>(), { camera: true, cameraZoom: 2 });
+const cameraScale = computed(() => Math.max(1, Math.min(4, props.cameraZoom)));
 const video = ref<HTMLVideoElement | null>(null);
 const timeMs = ref(0);
 const soundOn = ref(false);
 const playbackError = ref(false);
+const soundBlocked = ref(false);
 const reducedMotion = ref(false);
 const state = computed(() => recordedCrewAt(take, timeMs.value));
 let animation = 0;
 let visibility: IntersectionObserver | undefined;
 let motion: MediaQueryList;
+let soundRequest = 0;
 function motionChanged() { reducedMotion.value = motion.matches; }
 function sampleTime() {
   if (video.value) timeMs.value = video.value.currentTime * 1000;
@@ -27,24 +30,32 @@ function restart() {
   if (video.value) video.value.currentTime = 0;
   timeMs.value = 0;
 }
-async function toggleSound() {
+async function setSound(enabled: boolean) {
   const media = video.value;
   if (!media) return;
-  soundOn.value = !soundOn.value;
-  media.muted = !soundOn.value;
-  if (!soundOn.value) return;
+  const request = ++soundRequest;
+  soundOn.value = enabled;
+  media.muted = !enabled;
+  if (!enabled) return;
+  if (media.ended) restart();
   try {
     await media.play();
+    if (request !== soundRequest) return;
     playbackError.value = false;
+    soundBlocked.value = false;
   } catch {
+    if (request !== soundRequest) return;
     soundOn.value = false;
     media.muted = true;
-    playbackError.value = true;
+    soundBlocked.value = true;
+    // Hover isn't a browser activation gesture. Keep the silent preview alive
+    // when autoplay policy rejects unmuting; the explicit sound button retries.
+    void media.play().catch(() => { playbackError.value = true; });
   }
 }
+function toggleSound() { return setSound(!soundOn.value); }
 function ended() {
-  soundOn.value = false;
-  if (video.value) video.value.muted = true;
+  void setSound(false);
 }
 onMounted(() => {
   motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -55,8 +66,7 @@ onMounted(() => {
     if (!video.value) return;
     if (!entry.isIntersecting) {
       video.value.pause();
-      video.value.muted = true;
-      soundOn.value = false;
+      void setSound(false);
     } else if (!reducedMotion.value && !video.value.ended) {
       void video.value.play().catch(() => {});
     }
@@ -73,7 +83,11 @@ defineExpose({ restart, toggleSound, soundOn });
 </script>
 
 <template>
-  <div class="recorded-crew companion-transparent" :class="{ compact }" :style="{ width: compact ? '600px' : '760px' }">
+  <div class="recorded-crew companion-transparent" :class="{ compact }" :style="{ width: compact ? '600px' : '760px' }"
+    tabindex="0" role="group" aria-label="Conversation demo. Hover or focus to hear audio."
+    @pointerenter="$event.pointerType === 'mouse' && setSound(true)"
+    @pointerleave="$event.pointerType === 'mouse' && setSound(false)"
+    @focusin="setSound(true)" @focusout="setSound(false)">
     <div class="recorded-widget" :style="{
       transform: camera && !reducedMotion && state.zoom ? 'scale(2)' : 'scale(1)',
     }">
@@ -86,11 +100,13 @@ defineExpose({ restart, toggleSound, soundOn });
          screenshot's bottom-left corner throughout every agent handover. -->
     <div class="recorded-camera">
       <video ref="video" :src="recording" :poster="poster" muted playsinline preload="metadata"
+        :style="{ transform: `scale(${cameraScale})` }"
         aria-label="Recorded conversation with Krzysztof and Lux, Rex and Luna"
         @timeupdate="updateTime" @seeked="updateTime" @ended="ended"
         @error="playbackError = true" />
     </div>
     <p v-if="playbackError" class="playback-error" role="status">Unable to play this recording. Please try again.</p>
+    <p v-else-if="soundBlocked" class="playback-error" role="status">Click the sound button to enable audio.</p>
   </div>
 </template>
 

@@ -6,7 +6,14 @@ const meta: Meta<typeof RecordedCrewScene> = {
   title: "Synthetic Screenshots/Recorded Crew",
   component: RecordedCrewScene,
   parameters: { layout: "fullscreen" },
-  args: { camera: true, compact: false },
+  args: { camera: true, compact: false, cameraZoom: 2 },
+  argTypes: {
+    cameraZoom: {
+      name: "Camera zoom",
+      description: "1× = full frame; 2× = central 50%; 2.5× = central 40%. Only the webcam crop changes.",
+      control: { type: "range", min: 1, max: 4, step: 0.05 },
+    },
+  },
 };
 export default meta;
 export const RecordingV1: StoryObj<typeof RecordedCrewScene> = {
@@ -18,7 +25,7 @@ export const RecordingV1: StoryObj<typeof RecordedCrewScene> = {
     },
     template: `<div><div style="padding:12px;display:flex;gap:12px;background:#18191e;color:white">
       <button @click="scene?.restart(); scene?.toggleSound()">Replay / toggle sound</button>
-      <span>Recording V1 · center 50% crop · camera fixed to screenshot corner</span>
+      <span>Camera {{ args.cameraZoom.toFixed(2) }}× · central {{ Math.round(100 / args.cameraZoom) }}% · adjust Camera zoom in Controls</span>
       </div><RecordedCrewScene ref="scene" v-bind="args" /></div>`,
   }),
 };
