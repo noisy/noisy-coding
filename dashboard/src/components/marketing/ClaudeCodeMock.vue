@@ -133,7 +133,8 @@ const TRANSCRIPT: Line[] = [
 }
 .cchello { display: flex; align-items: center; gap: 14px; margin: 2px 0 6px; }
 .ccmascot {
-  font-family: inherit; font-size: 13px; line-height: 1.15;
+  /* Block characters must touch between rows to keep the mascot continuous. */
+  font-family: inherit; font-size: 13px; line-height: 1;
   color: #d97757; white-space: pre;
 }
 .ccwelcome { color: #e6e8ee; }
