@@ -20,7 +20,7 @@ def main():
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(video_path)]
     for event in replies:
         command += ["-i", str(clips / f"{event['clip']}.mp3")]
-    filters = ["[0:v]crop=iw*0.4:ih*0.4:iw*0.3:ih*0.3[v]"]
+    filters = ["[0:v]crop=iw*0.5:ih*0.5:iw*0.25:ih*0.25[v]"]
     for index, event in enumerate(replies, 1):
         filters.append(f"[{index}:a]adelay={event['atMs']:.3f}:all=1[a{index}]")
     inputs = "[0:a]" + "".join(f"[a{i}]" for i in range(1, len(replies) + 1))

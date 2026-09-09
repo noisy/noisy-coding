@@ -4,8 +4,8 @@ User-provided continuous recording from 2026-09-09. The website and Storybook
 use `RecordedCrewScene.vue`: a real Companion driven by this video's current
 time and the exported transcript/event journal.
 
-`crew-v1.mp4` contains the central 40% of the original width and height:
-1280×720 → 512×288, crop origin (384, 216). It retains the complete recording
+`crew-v1.mp4` contains the central 50% of the original width and height:
+1280×720 → 640×360, crop origin (320, 180). It retains the complete recording
 duration. The five existing crew clips are mixed at their recorded
 `agent-start` times; the microphone track is retained. H.264/AAC and faststart
 allow browser playback and seeking without separate audio clocks.
@@ -21,4 +21,4 @@ python3 tools/demo-recorder/prepare_take.py /path/to/nagranie-v1 dashboard/src/c
 
 The webcam overlay is anchored to the **screenshot's** bottom-left corner,
 outside the widget's zoom transform. Its 16:9 shape preserves the requested
-40%-by-40% crop without cutting it again to force a square.
+50%-by-50% crop without cutting it again to force a square.

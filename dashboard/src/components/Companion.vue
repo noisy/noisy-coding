@@ -3,6 +3,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Bubble from "./Bubble.vue";
 import VoiceAvatar from "./VoiceAvatar.vue";
+import type { AvatarSetId } from "../avatars/catalog";
 
 export interface CompanionMessage {
   role: "user" | "claude";
@@ -48,6 +49,8 @@ const props = withDefaults(
     /** Use the session header as the frameless desktop window's drag region. */
     draggable?: boolean;
     voice?: string;
+    /** Marketing scenes can pin a portrait style without changing preferences. */
+    avatarSet?: AvatarSetId;
     /** Mixed feed, oldest first; freshest renders at the bottom. */
     feed?: CompanionMessage[];
     /** Live transcript while the user talks (grows as they speak). */
@@ -467,19 +470,19 @@ watch(
         @mouseenter="showTip($event, a.label || a.name)" @mouseleave="tip = null"
         @focus="showTip($event, a.label || a.name)" @blur="tip = null"
         @click="$emit('select', a.name)"
-      ><VoiceAvatar :voice="a.voice" :size="44" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
+      ><VoiceAvatar :voice="a.voice" :size="44" :set="avatarSet" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->
       <span v-if="!agents.length" class="head current"
-      ><VoiceAvatar :voice="voice" :size="44" /><span v-if="waiting" class="waiting">{{ waiting > 9 ? "9+" : waiting }}</span></span>
+      ><VoiceAvatar :voice="voice" :size="44" :set="avatarSet" /><span v-if="waiting" class="waiting">{{ waiting > 9 ? "9+" : waiting }}</span></span>
     </div>
   </div>
 </template>
 
 <style>
 body.companion-transparent, body.companion-transparent #app { background:transparent; }
-body.companion-transparent .companion { background:transparent; border-color:transparent; box-shadow:none; }
+:is(body, div).companion-transparent .companion { background:transparent; border-color:transparent; box-shadow:none; }
 /* Reveal the fixed window boundary and drag bar only when reached for. */
-body.companion-transparent .companion-window::after { content:""; position:absolute; inset:1px; border:1px solid #f3f4f5b3; border-radius:10px; box-shadow:inset 0 0 0 1px #151619cc; pointer-events:none; opacity:0; transition:opacity .15s; }
+:is(body, div).companion-transparent .companion-window::after { content:""; position:absolute; inset:1px; border:1px solid #f3f4f5b3; border-radius:10px; box-shadow:inset 0 0 0 1px #151619cc; pointer-events:none; opacity:0; transition:opacity .15s; }
 /* Invisible at rest, but NOT pointer-events:none.
  *
  * A bar that ignores the pointer cannot trigger the :hover that reveals it,
@@ -487,23 +490,23 @@ body.companion-transparent .companion-window::after { content:""; position:absol
  * bar - left it hidden, while approaching across a bubble lit it up. Same
  * gesture, opposite result. (This is NOT what broke dragging; see the
  * drag-region note below for that.) */
-body.companion-transparent .companion-window .companion-header { opacity:0; transition:opacity .15s; }
-body.companion-transparent .companion-window:hover::after,
+:is(body, div).companion-transparent .companion-window .companion-header { opacity:0; transition:opacity .15s; }
+:is(body, div).companion-transparent .companion-window:hover::after,
 body.companion-transparent.hovering .companion-window::after,
-body.companion-transparent .companion-window:focus-within::after { opacity:1; }
-body.companion-transparent .companion-window:hover .companion-header,
+:is(body, div).companion-transparent .companion-window:focus-within::after { opacity:1; }
+:is(body, div).companion-transparent .companion-window:hover .companion-header,
 body.companion-transparent.hovering .companion-window .companion-header,
-body.companion-transparent .companion-window:focus-within .companion-header { opacity:1; }
-body.companion-transparent .companion-window .thread { scrollbar-width:none; scrollbar-gutter:auto; mask-image:linear-gradient(transparent, black 18px); }
-body.companion-transparent .companion-window .thread::-webkit-scrollbar { display:none; }
-body.companion-transparent .companion-header,
-body.companion-transparent .rail { background:rgba(27,29,33,.94); border-radius:10px; box-shadow:0 0 0 1px #f3f4f580, 0 0 0 2px #151619b3; }
-body.companion-transparent .companion-header { padding:7px 10px; border-bottom:0; }
-body.companion-transparent .rail { padding:5px; }
-body.companion-transparent .msg { background:rgba(27,29,33,.94); border-color:#f3f4f580; box-shadow:0 0 0 1px #151619b3; }
-body.companion-transparent .msg.side-left { background:rgba(41,40,37,.94); }
-body.companion-transparent .listening,
-body.companion-transparent .activity { background:rgba(27,29,33,.94); border-radius:8px; padding:6px 10px; }
+:is(body, div).companion-transparent .companion-window:focus-within .companion-header { opacity:1; }
+:is(body, div).companion-transparent .companion-window .thread { scrollbar-width:none; scrollbar-gutter:auto; mask-image:linear-gradient(transparent, black 18px); }
+:is(body, div).companion-transparent .companion-window .thread::-webkit-scrollbar { display:none; }
+:is(body, div).companion-transparent .companion-header,
+:is(body, div).companion-transparent .rail { background:rgba(27,29,33,.94); border-radius:10px; box-shadow:0 0 0 1px #f3f4f580, 0 0 0 2px #151619b3; }
+:is(body, div).companion-transparent .companion-header { padding:7px 10px; border-bottom:0; }
+:is(body, div).companion-transparent .rail { padding:5px; }
+:is(body, div).companion-transparent .msg { background:rgba(27,29,33,.94); border-color:#f3f4f580; box-shadow:0 0 0 1px #151619b3; }
+:is(body, div).companion-transparent .msg.side-left { background:rgba(41,40,37,.94); }
+:is(body, div).companion-transparent .listening,
+:is(body, div).companion-transparent .activity { background:rgba(27,29,33,.94); border-radius:8px; padding:6px 10px; }
 /* NO-DRAG BELONGS TO THE SCROLL CONTAINER, NEVER TO WHAT SCROLLS INSIDE IT.
  *
  * Chromium builds the window's drag region from the UNCLIPPED border box of
@@ -514,11 +517,11 @@ body.companion-transparent .activity { background:rgba(27,29,33,.94); border-rad
  * or two pixel sliver that moved with the scroll position (#63). Excluding
  * the thread's own box excludes everything in it and never overflows it.
  * Same for buttons: bubbles carry some, so only the rail's are excluded. */
-body.companion-transparent .msg, body.companion-transparent .msg * { cursor:text; user-select:text; }
-body.companion-transparent .thread { -webkit-app-region:no-drag; }
+:is(body, div).companion-transparent .msg, :is(body, div).companion-transparent .msg * { cursor:text; user-select:text; }
+:is(body, div).companion-transparent .thread { -webkit-app-region:no-drag; }
 body.companion-transparent button { cursor:pointer; }
-body.companion-transparent .rail button { -webkit-app-region:no-drag; }
-body.companion-transparent .drag-strip { -webkit-app-region:drag; }
+:is(body, div).companion-transparent .rail button { -webkit-app-region:no-drag; }
+:is(body, div).companion-transparent .drag-strip { -webkit-app-region:drag; }
 </style>
 <style scoped>
 .companion { width:100%; min-width:0; max-height:100%; overflow:hidden; box-sizing:border-box; border:1px solid var(--line-strong); background:var(--panel-solid); color:var(--ink); border-radius:14px; padding:14px; font-family:var(--sans); display:flex; flex-wrap:wrap; gap:12px; align-items:center; position:relative; box-shadow:0 8px 28px #0003; }

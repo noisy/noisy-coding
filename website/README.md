@@ -26,7 +26,7 @@ All five were checked at 1280px and 390px widths with no horizontal document ove
 
 ## Voice demonstration
 
-`CrewSection.vue` presents the shared `CompanionCrewScene.vue` and its original five xAI recordings. Portrait cards can be browsed with arrows or swipes. Use Hear the conversation for the scripted voice sequence. Audio starts only after a click and mutes when the scene leaves view. Mobile uses a tighter static camera; desktop retains the original handover zooms. The recordings ship as Vite assets and need no runtime API key. This is explicitly a scripted example, not a live microphone session.
+`CrewSection.vue` presents `RecordedCrewScene.vue`: the real Companion driven by a continuous webcam recording and exported transcript arrivals. The webcam shows the central 50% crop, anchored to the screenshot’s bottom-left corner. The user microphone and five existing agent clips share one video clock; transcript offsets affect text only. The original timer-driven `CompanionCrewScene.vue` remains available in Storybook. Portrait cards can be browsed with arrows or swipes. Use Hear the conversation for the scripted voice sequence. Audio starts only after a click and mutes when the scene leaves view. Mobile uses a tighter static camera; desktop retains the original handover zooms. The recordings ship as Vite assets and need no runtime API key. This is explicitly a scripted example, not a live microphone session.
 
 ## Embedded dashboard
 
