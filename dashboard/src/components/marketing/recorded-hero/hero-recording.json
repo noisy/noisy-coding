@@ -157,40 +157,45 @@
       "atMs": 25257.89999999851,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too if I type just part of the",
-      "final": false
+      "text": "Yes, and ignore capital letters too. If I type just part of the",
+      "final": false,
+      "originalText": "Yes, and ignore capital letters too if I type just part of the"
     },
     {
       "sequence": 20,
       "atMs": 26282.79999999702,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too if I type just part of a name as",
-      "final": false
+      "text": "Yes, and ignore capital letters too. If I type just part of a name as",
+      "final": false,
+      "originalText": "Yes, and ignore capital letters too if I type just part of a name as"
     },
     {
       "sequence": 21,
       "atMs": 27309.89999999851,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find",
-      "final": false
+      "text": "Yes, and ignore capital letters too. If I type just part of a name, as I still want to find",
+      "final": false,
+      "originalText": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find"
     },
     {
       "sequence": 22,
       "atMs": 27999.39999999851,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find it.",
-      "final": false
+      "text": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+      "final": false,
+      "originalText": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find it."
     },
     {
       "sequence": 23,
       "atMs": 28569.10000000149,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find it.",
-      "final": false
+      "text": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+      "final": false,
+      "originalText": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find it."
     },
     {
       "sequence": 24,
@@ -211,8 +216,9 @@
       "atMs": 33027.89999999851,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find it.",
-      "final": true
+      "text": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+      "final": true,
+      "originalText": "Yes, and ignore capital letters too if I type just part of a name, as I still want to find it."
     },
     {
       "sequence": 27,

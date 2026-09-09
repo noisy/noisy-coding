@@ -5,5 +5,9 @@
   "Add a test for both cases so we don't": "Great. Add a test for both cases so we don't",
   "Add a test for both cases so we don't break this again.": "Great. Add a test for both cases so we don't break this again.",
   ". Can you deploy that to production?": "Great. My hands are full. Can you deploy that to production?",
-  ". Can you deploy that to production for me?": "Great. My hands are full. Can you deploy that to production for me?"
+  ". Can you deploy that to production for me?": "Great. My hands are full. Can you deploy that to production for me?",
+  "Yes, and ignore capital letters too if I type just part of the": "Yes, and ignore capital letters too. If I type just part of the",
+  "Yes, and ignore capital letters too if I type just part of a name as": "Yes, and ignore capital letters too. If I type just part of a name as",
+  "Yes, and ignore capital letters too if I type just part of a name, as I still want to find": "Yes, and ignore capital letters too. If I type just part of a name, as I still want to find",
+  "Yes, and ignore capital letters too if I type just part of a name, as I still want to find it.": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it."
 }
