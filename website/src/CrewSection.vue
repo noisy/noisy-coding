@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
-import CompanionCrewScene from "@dashboard/components/marketing/CompanionCrewScene.vue";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
+import RecordedCrewScene from "@dashboard/components/marketing/RecordedCrewScene.vue";
 import VoiceCarousel from "./VoiceCarousel.vue";
-const scene = ref<InstanceType<typeof CompanionCrewScene> | null>(null);
+const scene = ref<InstanceType<typeof RecordedCrewScene> | null>(null);
 const frame = ref<HTMLElement | null>(null);
 const scale = ref(0.7);
 const compact = ref(false);
-const sound = ref(false);
+const sound = computed(() => !!scene.value?.soundOn);
 let observer: ResizeObserver | undefined;
-let visibility: IntersectionObserver | undefined;
 onMounted(() => {
   if (!frame.value) return;
   observer = new ResizeObserver(() => {
@@ -16,22 +15,13 @@ onMounted(() => {
     scale.value = frame.value!.clientWidth / (compact.value ? 600 : 760);
   });
   observer.observe(frame.value);
-  visibility = new IntersectionObserver(([entry]) => {
-    if (!entry.isIntersecting && sound.value) {
-      scene.value?.toggleSound();
-      sound.value = false;
-    }
-  });
-  visibility.observe(frame.value);
 });
 onBeforeUnmount(() => {
   observer?.disconnect();
-  visibility?.disconnect();
 });
 function listen() {
   if (!sound.value) scene.value?.restart();
   scene.value?.toggleSound();
-  sound.value = !!scene.value?.soundOn;
 }
 </script>
 <template>
@@ -70,7 +60,7 @@ function listen() {
               transformOrigin: 'top left',
             }"
           >
-            <CompanionCrewScene ref="scene" :camera="!compact" :compact="compact" />
+            <RecordedCrewScene ref="scene" :camera="!compact" :compact="compact" />
           </div>
         </div>
         <p class="voice-caption">

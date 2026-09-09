@@ -1,0 +1,67 @@
+import { flushPromises, mount } from "@vue/test-utils";
+import { afterEach, expect, it, vi } from "vitest";
+import RecordedCrewScene from "./RecordedCrewScene.vue";
+
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+it("uses one media clock and turns sound off when the scene leaves view", async () => {
+  let observe!: IntersectionObserverCallback;
+  vi.stubGlobal("IntersectionObserver", class {
+    constructor(callback: IntersectionObserverCallback) { observe = callback; }
+    observe() {} disconnect() {}
+  });
+  const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+  const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const wrapper = mount(RecordedCrewScene);
+  try {
+    expect(play).not.toHaveBeenCalled();
+    await wrapper.vm.toggleSound();
+    const media = wrapper.get("video").element;
+    expect([wrapper.vm.soundOn, media.muted]).toEqual([true, false]);
+    media.currentTime = 5.5;
+    await wrapper.get("video").trigger("timeupdate");
+    expect(wrapper.text()).toContain("Green! Ready to promote.");
+    observe([{ isIntersecting: false }] as IntersectionObserverEntry[], {} as IntersectionObserver);
+    expect([wrapper.vm.soundOn, media.muted]).toEqual([false, true]);
+    expect(pause).toHaveBeenCalled();
+    wrapper.vm.restart();
+    expect(media.currentTime).toBe(0);
+    expect(wrapper.findAll("audio")).toHaveLength(0);
+  } finally { wrapper.unmount(); }
+});
+
+it("unmutes only on clicking the scene control and keeps sound on when the pointer leaves", async () => {
+  vi.stubGlobal("IntersectionObserver", class { observe() {} disconnect() {} });
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const wrapper = mount(RecordedCrewScene);
+  try {
+    const media = wrapper.get("video").element;
+    expect(media.muted).toBe(true);
+    await wrapper.trigger("pointerenter", { pointerType: "mouse" });
+    expect(media.muted).toBe(true);
+    await wrapper.get('button[aria-label="Enable demo sound"]').trigger("click");
+    expect([wrapper.vm.soundOn, media.muted]).toEqual([true, false]);
+    expect(wrapper.find('button[aria-label="Mute demo sound"]').exists()).toBe(true);
+    await wrapper.trigger("pointerleave", { pointerType: "mouse" });
+    expect([wrapper.vm.soundOn, media.muted]).toEqual([true, false]);
+    await wrapper.get('button[aria-label="Mute demo sound"]').trigger("click");
+    expect(media.muted).toBe(true);
+  } finally { wrapper.unmount(); }
+});
+
+it("keeps the scene control available when playback fails so the user can retry", async () => {
+  vi.stubGlobal("IntersectionObserver", class { observe() {} disconnect() {} });
+  vi.spyOn(HTMLMediaElement.prototype, "play")
+    .mockRejectedValueOnce(new DOMException("Autoplay blocked", "NotAllowedError"))
+    .mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const wrapper = mount(RecordedCrewScene);
+  try {
+    await wrapper.get('button[aria-label="Enable demo sound"]').trigger("click");
+    await flushPromises();
+    expect([wrapper.vm.soundOn, wrapper.get("video").element.muted]).toEqual([false, true]);
+    expect(wrapper.text()).toContain("Unable to play");
+    await wrapper.get('button[aria-label="Enable demo sound"]').trigger("click");
+    expect([wrapper.vm.soundOn, wrapper.get("video").element.muted]).toEqual([true, false]);
+  } finally { wrapper.unmount(); }
+});

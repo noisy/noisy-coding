@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Noisy Coding · Demo recorder</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<main>
+  <header><div><p class="eyebrow">NOISY CODING / LOCAL AUTHORING TOOL</p><h1>Record a real conversation.</h1><p>One continuous take. Independent transcript timing.</p></div><span id="state" class="badge">Ready</span></header>
+  <section class="workspace">
+    <div class="camera"><video id="video" playsinline muted></video><div id="camera-placeholder">Camera and microphone are off.</div><span id="clock">00:00.0</span></div>
+    <div class="director">
+      <p class="eyebrow" id="turn-label">CREW SCENARIO · 3 USER TURNS</p>
+      <h2 id="prompt">Put on your headphones.</h2>
+      <p id="guidance">Record your camera and microphone together. Say each prompted line, then press Space to hear the agents. Their audio stays out of your recorded microphone track.</p>
+      <div class="controls"><button id="record" class="primary">Record a take</button><button id="next" disabled>Finished speaking · Space</button><button id="stop" disabled>Stop & keep take</button></div>
+      <p id="status" role="status">Uses the app’s Grok streaming transcription. Your microphone audio is sent to that provider; video stays in this browser.</p>
+      <p id="error" role="alert"></p>
+    </div>
+  </section>
+  <section class="review">
+    <div><p class="eyebrow">TRANSCRIPT ARRIVALS</p><div id="transcript" class="transcript">Your live transcript will appear here.</div></div>
+    <div><p class="eyebrow">TEXT TIMING ONLY</p><p>Negative values show text earlier. Video, voices and agent switches keep their original timing.</p><div id="offsets">Available after recording.</div></div>
+  </section>
+  <footer><div class="controls"><button id="save-video" disabled>Save video + microphone</button><button id="save-timing" disabled>Save timing JSON</button><label class="file-button">Reopen a take<input id="import" type="file" accept="video/*,.json,.webm,.mp4" multiple></label></div><p>Download both files before closing. To reopen, select the video and its JSON together. The preview includes the existing agent clips.</p></footer>
+  <details><summary>Recorded events <span id="event-count">0</span></summary><pre id="journal"></pre></details>
+</main>
+<script type="module" src="/recorder.mjs"></script>
+</body></html>

@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "durationMs": 25982.90000000596,
+  "events": [
+    {
+      "sequence": 0,
+      "atMs": 0.20000000298023224,
+      "type": "recording-start",
+      "sampleRate": 44100
+    },
+    {
+      "sequence": 1,
+      "atMs": 0.30000000447034836,
+      "type": "user-start",
+      "utterance": "u1",
+      "prompt": "how's staging?",
+      "voice": "Lux"
+    },
+    {
+      "sequence": 2,
+      "atMs": 2737.9000000059605,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How",
+      "final": false
+    },
+    {
+      "sequence": 3,
+      "atMs": 3742.10000000149,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false
+    },
+    {
+      "sequence": 4,
+      "atMs": 3809.3000000044703,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false
+    },
+    {
+      "sequence": 5,
+      "atMs": 4351.60000000149,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false
+    },
+    {
+      "sequence": 6,
+      "atMs": 5051.20000000298,
+      "type": "user-end",
+      "utterance": "u1"
+    },
+    {
+      "sequence": 7,
+      "atMs": 5065.9000000059605,
+      "type": "agent-start",
+      "voice": "Lux",
+      "clip": "lux-1",
+      "text": "Green! Ready to promote."
+    },
+    {
+      "sequence": 8,
+      "atMs": 5331.80000000447,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false,
+      "originalText": "How is staging? There's"
+    },
+    {
+      "sequence": 9,
+      "atMs": 5333.20000000298,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": false,
+      "originalText": "How is staging? There's"
+    },
+    {
+      "sequence": 10,
+      "atMs": 5333.70000000298,
+      "type": "transcript",
+      "utterance": "u1",
+      "text": "How is staging?",
+      "final": true,
+      "originalText": "How is staging? There's"
+    },
+    {
+      "sequence": 11,
+      "atMs": 6932.5,
+      "type": "agent-end",
+      "clip": "lux-1"
+    },
+    {
+      "sequence": 12,
+      "atMs": 8212.70000000298,
+      "type": "user-start",
+      "utterance": "u2",
+      "prompt": "do it",
+      "voice": "Lux"
+    },
+    {
+      "sequence": 13,
+      "atMs": 9460.80000000447,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Ok, do it!",
+      "final": false,
+      "originalText": "Okay, do it"
+    },
+    {
+      "sequence": 14,
+      "atMs": 10266.30000000447,
+      "type": "user-end",
+      "utterance": "u2"
+    },
+    {
+      "sequence": 15,
+      "atMs": 10272.80000000447,
+      "type": "agent-start",
+      "voice": "Lux",
+      "clip": "lux-2",
+      "text": "on it!"
+    },
+    {
+      "sequence": 16,
+      "atMs": 10520.70000000298,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Ok, do it!",
+      "final": false,
+      "originalText": "Ok\u00e9, doe het!"
+    },
+    {
+      "sequence": 17,
+      "atMs": 10521,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Ok, do it!",
+      "final": false,
+      "originalText": "Ok\u00e9, doe het!"
+    },
+    {
+      "sequence": 18,
+      "atMs": 10521.10000000149,
+      "type": "transcript",
+      "utterance": "u2",
+      "text": "Ok, do it!",
+      "final": true,
+      "originalText": "Ok\u00e9, doe het!"
+    },
+    {
+      "sequence": 19,
+      "atMs": 10972.80000000447,
+      "type": "agent-end",
+      "clip": "lux-2"
+    },
+    {
+      "sequence": 20,
+      "atMs": 11626.30000000447,
+      "type": "camera-zoom",
+      "target": "avatar-rail"
+    },
+    {
+      "sequence": 21,
+      "atMs": 12527.20000000298,
+      "type": "agent-switch",
+      "voice": "Rex"
+    },
+    {
+      "sequence": 22,
+      "atMs": 12536,
+      "type": "agent-start",
+      "voice": "Rex",
+      "clip": "rex-1",
+      "text": "Last week's PR - finally approved!!!",
+      "handover": true
+    },
+    {
+      "sequence": 23,
+      "atMs": 15152.20000000298,
+      "type": "agent-end",
+      "clip": "rex-1"
+    },
+    {
+      "sequence": 24,
+      "atMs": 15152.40000000596,
+      "type": "camera-reset"
+    },
+    {
+      "sequence": 25,
+      "atMs": 15803.30000000447,
+      "type": "camera-zoom",
+      "target": "avatar-rail"
+    },
+    {
+      "sequence": 26,
+      "atMs": 16704,
+      "type": "agent-switch",
+      "voice": "Luna"
+    },
+    {
+      "sequence": 27,
+      "atMs": 16712.30000000447,
+      "type": "agent-start",
+      "voice": "Luna",
+      "clip": "luna-1",
+      "text": "Alarm went off! It was the courier.",
+      "handover": true
+    },
+    {
+      "sequence": 28,
+      "atMs": 19262.40000000596,
+      "type": "agent-end",
+      "clip": "luna-1"
+    },
+    {
+      "sequence": 29,
+      "atMs": 19262.60000000149,
+      "type": "camera-reset"
+    },
+    {
+      "sequence": 30,
+      "atMs": 19922.60000000149,
+      "type": "agent-start",
+      "voice": "Luna",
+      "clip": "luna-2",
+      "text": "Package is big - probably the printer."
+    },
+    {
+      "sequence": 31,
+      "atMs": 22304.60000000149,
+      "type": "agent-end",
+      "clip": "luna-2"
+    },
+    {
+      "sequence": 32,
+      "atMs": 23577.30000000447,
+      "type": "user-start",
+      "utterance": "u3",
+      "prompt": "thanks",
+      "voice": "Luna"
+    },
+    {
+      "sequence": 33,
+      "atMs": 24824.40000000596,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thank you very much",
+      "final": false
+    },
+    {
+      "sequence": 34,
+      "atMs": 25662.80000000447,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thank you very much.",
+      "final": false
+    },
+    {
+      "sequence": 35,
+      "atMs": 25707.40000000596,
+      "type": "user-end",
+      "utterance": "u3"
+    },
+    {
+      "sequence": 36,
+      "atMs": 25979.5,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thank you very much.",
+      "final": false
+    },
+    {
+      "sequence": 37,
+      "atMs": 25982.5,
+      "type": "transcript",
+      "utterance": "u3",
+      "text": "Thank you very much.",
+      "final": true
+    },
+    {
+      "sequence": 38,
+      "atMs": 25982.80000000447,
+      "type": "recording-stop"
+    }
+  ],
+  "transcriptOffsetsMs": {}
+}
