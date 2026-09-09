@@ -2,9 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Companion from "../Companion.vue";
 import "../../styles/companion-window.css";
-import recording from "./recorded-crew/crew-v1.mp4";
-import poster from "./recorded-crew/crew-v1-poster.jpg";
-import take from "./recorded-crew/crew-v1.json";
+import recording from "./recorded-crew/crew-recording.mp4";
+import poster from "./recorded-crew/crew-recording-poster.jpg";
+import take from "./recorded-crew/crew-recording.json";
 import { recordedCrewAt } from "./recordedCrewTimeline";
 
 const props = withDefaults(defineProps<{
@@ -103,7 +103,7 @@ defineExpose({ restart, toggleSound, soundOn });
       </div></div>
     </div>
     <!-- The camera is a sibling of the zooming widget: anchored to the
-         screenshot's bottom-left corner throughout every agent handover. -->
+         screenshot's top-left corner throughout every agent handover. -->
     <div class="recorded-camera">
       <video ref="video" :src="recording" :poster="poster" muted playsinline preload="metadata"
         :style="{ transform: cameraTransform }"
@@ -138,7 +138,7 @@ defineExpose({ restart, toggleSound, soundOn });
 .recorded-widget :deep(.rail) { scrollbar-width: none; }
 .recorded-widget :deep(.rail::-webkit-scrollbar) { display: none; }
 .recorded-camera {
-  position: absolute; left: 16px; bottom: 16px; width: 192px; aspect-ratio: 16 / 9;
+  position: absolute; left: 16px; top: 16px; width: 192px; aspect-ratio: 16 / 9;
   overflow: hidden; border-radius: 12px; border: 1px solid #ffffff38;
   box-shadow: 0 6px 24px #0005; background: #18171c;
 }
@@ -146,15 +146,15 @@ defineExpose({ restart, toggleSound, soundOn });
 .recorded-camera video { display: block; width: 100%; height: 100%; }
 .camera-sound {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 52px; height: 52px; display: grid; place-items: center;
+  width: 64px; height: 64px; display: grid; place-items: center;
   color: #fff; background: #16181eb3; border: 1px solid #ffffff80;
   border-radius: 50%; opacity: .8; cursor: pointer;
   box-shadow: 0 3px 14px #0004;
 }
-.camera-sound svg { width: 28px; height: 28px; }
+.camera-sound svg { width: 34px; height: 34px; }
 .camera-sound:hover, .camera-sound:focus-visible { opacity: 1; background: #16181ee6; }
 .camera-sound:focus-visible { outline: 2px solid white; outline-offset: 3px; }
-.compact .camera-sound { width: 44px; height: 44px; }
+.compact .camera-sound { width: 52px; height: 52px; }
 .playback-error { position: absolute; left: 16px; top: 8px; color: #ffcfb1; font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .recorded-widget { transition: none; } }
 </style>

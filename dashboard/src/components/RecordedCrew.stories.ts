@@ -27,6 +27,7 @@ const meta: Meta<typeof RecordedCrewScene> = {
 };
 export default meta;
 export const RecordingV1: StoryObj<typeof RecordedCrewScene> = {
+  name: "Recording V3",
   render: args => ({
     components: { RecordedCrewScene },
     setup() {

@@ -29,15 +29,15 @@ def main():
     command += ["-filter_complex", ";".join(filters), "-map", "[v]", "-map", "[a]",
                 "-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
-                str(args.output / "crew-v1.mp4")]
+                str(args.output / "crew-recording.mp4")]
     subprocess.run(command, check=True)
     # Keep raw arrivals and user-selected offsets; do not bake text adjustments
     # into the media or include machine-specific recorder metadata.
     data = {key: take[key] for key in ("version", "durationMs", "events", "transcriptOffsetsMs")}
-    (args.output / "crew-v1.json").write_text(json.dumps(data, indent=2) + "\n")
+    (args.output / "crew-recording.json").write_text(json.dumps(data, indent=2) + "\n")
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-                    "-i", str(args.output / "crew-v1.mp4"), "-frames:v", "1",
-                    str(args.output / "crew-v1-poster.jpg")], check=True)
+                    "-i", str(args.output / "crew-recording.mp4"), "-frames:v", "1",
+                    str(args.output / "crew-recording-poster.jpg")], check=True)
 
 
 if __name__ == "__main__":
