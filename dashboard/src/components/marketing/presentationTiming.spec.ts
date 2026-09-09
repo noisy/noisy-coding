@@ -17,3 +17,16 @@ it('rejects timing from another source or outside the selected user turn', () =>
   expect(() => validatePresentation(document, take, 'source2')).toThrow();
   expect(() => validatePresentation({...document, turns: [{utterance: 'u1', userEndMs: 14000, status: 'thinking'}]}, take, 'source1')).toThrow();
 });
+
+it('opens a working pause after Lux by delaying the next user speaking window', () => {
+  const edits = [{utterance: 'u2', userStartMs: 21000, userEndMs: 32709, status: 'none' as const}];
+  const activities = [{id: 'activity1', startMs: 17500, endMs: 21000, status: 'console' as const, consoleTask: 'u2'}];
+  const document = {version: 1, kind: 'demo-presentation-edits', sourceSha256: 'source1', turns: edits, activities};
+  expect(validatePresentation(document, take, 'source1')).toBe(document);
+  const adjusted = presentationTake(take, edits);
+  expect(recordedCrewAt(adjusted, 20000).mode).toBe('idle');
+  expect(recordedCrewAt(adjusted, 22000).mode).toBe('user');
+  expect([activityAt(take, edits, 18000, activities), activityAt(take, edits, 21000, activities)]).toEqual(['Editing src/search.ts', null]);
+  expect(adjusted.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript')).toEqual(take.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript'));
+  expect(() => validatePresentation({...document, activities: [{...activities[0], endMs: 22000}]}, take, 'source1')).toThrow(/fit a pause/);
+});

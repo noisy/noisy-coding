@@ -137,10 +137,22 @@ stays faintly visible on the timeline. Console activity is matched to that turn
 (read, edit, tests, production deployment); results retain their original reply
 timing. The final thank-you has no following reply and cannot receive work status.
 
-Play the whole scene or audition one turn with its reply. Clicking a Work or Lux
-segment seeks to its start. The JSON contains only presentation overrides and the
+Play the whole scene or audition one turn with its reply. Clicking a Work segment seeks to its start; clicking a Lux segment prepares
+an activity after that reply. The JSON contains only presentation overrides and the
 original source fingerprint, not edited media or shifted transcript timestamps.
 Save `hero-v1.presentation-edits.json` beside the original recording and provide
 it for integration into the published scene. Until that step, changes apply only
 to this local preview. Drafts are retained locally in the browser; reopening an
 export validates that it belongs to the same original take.
+
+The timing editor also supports `userStartMs`: move the start later and/or the
+end earlier within the original user window. Raw transcripts and audio never
+move. Independent `activities` have an ID, `startMs`, `endMs`, Thinking/Console
+status and (for Console) an explicit action. They can fill pauses after Lux,
+between his replies, or before a delayed user turn. Activity blocks cannot
+overlap each other or a speaking window. Trim the user window first if needed.
+
+Click a Lux segment to prepare a block **after** that reply, or choose New
+activity at playhead. Set both boundaries, choose the action, then Add activity
+block. Existing blocks can be adjusted or removed. The earlier per-turn status
+control still works; version-1 exports without these optional fields remain valid.

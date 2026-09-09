@@ -6,13 +6,13 @@ import recording from './recorded-hero/hero-recording.mp4';
 import poster from './recorded-hero/hero-recording-poster.jpg';
 import take from './recorded-hero/hero-recording.json';
 import { recordedHeroConsoleAt } from './recordedHeroConsole';
-import { activityAt, presentationTake, type TurnTiming } from './presentationTiming';
-const props = withDefaults(defineProps<{ manualPlayback?: boolean; presentationEdits?: TurnTiming[]; cameraZoom?: number; cameraOffsetX?: number; cameraOffsetY?: number }>(), {
-  presentationEdits: () => [], cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0,
+import { activityAt, presentationTake, type TurnTiming, type ActivityBlock } from './presentationTiming';
+const props = withDefaults(defineProps<{ manualPlayback?: boolean; activityBlocks?: ActivityBlock[]; presentationEdits?: TurnTiming[]; cameraZoom?: number; cameraOffsetX?: number; cameraOffsetY?: number }>(), {
+  activityBlocks: () => [], presentationEdits: () => [], cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0,
 });
 const emit = defineEmits<{time: [timeMs: number]}>();
 const adjustedTake = computed(() => presentationTake(take, props.presentationEdits));
-const activity = (time: number) => activityAt(take, props.presentationEdits, time);
+const activity = (time: number) => activityAt(take, props.presentationEdits, time, props.activityBlocks);
 const scene = ref<InstanceType<typeof RecordedCrewScene>>();
 defineExpose({ seek: (ms: number) => scene.value?.seek(ms), pause: () => scene.value?.pause(), play: () => scene.value?.play(), restart: () => scene.value?.restart(), toggleSound: () => scene.value?.toggleSound() });
 </script>
@@ -22,7 +22,7 @@ defineExpose({ seek: (ms: number) => scene.value?.seek(ms), pause: () => scene.v
     :camera-zoom="cameraZoom" :camera-offset-x="cameraOffsetX" :camera-offset-y="cameraOffsetY">
     <template #default="{ timeMs }">
       <div class="hero-terminal" :class="{ visible: timeMs >= 1800 }">
-        <ClaudeCodeMock full-bleed banner="mascot" title="claude - search-app" project-name="search-app" :transcript="recordedHeroConsoleAt(adjustedTake, timeMs, presentationEdits)" />
+        <ClaudeCodeMock full-bleed banner="mascot" title="claude - search-app" project-name="search-app" :transcript="recordedHeroConsoleAt(adjustedTake, timeMs, presentationEdits, activityBlocks)" />
       </div>
     </template>
   </RecordedCrewScene>
