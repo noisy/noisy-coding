@@ -10,3 +10,12 @@ it('keeps production success after its recorded confirmation and restores earlie
   expect(recordedHeroConsoleAt(take, 35000).some(line => line.kind === 'tool' && line.arg.includes('deploy'))).toBe(false);
   expect(recordedHeroConsoleAt(take, 0).some(line => line.kind === 'tool' && line.arg.includes('deploy'))).toBe(false);
 });
+
+it('starts the selected console work early without reporting success before the recorded reply', () => {
+  const edits = [{utterance: 'u3', userEndMs: 44000, status: 'console' as const}];
+  const beforeReply = recordedHeroConsoleAt(take, 45000, edits);
+  expect(beforeReply).toContainEqual({kind: 'tool', tool: 'Bash', arg: 'npm test -- search'});
+  expect(beforeReply.some(line => line.kind === 'pass')).toBe(false);
+  expect(recordedHeroConsoleAt(take, 49000, edits).filter(line => line.kind === 'tool' && line.arg === 'npm test -- search')).toHaveLength(1);
+  expect(recordedHeroConsoleAt(take, 49000, edits)).toContainEqual({kind: 'pass', text: 'PASS partial name · PASS mixed case — 2 tests passed'});
+});

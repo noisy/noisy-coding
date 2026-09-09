@@ -8,6 +8,8 @@ import take from "./recorded-crew/crew-recording.json";
 import { type RecordedTake, recordedCrewAt } from "./recordedCrewTimeline";
 
 const props = withDefaults(defineProps<{
+  manualPlayback?: boolean;
+  activityAtTime?: (timeMs: number) => string | null;
   layout?: 'crew' | 'hero';
   recordingSrc?: string;
   recordingPoster?: string;
@@ -27,6 +29,7 @@ const cameraTransform = computed(() => {
   const y = Math.max(-100, Math.min(100, props.cameraOffsetY)) / 100 * travel;
   return `translate(${x}%, ${y}%) scale(${cameraScale.value})`;
 });
+const emit = defineEmits<{ time: [timeMs: number] }>();
 const video = ref<HTMLVideoElement | null>(null);
 const timeMs = ref(0);
 const soundOn = ref(false);
@@ -39,10 +42,15 @@ let motion: MediaQueryList;
 let soundRequest = 0;
 function motionChanged() { reducedMotion.value = motion.matches; }
 function sampleTime() {
-  if (video.value) timeMs.value = video.value.currentTime * 1000;
+  if (video.value) { timeMs.value = video.value.currentTime * 1000; emit('time', timeMs.value); }
   animation = requestAnimationFrame(sampleTime);
 }
 function updateTime() { timeMs.value = (video.value?.currentTime ?? 0) * 1000; }
+function seek(ms: number) {
+  if (video.value) video.value.currentTime = Math.max(0, ms) / 1000;
+  updateTime();
+}
+function pause() { video.value?.pause(); }
 function restart() {
   if (video.value) video.value.currentTime = 0;
   timeMs.value = 0;
@@ -80,7 +88,7 @@ onMounted(() => {
     if (!entry.isIntersecting) {
       video.value.pause();
       void setSound(false);
-    } else if (!reducedMotion.value && !video.value.ended) {
+    } else if (!props.manualPlayback && !reducedMotion.value && !video.value.ended) {
       void video.value.play().catch(() => {});
     }
   });
@@ -92,7 +100,7 @@ onBeforeUnmount(() => {
   motion?.removeEventListener("change", motionChanged);
   video.value?.pause();
 });
-defineExpose({ restart, toggleSound, soundOn });
+defineExpose({ restart, toggleSound, soundOn, seek, pause, play: () => setSound(true) });
 </script>
 
 <template>
@@ -104,7 +112,7 @@ defineExpose({ restart, toggleSound, soundOn });
     }">
       <div class="companion-window" inert><div class="companion-host">
         <Companion draggable avatar-set="editorial" :mode="state.mode" :voice="state.voice" :feed="state.feed"
-          :live-text="state.liveText" :agents="layout === 'hero' ? [{ name: 'search-app', voice: 'lux', active: true }] : state.agents" :max-height="200" />
+          :activity="activityAtTime?.(timeMs) ?? null" :live-text="state.liveText" :agents="layout === 'hero' ? [{ name: 'search-app', voice: 'lux', active: true }] : state.agents" :max-height="200" />
       </div></div>
     </div>
     <!-- The camera is a sibling of the zooming widget: anchored to the
