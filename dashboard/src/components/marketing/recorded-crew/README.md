@@ -27,7 +27,7 @@ recording and timing file remain untouched.
 To regenerate from the original folder:
 
 ```sh
-python3 tools/demo-recorder/prepare_take.py /path/to/nagranie-v1/v5 dashboard/src/components/marketing/recorded-crew --corrections dashboard/src/components/marketing/recorded-crew/transcript-corrections.json
+.venv/bin/python tools/demo-recorder/prepare_take.py tools/demo-recorder/takes/crew-v5 dashboard/src/components/marketing/recorded-crew
 ```
 
 The webcam overlay is anchored to the **screenshot's** top-left corner,
@@ -36,3 +36,7 @@ corner, separate from the webcam. It toggles sound for the entire recording
 and remains visible in both muted and audible states. Mouse hover does not
 change audio. The external sound button can mute it again. Leaving the viewport
 still pauses and mutes the recording.
+
+The original microphone/video and raw timeline are versioned under
+`tools/demo-recorder/takes/crew-v5`. See `tools/demo-recorder/takes/README.md`
+for the complete reproducible processing recipe.
