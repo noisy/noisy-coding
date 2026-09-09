@@ -10,6 +10,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("take", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--corrections", type=Path, help="JSON mapping from misrecognized text to approved text")
     args = parser.parse_args()
     timeline_path, = args.take.glob("*.json")
     video_path, = args.take.glob("*.webm")
@@ -34,6 +35,11 @@ def main():
     # Keep raw arrivals and user-selected offsets; do not bake text adjustments
     # into the media or include machine-specific recorder metadata.
     data = {key: take[key] for key in ("version", "durationMs", "events", "transcriptOffsetsMs")}
+    corrections = json.loads(args.corrections.read_text()) if args.corrections else {}
+    for event in data["events"]:
+        if event["type"] == "transcript" and event.get("text") in corrections:
+            event["originalText"] = event["text"]
+            event["text"] = corrections[event["text"]]
     (args.output / "crew-recording.json").write_text(json.dumps(data, indent=2) + "\n")
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
                     "-i", str(args.output / "crew-recording.mp4"), "-frames:v", "1",

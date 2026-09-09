@@ -1,4 +1,4 @@
-# Recorded crew — take V3
+# Recorded crew — take V5
 
 User-provided continuous recording from 2026-09-09. The website and Storybook
 use `RecordedCrewScene.vue`: a real Companion driven by this video's current
@@ -11,7 +11,7 @@ and seeking without separate audio clocks.
 
 The camera crop is now applied at rendering time. Storybook's **Camera zoom**
 slider runs from 1× (full frame) to 4× (central 25%), in steps of 0.05×.
-The default 2× displays the central 50% in each dimension. Adjusting zoom neither
+The default 1.35× displays approximately 74% in each dimension, with both offsets set to zero. Adjusting zoom neither
 restarts the media nor changes the overlay's size or top-left position.
 **Camera offset X** and **Camera offset Y** move the image within that window.
 Zero centers each axis; negative moves left/up, positive moves right/down.
@@ -19,17 +19,20 @@ The range −100…100 spans the available image overflow at the selected zoom,
 so the crop never exposes empty edges. At 1× the whole frame fits, so offsets
 have no effect until zoom is increased.
 
-`crew-recording.json` preserves every raw event and the exported transcript offsets
-(currently none). Changing transcript offsets affects only widget text.
+`crew-recording.json` preserves all event times and exported transcript offsets (currently none).
+Approved V5 transcript corrections are applied from `transcript-corrections.json`;
+corrected events retain the original recognition in `originalText`. The source
+recording and timing file remain untouched.
 
 To regenerate from the original folder:
 
 ```sh
-python3 tools/demo-recorder/prepare_take.py /path/to/nagranie-v1/v3 dashboard/src/components/marketing/recorded-crew
+python3 tools/demo-recorder/prepare_take.py /path/to/nagranie-v1/v5 dashboard/src/components/marketing/recorded-crew --corrections dashboard/src/components/marketing/recorded-crew/transcript-corrections.json
 ```
 
 The webcam overlay is anchored to the **screenshot's** top-left corner,
-outside the widget's zoom transform. Its 16:9 shape preserves the source aspect ratio. Audio starts muted. A prominent translucent muted-speaker button overlays the
-webcam; clicking it enables sound and hides the button. Mouse hover does not
+outside the widget's zoom transform. Its 16:9 shape preserves the source aspect ratio. Audio starts muted. A prominent translucent speaker button sits at the screenshot’s bottom-left
+corner, separate from the webcam. It toggles sound for the entire recording
+and remains visible in both muted and audible states. Mouse hover does not
 change audio. The external sound button can mute it again. Leaving the viewport
 still pauses and mutes the recording.

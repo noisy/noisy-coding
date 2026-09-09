@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<{
   cameraZoom?: number;
   cameraOffsetX?: number;
   cameraOffsetY?: number;
-}>(), { camera: true, cameraZoom: 2, cameraOffsetX: 0, cameraOffsetY: 0 });
+}>(), { camera: true, cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0 });
 const cameraScale = computed(() => Math.max(1, Math.min(4, props.cameraZoom)));
 const cameraTransform = computed(() => {
   // Each axis spans the available overflow at this zoom. Even the end stops
@@ -110,14 +110,17 @@ defineExpose({ restart, toggleSound, soundOn });
         aria-label="Recorded conversation with Krzysztof and Lux, Rex and Luna"
         @timeupdate="updateTime" @seeked="updateTime" @ended="ended"
         @error="playbackError = true" />
-      <button v-if="!soundOn" class="camera-sound" type="button"
-        aria-label="Enable recording sound" title="Enable sound" @click="setSound(true)">
+    </div>
+      <button class="scene-sound" type="button" :aria-pressed="soundOn"
+        :aria-label="soundOn ? 'Mute demo sound' : 'Enable demo sound'"
+        :title="soundOn ? 'Mute sound' : 'Enable sound'" @click="toggleSound()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M11 5 6 9H3v6h3l5 4V5Z" /><path d="m16 9 6 6m0-6-6 6" />
+          <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+          <path v-if="!soundOn" d="m16 9 6 6m0-6-6 6" />
+          <path v-else d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" />
         </svg>
       </button>
-    </div>
     <p v-if="playbackError" class="playback-error" role="status">Unable to play this recording. Please try again.</p>
   </div>
 </template>
@@ -144,17 +147,17 @@ defineExpose({ restart, toggleSound, soundOn });
 }
 .compact .recorded-camera { width: 132px; }
 .recorded-camera video { display: block; width: 100%; height: 100%; }
-.camera-sound {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+.scene-sound {
+  position: absolute; left: 16px; bottom: 16px;
   width: 64px; height: 64px; display: grid; place-items: center;
   color: #fff; background: #16181eb3; border: 1px solid #ffffff80;
   border-radius: 50%; opacity: .8; cursor: pointer;
   box-shadow: 0 3px 14px #0004;
 }
-.camera-sound svg { width: 34px; height: 34px; }
-.camera-sound:hover, .camera-sound:focus-visible { opacity: 1; background: #16181ee6; }
-.camera-sound:focus-visible { outline: 2px solid white; outline-offset: 3px; }
-.compact .camera-sound { width: 52px; height: 52px; }
+.scene-sound svg { width: 34px; height: 34px; }
+.scene-sound:hover, .scene-sound:focus-visible { opacity: 1; background: #16181ee6; }
+.scene-sound:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+.compact .scene-sound { width: 52px; height: 52px; }
 .playback-error { position: absolute; left: 16px; top: 8px; color: #ffcfb1; font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .recorded-widget { transition: none; } }
 </style>

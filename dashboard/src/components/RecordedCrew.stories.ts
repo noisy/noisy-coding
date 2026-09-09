@@ -6,7 +6,7 @@ const meta: Meta<typeof RecordedCrewScene> = {
   title: "Synthetic Screenshots/Recorded Crew",
   component: RecordedCrewScene,
   parameters: { layout: "fullscreen" },
-  args: { camera: true, compact: false, cameraZoom: 2, cameraOffsetX: 0, cameraOffsetY: 0 },
+  args: { camera: true, compact: false, cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0 },
   argTypes: {
     cameraZoom: {
       name: "Camera zoom",
@@ -27,7 +27,7 @@ const meta: Meta<typeof RecordedCrewScene> = {
 };
 export default meta;
 export const RecordingV1: StoryObj<typeof RecordedCrewScene> = {
-  name: "Recording V3",
+  name: "Recording V5",
   render: args => ({
     components: { RecordedCrewScene },
     setup() {
