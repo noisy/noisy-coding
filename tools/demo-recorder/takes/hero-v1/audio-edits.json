@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "kind": "demo-audio-edits",
+  "source": {
+    "name": "hero-search-2026-09-09T19-17-50.664Z.webm",
+    "size": 20970629,
+    "sha256": "76c94859bed3c28eead6f8a94cadeeb922231a348609cd9bb400d0197e14ff69",
+    "durationMs": 73619,
+    "sampleRate": 44100
+  },
+  "repairs": [
+    {
+      "startMs": 17669,
+      "endMs": 19154
+    },
+    {
+      "startMs": 43106,
+      "endMs": 43636
+    },
+    {
+      "startMs": 48231,
+      "endMs": 53027
+    },
+    {
+      "startMs": 58275,
+      "endMs": 60419
+    },
+    {
+      "startMs": 68558,
+      "endMs": 69245
+    },
+    {
+      "startMs": 70414,
+      "endMs": 71606
+    }
+  ],
+  "roomTone": {
+    "startMs": 13062,
+    "endMs": 16906
+  }
+}

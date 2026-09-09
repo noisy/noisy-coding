@@ -1,0 +1,9 @@
+{
+  "part of a name": "The search stopped working after the last change. It finds exact names, but part of a name",
+  "part of a name gives me nothing.": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+  "Add a test for both": "Great. Add a test for both",
+  "Add a test for both cases so we don't": "Great. Add a test for both cases so we don't",
+  "Add a test for both cases so we don't break this again.": "Great. Add a test for both cases so we don't break this again.",
+  ". Can you deploy that to production?": "Great. My hands are full. Can you deploy that to production?",
+  ". Can you deploy that to production for me?": "Great. My hands are full. Can you deploy that to production for me?"
+}
