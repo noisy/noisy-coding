@@ -104,7 +104,7 @@ defineExpose({ restart, toggleSound, soundOn });
     }">
       <div class="companion-window" inert><div class="companion-host">
         <Companion draggable avatar-set="editorial" :mode="state.mode" :voice="state.voice" :feed="state.feed"
-          :live-text="state.liveText" :agents="layout === 'hero' ? [{ name: 'orderflow-api', voice: 'lux', active: true }] : state.agents" :max-height="200" />
+          :live-text="state.liveText" :agents="layout === 'hero' ? [{ name: 'search-app', voice: 'lux', active: true }] : state.agents" :max-height="200" />
       </div></div>
     </div>
     <!-- The camera is a sibling of the zooming widget: anchored to the

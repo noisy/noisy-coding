@@ -9,6 +9,7 @@
 withDefaults(
   defineProps<{
     title?: string;
+    projectName?: string;
     transcript?: Line[];
     /** Fill the parent completely - no radius or shadow of its own - so the
      *  terminal reads as the maximized window a shot is composed over. */
@@ -20,7 +21,7 @@ withDefaults(
      *  marketing scene "type out" the session; everything by default. */
     visibleLines?: number;
   }>(),
-  { title: "claude - orderflow-api", fullBleed: false, banner: "mascot", visibleLines: Infinity },
+  { title: "claude - orderflow-api", projectName: "orderflow-api", fullBleed: false, banner: "mascot", visibleLines: Infinity },
 );
 
 // The little orange creature from the current startup screen.
@@ -74,7 +75,7 @@ const TRANSCRIPT: Line[] = [
         <pre class="ccmascot">{{ MASCOT }}</pre>
         <div>
           <div class="ccline ccwelcome">Welcome back to Claude Code!</div>
-          <div class="ccline ccdetail">cwd: ~/projects/orderflow-api</div>
+          <div class="ccline ccdetail">cwd: ~/projects/{{ projectName }}</div>
         </div>
       </div>
       <div class="ccgap" />

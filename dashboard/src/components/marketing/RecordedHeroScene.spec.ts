@@ -18,5 +18,8 @@ it('drives the hero console and real companion from the same video when seeking'
     expect(wrapper.text()).not.toContain('Production deployment complete');
     expect(wrapper.text()).toContain('src/search.ts');
     expect(wrapper.text()).not.toContain('pull-requests');
+    expect(wrapper.text()).not.toMatch(/orderflow|webhook|suite/i);
+    expect(wrapper.text()).toContain('claude - search-app');
+    expect(wrapper.text()).toContain('cwd: ~/projects/search-app');
   } finally { wrapper.unmount(); }
 });
