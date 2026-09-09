@@ -15,18 +15,18 @@ automatically and no running daemon settings are changed.
 
 ## Implementation plan
 
-- [ ] Add a loopback-only static server and websocket bridge using
+- [x] Add a loopback-only static server and websocket bridge using
   `StreamingSession`; reuse its provider authentication and PCM handling.
   Serve only recorder files and the existing five crew clips. Test the bridge
   with a fake streaming provider, including late final text and disconnects.
-- [ ] Add camera/microphone capture, audio-worklet PCM forwarding, scripted
+- [x] Add camera/microphone capture, audio-worklet PCM forwarding, scripted
   headphone playback controlled by Space, raw event journal and downloadable
   video/JSON. Use MediaRecorder start as the session origin; log audio `playing`
   and `ended` events rather than estimating durations.
-- [ ] Add video-clock review with signed transcript-only offset and exports.
+- [x] Add video-clock review with signed transcript-only offset and exports.
   Test that offsets preserve raw events and agent timing, and that late updates
   retain their original utterance identity.
-- [ ] Run offline tests, inspect the rendered local UI, document launch and
+- [x] Run offline tests, inspect the rendered local UI, document launch and
   recording steps, and commit each completed boundary. Real camera/mic and
   paid STT verification requires the user's deliberate Record click.
 
