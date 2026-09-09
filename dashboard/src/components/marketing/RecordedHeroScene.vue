@@ -24,7 +24,7 @@ defineExpose({ restart: () => scene.value?.restart(), toggleSound: () => scene.v
   </RecordedCrewScene>
 </template>
 <style scoped>
-.hero-recording { background: url('../../../../website/src/assets/mac-desktop.png') center / cover no-repeat; }
+.hero-recording.hero { background: url('./recorded-hero/mac-desktop.png') center / cover no-repeat; }
 .hero-terminal { position: absolute; inset: 73px 87px 89px; opacity: 0; transform: translateX(-1260px); filter: saturate(.4) brightness(.75); transition: opacity .5s ease, transform 1s cubic-bezier(.22,.8,.3,1); }
 .hero-terminal.visible { opacity: 1; transform: translateX(0); }
 @media(prefers-reduced-motion: reduce) { .hero-terminal { opacity: 1; transform: none; transition: none; } }
