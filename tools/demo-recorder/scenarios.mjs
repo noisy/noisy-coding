@@ -24,4 +24,20 @@ export const SCENARIOS = [
       { voice: 'Lux', clip: 'hero-lux-4', text: 'Running - both paths are pinned by the new test.' },
     ] },
   ] },
+  { id: 'hero-search', title: '3 · Hero — fix search and deploy', intro: [], turns: [
+    { prompt: 'The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.', agent: 'Lux', replies: [
+      { voice: 'Lux', clip: 'hero-lux-search-1', text: "The last change switched to exact matching. I'll bring back partial matches." },
+    ] },
+    { prompt: 'Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.', agent: 'Lux', replies: [
+      { voice: 'Lux', clip: 'hero-lux-search-2', text: 'Done. Partial names work again, with or without capital letters.' },
+    ] },
+    { prompt: "Great. Add a test for both cases so we don't break this again.", agent: 'Lux', replies: [
+      { voice: 'Lux', clip: 'hero-lux-search-3', text: 'Both tests pass. The fix is ready.' },
+    ] },
+    { prompt: 'Great. My hands are full. Can you deploy that to staging for me?', agent: 'Lux', replies: [
+      { voice: 'Lux', clip: 'hero-lux-search-4', text: 'On it.' },
+      { voice: 'Lux', clip: 'hero-lux-search-5', text: "It's live on staging. Search is working.", pauseBeforeMs: 2200 },
+    ] },
+    { prompt: 'Perfect. Thanks.', agent: 'Lux', replies: [] },
+  ] },
 ];

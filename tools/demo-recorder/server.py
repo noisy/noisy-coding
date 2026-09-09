@@ -26,6 +26,8 @@ ASSETS = {
        for name in ("lux-1", "lux-2", "rex-1", "luna-1", "luna-2")},
     **{f"/clips/hero-lux-{index}.mp3": (ROOT / "clips" / f"hero-lux-{index}.mp3", "audio/mpeg")
        for index in range(1, 5)},
+    **{f"/clips/hero-lux-search-{index}.mp3": (ROOT / "clips" / f"hero-lux-search-{index}.mp3", "audio/mpeg")
+       for index in range(1, 6)},
 }
 
 

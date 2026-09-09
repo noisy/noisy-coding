@@ -209,6 +209,10 @@ async function beginScenario() {
 
 async function playReply(reply) {
   if (!recording()) return;
+  if (reply.pauseBeforeMs) {
+    await new Promise(resolve => setTimeout(resolve, reply.pauseBeforeMs));
+    if (!recording()) return;
+  }
   if (reply.handover) {
     log('camera-zoom', { target: 'avatar-rail' });
     await new Promise(resolve => setTimeout(resolve, 900));

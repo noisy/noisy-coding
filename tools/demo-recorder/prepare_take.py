@@ -17,7 +17,7 @@ def main():
     take = json.loads(timeline_path.read_text())
     clips = Path(__file__).resolve().parents[2] / "dashboard/src/components/marketing/crew-voice"
     local_clips = Path(__file__).resolve().parent / "clips"
-    recording_name = "hero-recording" if take.get("scenario", {}).get("id") == "hero" else "crew-recording"
+    recording_name = "hero-recording" if take.get("scenario", {}).get("id", "").startswith("hero") else "crew-recording"
     replies = [event for event in take["events"] if event["type"] == "agent-start"]
     args.output.mkdir(parents=True, exist_ok=True)
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(video_path)]

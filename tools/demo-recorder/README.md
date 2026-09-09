@@ -35,6 +35,15 @@ includes the selected scenario snapshot; old JSON without it remains supported.
 Hero clips use Grok Lux, English, speed 1.1. They live in this local authoring
 tool; the existing website hero stays unchanged until a take is selected.
 
+### Hero: search and deployment
+
+**3 · Hero — fix search and deploy** is the longer hands-free take: report
+broken partial search, ask for case-insensitive matches, request tests, deploy
+to staging, then say thanks. The complete approved dialogue is shown in the
+scenario selector. Five prerecorded Lux clips accompany five user turns.
+A short pause separates “On it” from the staging confirmation; its actual
+playback timing is captured like every other reply. No real deployment runs.
+
 ## Record
 
 1. Wear headphones and use a microphone that does not capture system playback.
