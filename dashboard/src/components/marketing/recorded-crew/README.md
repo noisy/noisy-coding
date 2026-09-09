@@ -13,6 +13,11 @@ The camera crop is now applied at rendering time. Storybook's **Camera zoom**
 slider runs from 1× (full frame) to 4× (central 25%), in steps of 0.05×.
 The default 2× displays the central 50% in each dimension. Adjusting zoom neither
 restarts the media nor changes the overlay's size or bottom-left position.
+**Camera offset X** and **Camera offset Y** move the image within that window.
+Zero centers each axis; negative moves left/up, positive moves right/down.
+The range −100…100 spans the available image overflow at the selected zoom,
+so the crop never exposes empty edges. At 1× the whole frame fits, so offsets
+have no effect until zoom is increased.
 
 `crew-v1.json` preserves every raw event and the exported transcript offsets
 (currently none). Changing transcript offsets affects only widget text.
@@ -24,6 +29,7 @@ python3 tools/demo-recorder/prepare_take.py /path/to/nagranie-v1 dashboard/src/c
 ```
 
 The webcam overlay is anchored to the **screenshot's** bottom-left corner,
-outside the widget's zoom transform. Its 16:9 shape preserves the source aspect ratio. Audio starts muted; mouse hover
-or keyboard focus requests sound, and leaving mutes it. If browser autoplay
-policy blocks sound, the explicit sound button remains available.
+outside the widget's zoom transform. Its 16:9 shape preserves the source aspect ratio. Audio starts muted. A prominent translucent muted-speaker button overlays the
+webcam; clicking it enables sound and hides the button. Mouse hover does not
+change audio. The external sound button can mute it again. Leaving the viewport
+still pauses and mutes the recording.
