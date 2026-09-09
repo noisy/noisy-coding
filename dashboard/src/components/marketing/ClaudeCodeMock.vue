@@ -9,6 +9,7 @@
 withDefaults(
   defineProps<{
     title?: string;
+    transcript?: Line[];
     /** Fill the parent completely - no radius or shadow of its own - so the
      *  terminal reads as the maximized window a shot is composed over. */
     fullBleed?: boolean;
@@ -77,7 +78,7 @@ const TRANSCRIPT: Line[] = [
         </div>
       </div>
       <div class="ccgap" />
-      <template v-for="(line, i) in TRANSCRIPT.slice(0, visibleLines)" :key="i">
+      <template v-for="(line, i) in (transcript ?? TRANSCRIPT).slice(0, visibleLines)" :key="i">
         <div v-if="line.kind === 'prompt'" class="ccline ccprompt">
           <span class="ccmark">&gt;</span> {{ line.text }}
         </div>

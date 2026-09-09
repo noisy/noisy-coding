@@ -5,9 +5,13 @@ import "../../styles/companion-window.css";
 import recording from "./recorded-crew/crew-recording.mp4";
 import poster from "./recorded-crew/crew-recording-poster.jpg";
 import take from "./recorded-crew/crew-recording.json";
-import { recordedCrewAt } from "./recordedCrewTimeline";
+import { type RecordedTake, recordedCrewAt } from "./recordedCrewTimeline";
 
 const props = withDefaults(defineProps<{
+  layout?: 'crew' | 'hero';
+  recordingSrc?: string;
+  recordingPoster?: string;
+  recordingTake?: RecordedTake;
   compact?: boolean;
   camera?: boolean;
   cameraZoom?: number;
@@ -28,7 +32,7 @@ const timeMs = ref(0);
 const soundOn = ref(false);
 const playbackError = ref(false);
 const reducedMotion = ref(false);
-const state = computed(() => recordedCrewAt(take, timeMs.value));
+const state = computed(() => recordedCrewAt(props.recordingTake ?? take, timeMs.value));
 let animation = 0;
 let visibility: IntersectionObserver | undefined;
 let motion: MediaQueryList;
@@ -92,22 +96,23 @@ defineExpose({ restart, toggleSound, soundOn });
 </script>
 
 <template>
-  <div class="recorded-crew companion-transparent" :class="{ compact }" :style="{ width: compact ? '600px' : '760px' }"
+  <div class="recorded-crew companion-transparent" :class="{ compact, hero: layout === 'hero' }" :style="{ width: layout === 'hero' ? '1200px' : compact ? '600px' : '760px' }"
     role="group" aria-label="Recorded conversation demo">
-    <div class="recorded-widget" :style="{
-      transform: camera && !reducedMotion && state.zoom ? 'scale(2)' : 'scale(1)',
+    <slot :time-ms="timeMs" />
+    <div class="recorded-widget" :class="{ aloft: layout === 'hero' && timeMs < 3200 && !reducedMotion }" :style="{
+      transform: layout === 'hero' ? undefined : camera && !reducedMotion && state.zoom ? 'scale(2)' : 'scale(1)',
     }">
       <div class="companion-window" inert><div class="companion-host">
         <Companion draggable avatar-set="editorial" :mode="state.mode" :voice="state.voice" :feed="state.feed"
-          :live-text="state.liveText" :agents="state.agents" :max-height="200" />
+          :live-text="state.liveText" :agents="layout === 'hero' ? [{ name: 'orderflow-api', voice: 'lux', active: true }] : state.agents" :max-height="200" />
       </div></div>
     </div>
     <!-- The camera is a sibling of the zooming widget: anchored to the
          screenshot's top-left corner throughout every agent handover. -->
     <div class="recorded-camera">
-      <video ref="video" :src="recording" :poster="poster" muted playsinline preload="metadata"
+      <video ref="video" :src="recordingSrc ?? recording" :poster="recordingPoster ?? poster" muted playsinline preload="metadata"
         :style="{ transform: cameraTransform }"
-        aria-label="Recorded conversation with Krzysztof and Lux, Rex and Luna"
+        :aria-label="layout === 'hero' ? 'Recorded conversation with Krzysztof and Lux' : 'Recorded conversation with Krzysztof and Lux, Rex and Luna'"
         @timeupdate="updateTime" @seeked="updateTime" @ended="ended"
         @error="playbackError = true" />
     </div>
@@ -132,6 +137,11 @@ defineExpose({ restart, toggleSound, soundOn });
     radial-gradient(900px 600px at 85% 85%, #1b2a4a 0%, transparent 60%),
     linear-gradient(160deg, #0b0d1f, #141334 55%, #0a0f24);
 }
+.hero { height: 760px; }
+.hero .recorded-widget { top: auto; right: 32px; bottom: 52px; transform: scale(1.2); transform-origin: bottom right; }
+.hero .recorded-widget.aloft { transform: translate(-316px, -88px) scale(1.2); }
+.hero .recorded-camera { width: 260px; left: 24px; top: 24px; }
+.hero .scene-sound { left: 24px; bottom: 24px; }
 .recorded-widget {
   position: absolute; right: 20px; top: 20px; width: 420px; height: 400px;
   transform-origin: 94% 100%; transition: transform .75s cubic-bezier(.22,.61,.36,1);
