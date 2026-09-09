@@ -123,3 +123,24 @@ are also stored locally in the browser, when storage is available. This page
 does not apply repair or denoising: the exported intervals are input for a
 later, reversible cleanup pass. Preview stopping uses browser playback timing;
 the exported millisecond boundaries are the authoritative edit coordinates.
+
+## Presentation timing editor
+
+Open **Presentation timing** from Demo Studio, or
+`http://127.0.0.1:5201/timing-editor.html`. This local-only Vue page requires the
+website preview (`npm --prefix website run dev -- --port 5201`) so it can render
+the real hero components. It is not a production-build entry and is not deployed.
+
+Select a user turn, move its speaking-end slider or enter whole milliseconds,
+and choose None, Thinking, or Console activity. The original speaking window
+stays faintly visible on the timeline. Console activity is matched to that turn
+(read, edit, tests, production deployment); results retain their original reply
+timing. The final thank-you has no following reply and cannot receive work status.
+
+Play the whole scene or audition one turn with its reply. Clicking a Work or Lux
+segment seeks to its start. The JSON contains only presentation overrides and the
+original source fingerprint, not edited media or shifted transcript timestamps.
+Save `hero-v1.presentation-edits.json` beside the original recording and provide
+it for integration into the published scene. Until that step, changes apply only
+to this local preview. Drafts are retained locally in the browser; reopening an
+export validates that it belongs to the same original take.
