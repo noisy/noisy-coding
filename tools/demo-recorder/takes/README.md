@@ -15,7 +15,7 @@ Each folder contains:
 - `timeline.json`: untouched recorder export, including agent-start timestamps and raw transcript revisions.
 - `transcript-corrections.json`: approved presentation-only replacements. Rebuilt events retain `originalText`.
 - `manifest.json`: original filename and SHA-256 fingerprints of archived inputs.
-- `audio-edits.json` (hero only): the user's six repair intervals and clean room-tone reference. Its fingerprint matches the renamed original by content, not filename.
+- `audio-edits.json` (hero only): four approved repair intervals and clean room-tone reference. Its fingerprint matches the renamed original by content, not filename.
 
 ## Rebuild from a clean checkout
 
@@ -64,3 +64,15 @@ previous source folder; do not overwrite it with a new recording.
 
 Different FFmpeg versions may produce different encoded bytes, but timing,
 source assets and processing parameters are fully specified here.
+
+## Hero V1 presentation and restored closing line
+
+`hero-v1/presentation-edits.json` is the exported timing plan used by the hero
+component in both the website and Storybook. It adjusts speaking indicators and
+Thinking/Console activity only; rebuilding the media does not apply these trims.
+The timing editor can override it with an independent draft.
+
+`audio-edits-original.json` preserves the initial six repair marks. The active
+`audio-edits.json` omits 68558–69245 and 70414–71606 ms because these overlap the
+closing “Perfect, thanks” turn. The final microphone audio from 68000 ms onward
+is retained from the original, including natural background sounds.

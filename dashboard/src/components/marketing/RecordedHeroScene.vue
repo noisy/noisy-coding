@@ -5,10 +5,11 @@ import ClaudeCodeMock from './ClaudeCodeMock.vue';
 import recording from './recorded-hero/hero-recording.mp4';
 import poster from './recorded-hero/hero-recording-poster.jpg';
 import take from './recorded-hero/hero-recording.json';
+import savedPresentation from '../../../../tools/demo-recorder/takes/hero-v1/presentation-edits.json';
 import { recordedHeroConsoleAt } from './recordedHeroConsole';
 import { activityAt, presentationTake, type TurnTiming, type ActivityBlock } from './presentationTiming';
 const props = withDefaults(defineProps<{ manualPlayback?: boolean; activityBlocks?: ActivityBlock[]; presentationEdits?: TurnTiming[]; cameraZoom?: number; cameraOffsetX?: number; cameraOffsetY?: number }>(), {
-  activityBlocks: () => [], presentationEdits: () => [], cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0,
+  activityBlocks: () => savedPresentation.activities as ActivityBlock[], presentationEdits: () => savedPresentation.turns as TurnTiming[], cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0,
 });
 const emit = defineEmits<{time: [timeMs: number]}>();
 const adjustedTake = computed(() => presentationTake(take, props.presentationEdits));

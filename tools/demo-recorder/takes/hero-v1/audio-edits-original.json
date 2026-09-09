@@ -24,6 +24,14 @@
     {
       "startMs": 58275,
       "endMs": 60419
+    },
+    {
+      "startMs": 68558,
+      "endMs": 69245
+    },
+    {
+      "startMs": 70414,
+      "endMs": 71606
     }
   ],
   "roomTone": {

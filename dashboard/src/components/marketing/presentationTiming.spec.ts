@@ -30,3 +30,13 @@ it('opens a working pause after Lux by delaying the next user speaking window', 
   expect(adjusted.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript')).toEqual(take.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript'));
   expect(() => validatePresentation({...document, activities: [{...activities[0], endMs: 22000}]}, take, 'source1')).toThrow(/fit a pause/);
 });
+
+// Protect the approved recording plan at the same boundary as imported editor JSON.
+import savedPresentation from '../../../../tools/demo-recorder/takes/hero-v1/presentation-edits.json';
+import manifest from '../../../../tools/demo-recorder/takes/hero-v1/manifest.json';
+it('loads the approved hero timing without moving media events', () => {
+  const plan = validatePresentation(savedPresentation, take, manifest.files['original.webm']);
+  const adjusted = presentationTake(take, plan.turns);
+  expect(adjusted.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript')).toEqual(take.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript'));
+  expect([activityAt(take, plan.turns, 18000, plan.activities), activityAt(take, plan.turns, 62000, plan.activities)]).toEqual(['Editing src/search.ts', 'Deploying to production']);
+});

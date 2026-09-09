@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "kind": "demo-presentation-edits",
+  "sourceSha256": "76c94859bed3c28eead6f8a94cadeeb922231a348609cd9bb400d0197e14ff69",
+  "turns": [
+    {
+      "utterance": "u2",
+      "userStartMs": 20889,
+      "userEndMs": 30348,
+      "status": "console"
+    },
+    {
+      "utterance": "u4",
+      "userStartMs": 52997,
+      "userEndMs": 59168,
+      "status": "thinking"
+    },
+    {
+      "utterance": "u1",
+      "userStartMs": 2522,
+      "userEndMs": 10519,
+      "status": "thinking"
+    },
+    {
+      "utterance": "u3",
+      "userStartMs": 38244,
+      "userEndMs": 45047,
+      "status": "console"
+    }
+  ],
+  "activities": [
+    {
+      "id": "ac155aed-cbd4-4518-8c7a-40af819a0809",
+      "startMs": 61689,
+      "endMs": 63982,
+      "status": "console",
+      "consoleTask": "u4"
+    },
+    {
+      "id": "304501f9-5ee9-4f6a-a40b-23aed220e810",
+      "startMs": 17353,
+      "endMs": 20686,
+      "status": "console",
+      "consoleTask": "u2"
+    }
+  ]
+}

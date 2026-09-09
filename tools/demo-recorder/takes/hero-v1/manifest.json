@@ -1,9 +1,11 @@
 {
   "sourceName": "hero-search-2026-09-09T19-17-50.664Z.webm",
   "files": {
-    "audio-edits.json": "983f8b7f6fb84dc9e3028a2bf9ac9afd39a21b9ab2b1b39fc9f13b33327dc6b5",
+    "audio-edits.json": "332255657526ac2650494ceff4678267f67fe6b6b53b15e397d497c7f60bf7ce",
     "timeline.json": "e2a34d5e297df0317701d5147f8747c62cc9dadf8ad12f0954c3ceb5fd106cf3",
     "transcript-corrections.json": "853601b03a356897425ea2f92b30daa560c6075f34e1236fb774a5642fa489cd",
-    "original.webm": "76c94859bed3c28eead6f8a94cadeeb922231a348609cd9bb400d0197e14ff69"
+    "original.webm": "76c94859bed3c28eead6f8a94cadeeb922231a348609cd9bb400d0197e14ff69",
+    "audio-edits-original.json": "983f8b7f6fb84dc9e3028a2bf9ac9afd39a21b9ab2b1b39fc9f13b33327dc6b5",
+    "presentation-edits.json": "b2a00bad21403cd6bae45ddf4d17045b04e8fbe1a165760bfd172b7411a76993"
   }
 }
