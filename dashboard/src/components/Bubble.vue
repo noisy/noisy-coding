@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { StatusKind } from "./bubbleStatus";
 import VoiceAvatar from "./VoiceAvatar.vue";
+import { computed } from "vue";
+import { parseBlocks } from "./richText";
 
 const props = withDefaults(
   defineProps<{
@@ -49,6 +51,12 @@ const props = withDefaults(
 
 defineEmits<{ replay: []; cancel: []; pause: []; skip: [] }>();
 
+/* Markup is parsed into tokens and rendered as text nodes - never v-html.
+   Bubbles carry chat messages from strangers. */
+const blocks = computed(() => parseBlocks(props.text ?? ""));
+const TAGS = { text: "span", bold: "strong", italic: "em", code: "code" } as const;
+const tagOf = (kind: keyof typeof TAGS) => TAGS[kind];
+
 </script>
 
 <template>
@@ -90,7 +98,7 @@ defineEmits<{ replay: []; cancel: []; pause: []; skip: [] }>();
       <span class="tm">{{ time }}</span>
     </div>
     <div v-if="compact" class="compact-label"><span>{{ who || (side === 'left' ? 'You' : 'Agent') }}</span><span v-if="statusLabel && statusKind !== 'done'" class="st" :class="statusKind">{{ statusLabel }}</span></div>
-    <div class="txt" :class="{ pending }">{{ text }}<span v-if="live" class="caret" /></div>
+    <div class="txt" :class="{ pending }"><template v-for="(b, bi) in blocks" :key="bi"><ul v-if="b.kind === 'ul'" class="md-ul"><li v-for="(item, ii) in b.items" :key="ii"><component v-for="(sp, si) in item" :key="si" :is="tagOf(sp.kind)">{{ sp.text }}</component></li></ul><p v-else class="md-p"><component v-for="(sp, si) in b.spans" :key="si" :is="tagOf(sp.kind)">{{ sp.text }}</component></p></template><span v-if="live" class="caret" /></div>
     <div v-if="!compact" class="mfoot">
       <span>{{ detail }}</span>
       <span class="cost">{{ cost }}</span>
@@ -125,7 +133,16 @@ defineEmits<{ replay: []; cancel: []; pause: []; skip: [] }>();
 .replay.playing { color:var(--amber); }
 .replay.skip:hover, .cancel:hover { color:var(--red); }
 .tm { margin-left:auto; font-size:10px; color:var(--muted); font-variant-numeric:tabular-nums; }
-.txt { font:14px/1.65 var(--sans); color:var(--ink); white-space:pre-wrap; overflow-wrap:anywhere; }
+.txt { font:14px/1.65 var(--sans); color:var(--ink); overflow-wrap:anywhere; }
+/* Paragraphs and lists now carry the spacing, so pre-wrap would double it.
+   Line breaks inside a paragraph are still honoured. */
+.md-p { margin:0; white-space:pre-wrap; }
+.md-p + .md-p, .md-ul + .md-p, .md-p + .md-ul { margin-top:.6em; }
+.md-ul { margin:0; padding-left:1.15em; }
+.md-ul li { margin:.15em 0; }
+.txt strong { font-weight:650; color:var(--ink); }
+.txt em { font-style:italic; }
+.txt code { font:0.92em var(--mono); background:var(--surface-hover); padding:.1em .35em; border-radius:4px; }
 .txt.pending { color:var(--muted); }
 .mfoot { display:flex; flex-wrap:wrap; gap:8px; font:10px/1.5 var(--mono); color:var(--muted); margin-top:10px; }
 .cost { margin-left:auto; }
