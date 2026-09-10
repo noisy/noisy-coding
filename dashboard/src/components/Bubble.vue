@@ -101,17 +101,17 @@ defineEmits<{ replay: []; cancel: []; pause: []; skip: [] }>();
 
 <style scoped>
 
-.msg { position:relative; max-width:92%; border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--bg1); --accent:var(--cyan); }
+.msg { position:relative; max-width:92%; border:1px solid var(--line); border-radius:12px; padding:14px 16px; --message-surface:var(--bg1); background:var(--message-surface); --accent:var(--cyan); }
 .msg.withportrait { display:flex; align-items:flex-start; gap:12px; }
 .mbody { min-width:0; flex:1; }
 .portrait { flex:none; }
 .accent-amber { --accent:var(--amber); }
 .accent-violet { --accent:var(--agent-accent, var(--violet)); }
-.side-left { align-self:flex-start; background:var(--accent-surface); border-color:var(--accent-border); border-top-left-radius:4px; }
-.side-right { background:color-mix(in srgb, var(--agent-accent, var(--violet)) 5%, var(--bg1)); border-color:color-mix(in srgb, var(--agent-accent, var(--violet)) 18%, var(--line)); align-self:flex-end; border-top-right-radius:4px; }
-.variant-guest { --accent:var(--green); border-left:3px solid var(--accent); background:#232c27; }
-.variant-guest.tint-purple { --accent:var(--violet); background:#2a2633; }
-.variant-guest.tint-red { --accent:var(--red); background:#302526; }
+.side-left { align-self:flex-start; --message-surface:var(--accent-surface); border-color:var(--accent-border); border-top-left-radius:4px; }
+.side-right { --message-surface:color-mix(in srgb, var(--agent-accent, var(--violet)) 5%, var(--bg1)); border-color:color-mix(in srgb, var(--agent-accent, var(--violet)) 18%, var(--line)); align-self:flex-end; border-top-right-radius:4px; }
+.variant-guest { --accent:var(--green); border-left:3px solid var(--accent); --message-surface:#232c27; }
+.variant-guest.tint-purple { --accent:var(--violet); --message-surface:#2a2633; }
+.variant-guest.tint-red { --accent:var(--red); --message-surface:#302526; }
 .mhead { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
 .who { font-size:12px; font-weight:600; color:var(--accent); }
 .st { font-size:10px; font-weight:500; padding:2px 6px; border-radius:4px; background:var(--surface-hover); color:var(--muted); }

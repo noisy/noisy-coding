@@ -503,8 +503,7 @@ body.companion-transparent.hovering .companion-window .companion-header,
 :is(body, div).companion-transparent .rail { background:rgba(27,29,33,.94); border-radius:10px; box-shadow:0 0 0 1px #f3f4f580, 0 0 0 2px #151619b3; }
 :is(body, div).companion-transparent .companion-header { padding:7px 10px; border-bottom:0; }
 :is(body, div).companion-transparent .rail { padding:5px; }
-:is(body, div).companion-transparent .msg { background:rgba(27,29,33,.94); border-color:#f3f4f580; box-shadow:0 0 0 1px #151619b3; }
-:is(body, div).companion-transparent .msg.side-left { background:rgba(41,40,37,.94); }
+:is(body, div).companion-transparent .msg { background:color-mix(in srgb, var(--message-surface) 94%, transparent); border-color:#f3f4f580; box-shadow:0 0 0 1px #151619b3; }
 :is(body, div).companion-transparent .listening,
 :is(body, div).companion-transparent .activity { background:rgba(27,29,33,.94); border-radius:8px; padding:6px 10px; }
 /* NO-DRAG BELONGS TO THE SCROLL CONTAINER, NEVER TO WHAT SCROLLS INSIDE IT.

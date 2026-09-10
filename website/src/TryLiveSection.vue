@@ -200,7 +200,7 @@ body.companion-transparent .trysec .companion {
 body.companion-transparent .trysec .companion .msg,
 body.companion-transparent .trysec .companion .msg.side-left,
 body.companion-transparent .trysec .companion .msg.side-right {
-  background: rgba(5, 14, 24, 0.85) !important;
+  background: var(--message-surface);
   box-shadow: none;
 }
 body.companion-transparent .trysec .companion .msgs .older { opacity: 0.55; }
