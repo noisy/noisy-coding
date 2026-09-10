@@ -393,7 +393,7 @@ watch(
     <!-- Left rail: the user's indicator. Lights up while they talk. -->
     <div class="rail left" :class="{ active: mode === 'user' }">
       <svg viewBox="0 0 100 100" class="hex" aria-hidden="true">
-        <rect x="8" y="8" width="84" height="84" rx="24" fill="var(--surface-hover)" />
+        <rect width="100" height="100" rx="24" fill="var(--surface-hover)" />
         <!-- Always drawn: silence is a slow breath, speech rides on top. -->
         <g class="spectrum">
           <rect v-for="(h, i) in bars" :key="i"
@@ -547,10 +547,11 @@ body.companion-transparent button { cursor:pointer; }
 .thread :deep(.size-m .txt), .thread :deep(.size-s .txt) { font-size:13px; }
 .rail { flex:none; }
 .rail.left { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); }
-.hex { width:30px; height:30px; color:var(--muted); }
+.hex { flex:none; width:48px; height:48px; color:var(--muted); }
 .spectrum rect { fill:currentColor; }
 .rail.active .hex, .rail.left.active { color:var(--amber); }
-.rail.right { display:flex; gap:7px; align-items:center; margin-left:auto; max-width:75%; padding:5px 4px; overflow-x:auto; }
+.rail.right { display:flex; gap:7px; align-items:center; margin-left:auto; max-width:75%; padding:5px 4px; overflow-x:auto; scrollbar-width:none; }
+.rail.right::-webkit-scrollbar { display:none; }
 .head { position:relative; display:flex; flex:none; width:48px; height:48px; border:2px solid transparent; border-radius:12px; background-color:var(--surface-hover); padding:0; }
 .head.current { border-color:var(--cyan); }
 .head:hover { border-color:var(--ink); }
