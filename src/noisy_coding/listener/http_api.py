@@ -822,7 +822,18 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/playback-pause":
                 # Transport pause: freezes the system player in place; the
                 # tab player (browser output) pauses itself client-side.
-                self._respond({"paused": playback.toggle_pause()})
+                paused = playback.toggle_pause()
+                # Capture is muted while the agent speaks so the microphone
+                # does not hear the speakers. A PAUSED clip makes no sound,
+                # so that reason is gone - and leaving the mute on meant the
+                # dashboard showed RECORDING while nothing was captured and
+                # the user talked into a dead microphone (day 8). Pausing is
+                # usually done PRECISELY in order to say something.
+                if paused:
+                    state.set_paused(False)
+                elif state.claude_speaking:
+                    state.set_paused(True)
+                self._respond({"paused": paused})
             elif self.path == "/interrupt":
                 # Stop whatever is on the speakers; queued speech continues.
                 playback.stop_all_players()
