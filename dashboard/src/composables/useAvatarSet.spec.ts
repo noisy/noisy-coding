@@ -9,8 +9,8 @@ describe('avatar preference', () => {
     expect([avatarSet.value, secondWindowView.avatarSet.value, localStorage.getItem(AVATAR_STORAGE_KEY)]).toEqual(['mineral', 'mineral', 'mineral']);
   });
   it('receives cross-window changes and falls back when the preference is cleared', () => {
-    window.dispatchEvent(new StorageEvent('storage', { key: AVATAR_STORAGE_KEY, newValue: 'painted' }));
-    expect(avatarSet.value).toBe('painted');
+    window.dispatchEvent(new StorageEvent('storage', { key: AVATAR_STORAGE_KEY, newValue: 'matte' }));
+    expect(avatarSet.value).toBe('matte');
     window.dispatchEvent(new StorageEvent('storage', { key: AVATAR_STORAGE_KEY, newValue: 'obsolete' }));
     expect(avatarSet.value).toBe('editorial');
     selectAvatarSet('matte');
