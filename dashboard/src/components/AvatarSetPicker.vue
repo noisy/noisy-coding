@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { AVATAR_SETS, AVATAR_VOICES } from '../avatars/catalog';
 import { useAvatarSet } from '../composables/useAvatarSet';
 import VoiceAvatar from './VoiceAvatar.vue';
 const { avatarSet, selectAvatarSet } = useAvatarSet();
-const sampleVoices = AVATAR_VOICES.slice(0, 9);
+const SAMPLE_SIZE = 36;
+const SAMPLE_GAP = 4;
+const sampleCount = ref(4);
+const sampleVoices = computed(() => AVATAR_VOICES.slice(0, sampleCount.value));
+const options = ref<HTMLElement>();
+let optionsObserver: ResizeObserver | undefined;
 const gallery = ref<HTMLElement>();
 const portraitSize = ref(96);
 const columns = ref(6);
 let observer: ResizeObserver | undefined;
 onMounted(() => {
+  const row = options.value?.querySelector('.sample-avatars');
+  if (row) {
+    optionsObserver = new ResizeObserver(([entry]) => {
+      if (entry) sampleCount.value = Math.max(1, Math.floor((entry.contentRect.width + SAMPLE_GAP) / (SAMPLE_SIZE + SAMPLE_GAP)));
+    });
+    optionsObserver.observe(row);
+  }
   if (!gallery.value) return;
   observer = new ResizeObserver(([entry]) => {
     if (!entry || entry.contentRect.width <= 0) return;
@@ -22,7 +34,7 @@ onMounted(() => {
   });
   observer.observe(gallery.value);
 });
-onBeforeUnmount(() => observer?.disconnect());
+onBeforeUnmount(() => { observer?.disconnect(); optionsObserver?.disconnect(); });
 </script>
 
 <template>
@@ -30,10 +42,10 @@ onBeforeUnmount(() => observer?.disconnect());
     <legend>Voice avatars</legend>
     <p>Choose how voices look in the dashboard and companion. Your choice is saved on this device.</p>
     <div class="avatar-browser">
-    <div class="avatar-options">
+    <div ref="options" class="avatar-options">
       <label v-for="set in AVATAR_SETS" :key="set.id" class="avatar-option" :class="{ selected: avatarSet === set.id }">
         <span class="option-heading"><input type="radio" name="avatar-set" :value="set.id" :checked="avatarSet === set.id" @change="selectAvatarSet(set.id)"><strong>{{ set.name }}</strong></span>
-        <span class="sample-avatars"><VoiceAvatar v-for="voice in sampleVoices" :key="voice" :voice="voice" :set="set.id" :size="24" /></span>
+        <span class="sample-avatars"><VoiceAvatar v-for="voice in sampleVoices" :key="voice" :voice="voice" :set="set.id" :size="SAMPLE_SIZE" /></span>
       </label>
     </div>
     <div ref="gallery" class="all-avatars" :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }" aria-label="All voices in the selected avatar family">
@@ -55,7 +67,7 @@ p { color:var(--muted); font-size:12px; margin:8px 0 16px; }
 .avatar-option { flex:0 0 100px; display:grid; gap:4px; padding:10px; background:var(--bg1); border:1px solid var(--line); border-radius:10px; cursor:pointer; }
 .avatar-option.selected { border-color:var(--amber); }
 .option-heading { display:flex; align-items:center; gap:8px; font-size:13px; }
-.sample-avatars { display:grid; grid-template-columns:repeat(5,24px); gap:4px; align-content:start; }
+.sample-avatars { display:flex; flex-wrap:nowrap; gap:4px; min-width:0; width:100%; align-items:center; }
 .option-heading input { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 .avatar-option:focus-within { outline:2px solid var(--cyan); outline-offset:2px; }
 .all-avatars { display:grid; gap:12px; align-content:space-between; overflow-y:auto; min-height:0; padding:2px 8px; }
