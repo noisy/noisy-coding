@@ -49,3 +49,8 @@
   --accent-surface: color-mix(in srgb, var(--brand-accent) 8%, var(--bg1));
   --accent-border: color-mix(in srgb, var(--brand-accent) 22%, var(--line));
 }
+
+[data-accent="peach"] { --brand-accent: #f0bd9e; --brand-accent-dim: #c19477; }
+[data-accent="coral"] { --brand-accent: #efaaa0; --brand-accent-dim: #bf8279; }
+[data-accent="periwinkle"] { --brand-accent: #adb6f5; --brand-accent-dim: #858ec9; }
+[data-accent="silver"] { --brand-accent: #c8cdd6; --brand-accent-dim: #969da9; }

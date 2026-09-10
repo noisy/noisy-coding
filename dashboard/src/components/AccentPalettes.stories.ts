@@ -11,7 +11,7 @@ export const Comparison: StoryObj = {
     setup: () => ({ palettes: accentPalettes }),
     template: `<main style="padding:28px; color:var(--ink); height:100vh; overflow:auto; max-width:1280px">
       <h1 style="font-size:24px; margin:0 0 8px">Choose your accent</h1>
-      <p style="color:var(--muted); margin:0 0 24px">Six coordinated palettes. Use the Accent toolbar to preview any dashboard or companion story.</p>
+      <p style="color:var(--muted); margin:0 0 24px">Ten coordinated palettes. Use the Accent toolbar to preview any dashboard or companion story.</p>
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:20px">
         <section v-for="palette in palettes" :key="palette.value" :data-accent="palette.value" style="padding:24px; border:1px solid var(--line); border-radius:16px; background:var(--panel)">
           <h2 style="margin:0 0 18px; font-size:18px; color:var(--amber)">{{ palette.title }}</h2>
