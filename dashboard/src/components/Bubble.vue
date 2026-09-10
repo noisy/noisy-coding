@@ -107,7 +107,7 @@ defineEmits<{ replay: []; cancel: []; pause: []; skip: [] }>();
 .portrait { flex:none; }
 .accent-amber { --accent:var(--amber); }
 .accent-violet { --accent:var(--violet); }
-.side-left { align-self:flex-start; background:#292825; border-color:#45413a; border-top-left-radius:4px; }
+.side-left { align-self:flex-start; background:var(--accent-surface); border-color:var(--accent-border); border-top-left-radius:4px; }
 .side-right { align-self:flex-end; border-top-right-radius:4px; }
 .variant-guest { --accent:var(--green); border-left:3px solid var(--accent); background:#232c27; }
 .variant-guest.tint-purple { --accent:var(--violet); background:#2a2633; }

@@ -12,8 +12,13 @@
   --cyan: #9ebcf5;
   --cyan-hi: #d7e4fc;
   --cyan-dim: #8eabdb;
-  --amber: #e2bd88;
-  --amber-dim: #a98a62;
+  --brand-accent: #e2bd88;
+  --brand-accent-dim: #a98a62;
+  --amber: var(--brand-accent);
+  --amber-dim: var(--brand-accent-dim);
+  --accent-hover: color-mix(in srgb, var(--brand-accent), white 25%);
+  --accent-surface: color-mix(in srgb, var(--brand-accent) 8%, var(--bg1));
+  --accent-border: color-mix(in srgb, var(--brand-accent) 22%, var(--line));
   --violet: #c3b7e6;
   --violet-hi: #e0d9f3;
   --violet-dim: #a99bc9;
@@ -27,4 +32,20 @@
   --glow-amber: none;
   --glow-violet: none;
   --radius: 12px;
+}
+
+/* Applied to a preview root, or the document for an application-wide accent. */
+[data-accent="amber"] { --brand-accent: #e2bd88; --brand-accent-dim: #a98a62; }
+[data-accent="blue"] { --brand-accent: #9cbfff; --brand-accent-dim: #789bd5; }
+[data-accent="teal"] { --brand-accent: #80d1cb; --brand-accent-dim: #5ba5a0; }
+[data-accent="mint"] { --brand-accent: #b0dba0; --brand-accent-dim: #88b478; }
+[data-accent="lavender"] { --brand-accent: #c8b5f4; --brand-accent-dim: #a18ccc; }
+[data-accent="rose"] { --brand-accent: #ecaabd; --brand-accent-dim: #c48397; }
+/* Redeclare aliases on scoped roots so they resolve against the local palette. */
+[data-accent] {
+  --amber: var(--brand-accent);
+  --amber-dim: var(--brand-accent-dim);
+  --accent-hover: color-mix(in srgb, var(--brand-accent), white 25%);
+  --accent-surface: color-mix(in srgb, var(--brand-accent) 8%, var(--bg1));
+  --accent-border: color-mix(in srgb, var(--brand-accent) 22%, var(--line));
 }
