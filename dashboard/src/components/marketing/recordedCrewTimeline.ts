@@ -18,6 +18,7 @@ const CREW = [
   { name: "pull-requests", voice: "rex" },
   { name: "assistant", voice: "luna" },
 ];
+const LUNA_NOTIFICATION_DELAY_MS = 2000;
 
 /** Derive the scene from media time, so seeking, buffering and replay cannot
  * leave any timer-driven message or handover running ahead of the recording. */
@@ -57,8 +58,10 @@ export function recordedCrewAt(take: RecordedTake, timeMs: number) {
   }
   // Preserve the original scenario's waiting-agent affordance independently
   // of transcript corrections; each badge clears on the recorded handover.
-  const waitingStarted = past.some(event => event.type === "user-start" && event.utterance === "u2");
+  const waitingStartsAt = starts.find(event => event.utterance === "u2")?.atMs;
   const agents: CompanionAgent[] = CREW.map(agent => {
+    const notificationDelay = agent.voice === "luna" ? LUNA_NOTIFICATION_DELAY_MS : 0;
+    const waitingStarted = waitingStartsAt !== undefined && timeMs >= waitingStartsAt + notificationDelay;
     const hasSpoken = past.some(event => event.type === "agent-start" && event.voice?.toLowerCase() === agent.voice);
     const waiting = waitingStarted && agent.voice !== "lux" && !hasSpoken ? 1 : 0;
     return { ...agent, active: agent.voice === voice, waiting, unread: waiting > 0 };

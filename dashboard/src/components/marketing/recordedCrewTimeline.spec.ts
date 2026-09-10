@@ -16,6 +16,25 @@ const take: RecordedTake = {
     { sequence: 9, type: "camera-reset", atMs: 4000 },
   ],
 };
+it.each([
+  [999, [0, 0, 0]],
+  [1000, [0, 1, 0]],
+  [2999, [0, 1, 0]],
+  [3000, [0, 1, 1]],
+  [4000, [0, 0, 1]],
+  [7000, [0, 0, 0]],
+])("staggers queued notifications and clears them on reply at %i ms", (timeMs, waiting) => {
+  const queuedTake: RecordedTake = {
+    transcriptOffsetsMs: {},
+    events: [
+      { sequence: 0, type: "user-start", utterance: "u2", voice: "Lux", atMs: 1000 },
+      { sequence: 1, type: "user-end", utterance: "u2", atMs: 1100 },
+      { sequence: 2, type: "agent-start", voice: "Rex", text: "Approved!", atMs: 4000 },
+      { sequence: 3, type: "agent-start", voice: "Luna", text: "Delivery arrived.", atMs: 7000 },
+    ],
+  };
+  expect(recordedCrewAt(queuedTake, timeMs).agents.map(agent => agent.waiting)).toEqual(waiting);
+});
 it("shows recorded partials and applies late final text to the original bubble", () => {
   expect(recordedCrewAt(take, 800).liveText).toBe("How");
   expect(recordedCrewAt(take, 1500).feed).toEqual([
