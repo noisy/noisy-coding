@@ -37,3 +37,12 @@ it("seeks directly across handovers and back without retaining another conversat
   ] });
   expect(recordedCrewAt(take, 200)).toMatchObject({ voice: "lux", zoom: false, feed: [], mode: "user" });
 });
+it("keeps the outgoing conversation until the incoming reply is available", () => {
+  expect(recordedCrewAt(take, 3050)).toMatchObject({ voice: "lux", feed: [
+    { id: "u1", role: "user", text: "How is staging?", zone: "done" },
+    { id: "agent-3", role: "claude", text: "Green!", zone: "done" },
+  ] });
+  expect(recordedCrewAt(take, 3100)).toMatchObject({ voice: "rex", mode: "claude", feed: [
+    { id: "agent-8", role: "claude", text: "Approved!", zone: "done" },
+  ] });
+});

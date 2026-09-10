@@ -36,7 +36,9 @@ export function recordedCrewAt(take: RecordedTake, timeMs: number) {
   let speaking = false;
   let zoom = false;
   for (const event of past) {
-    if (["user-start", "agent-start", "agent-switch"].includes(event.type)) voice = event.voice!.toLowerCase();
+    // The recorder logs the switch just before the reply. Apply both at
+    // agent-start so no empty conversation flashes between those events.
+    if (["user-start", "agent-start"].includes(event.type)) voice = event.voice!.toLowerCase();
     if (event.type === "user-start") user = event.utterance;
     if (event.type === "user-end") user = undefined;
     if (event.type === "agent-start") speaking = true;
