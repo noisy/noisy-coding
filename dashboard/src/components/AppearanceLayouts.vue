@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import AvatarSetPicker from './AvatarSetPicker.vue';
+import AppearanceSettings from './AppearanceSettings.vue';
 import AccentPalettePicker from './AccentPalettePicker.vue';
 import Bubble from './Bubble.vue';
 import VoiceAvatar from './VoiceAvatar.vue';
@@ -13,10 +13,10 @@ const { avatarSet, selectAvatarSet } = useAvatarSet();
 <template>
   <main class="appearance" :class="layout">
     <header><h1>Settings</h1><nav aria-label="Settings sections"><span>Audio</span><span>Sounds</span><strong>Appearance</strong><span>System</span></nav></header>
-    <div class="layout">
+    <AppearanceSettings v-if="layout === 'combined'" />
+    <div v-else class="layout">
       <section class="accent"><AccentPalettePicker /></section>
-      <section v-if="layout === 'combined'" class="avatars original-avatars"><AvatarSetPicker /></section>
-      <section v-else class="avatars">
+      <section class="avatars">
         <h2>Voice avatars</h2><p>Give each voice a familiar face.</p>
         <div class="families" role="group" aria-label="Avatar style">
           <button v-for="set in AVATAR_SETS" :key="set.id" :aria-pressed="avatarSet === set.id" @click="selectAvatarSet(set.id)">

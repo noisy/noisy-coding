@@ -9,8 +9,8 @@ export const AVATAR_SETS = [
   { id: 'matte', name: 'Matte portraits', description: 'Softly sculpted people', image: new URL('../assets/voice-avatars/matte.png', import.meta.url).href },
   { id: 'painted', name: 'Painted portraits', description: 'Expressive painted portraits', image: new URL('../assets/voice-avatars/painted.png', import.meta.url).href },
   { id: 'mineral', name: 'Minerals', description: 'Distinctive stone forms', image: new URL('../assets/voice-avatars/mineral.png', import.meta.url).href },
-  { id: 'animals', name: 'Animals', description: 'Distinctive animal portraits', image: new URL('../assets/voice-avatars/animals.png', import.meta.url).href },
   { id: 'blobs', name: 'Blobs', description: 'Expressive little creatures', image: new URL('../assets/voice-avatars/blobs.png', import.meta.url).href },
+  { id: 'animals', name: 'Animals', description: 'Distinctive animal portraits', image: new URL('../assets/voice-avatars/animals.png', import.meta.url).href },
   { id: 'robots', name: 'Robots', description: 'Original sci-fi robot personalities', image: new URL('../assets/voice-avatars/robots.png', import.meta.url).href },
   { id: 'agents', name: 'Agents', description: 'Black suits and dark sunglasses', image: new URL('../assets/voice-avatars/agents.png', import.meta.url).href },
 ] as const;
