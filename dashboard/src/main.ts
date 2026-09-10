@@ -1,3 +1,4 @@
+import { initializeAccentPalette } from "./composables/useAccentPalette";
 import { createApp } from "vue";
 import App from "./App.vue";
 import CompanionView from "./components/CompanionView.vue";
@@ -24,4 +25,5 @@ function rootView() {
   if (path.startsWith("/companion")) return CompanionView;
   return App;
 }
+initializeAccentPalette();
 createApp(rootView()).mount("#app");

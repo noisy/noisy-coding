@@ -1,3 +1,4 @@
+import { previewAccent } from "../src/composables/useAccentPalette";
 import { accentPalettes, resolveAccent } from "../src/styles/accentPalettes";
 import type { Preview } from "@storybook/vue3";
 import "../src/styles/hud.css";
@@ -12,7 +13,7 @@ const preview: Preview = {
     } },
   },
   decorators: [(story, context) => {
-    document.documentElement.dataset.accent = resolveAccent(context.globals.accent);
+    previewAccent(resolveAccent(context.globals.accent));
     return { components: { story }, template: '<story />' };
   }],
   parameters: {

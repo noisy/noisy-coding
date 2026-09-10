@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import AccentPalettePicker from "./AccentPalettePicker.vue";
 import AvatarSetPicker from "./AvatarSetPicker.vue";
 
 // The panel got crowded - a toolbar splits it into four homes. AUDIO is
@@ -82,7 +83,7 @@ function submit() {
       >{{ t.charAt(0) + t.slice(1).toLowerCase() }}</button>
     </nav>
 
-    <AvatarSetPicker v-if="tab === 'APPEARANCE'" />
+    <section v-if="tab === 'APPEARANCE'"><AccentPalettePicker /><AvatarSetPicker /></section>
 
     <template v-if="tab === 'AUDIO'">
     <!-- Microphone first: switched far more often than the API key. -->
