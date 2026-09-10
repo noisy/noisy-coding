@@ -98,7 +98,15 @@ const tagOf = (kind: keyof typeof TAGS) => TAGS[kind];
       <span class="tm">{{ time }}</span>
     </div>
     <div v-if="compact" class="compact-label"><span>{{ who || (side === 'left' ? 'You' : 'Agent') }}</span><span v-if="statusLabel && statusKind !== 'done'" class="st" :class="statusKind">{{ statusLabel }}</span></div>
-    <div class="txt" :class="{ pending }"><template v-for="(b, bi) in blocks" :key="bi"><ul v-if="b.kind === 'ul'" class="md-ul"><li v-for="(item, ii) in b.items" :key="ii"><component v-for="(sp, si) in item" :key="si" :is="tagOf(sp.kind)">{{ sp.text }}</component></li></ul><p v-else class="md-p"><component v-for="(sp, si) in b.spans" :key="si" :is="tagOf(sp.kind)">{{ sp.text }}</component></p></template><span v-if="live" class="caret" /></div>
+    <div class="txt" :class="{ pending }">
+      <template v-for="(b, bi) in blocks" :key="bi">
+        <ul v-if="b.kind === 'ul'" class="md-ul">
+          <li v-for="(item, ii) in b.items" :key="ii"><component v-for="(sp, si) in item" :key="si" :is="tagOf(sp.kind)">{{ sp.text }}</component><span v-if="live && bi === blocks.length - 1 && ii === b.items.length - 1" class="caret" /></li>
+        </ul>
+        <p v-else class="md-p"><component v-for="(sp, si) in b.spans" :key="si" :is="tagOf(sp.kind)">{{ sp.text }}</component><span v-if="live && bi === blocks.length - 1" class="caret" /></p>
+      </template>
+      <span v-if="live && !blocks.length" class="caret" />
+    </div>
     <div v-if="!compact" class="mfoot">
       <span>{{ detail }}</span>
       <span class="cost">{{ cost }}</span>

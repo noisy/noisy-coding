@@ -41,6 +41,16 @@ describe("formatCost", () => {
 });
 
 describe("Bubble", () => {
+  it.each([
+    ["Hello there", ".md-p"],
+    ["First paragraph\n\nLast paragraph", ".md-p:last-child"],
+    ["- First item\n- Last item", ".md-ul li:last-child"],
+  ])("keeps the live cursor inside the final text block: %s", (text, finalBlock) => {
+    const wrapper = mount(Bubble, {
+      props: { side: "left", accent: "amber", who: "You", text, live: true, statusKind: "rec", statusLabel: "", time: "" },
+    });
+    expect(wrapper.get(".caret").element.parentElement).toBe(wrapper.get(finalBlock).element);
+  });
   it("keeps unheard speech explicit in the compact companion", () => {
     const wrapper = mount(Bubble, {
       props: { side: "right", accent: "violet", who: "Codex", text: "Ready to review.", compact: true, statusKind: "off", statusLabel: "Unheard", time: "" },
