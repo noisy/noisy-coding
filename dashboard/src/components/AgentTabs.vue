@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { orderAgents } from "./agentOrder";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { interpolateRecipientWeights } from "./recipientTransition";
 
@@ -62,23 +63,12 @@ interface Tab {
   manualPos: number | null;
 }
 
-// Within each group, user-pinned tabs (drag & drop) come first in pinned
-// order; the rest follow the group's natural order.
-function groupSort(tabsIn: Tab[], natural: (a: Tab, b: Tab) => number): Tab[] {
-  return [...tabsIn].sort((a, b) => {
-    if (a.manualPos != null && b.manualPos != null) return a.manualPos - b.manualPos;
-    if (a.manualPos != null) return -1;
-    if (b.manualPos != null) return 1;
-    return natural(a, b);
-  });
-}
-
-// Two groups: actives first (by arrival into the group — activated_at asc),
-// then offline (most recently ended first — offline_since desc). A daemon
-// without agents_meta yields the legacy flat list, all treated as online.
-const groups = computed(() => {
+// Ordering lives in agentOrder.ts so the widget's avatars come out in the
+// SAME order as these tabs - two surfaces the user sees at once must not
+// disagree about which conversation is third.
+const tabs = computed<Tab[]>(() => {
   const meta = props.meta ?? {};
-  const all: Tab[] = Object.keys(props.agents).map((name) => ({
+  return orderAgents(Object.keys(props.agents), meta).map((name) => ({
     name,
     label: meta[name]?.label ?? props.agents[name],
     online: meta[name]?.online ?? true,
@@ -86,12 +76,11 @@ const groups = computed(() => {
     offlineSince: meta[name]?.offline_since ?? 0,
     manualPos: meta[name]?.manual_pos ?? null,
   }));
-  return {
-    actives: groupSort(all.filter((t) => t.online), (a, b) => a.activatedAt - b.activatedAt),
-    offline: groupSort(all.filter((t) => !t.online), (a, b) => b.offlineSince - a.offlineSince),
-  };
 });
-const tabs = computed(() => [...groups.value.actives, ...groups.value.offline]);
+const groups = computed(() => ({
+  actives: tabs.value.filter((t) => t.online),
+  offline: tabs.value.filter((t) => !t.online),
+}));
 
 // Drag & drop within a group only: dropping an active tab onto an offline
 // one (or vice versa) is ignored — group membership is liveness, not choice.

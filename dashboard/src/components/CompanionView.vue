@@ -12,6 +12,7 @@ import "../styles/companion-window.css";
 import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
 import { useDaemonState } from "../composables/useDaemonState";
 import { statusChip } from "./bubbleStatus";
+import { orderAgents } from "./agentOrder";
 import { useConversationFeed } from "../composables/useConversationFeed";
 import { useMicStream } from "../composables/useMicStream";
 import { useDocumentPip } from "../composables/useDocumentPip";
@@ -104,11 +105,10 @@ const others = computed<CompanionAgent[]>(() => {
   if (!s) return [];
   const meta = s.agents_meta ?? {};
   const queued = s.queued_by_agent ?? {};
-  return Object.keys(s.agents ?? {})
-    // Offline agents stay: a tab Krzysztof still has open is a
-    // conversation he still switches to, and hiding it makes heads appear
-    // and vanish as sessions idle out.
-    .sort((a, b) => (meta[a]?.activated_at ?? 0) - (meta[b]?.activated_at ?? 0))
+  // Offline agents stay: a tab still open is a conversation still
+  // switched to, and hiding it makes heads appear and vanish as
+  // sessions idle out. Order comes from the SAME rule as the tabs.
+  return orderAgents(Object.keys(s.agents ?? {}), meta)
     .map((name) => ({
       name,
       // The dashboard titles its tabs from agent_labels; the keys of the
