@@ -1,14 +1,32 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import VoiceAvatar from '@dashboard/components/VoiceAvatar.vue';
-const voices = [
-  { name: 'Lux', role: 'Development' },
-  { name: 'Rex', role: 'Pull requests' },
-  { name: 'Luna', role: 'Personal' },
-  { name: 'Atlas', role: 'Voice portrait' },
-  { name: 'Cosmo', role: 'Voice portrait' },
-  { name: 'Celeste', role: 'Voice portrait' },
-];
+import voices from './assets/voice-intros/scripts.json';
+const samples = import.meta.glob('./assets/voice-intros/*.mp3', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const playing = ref('');
+const error = ref('');
+let audio: HTMLAudioElement | undefined;
+let playRequest = 0;
+function stopSample() {
+  ++playRequest;
+  audio?.pause();
+  audio = undefined;
+  playing.value = '';
+}
+async function toggleSample(name: string) {
+  const wasPlaying = playing.value === name;
+  stopSample();
+  error.value = '';
+  if (wasPlaying) return;
+  const src = samples[`./assets/voice-intros/${name.toLowerCase()}.mp3`];
+  if (!src) return;
+  const request = playRequest;
+  audio = new Audio(src);
+  audio.onended = () => { if (request === playRequest) stopSample(); };
+  playing.value = name;
+  try { await audio.play(); }
+  catch { if (request === playRequest) { stopSample(); error.value = 'Could not play the sample. Please try again.'; } }
+}
 const track = ref<HTMLElement | null>(null);
 const atStart = ref(true);
 const atEnd = ref(false);
@@ -30,7 +48,7 @@ onMounted(() => {
   if (track.value) observer.observe(track.value);
   update();
 });
-onBeforeUnmount(() => observer?.disconnect());
+onBeforeUnmount(() => { observer?.disconnect(); stopSample(); });
 </script>
 <template>
   <div class="voice-carousel" role="region" aria-label="Explore agent voices">
@@ -39,9 +57,11 @@ onBeforeUnmount(() => observer?.disconnect());
         <div class="portrait-only">
           <VoiceAvatar :voice="voice.name.toLowerCase()" set="editorial" :size="88" />
           <strong>{{ voice.name }}</strong><small>{{ voice.role }}</small>
+          <button v-if="samples[`./assets/voice-intros/${voice.name.toLowerCase()}.mp3`]" class="listen" type="button" :aria-label="`${playing === voice.name ? 'Stop' : 'Listen to'} ${voice.name}`" :aria-pressed="playing === voice.name" @click="toggleSample(voice.name)">{{ playing === voice.name ? '■ Stop' : '▶ Listen' }}</button>
         </div>
       </article>
     </div>
+    <p v-if="error" role="status">{{ error }}</p>
     <div class="carousel-controls">
       <span>Find a familiar voice</span>
       <button type="button" aria-label="Previous voices" :disabled="atStart" @click="move(-1)">←</button>
@@ -63,4 +83,5 @@ small { font-size:10px; color:var(--muted); white-space:nowrap; }
 .carousel-controls span { margin-right:auto; font-size:11px; color:var(--muted); }
 .carousel-controls button { border:1px solid var(--line-strong); border-radius:7px; background:var(--bg0); color:var(--ink); width:32px; height:30px; cursor:pointer; }
 .carousel-controls button:disabled { opacity:.3; cursor:default; }
+.listen { margin-top:10px; border:1px solid var(--accent-border); background:var(--accent-surface); color:var(--amber); padding:6px 10px; font-size:11px; }
 </style>

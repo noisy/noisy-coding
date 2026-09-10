@@ -1,0 +1,8 @@
+[
+  {"name":"Lux","role":"Work","text":"When you hear me, we're on the clock. Your next work update, without another tab."},
+  {"name":"Rex","role":"Side projects","text":"That's my voice. Time for the project you can't stop thinking about after work."},
+  {"name":"Luna","role":"Personal","text":"Hear me? This one's for you. Your plans, your reminders, your life outside work."},
+  {"name":"Atlas","role":"Research","text":"My voice means there's something worth knowing. I'll bring you the findings, not the noise."},
+  {"name":"Cosmo","role":"Learning","text":"When you hear me, curiosity is calling. Let's figure out something new."},
+  {"name":"Celeste","role":"Coordination","text":"That's me keeping things moving. The next step, the right moment, nothing forgotten."}
+]
