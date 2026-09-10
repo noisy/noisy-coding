@@ -9,6 +9,7 @@ import { type RecordedTake, recordedCrewAt } from "./recordedCrewTimeline";
 
 const props = withDefaults(defineProps<{
   manualPlayback?: boolean;
+  playbackControls?: boolean;
   activityAtTime?: (timeMs: number) => string | null;
   layout?: 'crew' | 'hero';
   recordingSrc?: string;
@@ -33,6 +34,7 @@ const emit = defineEmits<{ time: [timeMs: number] }>();
 const video = ref<HTMLVideoElement | null>(null);
 const timeMs = ref(0);
 const soundOn = ref(false);
+const playing = ref(false);
 const playbackError = ref(false);
 const reducedMotion = ref(false);
 const state = computed(() => recordedCrewAt(props.recordingTake ?? take, timeMs.value));
@@ -50,7 +52,7 @@ function seek(ms: number) {
   if (video.value) video.value.currentTime = Math.max(0, ms) / 1000;
   updateTime();
 }
-function pause() { video.value?.pause(); }
+function pause() { ++soundRequest; video.value?.pause(); playing.value = false; }
 function restart() {
   if (video.value) video.value.currentTime = 0;
   timeMs.value = 0;
@@ -70,12 +72,14 @@ async function setSound(enabled: boolean) {
   } catch {
     if (request !== soundRequest) return;
     soundOn.value = false;
+    playing.value = false;
     media.muted = true;
     playbackError.value = true;
   }
 }
 function toggleSound() { return setSound(!soundOn.value); }
 function ended() {
+  playing.value = false;
   void setSound(false);
 }
 onMounted(() => {
@@ -86,9 +90,9 @@ onMounted(() => {
   visibility = new IntersectionObserver(([entry]) => {
     if (!video.value) return;
     if (!entry.isIntersecting) {
-      video.value.pause();
+      pause();
       void setSound(false);
-    } else if (!props.manualPlayback && !reducedMotion.value && !video.value.ended) {
+    } else if (!props.manualPlayback && !props.playbackControls && !reducedMotion.value && !video.value.ended) {
       void video.value.play().catch(() => {});
     }
   });
@@ -121,10 +125,17 @@ defineExpose({ restart, toggleSound, soundOn, seek, pause, play: () => setSound(
       <video ref="video" :src="recordingSrc ?? recording" :poster="recordingPoster ?? poster" muted playsinline preload="metadata"
         :style="{ transform: cameraTransform }"
         :aria-label="layout === 'hero' ? 'Recorded conversation with Krzysztof and Lux' : 'Recorded conversation with Krzysztof and Lux, Rex and Luna'"
-        @timeupdate="updateTime" @seeked="updateTime" @ended="ended"
+        @timeupdate="updateTime" @seeked="updateTime" @ended="ended" @playing="playing = true" @pause="playing = false"
         @error="playbackError = true" />
     </div>
-      <button class="scene-sound" type="button" :aria-pressed="soundOn"
+      <button v-if="playbackControls" class="scene-playback" :class="{ 'scene-pause': playing }" type="button"
+        :aria-label="playing ? 'Pause demo' : 'Play demo'" @click="playing ? pause() : setSound(true)">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path v-if="!playing" d="M8 4v16l13-8z" />
+          <path v-else d="M6 4h4v16H6zM14 4h4v16h-4z" />
+        </svg>
+      </button>
+      <button v-if="!playbackControls || playing" class="scene-sound" type="button" :aria-pressed="soundOn"
         :aria-label="soundOn ? 'Mute demo sound' : 'Enable demo sound'"
         :title="soundOn ? 'Mute sound' : 'Enable sound'" @click="toggleSound()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -176,6 +187,17 @@ defineExpose({ restart, toggleSound, soundOn, seek, pause, play: () => setSound(
 .scene-sound:hover, .scene-sound:focus-visible { opacity: 1; background: #16181ee6; }
 .scene-sound:focus-visible { outline: 2px solid white; outline-offset: 3px; }
 .compact .scene-sound { width: 52px; height: 52px; }
+.scene-playback {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 80px; height: 80px; display: grid; place-items: center;
+  color: #fff; background: #16181ecc; border: 1px solid #ffffff80;
+  border-radius: 50%; cursor: pointer; box-shadow: 0 3px 20px #0005;
+}
+.scene-playback svg { width: 36px; height: 36px; }
+.scene-pause { opacity: 0; pointer-events: none; }
+.recorded-crew:hover .scene-pause, .scene-pause:focus-visible { opacity: 1; pointer-events: auto; }
+.scene-playback:focus-visible { outline: 2px solid white; outline-offset: 4px; }
+@media (hover: none) { .scene-pause { opacity: 1; pointer-events: auto; } }
 .playback-error { position: absolute; left: 16px; top: 8px; color: #ffcfb1; font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .recorded-widget { transition: none; } }
 </style>

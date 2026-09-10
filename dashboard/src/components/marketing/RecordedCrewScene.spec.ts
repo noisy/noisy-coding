@@ -3,6 +3,37 @@ import { afterEach, expect, it, vi } from "vitest";
 import RecordedCrewScene from "./RecordedCrewScene.vue";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+it("waits for Play, starts with sound, and shows transport controls only during playback", async () => {
+  let observe!: IntersectionObserverCallback;
+  vi.stubGlobal("IntersectionObserver", class {
+    constructor(callback: IntersectionObserverCallback) { observe = callback; }
+    observe() {} disconnect() {}
+  });
+  const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+  const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const wrapper = mount(RecordedCrewScene, { props: { playbackControls: true } });
+  try {
+    const video = wrapper.get("video");
+    observe([{ isIntersecting: true }] as IntersectionObserverEntry[], {} as IntersectionObserver);
+    expect(play).not.toHaveBeenCalled();
+    expect(wrapper.find(".scene-sound").exists()).toBe(false);
+    await wrapper.get('button[aria-label="Play demo"]').trigger("click");
+    await video.trigger("playing");
+    expect(video.element.muted).toBe(false);
+    await wrapper.get('button[aria-label="Mute demo sound"]').trigger("click");
+    expect(video.element.muted).toBe(true);
+    await wrapper.get('button[aria-label="Pause demo"]').trigger("click");
+    expect(pause).toHaveBeenCalled();
+    expect(wrapper.find(".scene-sound").exists()).toBe(false);
+    video.element.currentTime = 5;
+    await wrapper.get('button[aria-label="Play demo"]').trigger("click");
+    await video.trigger("playing");
+    expect([video.element.muted, video.element.currentTime]).toEqual([false, 5]);
+    await video.trigger("ended");
+    expect(wrapper.find('button[aria-label="Play demo"]').exists()).toBe(true);
+    expect(wrapper.find(".scene-sound").exists()).toBe(false);
+  } finally { wrapper.unmount(); }
+});
 it("uses one media clock and turns sound off when the scene leaves view", async () => {
   let observe!: IntersectionObserverCallback;
   vi.stubGlobal("IntersectionObserver", class {

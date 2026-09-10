@@ -42,6 +42,12 @@ and remains visible in both muted and audible states. Mouse hover does not
 change audio. The external sound button can mute it again. Leaving the viewport
 still pauses and mutes the recording.
 
+The website's second section enables `playbackControls`: it waits for the
+centered Play button, which starts or resumes with sound enabled. The sound
+toggle is shown only during playback. Pause appears on hover or keyboard
+focus, and stays visible on touch devices. Pausing or ending restores Play.
+This mode replaces the external conversation button on the website.
+
 The original microphone/video and raw timeline are versioned under
 `tools/demo-recorder/takes/crew-v5`. See `tools/demo-recorder/takes/README.md`
 for the complete reproducible processing recipe.

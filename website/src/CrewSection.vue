@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import RecordedCrewScene from "@dashboard/components/marketing/RecordedCrewScene.vue";
 import VoiceCarousel from "./VoiceCarousel.vue";
-const scene = ref<InstanceType<typeof RecordedCrewScene> | null>(null);
 const frame = ref<HTMLElement | null>(null);
 const scale = ref(0.7);
 const compact = ref(false);
-const sound = computed(() => !!scene.value?.soundOn);
 let observer: ResizeObserver | undefined;
 onMounted(() => {
   if (!frame.value) return;
@@ -19,10 +17,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   observer?.disconnect();
 });
-function listen() {
-  if (!sound.value) scene.value?.restart();
-  scene.value?.toggleSound();
-}
 </script>
 <template>
   <section id="voices" class="section voice-section">
@@ -35,18 +29,6 @@ function listen() {
           Recognize the voice, know the context—and answer when you’re ready.
         </p>
         <VoiceCarousel />
-        <button
-          class="button primary"
-          type="button"
-          :aria-pressed="sound"
-          @click="listen"
-        >
-          {{ sound ? "Mute demo" : "Hear the conversation" }}
-          <span aria-hidden="true">{{ sound ? "◼" : "▶" }}</span>
-        </button>
-        <p class="voice-note">
-          A scripted example with real voices. No microphone needed.
-        </p>
       </div>
       <div>
         <div
@@ -60,7 +42,7 @@ function listen() {
               transformOrigin: 'top left',
             }"
           >
-            <RecordedCrewScene ref="scene" :camera="!compact" :compact="compact" />
+            <RecordedCrewScene playback-controls :camera="!compact" :compact="compact" />
           </div>
         </div>
         <p class="voice-caption">
@@ -86,7 +68,6 @@ function listen() {
 .voice-copy h2 {
   font-size: clamp(36px, 3.5vw, 56px);
 }
-.voice-note,
 .voice-caption {
   font-size: 12px;
   margin-top: 16px;
