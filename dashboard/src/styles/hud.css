@@ -8,6 +8,18 @@ button { border-radius: 7px; }
 a { color: var(--cyan); }
 button:disabled { cursor: not-allowed; opacity: .55; }
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+/* ...except the scrollable conversation regions.
+ *
+ * They carry tabindex="0" so the keyboard can scroll them, which means any
+ * key press - including the push-to-talk hotkey - makes the browser decide
+ * the user is navigating by keyboard and paint a ring around the ENTIRE
+ * message list. A 2px cyan box around the whole conversation, appearing
+ * every time you start speaking, reads as an error state.
+ *
+ * The ring is dropped, not the tabindex: keyboard scrolling still works and
+ * screen readers still announce the region. What is lost is a focus
+ * indicator on a region that has no actions to perform. */
+.feed:focus-visible, .thread:focus-visible { outline: none; }
 input, select { accent-color: var(--cyan); }
 ::selection { background: #455b7f; color: #fff; }
 .hud { height: 100dvh; padding: 12px 20px 0; display: flex; flex-direction: column; gap: 12px; }

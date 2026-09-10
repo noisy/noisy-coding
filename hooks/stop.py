@@ -57,12 +57,25 @@ def _post_activity(text: str) -> None:
 
 
 def _report_duplicate_listener() -> None:
-    message = f"Voice listener already active for session {AGENT}; duplicate listener exited."
+    """Another listener already holds this session's queue - stand down.
+
+    This is NORMAL, not a fault: a poller from the previous turn can still
+    be waiting when the next turn ends, and after a daemon restart every
+    session re-registers while its old listener is alive. It was logged as
+    `voice_listener_error`, so the dashboard showed a red "Voice listener
+    error" in the status bar that survived a page refresh and looked like
+    the microphone was broken while it was working perfectly (day 8).
+
+    Logged as an ordinary event now. If speech genuinely stops reaching an
+    agent, that is the rewake-lock problem in #53, and the wrong listener
+    holding the lock is the thing to fix - not this message.
+    """
+    message = f"Voice listener already active for session {AGENT}; this one stood down."
     print(json.dumps({"systemMessage": message}))
     try:
         request = urllib.request.Request(
             f"{BASE_URL}/event",
-            data=json.dumps({"kind": "voice_listener_error", "detail": message}).encode(),
+            data=json.dumps({"kind": "voice_listener", "detail": message}).encode(),
             headers={"Content-Type": "application/json"},
         )
         urllib.request.urlopen(request, timeout=0.3).close()
