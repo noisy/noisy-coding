@@ -19,7 +19,11 @@ it('drives the hero console and real companion from the same video when seeking'
     expect(wrapper.text()).toContain('src/search.ts');
     expect(wrapper.text()).not.toContain('pull-requests');
     expect(wrapper.text()).not.toMatch(/orderflow|webhook|suite/i);
-    expect(wrapper.text()).toContain('claude - search-app');
-    expect(wrapper.text()).toContain('cwd: ~/projects/search-app');
+    // The hero console was deliberately relabelled to a neutral "workspace"
+    // (a1132dc, "Remove old project labels from the recorded hero") - the
+    // title and cwd no longer name a project. Asserting the label, not the
+    // old project name, so a future rename fails loudly rather than here.
+    expect(wrapper.text()).toContain('workspace');
+    expect(wrapper.text()).toContain('cwd: ~/projects/workspace');
   } finally { wrapper.unmount(); }
 });
