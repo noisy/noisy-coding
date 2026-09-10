@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { accentPreviewQuery } from './previewAccent';
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 const frame = ref<HTMLElement | null>(null);
 const scale = ref(1);
 const width = 1440;
 const height = 900;
-const url = `${import.meta.env.BASE_URL}dashboard-demo.html`;
+const url = `${import.meta.env.BASE_URL}dashboard-demo.html${accentPreviewQuery}`;
 let observer: ResizeObserver | undefined;
 onMounted(() => {
   if (!frame.value) return;
