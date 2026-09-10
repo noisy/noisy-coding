@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import AvatarSetPicker from './AvatarSetPicker.vue';
 import AccentPalettePicker from './AccentPalettePicker.vue';
 import Bubble from './Bubble.vue';
 import VoiceAvatar from './VoiceAvatar.vue';
 import { AVATAR_SETS, AVATAR_VOICES } from '../avatars/catalog';
 import { useAvatarSet } from '../composables/useAvatarSet';
-defineProps<{ layout: 'split' | 'preview-first' | 'workbench' }>();
+defineProps<{ layout: 'split' | 'preview-first' | 'workbench' | 'combined' }>();
 const previewVoice = ref('lux');
 const { avatarSet, selectAvatarSet } = useAvatarSet();
 </script>
@@ -14,7 +15,8 @@ const { avatarSet, selectAvatarSet } = useAvatarSet();
     <header><h1>Settings</h1><nav aria-label="Settings sections"><span>Audio</span><span>Sounds</span><strong>Appearance</strong><span>System</span></nav></header>
     <div class="layout">
       <section class="accent"><AccentPalettePicker /></section>
-      <section class="avatars">
+      <section v-if="layout === 'combined'" class="avatars original-avatars"><AvatarSetPicker /></section>
+      <section v-else class="avatars">
         <h2>Voice avatars</h2><p>Give each voice a familiar face.</p>
         <div class="families" role="group" aria-label="Avatar style">
           <button v-for="set in AVATAR_SETS" :key="set.id" :aria-pressed="avatarSet === set.id" @click="selectAvatarSet(set.id)">
@@ -67,18 +69,18 @@ p { font-size:12px; color:var(--muted); margin:6px 0 16px; }
 .preview-first .conversation { display:grid; grid-template-columns:1fr 1.2fr 1fr; align-items:start; gap:18px; }
 .preview-first .preview-note { margin-top:16px; }
 .preview-first .accent { grid-row:2; } .preview-first .avatars { grid-column:2; grid-row:2; }
-.workbench .layout { grid-template-columns:minmax(0,1fr); }
-.workbench .accent { grid-row:1; grid-column:1; }
-.workbench .preview { grid-row:2; grid-column:1; position:static; margin-bottom:24px; }
-.workbench .conversation { max-width:600px; margin:auto; }
-.workbench .avatars { grid-row:3; grid-column:1; }
-.workbench .families { grid-template-columns:repeat(4,minmax(0,1fr)); }
+:is(.workbench, .combined) .layout { grid-template-columns:minmax(0,1fr); }
+:is(.workbench, .combined) .accent { grid-row:1; grid-column:1; }
+:is(.workbench, .combined) .preview { grid-row:2; grid-column:1; position:static; margin-bottom:24px; }
+:is(.workbench, .combined) .conversation { max-width:600px; margin:auto; }
+:is(.workbench, .combined) .avatars { grid-row:3; grid-column:1; }
+:is(.workbench, .combined) .families { grid-template-columns:repeat(4,minmax(0,1fr)); }
 @media(max-width:740px) {
   .appearance { padding:18px; }
   .layout, .preview-first .layout { display:flex; flex-direction:column; gap:24px; }
   .preview, .preview-first .preview { order:-1; position:static; width:100%; }
   .accent, .avatars { width:100%; }
   .preview-first .conversation { display:flex; }
-  .workbench .families { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  :is(.workbench, .combined) .families { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 </style>
