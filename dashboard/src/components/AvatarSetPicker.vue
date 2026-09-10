@@ -4,7 +4,7 @@ import { AVATAR_SETS, AVATAR_VOICES } from '../avatars/catalog';
 import { useAvatarSet } from '../composables/useAvatarSet';
 import VoiceAvatar from './VoiceAvatar.vue';
 const { avatarSet, selectAvatarSet } = useAvatarSet();
-const SAMPLE_SIZE = 36;
+const SAMPLE_SIZE = 44;
 const SAMPLE_GAP = 4;
 const sampleCount = ref(4);
 const sampleVoices = computed(() => AVATAR_VOICES.slice(0, sampleCount.value));
