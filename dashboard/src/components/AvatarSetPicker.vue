@@ -1,9 +1,28 @@
 <script setup lang="ts">
+import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { AVATAR_SETS, AVATAR_VOICES } from '../avatars/catalog';
 import { useAvatarSet } from '../composables/useAvatarSet';
 import VoiceAvatar from './VoiceAvatar.vue';
 const { avatarSet, selectAvatarSet } = useAvatarSet();
-const sampleVoices = ['iris', 'celeste', 'rex', 'lux', 'aurora', 'liora'];
+const sampleVoices = AVATAR_VOICES.slice(0, 9);
+const gallery = ref<HTMLElement>();
+const portraitSize = ref(96);
+const columns = ref(6);
+let observer: ResizeObserver | undefined;
+onMounted(() => {
+  if (!gallery.value) return;
+  observer = new ResizeObserver(([entry]) => {
+    if (!entry || entry.contentRect.width <= 0) return;
+    const { width, height } = entry.contentRect;
+    columns.value = Math.max(3, Math.min(8, Math.ceil(Math.sqrt(AVATAR_VOICES.length * width / Math.max(height, 400)))));
+    const rows = Math.ceil(AVATAR_VOICES.length / columns.value);
+    const cellWidth = (width - (columns.value - 1) * 12) / columns.value;
+    const cellHeight = (height - (rows - 1) * 12) / rows - 24;
+    portraitSize.value = Math.floor(Math.min(cellWidth, Math.max(80, cellHeight)));
+  });
+  observer.observe(gallery.value);
+});
+onBeforeUnmount(() => observer?.disconnect());
 </script>
 
 <template>
@@ -14,12 +33,12 @@ const sampleVoices = ['iris', 'celeste', 'rex', 'lux', 'aurora', 'liora'];
     <div class="avatar-options">
       <label v-for="set in AVATAR_SETS" :key="set.id" class="avatar-option" :class="{ selected: avatarSet === set.id }">
         <span class="option-heading"><input type="radio" name="avatar-set" :value="set.id" :checked="avatarSet === set.id" @change="selectAvatarSet(set.id)"><strong>{{ set.name }}</strong></span>
-        <span class="sample-avatars"><VoiceAvatar v-for="voice in sampleVoices" :key="voice" :voice="voice" :set="set.id" :size="36" /></span>
+        <span class="sample-avatars"><VoiceAvatar v-for="voice in sampleVoices" :key="voice" :voice="voice" :set="set.id" :size="24" /></span>
       </label>
     </div>
-    <div class="all-avatars" aria-label="All voices in the selected avatar family">
+    <div ref="gallery" class="all-avatars" :style="{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }" aria-label="All voices in the selected avatar family">
       <div v-for="voice in AVATAR_VOICES" :key="voice" class="voice-preview">
-        <VoiceAvatar :voice="voice" :size="64" />
+        <VoiceAvatar :voice="voice" :size="portraitSize" />
         <span>{{ voice }}</span>
       </div>
     </div>
@@ -31,15 +50,15 @@ const sampleVoices = ['iris', 'celeste', 'rex', 'lux', 'aurora', 'liora'];
 .avatar-picker { border:0; padding:0; min-width:0; color:var(--ink); }
 legend { font-size:16px; font-weight:600; }
 p { color:var(--muted); font-size:12px; margin:8px 0 16px; }
-.avatar-browser { display:grid; grid-template-columns:minmax(280px,2fr) minmax(0,3fr); gap:24px; height:552px; }
+.avatar-browser { display:grid; grid-template-columns:minmax(190px,1.2fr) minmax(0,3.8fr); gap:24px; height:552px; }
 .avatar-options { display:flex; flex-direction:column; gap:12px; overflow-y:scroll; scrollbar-gutter:stable; min-height:0; padding:2px 8px 2px 2px; }
-.avatar-option { flex:0 0 100px; display:grid; gap:8px; padding:10px; background:var(--bg1); border:1px solid var(--line); border-radius:10px; cursor:pointer; }
+.avatar-option { flex:0 0 100px; display:grid; gap:4px; padding:10px; background:var(--bg1); border:1px solid var(--line); border-radius:10px; cursor:pointer; }
 .avatar-option.selected { border-color:var(--amber); }
 .option-heading { display:flex; align-items:center; gap:8px; font-size:13px; }
-.sample-avatars { display:flex; gap:4px; flex-wrap:nowrap; }
+.sample-avatars { display:grid; grid-template-columns:repeat(5,24px); gap:4px; align-content:start; }
 .option-heading input { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 .avatar-option:focus-within { outline:2px solid var(--cyan); outline-offset:2px; }
-.all-avatars { display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px; align-content:start; overflow-y:auto; min-height:0; padding:2px 8px; }
+.all-avatars { display:grid; gap:12px; align-content:space-between; overflow-y:auto; min-height:0; padding:2px 8px; }
 .voice-preview { display:grid; justify-items:center; gap:4px; font-size:12px; color:var(--muted); }
 @media (max-width:760px) { .avatar-browser { grid-template-columns:1fr; height:auto; } .avatar-options { height:552px; } .all-avatars { overflow:visible; } }
 </style>
