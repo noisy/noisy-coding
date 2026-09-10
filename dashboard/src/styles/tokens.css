@@ -12,8 +12,9 @@
   --cyan: #9ebcf5;
   --cyan-hi: #d7e4fc;
   --cyan-dim: #8eabdb;
-  --brand-accent: #e2bd88;
-  --brand-accent-dim: #a98a62;
+  --brand-accent: #80d1cb;
+  --brand-accent-dim: #5ba5a0;
+  --agent-accent: #adb6f5;
   --amber: var(--brand-accent);
   --amber-dim: var(--brand-accent-dim);
   --accent-hover: color-mix(in srgb, var(--brand-accent), white 25%);

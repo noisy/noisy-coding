@@ -257,7 +257,7 @@ body.companion-transparent .trysec .companion .msgs .older { opacity: 0.55; }
   --violet-dim: rgba(185, 140, 255, 0.45);
   --green: #4dffb4;
   --ink: #cfeaf6;
-  --glow-amber: 0 0 6px rgba(255, 180, 84, 0.9), 0 0 18px rgba(255, 180, 84, 0.3);
+  --glow-amber: 0 0 6px color-mix(in srgb, var(--amber) 90%, transparent), 0 0 18px color-mix(in srgb, var(--amber) 30%, transparent);
   --glow-violet: 0 0 6px rgba(185, 140, 255, 0.9), 0 0 18px rgba(185, 140, 255, 0.35);
 }
 

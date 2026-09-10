@@ -1,16 +1,16 @@
 import { readonly, ref } from 'vue';
-import { resolveAccent } from '../styles/accentPalettes';
+import { resolveAccent, DEFAULT_USER_ACCENT, DEFAULT_AGENT_ACCENT } from '../styles/accentPalettes';
 
 export const ACCENT_STORAGE_KEY = 'noisy-coding.accent';
 export const AGENT_ACCENT_STORAGE_KEY = 'noisy-coding.agent-accent';
-function readPreference(key = ACCENT_STORAGE_KEY, fallback = 'amber') {
-  try { return resolveAccent(localStorage.getItem(key) ?? fallback); }
+function readPreference(key = ACCENT_STORAGE_KEY, fallback = DEFAULT_USER_ACCENT) {
+  try { return resolveAccent(localStorage.getItem(key), fallback); }
   catch { return fallback; }
 }
 const selected = ref(readPreference());
-const agentSelected = ref(readPreference(AGENT_ACCENT_STORAGE_KEY, 'lavender'));
+const agentSelected = ref(readPreference(AGENT_ACCENT_STORAGE_KEY, DEFAULT_AGENT_ACCENT));
 export function previewAgentAccent(value: unknown) {
-  agentSelected.value = resolveAccent(value);
+  agentSelected.value = resolveAccent(value, DEFAULT_AGENT_ACCENT);
   document.documentElement.dataset.agentAccent = agentSelected.value;
 }
 export function previewAccent(value: unknown) {
@@ -19,10 +19,10 @@ export function previewAccent(value: unknown) {
 }
 export function initializeAccentPalette() {
   previewAccent(readPreference());
-  previewAgentAccent(readPreference(AGENT_ACCENT_STORAGE_KEY, 'lavender'));
+  previewAgentAccent(readPreference(AGENT_ACCENT_STORAGE_KEY, DEFAULT_AGENT_ACCENT));
 }
 function receivePreference(event: StorageEvent) {
-  if (event.key === AGENT_ACCENT_STORAGE_KEY || event.key === null) previewAgentAccent(readPreference(AGENT_ACCENT_STORAGE_KEY, 'lavender'));
+  if (event.key === AGENT_ACCENT_STORAGE_KEY || event.key === null) previewAgentAccent(readPreference(AGENT_ACCENT_STORAGE_KEY, DEFAULT_AGENT_ACCENT));
   if (event.key === ACCENT_STORAGE_KEY || event.key === null) previewAccent(readPreference());
 }
 if (typeof window !== 'undefined') window.addEventListener('storage', receivePreference);

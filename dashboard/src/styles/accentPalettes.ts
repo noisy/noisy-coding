@@ -1,3 +1,6 @@
+export const DEFAULT_USER_ACCENT = 'teal';
+export const DEFAULT_AGENT_ACCENT = 'periwinkle';
+
 export const accentPalettes = [
   { value: 'amber', title: 'Amber' },
   { value: 'blue', title: 'Blue' },
@@ -11,6 +14,6 @@ export const accentPalettes = [
   { value: 'silver', title: 'Silver' },
 ] as const;
 
-export function resolveAccent(value: unknown): string {
-  return accentPalettes.find(palette => palette.value === value)?.value ?? 'amber';
+export function resolveAccent(value: unknown, fallback = DEFAULT_USER_ACCENT): string {
+  return accentPalettes.find(palette => palette.value === value)?.value ?? fallback;
 }

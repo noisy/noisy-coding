@@ -14,7 +14,7 @@ it('receives changes from another window and resets deleted preferences', () => 
   expect(document.documentElement.dataset.accent).toBe('teal');
   localStorage.removeItem(ACCENT_STORAGE_KEY);
   window.dispatchEvent(new StorageEvent('storage', { key: ACCENT_STORAGE_KEY }));
-  expect(document.documentElement.dataset.accent).toBe('amber');
+  expect(document.documentElement.dataset.accent).toBe('teal');
 });
 it('keeps selection usable if saving fails', () => {
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage unavailable'); });
@@ -29,4 +29,11 @@ it('saves and restores independent user and agent palettes', () => {
   initializeAccentPalette();
   expect([accent.value, agentAccent.value, document.documentElement.dataset.accent, document.documentElement.dataset.agentAccent]).toEqual(['teal', 'rose', 'teal', 'rose']);
   localStorage.removeItem('noisy-coding.agent-accent');
+});
+
+it('uses teal and periwinkle when neither preference is saved', () => {
+  localStorage.removeItem(ACCENT_STORAGE_KEY);
+  localStorage.removeItem('noisy-coding.agent-accent');
+  initializeAccentPalette();
+  expect([document.documentElement.dataset.accent, document.documentElement.dataset.agentAccent]).toEqual(['teal', 'periwinkle']);
 });
