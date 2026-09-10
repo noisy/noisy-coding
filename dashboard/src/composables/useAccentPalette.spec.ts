@@ -21,3 +21,12 @@ it('keeps selection usable if saving fails', () => {
   selectAccent('blue');
   expect([accent.value, document.documentElement.dataset.accent]).toEqual(['blue', 'blue']);
 });
+
+it('saves and restores independent user and agent palettes', () => {
+  const { selectAgentAccent, agentAccent } = useAccentPalette();
+  selectAccent('teal');
+  selectAgentAccent('rose');
+  initializeAccentPalette();
+  expect([accent.value, agentAccent.value, document.documentElement.dataset.accent, document.documentElement.dataset.agentAccent]).toEqual(['teal', 'rose', 'teal', 'rose']);
+  localStorage.removeItem('noisy-coding.agent-accent');
+});

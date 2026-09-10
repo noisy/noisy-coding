@@ -106,9 +106,9 @@ defineEmits<{ replay: []; cancel: []; pause: []; skip: [] }>();
 .mbody { min-width:0; flex:1; }
 .portrait { flex:none; }
 .accent-amber { --accent:var(--amber); }
-.accent-violet { --accent:var(--violet); }
+.accent-violet { --accent:var(--agent-accent, var(--violet)); }
 .side-left { align-self:flex-start; background:var(--accent-surface); border-color:var(--accent-border); border-top-left-radius:4px; }
-.side-right { align-self:flex-end; border-top-right-radius:4px; }
+.side-right { background:color-mix(in srgb, var(--agent-accent, var(--violet)) 5%, var(--bg1)); border-color:color-mix(in srgb, var(--agent-accent, var(--violet)) 18%, var(--line)); align-self:flex-end; border-top-right-radius:4px; }
 .variant-guest { --accent:var(--green); border-left:3px solid var(--accent); background:#232c27; }
 .variant-guest.tint-purple { --accent:var(--violet); background:#2a2633; }
 .variant-guest.tint-red { --accent:var(--red); background:#302526; }

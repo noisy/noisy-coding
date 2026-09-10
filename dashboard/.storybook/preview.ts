@@ -1,4 +1,4 @@
-import { previewAccent } from "../src/composables/useAccentPalette";
+import { previewAccent, previewAgentAccent, useAccentPalette } from "../src/composables/useAccentPalette";
 import { accentPalettes, resolveAccent } from "../src/styles/accentPalettes";
 import type { Preview } from "@storybook/vue3";
 import "../src/styles/hud.css";
@@ -14,6 +14,7 @@ const preview: Preview = {
   },
   decorators: [(story, context) => {
     previewAccent(resolveAccent(context.globals.accent));
+    previewAgentAccent(useAccentPalette().agentAccent.value);
     return { components: { story }, template: '<story />' };
   }],
   parameters: {

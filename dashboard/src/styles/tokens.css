@@ -54,3 +54,15 @@
 [data-accent="coral"] { --brand-accent: #efaaa0; --brand-accent-dim: #bf8279; }
 [data-accent="periwinkle"] { --brand-accent: #adb6f5; --brand-accent-dim: #858ec9; }
 [data-accent="silver"] { --brand-accent: #c8cdd6; --brand-accent-dim: #969da9; }
+
+/* Agent messages have their own accent; interface highlights use the user palette. */
+[data-agent-accent="amber"] { --agent-accent: #e2bd88; }
+[data-agent-accent="blue"] { --agent-accent: #9cbfff; }
+[data-agent-accent="teal"] { --agent-accent: #80d1cb; }
+[data-agent-accent="mint"] { --agent-accent: #b0dba0; }
+[data-agent-accent="lavender"] { --agent-accent: #c8b5f4; }
+[data-agent-accent="rose"] { --agent-accent: #ecaabd; }
+[data-agent-accent="peach"] { --agent-accent: #f0bd9e; }
+[data-agent-accent="coral"] { --agent-accent: #efaaa0; }
+[data-agent-accent="periwinkle"] { --agent-accent: #adb6f5; }
+[data-agent-accent="silver"] { --agent-accent: #c8cdd6; }
