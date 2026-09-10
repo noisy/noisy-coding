@@ -19,7 +19,9 @@ The range −100…100 spans the available image overflow at the selected zoom,
 so the crop never exposes empty edges. At 1× the whole frame fits, so offsets
 have no effect until zoom is increased.
 
-`crew-recording.json` preserves all event times and exported transcript offsets (currently none).
+`crew-recording.json` preserves retained event times and exported transcript offsets (currently none).
+The intermediate camera-reset (sequence 24) and camera-zoom (sequence 25)
+are omitted to hold the widget zoom continuously through the Rex-to-Luna handover.
 Approved V5 transcript corrections are applied from `transcript-corrections.json`;
 corrected events retain the original recognition in `originalText`. The source
 recording and timing file remain untouched.
@@ -29,6 +31,9 @@ To regenerate from the original folder:
 ```sh
 .venv/bin/python tools/demo-recorder/prepare_take.py tools/demo-recorder/takes/crew-v5 dashboard/src/components/marketing/recorded-crew
 ```
+
+After regeneration, remove camera events with sequences 24 and 25 from
+`crew-recording.json` to retain the continuous handover zoom.
 
 The webcam overlay is anchored to the **screenshot's** top-left corner,
 outside the widget's zoom transform. Its 16:9 shape preserves the source aspect ratio. Audio starts muted. A prominent translucent speaker button sits at the screenshot’s bottom-left

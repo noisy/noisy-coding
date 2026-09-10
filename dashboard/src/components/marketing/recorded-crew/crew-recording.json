@@ -187,17 +187,6 @@
       "clip": "rex-1"
     },
     {
-      "sequence": 24,
-      "atMs": 15152.40000000596,
-      "type": "camera-reset"
-    },
-    {
-      "sequence": 25,
-      "atMs": 15803.30000000447,
-      "type": "camera-zoom",
-      "target": "avatar-rail"
-    },
-    {
       "sequence": 26,
       "atMs": 16704,
       "type": "agent-switch",
