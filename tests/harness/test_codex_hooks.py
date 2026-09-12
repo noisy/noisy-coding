@@ -37,3 +37,10 @@ def test_codex_keys_by_session_id_and_never_drains_a_participant():
     assert result.conversation == "codex-x"
     assert result.participant == "sub-1"
     assert result.may_drain is False
+
+
+def test_codex_listener_bound_admits_the_installers_full_hour():
+    # Regression (2026-09-10): the daemon clamps the hook's listen_seconds to
+    # the adapter bound, so a bound below install_codex.py's 3600 max silently
+    # turned a configured hour into half a minute and left the tab deaf.
+    assert CodexHooks().capabilities.max_idle_seconds >= 3600

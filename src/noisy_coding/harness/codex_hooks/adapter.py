@@ -2,9 +2,9 @@
 
 Codex runs the same five hooks with the same stdin shape as Claude Code,
 but its Stop hook is synchronous: while our listener polls, the turn is
-not finished and anything the user types waits behind it. So the window is
-short by default and the daemon shows the tab as deaf afterwards instead
-of holding the turn open for an hour. Identity is the Codex `session_id`;
+not finished and anything the user types waits behind it. The user picks
+the window length in codex.json (trade-off: long = wake by voice, short =
+typed input never waits); when it lapses the tab shows as deaf. Identity is the Codex `session_id`;
 there is no transcript path to key on.
 """
 
@@ -27,7 +27,13 @@ from noisy_coding.harness.hook_common import (
     is_identity_tool,
 )
 
-DEFAULT_LISTEN_SECONDS = 30.0
+# Upper bound for the synchronous Stop listener. The USER picks the actual
+# window in ~/.config/noisy-coding/codex.json (listen_seconds, 0-3600 per
+# install_codex.py) and the hook passes it along; the daemon only ever
+# shortens to this bound, never lengthens. It was 30 s once, which silently
+# clamped a configured hour to half a minute and left the tab deaf while the
+# user still expected it to hear them (2026-09-10).
+DEFAULT_LISTEN_SECONDS = 3600.0
 DEFAULT_LABEL = "Codex"
 
 
