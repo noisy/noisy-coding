@@ -361,3 +361,20 @@ wiring): render the tab strip from /status.conversations as the single
 source of truth and drop any tab absent from it, rather than merging. A
 one-time migration artifact, but the merge behaviour would also strand a
 tab after any future daemon restart until a manual refresh.
+
+### Dashboard transport: one WebSocket state stream (Krzysztof, 2026-09-10)
+
+The dashboard polls /status; every tab-state bug today surfaced as "the
+strip is stale/wrong until refresh". Krzysztof's call: the daemon should
+push ONE WebSocket event stream (conversations, utterances, activity,
+status) and the dashboard should render from it, with /status only as the
+initial snapshot. The WS bridge on port+1 already exists for tab audio;
+extend or sibling it. Part of the phase-5 dashboard wiring.
+
+### Ops lesson: launch the dev daemon only through scripts/dev_daemon.sh
+
+A hand-launched dev daemon (2026-09-10 16:00) came up WITHOUT
+NOISY_CODING_CONFIG_DIR, so it ran on the production config dir: an empty
+registry, "all tabs gone", and a stray conversations.json written into
+the production dir. The script sets port AND config dir together; never
+start the daemon by hand with an ad-hoc env.
