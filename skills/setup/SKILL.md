@@ -1,110 +1,104 @@
 ---
 name: setup
-description: Install or repair noisy-coding for this machine - the desktop app or the Docker container, plus the hooks that let Claude Code reach it. USE when the user asks how to install noisy-coding, when the speak tool is missing or failing, when the dashboard is unreachable, when a fresh clone has no hooks configured, or when they want to move from Docker to the desktop app.
+description: Install or repair noisy-coding for this machine - the native app that carries the voice daemon, plus the hooks that let Claude Code reach it. USE when the user asks how to install noisy-coding, when the speak tool is missing or failing, when the dashboard is unreachable, when a fresh clone has no hooks configured, or when voice works one way only.
 ---
 
 # Setting up noisy-coding
 
-Two ways to run it, and the setup differs. Find out which one applies
-before giving instructions - guessing produces advice that cannot work.
+noisy-coding is a voice layer for Claude Code: a background **daemon** owns
+the microphone and speakers, and this plugin's **hooks** carry your spoken
+answers out and the user's speech in. Three things must be true at once -
+the daemon running, the hooks registered, and both pointed at the same
+port. Most "it doesn't work" is one of those three.
 
-## Step 1: what is already here?
+## Step 1: find the daemon
 
-Run these. They answer the only questions that matter.
-
-```sh
-curl -s -o /dev/null -w "app     :9765 %{http_code}\n" --max-time 2 http://127.0.0.1:9765/status
-curl -s -o /dev/null -w "docker  :8765 %{http_code}\n" --max-time 2 http://127.0.0.1:8765/status
-docker ps --filter name=noisy-coding --format "container: {{.Status}}" 2>/dev/null
-ls -d "/Applications/Noisy Coding.app" 2>/dev/null
-```
-
-| What answers | What it means |
-|---|---|
-| `:9765` | the desktop app is installed and running |
-| `:8765` or a container | the Docker install is running |
-| neither | nothing is set up yet - go to step 2 |
-
-## Step 2: install the engine
-
-Ask which the user wants; do not decide for them. The honest summary:
-
-**Desktop app** (macOS, recommended)
-- one download, an icon, no Docker, no Python
-- carries its own daemon and starts it automatically
-- currently a **beta**, and **unsigned**: the first launch needs
-  right-click -> Open, because macOS blocks a double-click
-
-**Docker** (Linux, servers, headless, or an existing install)
-- the long-standing path, still supported
-- needs Docker running, pulls an image, more moving parts
-- the only option where the daemon can live on another machine
-
-To install the app: download the latest release asset from
-<https://github.com/noisy/noisy-coding/releases>, move it to
-`/Applications`, then **right-click -> Open** once.
-
-To install Docker:
+The daemon serves an HTTP status endpoint. Ask each port that could hold
+one and stop at the first that answers:
 
 ```sh
-git clone https://github.com/noisy/noisy-coding.git
-cd noisy-coding && docker compose up -d
+for p in 9765 7765; do
+  curl -s -o /dev/null -w "port $p: %{http_code}\n" --max-time 2 http://127.0.0.1:$p/status
+done
 ```
 
-Either way, the engine needs an **xAI API key**: open the dashboard (the
-app's menu-bar icon, or <http://127.0.0.1:8765>) and paste it. Without a
-key there is no speech and no transcription. Never ask the user to paste
-the key into a chat or a terminal - the dashboard stores it at 0600 and
-nothing else should ever hold a copy.
+- **9765** - the native app's daemon (the normal install).
+- **7765** - a local dev instance from a checkout (see the local-development
+  docs). Only relevant when working on noisy-coding itself.
+- **neither answers** - no daemon is running yet; go to step 2.
+
+Whatever port answered is THE port for the rest of setup. Every hook and
+the MCP server must use that same one.
+
+## Step 2: run the engine
+
+The daemon ships inside the **native app** (macOS first). Install it, open
+it once, and it starts its own daemon on 9765 - no Docker, no Python for
+the user to manage.
+
+- Download the latest release asset from
+  <https://github.com/noisy/noisy-coding/releases>, move it to
+  `/Applications`.
+- It is currently a **beta and unsigned**: the first launch needs
+  **right-click -> Open**, because a double-click is blocked by macOS.
+
+The engine needs speech credentials: open the dashboard (the app's
+menu-bar icon, or the daemon's URL) and either paste a **provider API key**
+or select the **local (offline) engine**. Without one there is no speech
+and no transcription. Never ask the user to paste a key into a chat or a
+terminal - the dashboard stores it at 0600 and nothing else should hold a
+copy.
 
 ## Step 3: the hooks
 
-**This is the step people miss, and without it the daemon runs but Claude
-Code never talks to it.** The plugin's MCP server gives you the `speak`
-tool; the HOOKS are what report your activity, show what is being said,
-and let a spoken sentence wake a stopped agent.
+**This is the step people miss - the daemon runs but Claude Code never
+talks to it.** The plugin's MCP server gives you the `speak` tool; the
+HOOKS report your activity, show what is being said, register your
+conversation as a tab, and let a spoken sentence wake you after a turn.
 
-If the plugin is installed, its own `hooks.json` is already active - check
-`/hooks` in Claude Code. Nothing more to do.
+If the plugin is installed, its `hooks.json` is already active - open
+`/hooks` in Claude Code to confirm. Nothing more to do.
 
-Without the plugin, register them once:
+Without the plugin, register them once against the port from step 1:
 
 ```sh
-python3 hooks/install.py            # a local checkout
-python3 hooks/install.py --docker   # run the hooks inside the container
+python3 hooks/install.py --port 9765    # omit --port for the 8765 default
 ```
 
-Then restart Claude Code, or `/mcp` and reconnect.
+Then **restart Claude Code** - hooks are read once at startup. A hook
+pointed at a port nothing listens on fails silently, which looks exactly
+like a broken install, so the port must match step 1.
 
-**Point them at the right daemon.** Each hook command honours
-`NOISY_CODING_LISTENER_PORT`; the default is 8765. With the desktop app,
-the port is **9765**, so either export that variable or edit the commands
-in `settings.json`. A hook talking to a port nothing listens on fails
-silently - which looks exactly like a broken install.
+## Step 4: prove it end to end
 
-## Step 4: prove it works
-
-Do not declare success from a status code. Ask the daemon and then make it
+Do not declare success from a status code. Ask the daemon, then make it
 speak:
 
 ```sh
-curl -s http://127.0.0.1:9765/status | head -c 200     # or :8765
+curl -s http://127.0.0.1:9765/status | head -c 200
 ```
 
 Then call the `speak` tool with a short line. If the user hears it, the
-whole chain works: hooks, MCP server, daemon, API key, audio output.
-
-If they do not hear it, in this order: is the key set (`api_key_set` in
-`/status`), is speech muted (`voice_muted`), is the output device right
-(Settings in the dashboard)?
+whole chain works: hooks, MCP server, daemon, credentials, audio out. A
+successful HTTP response alone is not proof.
 
 ## When something is wrong
 
-- **No `speak` tool** - the MCP server did not connect. `/mcp` to reconnect;
-  on a fresh install the daemon was probably not running yet when Claude
-  Code started
-- **Hooks silent** - almost always the wrong port, see step 3
+- **No `speak` tool** - the MCP server did not connect. Run `/mcp` to
+  reconnect; on a fresh install the daemon was probably not up when Claude
+  Code started. Restart Claude Code once it is.
+- **Hooks silent / voice one-way** - almost always the wrong port. The
+  hooks and the MCP server must both use the port from step 1. The user's
+  speech reaching you but your voice being mute (or the reverse) is the
+  signature of a port or connection mismatch.
+- **"Voice session identity is missing"** on speak - the hooks did not run
+  (or ran against a daemon too old to register the conversation). Confirm
+  the hooks are trusted in `/hooks` and the daemon on the chosen port is
+  current, then start a new session.
+- **A tab shows it is not listening** - the session's listening window
+  lapsed or a restart cleared it; the user types once in the terminal, or
+  restarts that session, to wake it. This is expected, not a fault.
 - **Dashboard unreachable** - the daemon is not running. The app starts it
-  automatically; Docker needs `docker compose up -d`
-- **Two daemons** - they share the microphone happily but fight over the
-  speakers and the global hotkeys. Run one
+  automatically; reopen the app.
+- **Two daemons** - they share the microphone but fight over the speakers
+  and global hotkeys. Run one.
