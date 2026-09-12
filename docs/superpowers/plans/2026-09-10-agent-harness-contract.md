@@ -53,3 +53,27 @@ green test run and one local commit; nothing is pushed.
 - Hook `timeout` cap experiment (running since 12:01): decides the default
   `max_idle_seconds` for `claude-hooks` - if no cap, 86400; if capped, the
   cap minus slack, and the `deaf` state carries the weight.
+
+## Status (2026-09-10, end of session)
+
+- Phase 1 DONE (dce7891) - contract + adapters + fixtures + invariant suite.
+- Phase 2 DONE (a09f919) - ConversationRegistry + ten scenarios.
+- Phase 3 DONE (b143594) - daemon /harness/event, alias resolution, listener
+  lease, /status.conversations, receipts.
+- Phase 4 DONE (315af7c) - thin hook scripts, MCP server carries no identity;
+  legacy scripts later restored intact (097c498) because the native app runs
+  them from this checkout - see docs/production-hooks-run-from-dev-checkout.md.
+- U1 resolved (2bba3fc, f0ea37b) - no platform hook cap; Claude idle window
+  raised to 4h, deaf state is the fallback.
+- Phase 5 PARTIAL (5ca712c) - four Storybook proposals for the deaf tab
+  state; wiring into AgentTabs.vue awaits Krzysztof's pick (Storybook-first).
+- Phase 6 PENDING (deliberate) - removing Docker/`exec.sh`/`mcp_exec.sh`
+  plumbing and giving the native app a frozen hook copy is high-consequence
+  packaging work, entangled with how the app ships; do it with Krzysztof,
+  not blind. The production-hooks flaw above is the first task of this phase.
+
+## Restart note
+
+A Claude session in this repo that was running before phase 4 loaded the
+old hook config; the new `.claude/settings.json` (claude_hook.py) takes
+effect on the next start. Restart Claude here once to pick it up.
