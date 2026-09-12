@@ -40,7 +40,11 @@ async def _identity_error(agent_id: str | None) -> str | None:
     """
     if agent_id and agent_id.strip():
         return None
-    message = "Voice session identity is missing. Review and trust the noisy-coding hooks in /hooks, then retry."
+    message = (
+        "Voice session identity is missing: the noisy-coding PreToolUse hook did not run "
+        "for this call. Check that the hooks are registered (/hooks) and that this session "
+        "started after they were installed; a restart of the session usually fixes it."
+    )
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
     try:
         async with httpx.AsyncClient(timeout=1.0) as client:

@@ -17,6 +17,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 from post_tool_use import _activity_line, _post_activity  # noqa: E402
 
+import re  # noqa: E402
+
+IDENTITY_TOOLS = re.compile(
+    r"^mcp__[^\s]*noisy[_-]coding[^\s]*__(speak|announce|change_voice|set_speaker_style)$"
+)
+
 
 def main() -> None:
     raw = sys.stdin.read()
@@ -28,6 +34,21 @@ def main() -> None:
     line = _activity_line(hook_input)
     if line:
         _post_activity(agent, line)
+    # The MCP server no longer guesses which conversation is speaking: it
+    # requires the identity the host hook injects. Installs still on these
+    # legacy scripts (the native app's global hooks) must inject it too, or
+    # every speak fails with "identity is missing". Overwrites any value the
+    # model supplied, forged or stale.
+    tool = str(hook_input.get("tool_name") or "")
+    if IDENTITY_TOOLS.fullmatch(tool):
+        arguments = hook_input.get("tool_input")
+        if not isinstance(arguments, dict):
+            arguments = {}
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "updatedInput": {**arguments, "agent_id": agent},
+        }}))
 
 
 if __name__ == "__main__":
