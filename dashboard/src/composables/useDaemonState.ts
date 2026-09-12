@@ -164,7 +164,15 @@ function createDaemonState(pollMs: number): SharedDaemonState {
   function dismissAgent(name: string) {
     if (viewedAgent.value === name) viewedAgent.value = null;
     apiDismissAgent(name)
-      .catch(() => {})
+      .catch((error: unknown) => {
+        // A refused close must be VISIBLE. Swallowing it made the ✕ look
+        // broken whenever the daemon said no (or was mid-restart).
+        errors.value = [
+          ...errors.value,
+          { seq: 0, ts: Date.now() / 1000, kind: "tab_close_failed",
+            detail: `Could not close '${status.value?.agent_labels?.[name] ?? name}': ${(error as Error)?.message ?? error}` },
+        ].slice(-ERROR_LOG_SIZE);
+      })
       .finally(() => tick());
   }
 
