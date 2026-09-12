@@ -5,6 +5,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 
+from noisy_coding.listener.conversations import ConversationRegistry
 from noisy_coding.listener.vad import (
     DEFAULT_MIC_SENSITIVITY,
     MAX_MIC_SENSITIVITY,
@@ -73,6 +74,10 @@ UTTERANCE_LOG_SIZE = 100
 class ListenerState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        # Conversations as the harness contract sees them (keys, aliases,
+        # listener lease, status). The daemon swaps in a persisted one at
+        # boot; tests get an in-memory registry.
+        self.conversations = ConversationRegistry()
         # Signals every change to the recording/paused/muted flags, so
         # waiters (the playback gate) block on a condition instead of polling.
         self._turn_cond = threading.Condition(self._lock)
@@ -819,9 +824,10 @@ class ListenerState:
                 self._add_event_locked(
                     "delivered", " ".join(t.text for t in transcripts)
                 )
+                recipient = self._agent_labels.get(agent or "", "") or "Claude"
                 for transcript in transcripts:
                     self._update_utterance_locked(
-                        transcript.utterance_id, status="delivered to Claude"
+                        transcript.utterance_id, status=f"delivered to {recipient}"
                     )
             return transcripts
 

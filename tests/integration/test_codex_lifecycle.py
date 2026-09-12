@@ -98,5 +98,5 @@ def test_duplicate_listener_reports_the_conflict_without_consuming_voice(voice_e
         result = run_hook("Stop")
 
     assert "already active" in json.loads(result.stdout)["systemMessage"]
-    assert [body["kind"] for path, body in requests if path == "/event"] == ["voice_listener_error"]
+    assert [body["kind"] for path, body in requests if path == "/event"] == ["voice_listener"]  # a stand-down is normal, not an error
     assert queues == {"codex-a": [{"text": "keep for the first listener"}]}

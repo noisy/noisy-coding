@@ -360,6 +360,16 @@ def run(config: VadConfig | None = None) -> None:
         pass
     _load_history(state)
     threading.Thread(target=_history_saver, args=(state,), daemon=True).start()
+    # Conversations (the harness-contract view of the tabs) persist across
+    # restarts: keys, aliases, titles and order come back; every tab starts
+    # deaf until its session's next hook proves someone is listening.
+    from noisy_coding.listener.conversations import ConversationRegistry
+
+    state.conversations = ConversationRegistry(path=CONFIG_DIR / "conversations.json")
+    for key in state.conversations.visible_keys():
+        conversation = state.conversations.get(key)
+        if conversation is not None:
+            state.register_agent(key, conversation.label())
     # Global PTT hotkeys (#25): armed only when a key is configured. The
     # listener hangs off the state so the /settings endpoint can rearm it.
     from noisy_coding.listener.hotkey import HotkeyListener

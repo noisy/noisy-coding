@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from noisy_coding import credentials, diagnostics, playback
+from noisy_coding import credentials, diagnostics, harness, playback
 from noisy_coding.config_dir import CONFIG_DIR
 from noisy_coding.listener import stt_lab
 from noisy_coding.listener import pricing, speech, tab_audio
@@ -329,6 +329,68 @@ def save_settings(state: ListenerState) -> None:
         pass
 
 
+_ADAPTERS: dict[str, harness.Harness] = {}
+
+
+def _adapter(name: str) -> harness.Harness:
+    if name not in _ADAPTERS:
+        _ADAPTERS[name] = harness.get(name)
+    return _ADAPTERS[name]
+
+
+def _apply_harness_event(state: ListenerState, name: str, payload: dict) -> dict:
+    """Run one hook payload through its harness adapter and the registry.
+
+    The registry is the source of truth for tabs; the legacy agent table in
+    ListenerState is kept in step (same key) so speech routing, activity and
+    the dashboard keep working while they migrate to /status.conversations.
+    """
+    adapter = _adapter(name)
+    result = adapter.interpret(payload)
+    registry = state.conversations
+    conversation = registry.apply(name, result, adapter.capabilities)
+    key = conversation.key
+    already = key in state.agents
+    state.register_agent(key, conversation.label())
+    if not already:
+        state.add_event("agent", f"'{conversation.label()}' registered ({adapter.label})")
+    for event in result.events:
+        if event.kind == "activity" and event.participant is None:
+            state.set_activity(key, event.detail)
+        elif event.kind == "turn_ended":
+            state.set_activity(key, "")
+        elif event.kind == "title_changed" and event.title:
+            state.register_agent(key, event.title)
+    response = {
+        "conversation": key,
+        "may_drain": result.may_drain,
+        "speech_identity": result.speech_identity,
+        "listener": result.listener,
+        "participant": result.participant,
+        "label": conversation.label(),
+    }
+    if result.listener in ("start", "poll"):
+        response["listener_id"] = registry.listener_started(key)
+        response["listen_seconds"] = adapter.capabilities.max_idle_seconds
+    return response
+
+
+def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], moment: str) -> dict | None:
+    conversation = state.conversations.get(key)
+    if conversation is None or not transcripts:
+        return None
+    try:
+        adapter = _adapter(conversation.harness)
+    except KeyError:
+        return None
+    delivery = adapter.deliver([t["text"] for t in transcripts], moment)  # type: ignore[arg-type]
+    return {
+        "context": delivery.context,
+        "system_message": delivery.system_message,
+        "exit_code": delivery.exit_code,
+    }
+
+
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -356,7 +418,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # _serve_hud_file guards against path traversal.
                 self._serve_hud_file(url.path[1:])
             elif url.path == "/drain":
-                agent = parse_qs(url.query).get("agent", [None])[0]
+                query = parse_qs(url.query)
+                agent = query.get("conversation", query.get("agent", [None]))[0]
+                listener_id = query.get("listener", [None])[0]
+                if agent:
+                    agent = state.conversations.resolve(agent) or agent
+                if listener_id and not state.conversations.listener_alive(agent or "", listener_id):
+                    # A newer listener took over (or this one expired):
+                    # stand down without touching the queue, so the current
+                    # listener - not a stale one - receives the message.
+                    self._respond({"transcripts": [], "nudge": None, "stand_down": True})
+                    return
                 active_before = state.active_agent
                 transcripts = [asdict(t) for t in state.drain(agent)]
                 if state.active_agent != active_before:
@@ -365,7 +437,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # already make — the daemon lends the clockless model a
                 # sense of elapsed silence. Old hooks ignore the extra key.
                 nudge = state.pop_due_nudge(agent) if agent else None
-                self._respond({"transcripts": transcripts, "nudge": nudge})
+                moment = "wake" if listener_id else "mid_turn"
+                delivery = _render_delivery(state, agent or "", transcripts, moment)
+                self._respond({
+                    "transcripts": transcripts,
+                    "nudge": nudge,
+                    "stand_down": False,
+                    "delivery": delivery,
+                })
             elif url.path == "/events":
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})
@@ -495,15 +574,49 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "version": DAEMON_VERSION,
                         "latest_version": state.latest_version,
                         "active_agent": state.active_agent,
+                        # The harness-contract view of the tabs (keys,
+                        # aliases, live/idle/deaf/ended, listening_until).
+                        "conversations": state.conversations.snapshot(),
                     }
                 )
             else:
                 self._respond({"error": "not found"}, status=404)
 
         def do_POST(self) -> None:
-            if self.path == "/register":
+            if self.path == "/harness/event":
+                body = self._read_json_body()
+                name = str(body.get("harness") or "")
+                payload = body.get("payload")
+                if name not in harness.names() or not isinstance(payload, dict):
+                    self._respond({"error": "harness and payload required"}, status=400)
+                    return
+                active_before = state.active_agent
+                try:
+                    response = _apply_harness_event(state, name, payload)
+                except harness.HarnessError as error:
+                    state.add_event("voice_identity_error", str(error))
+                    self._respond({"error": str(error)}, status=422)
+                    return
+                if state.active_agent != active_before:
+                    save_settings(state)
+                self._respond(response)
+            elif self.path == "/harness/listener":
+                body = self._read_json_body()
+                key = state.conversations.resolve(str(body.get("conversation") or "")) or ""
+                listener_id = str(body.get("listener_id") or "")
+                if not key or not listener_id:
+                    self._respond({"error": "conversation and listener_id required"}, status=400)
+                    return
+                reason = str(body.get("reason") or "")
+                state.conversations.listener_stopped(key, listener_id, reason)
+                if reason == "timeout":
+                    label = state.agent_labels.get(key, key[-8:])
+                    state.add_event("deaf", f"'{label}' stopped listening ({reason})")
+                self._respond({"ok": True, "status": state.conversations.status(key)})
+            elif self.path == "/register":
                 body = self._read_json_body()
                 name = str(body.get("name", "")).strip()
+                name = state.conversations.resolve(name) or name
                 label = str(body.get("label", "")).strip()
                 if name:
                     already = name in state.agents
@@ -548,11 +661,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 order = self._read_json_body().get("order")
                 if isinstance(order, list):
                     state.reorder_agents([str(n) for n in order])
+                    state.conversations.reorder([str(n) for n in order])
                     self._respond({"reordered": True})
                 else:
                     self._respond({"error": "order must be a list"}, status=400)
             elif self.path == "/active-agent":
                 name = str(self._read_json_body().get("name", "")).strip()
+                name = state.conversations.resolve(name) or name
                 active = state.set_active_agent(name)
                 state.add_event("agent", f"switched to '{active}'")
                 save_settings(state)
@@ -846,7 +961,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"cancelled": state.cancel_transcript(utterance_id)})
             elif self.path == "/activity":
                 body = self._read_json_body()
-                state.set_activity(str(body.get("agent") or ""), str(body.get("text") or ""))
+                agent = str(body.get("agent") or "")
+                agent = state.conversations.resolve(agent) or agent
+                state.set_activity(agent, str(body.get("text") or ""))
                 self._respond({"ok": True})
             elif self.path == "/ptt":
                 # Lease renewal/release for push-to-talk; the UI renews
@@ -1064,6 +1181,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 live_bridge = tab_audio.bridge()
                 if live_bridge is not None:
                     live_bridge.stop_tab_playback()
+            claimed = str(body.get("agent") or "")
+            resolved = state.conversations.resolve(claimed) if claimed else None
+            if resolved:
+                body = {**body, "agent": resolved}
             agent, speaker, voice_override = _resolve_speaker(state, body)
             if state.take_voice_claims_dirty():
                 save_voice_claims(state)
