@@ -338,7 +338,9 @@ def _adapter(name: str) -> harness.Harness:
     return _ADAPTERS[name]
 
 
-def _apply_harness_event(state: ListenerState, name: str, payload: dict) -> dict:
+def _apply_harness_event(
+    state: ListenerState, name: str, payload: dict, listen_seconds: float | None = None
+) -> dict:
     """Run one hook payload through its harness adapter and the registry.
 
     The registry is the source of truth for tabs; the legacy agent table in
@@ -370,25 +372,40 @@ def _apply_harness_event(state: ListenerState, name: str, payload: dict) -> dict
         "label": conversation.label(),
     }
     if result.listener in ("start", "poll"):
-        response["listener_id"] = registry.listener_started(key)
-        response["listen_seconds"] = adapter.capabilities.max_idle_seconds
+        window = adapter.capabilities.max_idle_seconds
+        if listen_seconds is not None and window:
+            # The hook may shorten (never lengthen) the harness window - a
+            # Codex user picks how long the synchronous Stop holds the turn.
+            window = max(0.0, min(float(listen_seconds), window))
+        if window is not None and window <= 0:
+            response["listener"] = "none"  # idle listening disabled by the hook
+        else:
+            response["listener_id"] = registry.listener_started(key, window=window)
+            response["listen_seconds"] = window
+            response["harness"] = name
     return response
 
 
-def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], moment: str) -> dict | None:
+def _render_for(state: ListenerState, key: str, messages: list[str], moment: str) -> dict | None:
     conversation = state.conversations.get(key)
-    if conversation is None or not transcripts:
+    if conversation is None:
         return None
     try:
         adapter = _adapter(conversation.harness)
     except KeyError:
         return None
-    delivery = adapter.deliver([t["text"] for t in transcripts], moment)  # type: ignore[arg-type]
+    delivery = adapter.deliver(messages, moment)  # type: ignore[arg-type]
     return {
         "context": delivery.context,
         "system_message": delivery.system_message,
         "exit_code": delivery.exit_code,
     }
+
+
+def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], moment: str) -> dict | None:
+    if not transcripts:
+        return None
+    return _render_for(state, key, [t["text"] for t in transcripts], moment)
 
 
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
@@ -591,8 +608,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond({"error": "harness and payload required"}, status=400)
                     return
                 active_before = state.active_agent
+                listen = body.get("listen_seconds")
                 try:
-                    response = _apply_harness_event(state, name, payload)
+                    response = _apply_harness_event(
+                        state, name, payload,
+                        float(listen) if isinstance(listen, (int, float)) else None,
+                    )
                 except harness.HarnessError as error:
                     state.add_event("voice_identity_error", str(error))
                     self._respond({"error": str(error)}, status=422)
@@ -600,6 +621,16 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if state.active_agent != active_before:
                     save_settings(state)
                 self._respond(response)
+            elif self.path == "/harness/render":
+                body = self._read_json_body()
+                key = state.conversations.resolve(str(body.get("conversation") or "")) or ""
+                messages = [str(m) for m in body.get("messages") or [] if str(m).strip()]
+                moment = "wake" if body.get("moment") == "wake" else "mid_turn"
+                rendered = _render_for(state, key, messages, moment) if key and messages else None
+                if rendered is None:
+                    self._respond({"error": "unknown conversation or no messages"}, status=404)
+                else:
+                    self._respond(rendered)
             elif self.path == "/harness/listener":
                 body = self._read_json_body()
                 key = state.conversations.resolve(str(body.get("conversation") or "")) or ""

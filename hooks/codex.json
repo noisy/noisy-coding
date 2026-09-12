@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex_hook.py\"",
             "timeout": 30
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex_hook.py\"",
             "timeout": 30
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex_hook.py\"",
             "timeout": 30
           }
         ]
@@ -38,7 +38,29 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex_hook.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex_hook.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex_hook.py\"",
             "timeout": 30
           }
         ]
@@ -49,9 +71,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex.py\"",
+            "command": "uv run --directory \"${PLUGIN_ROOT}\" --frozen --no-dev python \"${PLUGIN_ROOT}/hooks/codex_hook.py\"",
             "timeout": 3630,
-            "statusMessage": "Listening for your voice (up to one hour)"
+            "statusMessage": "Listening for your voice (short window; the turn stays open)"
           }
         ]
       }

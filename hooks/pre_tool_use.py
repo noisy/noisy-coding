@@ -1,33 +1,38 @@
 #!/usr/bin/env python3
-"""PreToolUse hook (all tools): report live activity to the dashboard.
+"""Compatibility shim -> claude_hook flow (see hooks/claude_hook.py).
 
-Fires when a tool STARTS — the busy bubble shows what Claude is doing at
-this very moment. Its counterpart in post_tool_use.py flips the line to
-THINKING… once the tool finishes and the model is reasoning again.
-Fails open; never blocks the tool call.
+The overhaul replaced the five per-event scripts with a single flow. This
+shim stays so a Claude Code session that loaded the pre-overhaul config
+(hooks are read once at startup) keeps working until it is restarted; new
+installs register claude_hook.py directly. Remove in phase 6.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _agent_identity import identity  # noqa: E402
-from post_tool_use import _activity_line, _post_activity  # noqa: E402
+
+try:
+    import _hook_flow
+except Exception:
+    sys.exit(0)
 
 
 def main() -> None:
-    raw = sys.stdin.read()
-    try:
-        hook_input = json.loads(raw) if raw.strip() else {}
-    except ValueError:
+    payload = _hook_flow.read_payload()
+    if not payload:
         return
-    agent, _label = identity(hook_input)
-    line = _activity_line(hook_input)
-    if line:
-        _post_activity(agent, line)
+    window = os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS")
+    try:
+        code = _hook_flow.run(
+            "claude-hooks", payload, listen_seconds=float(window) if window else None
+        )
+    except Exception:
+        return
+    if code:
+        sys.exit(code)
 
 
 if __name__ == "__main__":

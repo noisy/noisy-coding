@@ -323,3 +323,15 @@ Order agreed: F9 -> E1..E6 as first scenarios -> F1..F5.
 5. **Synchronous Stop hook for harnesses without async rewake** - removed
    for Claude; still what Codex runs (3630 s, blocking the turn, hence the
    stuck keyboard messages). Decide: short window (F8) or none.
+
+### Codex: is there a "typed message waiting" signal? (probe, 2026-09-10, codex-cli 0.153.4)
+
+No. Verified in source and by experiment over `codex app-server`: a steer
+or a second `turn/start` during a blocking Stop hook produces no hook, no
+notification and no rollout append; `UserPromptSubmit` for the queued
+message fires 0.35 s *after* the Stop hook exits, for both messages
+together - exactly the observed symptom. `async: true` Stop hooks cannot
+continue the turn (exit 2 ignored). So for `codex-hooks` the only lever is
+the length of the synchronous window (default now 30 s), plus the `deaf`
+state on the tab. A real fix needs either an upstream hook at enqueue
+time or a noisy-coding-owned app-server client (`codex --remote`).

@@ -152,17 +152,22 @@ class ConversationRegistry:
 
     # -- listener lease -----------------------------------------------
 
-    def listener_started(self, key: str, listener_id: str | None = None) -> str:
-        """A new listener takes over; whoever listened before is stale."""
+    def listener_started(
+        self, key: str, listener_id: str | None = None, window: float | None = None
+    ) -> str:
+        """A new listener takes over; whoever listened before is stale.
+
+        `window` overrides the harness default lease (a hook may shorten it)."""
         conversation = self._require(key)
         capabilities = self._capabilities.get(conversation.harness)
-        window = capabilities.max_idle_seconds if capabilities else None
+        if window is None:
+            window = capabilities.max_idle_seconds if capabilities else None
         now = self._clock()
         listener_id = listener_id or uuid.uuid4().hex
         conversation.listener = Listener(
             id=listener_id,
             started_at=now,
-            expires_at=(now + window) if window else None,
+            expires_at=(now + window) if window is not None else None,
         )
         conversation.deaf_reason = ""
         self._save()

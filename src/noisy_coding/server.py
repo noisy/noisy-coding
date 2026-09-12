@@ -7,7 +7,6 @@ server process left behind by an MCP reconnect can't talk over anyone.
 """
 
 import asyncio
-import json
 import os
 import socket
 import subprocess
@@ -17,7 +16,6 @@ import time
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from noisy_coding.config_dir import CONFIG_DIR
 
 LISTENER_PORT_ENV_VAR = "NOISY_CODING_LISTENER_PORT"
 # speak blocks until the daemon has waited out the user's turn, rendered
@@ -28,51 +26,18 @@ DAEMON_DOWN_MESSAGE = (
     "Deliver the message in writing instead."
 )
 
-_SESSIONS_MAP = CONFIG_DIR / "sessions.json"
-
-
-def _agent_name() -> str:
-    """This server's agent id.
-
-    Resolution order:
-    1. explicit NOISY_CODING_AGENT_NAME (per-config mode);
-    2. CLAUDE_CODE_SESSION_ID — Claude Code exports it to child processes,
-       and the hooks use the very same session id as the agent id, so this
-       is the deterministic identity (#15: the cwd map below is shared by
-       every session in a directory, so two tabs kept stealing each other's
-       voice attributions);
-    3. legacy fallback: the per-cwd id the hooks recorded (old clients).
-    """
-    env_name = os.environ.get("NOISY_CODING_AGENT_NAME", "").strip()
-    if env_name:
-        return env_name
-    session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "").strip()
-    if session_id:
-        return session_id
-    return _cwd_agent()
-
-
-def _cwd_agent() -> str:
-    """The conversation id the HOOKS registered for this directory.
-
-    This is the id that actually owns a dashboard tab. When a subagent team
-    spawns, the env-derived id above points at the TEAM session (#22) — the
-    daemon uses this value as the fallback to reattach speech to the real
-    conversation.
-    """
-    try:
-        data = json.loads(_SESSIONS_MAP.read_text())
-        return str(data.get(os.getcwd(), {}).get("agent", ""))
-    except (OSError, ValueError):
-        return ""
-
-
 mcp = FastMCP("noisy-coding")
 
 
 async def _identity_error(agent_id: str | None) -> str | None:
-    if agent_id is None and not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
-        return None
+    """Speech identity is supplied by the trusted host hook, on every harness.
+
+    The hook's PreToolUse rewrites `agent_id` on every speak/announce/
+    change_voice call to the conversation it belongs to; the server never
+    guesses it from cwd or process environment (that guessing is what made
+    two sessions in one directory steal each other's voice). A call that
+    arrives without it means the hook did not run: fail closed.
+    """
     if agent_id and agent_id.strip():
         return None
     message = "Voice session identity is missing. Review and trust the noisy-coding hooks in /hooks, then retry."
@@ -91,24 +56,12 @@ async def _daemon_speak(body: dict, agent_id: str | None = None) -> dict | None:
     A daemon that is merely starting up must not turn speak into an
     exception — on the first failure we (re)spawn it and retry once.
     """
-    # Only a host with trusted identity injection may override legacy routing.
-    if not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
-        agent_id = None
     error = await _identity_error(agent_id)
     if error:
         return {"error": error}
     port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
     body = dict(body)
-    agent = agent_id.strip() if agent_id is not None else _agent_name()
-    if agent:
-        body["agent"] = agent
-    # #22: let the daemon reattach misattributed speech — when `agent` turns
-    # out not to be a registered conversation (subagent/team session id),
-    # the daemon falls back to the hooks' id and tags the utterance with a
-    # speaker instead of losing it in a tabless void.
-    fallback = _cwd_agent() if agent_id is None else ""
-    if fallback and fallback != agent:
-        body["agent_fallback"] = fallback
+    body["agent"] = agent_id.strip()
     timeout = httpx.Timeout(SPEAK_TIMEOUT_SECONDS, connect=2.0)
     for attempt in (0, 1):
         try:
@@ -209,9 +162,6 @@ async def change_voice(voice_id: str, speaker: str = "", agent_id: str | None = 
             held by someone else is refused rather than duplicated, so two
             speakers never become indistinguishable by ear.
     """
-    # Only a host with trusted identity injection may override legacy routing.
-    if not os.environ.get("NOISY_CODING_REQUIRE_AGENT_ID"):
-        agent_id = None
     error = await _identity_error(agent_id)
     if error:
         return error
@@ -219,9 +169,7 @@ async def change_voice(voice_id: str, speaker: str = "", agent_id: str | None = 
     body: dict = {"voice_id": voice_id}
     if speaker.strip():
         body["speaker"] = speaker.strip()
-    agent = agent_id.strip() if agent_id is not None else _agent_name()
-    if agent:
-        body["agent"] = agent
+    body["agent"] = agent_id.strip()
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(f"http://127.0.0.1:{port}/voice", json=body)
@@ -326,27 +274,8 @@ def _ensure_daemon() -> None:
         pass  # fail open: speak still works, just no listening
 
 
-def _register_agent() -> None:
-    """Announce this agent to the daemon so it appears in the switcher.
-
-    In per-session mode the hook registers the agent (it knows session_id);
-    this only fires for explicit NOISY_CODING_AGENT_NAME (per-config mode).
-    """
-    name = os.environ.get("NOISY_CODING_AGENT_NAME", "").strip()
-    if not name:
-        return
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
-    try:
-        httpx.post(
-            f"http://127.0.0.1:{port}/register", json={"name": name}, timeout=1.0
-        )
-    except httpx.HTTPError:
-        pass
-
-
 def main() -> None:
     _ensure_daemon()
-    _register_agent()
     # stdio (default): Claude Code launches this process per session.
     # http: one long-lived server (the Docker image) — Claude Code connects
     # with `claude mcp add --transport http http://host:8767/mcp`.

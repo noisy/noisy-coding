@@ -1,61 +1,56 @@
 #!/usr/bin/env python3
-"""One-shot hook installer.
+"""One-shot hook installer for a local checkout.
 
-Local checkout:   python3 hooks/install.py
-No clone at all:  docker run --rm -v ~/.claude:/root/.claude \
-                    noisy/noisy-coding python3 /app/hooks/install.py --docker
+    python3 hooks/install.py            # daemon on the default port (8765)
+    python3 hooks/install.py --port 7765
 
-Registers the noisy-coding hooks in ~/.claude/settings.json (user scope).
-Default mode points at THIS checkout with the plain `python3` from PATH
-(every hook is stdlib-only, python 3.9+). --docker mode writes `docker
-exec` commands instead — the hooks run inside the long-lived noisy-coding
-container, so the host needs no python at all (Windows included); env is
-passed with -e, never POSIX VAR=… prefixes, so the commands survive
-cmd/PowerShell. Idempotent: existing noisy-coding entries are replaced in
-place, everything else in the file is preserved. Restart Claude Code (or
-/mcp reconnect) afterwards.
+Registers the noisy-coding hooks in ~/.claude/settings.json (user scope):
+one script, hooks/claude_hook.py, for every lifecycle event, run with the
+plain `python3` from PATH (stdlib only, python 3.9+). Idempotent: existing
+noisy-coding entries are replaced in place, everything else in the file is
+preserved. Restart Claude Code afterwards - hooks are read at startup.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
-import sys
 from pathlib import Path
 
 HOOKS_DIR = Path(__file__).resolve().parent
 SETTINGS = Path.home() / ".claude" / "settings.json"
-DOCKER_MODE = "--docker" in sys.argv
+SCRIPT = HOOKS_DIR / "claude_hook.py"
+# The listener waits this long for voice before the tab goes deaf. The hook
+# timeout must outlive it (slack for the wake itself).
+LISTEN_SECONDS = 3600
+LISTENER_EVENTS = ("SessionStart", "Stop")
+QUICK_EVENTS = ("UserPromptSubmit", "SubagentStart", "SubagentStop")
+TOOL_EVENTS = ("PreToolUse", "PostToolUse")
 
 
-def _command(script: str, env: str = "") -> dict:
-    if DOCKER_MODE:
-        env_flag = f"-e {env} " if env else ""
-        command = f"docker exec -i {env_flag}noisy-coding python3 /app/hooks/{script}"
-    else:
-        prefix = f"{env} " if env else ""
-        command = f"{prefix}python3 {HOOKS_DIR / script}"
-    return {"type": "command", "command": command, "timeout": 5}
+def _command(port: int | None) -> str:
+    prefix = f"NOISY_CODING_LISTENER_PORT={port} " if port else ""
+    return f'{prefix}python3 "{SCRIPT}"'
 
 
-def _entries() -> dict:
-    stop = _command("stop.py")
-    # The rewake poller listens for your voice long after the turn ends —
-    # its timeout must outlive the poll window (60 min + slack).
-    stop["timeout"] = 3630
-    stop["asyncRewake"] = True
-    stop["statusMessage"] = "Listening for your voice"
-    # Shown in the console when the poller wakes the model — without it the
-    # harness prints a cryptic default ("Stop hook feedback").
-    stop["rewakeSummary"] = "🎙️ Voice message received"
-    return {
-        "UserPromptSubmit": [{"hooks": [_command("user_prompt_submit.py")]}],
-        "PreToolUse": [
-            {"matcher": "mcp__noisy-coding__speak", "hooks": [_command("pre_speak.py")]},
-            {"matcher": "*", "hooks": [_command("pre_tool_use.py")]},
-        ],
-        "PostToolUse": [{"matcher": "*", "hooks": [_command("post_tool_use.py")]}],
-        "Stop": [{"hooks": [stop]}],
-    }
+def _hook(command: str, timeout: int, status: str, **extra) -> dict:
+    return {"type": "command", "command": command, "timeout": timeout, "statusMessage": status, **extra}
+
+
+def entries(port: int | None = None) -> dict:
+    command = _command(port)
+    listener = _hook(
+        command, LISTEN_SECONDS + 30, "Listening for your voice",
+        asyncRewake=True, rewakeSummary="🎙️ Voice message received",
+    )
+    hooks: dict = {}
+    for event in LISTENER_EVENTS:
+        hooks[event] = [{"hooks": [dict(listener)]}]
+    for event in QUICK_EVENTS:
+        hooks[event] = [{"hooks": [_hook(command, 5, "Reporting activity")]}]
+    for event in TOOL_EVENTS:
+        hooks[event] = [{"matcher": "*", "hooks": [_hook(command, 5, "Reporting activity")]}]
+    return hooks
 
 
 def _is_ours(entry: dict) -> bool:
@@ -65,18 +60,31 @@ def _is_ours(entry: dict) -> bool:
     )
 
 
-def main() -> None:
+def install(settings_path: Path, port: int | None = None) -> None:
     settings: dict = {}
-    if SETTINGS.exists():
-        settings = json.loads(SETTINGS.read_text() or "{}")
+    if settings_path.exists():
+        settings = json.loads(settings_path.read_text() or "{}")
     hooks = settings.setdefault("hooks", {})
-    for event, ours in _entries().items():
+    for event, ours in entries(port).items():
         kept = [e for e in hooks.get(event, []) if not _is_ours(e)]
         hooks[event] = kept + ours
-    SETTINGS.parent.mkdir(parents=True, exist_ok=True)
-    SETTINGS.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+    # Events we used to register but no longer do keep only foreign entries.
+    for event in list(hooks):
+        if event not in entries(port):
+            hooks[event] = [e for e in hooks[event] if not _is_ours(e)]
+            if not hooks[event]:
+                del hooks[event]
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, default=None, help="daemon HTTP port (default 8765)")
+    args = parser.parse_args()
+    install(SETTINGS, args.port)
     print(f"noisy-coding hooks registered in {SETTINGS}")
-    print("Restart Claude Code (or /mcp reconnect) to activate them.")
+    print("Restart Claude Code to activate them.")
 
 
 if __name__ == "__main__":

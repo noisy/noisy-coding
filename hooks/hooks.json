@@ -1,11 +1,25 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
+            "timeout": 3630,
+            "statusMessage": "Listening for your voice",
+            "asyncRewake": true,
+            "rewakeSummary": "🎙️ Voice message received"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh\" user_prompt_submit.py",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
             "timeout": 5,
             "statusMessage": "Reporting activity"
           }
@@ -14,22 +28,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "mcp__noisy-coding__speak",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh\" pre_speak.py",
-            "timeout": 5,
-            "statusMessage": "Showing spoken text"
-          }
-        ]
-      },
-      {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh\" pre_tool_use.py",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
             "timeout": 5,
             "statusMessage": "Reporting activity"
           }
@@ -42,9 +45,33 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh\" post_tool_use.py",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
             "timeout": 5,
             "statusMessage": "Checking voice queue"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
+            "timeout": 5,
+            "statusMessage": "Reporting subagent"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
+            "timeout": 5,
+            "statusMessage": "Reporting subagent"
           }
         ]
       }
@@ -54,10 +81,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh\" stop.py",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
             "timeout": 3630,
-            "asyncRewake": true,
             "statusMessage": "Listening for your voice",
+            "asyncRewake": true,
             "rewakeSummary": "🎙️ Voice message received"
           }
         ]
