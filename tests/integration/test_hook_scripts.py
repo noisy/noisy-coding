@@ -176,7 +176,8 @@ def test_codex_hook_reads_its_endpoint_from_the_settings_file(daemon, tmp_path):
     # The port comes from the settings file; the env var is only an override.
     result = _run(CODEX_HOOK, payload, port, env)
     assert result.returncode == 0
-    assert state.agent_labels["codex-abc12345"] == "Codex · codex-ab"
+    # Named by project (the cwd basename) plus a short id, not a bare hash.
+    assert state.agent_labels["codex-abc12345"] == f"Codex · {tmp_path.name} · codex-"
     _queue(state, "codex-abc12345", "codex, are you there")
     began = time.time()
     result = _run(CODEX_HOOK, {**payload, "hook_event_name": "Stop"}, port, env)

@@ -10,6 +10,8 @@ there is no transcript path to key on.
 
 from __future__ import annotations
 
+import os
+
 from noisy_coding.harness.base import (
     Capabilities,
     Delivery,
@@ -54,7 +56,17 @@ class CodexHooks:
         key = session_id
         participant = str(payload.get("agent_id") or "").strip() or None
         event_name = str(payload.get("hook_event_name") or "")
-        title = f"{self._agent_label} · {session_id[:8]}"
+        # Codex has no /rename title like Claude, so a bare id is unreadable
+        # when several Codex threads are open. Name the tab by its project
+        # (the working directory) and keep a short id so two threads in the
+        # SAME project stay distinct.
+        cwd = str(payload.get("cwd") or "").strip().rstrip("/")
+        project = os.path.basename(cwd) if cwd else ""
+        title = (
+            f"{self._agent_label} · {project} · {session_id[:6]}"
+            if project
+            else f"{self._agent_label} · {session_id[:8]}"
+        )
         events: list[Event] = []
         may_drain = False
         listener = "none"
