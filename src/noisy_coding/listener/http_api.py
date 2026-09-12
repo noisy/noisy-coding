@@ -408,6 +408,25 @@ def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], mo
     return _render_for(state, key, [t["text"] for t in transcripts], moment)
 
 
+def _stable_agents_meta(state: ListenerState) -> dict:
+    """Legacy tab metadata with a RESTART-STABLE arrival stamp.
+
+    The dashboard still orders tabs by `activated_at`, which state.py stamps
+    on every offline->online edge. After a daemon restart the tabs reloaded
+    from the registry come back first and the user's own session, whose next
+    hook arrives a moment later, gets the freshest stamp - and jumps from
+    first to last. The registry knows when each conversation was really
+    created, so use that; a tab's place must not depend on who happened to
+    poll first after boot. Manual drag order is untouched.
+    """
+    meta = state.agents_meta
+    for name, entry in meta.items():
+        conversation = state.conversations.get(name)
+        if conversation is not None:
+            entry["activated_at"] = conversation.created_at
+    return meta
+
+
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -579,7 +598,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "diagnostic_checks": state.diagnostic_checks,
                         "agents": state.agents,
                         "agent_labels": state.agent_labels,
-                        "agents_meta": state.agents_meta,
+                        "agents_meta": _stable_agents_meta(state),
                         # Each conversation's voice, so a client can draw its
                         # portrait without asking /character once per agent.
                         "agent_voices": {

@@ -152,3 +152,19 @@ def test_bad_payloads_fail_closed(daemon):
     assert status == 400
     status, body = call("POST", "/harness/event", {"harness": "claude-hooks", "payload": {"hook_event_name": "Stop"}})
     assert status == 422 and "session" in body["error"]
+
+
+def test_tab_order_is_stable_across_a_daemon_restart(daemon):
+    """The first conversation stays first even if it polls last after boot."""
+    state, call, event = daemon
+    first = _rows("session.jsonl")[0]
+    second = {**first, "session_id": "22222222-0000-0000-0000-000000000000",
+              "transcript_path": "/Users/dev/.claude/projects/p/22222222.jsonl"}
+    event(first)
+    event(second)
+    # Simulate the post-restart race: the SECOND tab heartbeats first, then the first.
+    state.register_agent(second["transcript_path"])
+    state.register_agent(first["transcript_path"])
+    _s, body = call("GET", "/status")
+    meta = body["agents_meta"]
+    assert meta[first["transcript_path"]]["activated_at"] < meta[second["transcript_path"]]["activated_at"]
