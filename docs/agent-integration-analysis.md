@@ -335,3 +335,16 @@ continue the turn (exit 2 ignored). So for `codex-hooks` the only lever is
 the length of the synchronous window (default now 30 s), plus the `deaf`
 state on the tab. A real fix needs either an upstream hook at enqueue
 time or a noisy-coding-owned app-server client (`codex --remote`).
+
+### U1 resolved: no hidden hook-timeout cap (experiment, 2026-09-10)
+
+A Stop hook registered with `timeout: 86400` ran continuously for over 65
+minutes (heartbeat log, three async-rewake processes still alive at
+65 min) with no sign of a Claude Code cap at 30 or 60 minutes. So the
+"deaf after ~1 h" symptom was NOT a platform limit - it was our own
+`REWAKE_WAIT_SECONDS=3600`: the poll loop exited at 60 min and nothing
+relit it. The harness contract fixes this two ways: `max_idle_seconds` can
+be set well beyond an hour (the hook timeout follows it), and when a
+listener does expire the tab goes visibly `deaf` instead of silently
+unreachable. Recommendation for 3.0: raise the Claude default to several
+hours; keep the deaf state as the honest fallback.
