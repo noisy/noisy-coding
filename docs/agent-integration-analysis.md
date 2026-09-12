@@ -348,3 +348,16 @@ be set well beyond an hour (the hook timeout follows it), and when a
 listener does expire the tab goes visibly `deaf` instead of silently
 unreachable. Recommendation for 3.0: raise the Claude default to several
 hours; keep the deaf state as the honest fallback.
+
+### Dashboard should treat /status as authoritative (observed 2026-09-10)
+
+After the daemon was restarted onto the new key scheme (tab key changed
+from session_id to transcript_path), an open dashboard briefly showed TWO
+tabs with the same label - the stale old-key tab plus the new one. The
+daemon only ever had one; the client had merged its last render with the
+new /status instead of replacing. The stale tab had no live conversation,
+so it could not be selected, only closed. Fix (part of phase 5 dashboard
+wiring): render the tab strip from /status.conversations as the single
+source of truth and drop any tab absent from it, rather than merging. A
+one-time migration artifact, but the merge behaviour would also strand a
+tab after any future daemon restart until a manual refresh.
