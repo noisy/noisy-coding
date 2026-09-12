@@ -1,0 +1,2 @@
+{"session_id": "6eef14ed-f7a3-4bf5-b268-03eba86b85f3", "transcript_path": "/Users/dev/.claude/projects/-Users-dev-project/6eef14ed-f7a3-4bf5-b268-03eba86b85f3.jsonl", "cwd": "/Users/dev/project", "hook_event_name": "SessionStart", "source": "startup", "session_title": "reksio"}
+{"session_id": "6eef14ed-f7a3-4bf5-b268-03eba86b85f3", "transcript_path": "/Users/dev/.claude/projects/-Users-dev-project/6eef14ed-f7a3-4bf5-b268-03eba86b85f3.jsonl", "cwd": "/Users/dev/project", "hook_event_name": "UserPromptSubmit"}
