@@ -1049,15 +1049,20 @@ class ListenerState:
                 if name in self._agents:
                     self._agent_manual_pos[name] = position
 
-    def dismiss_agent(self, name: str) -> bool:
-        """Drop an agent's tab. Only offline, non-active conversations may go:
-        dismissing the active agent would silently reroute the user's speech,
-        and an online one is still someone's live session."""
+    def dismiss_agent(self, name: str, force: bool = False) -> bool:
+        """Drop an agent's tab. Never the active one (that would silently
+        reroute the user's speech). Without `force`, the legacy heartbeat
+        guard applies; the registry-aware /dismiss-agent passes force=True
+        because liveness is the registry's call, not a heartbeat's."""
         with self._lock:
             seen = self._agents.get(name)
-            if seen is None or name == self._active_agent:
+            if seen is None:
                 return False
-            if time.time() - seen <= AGENT_OFFLINE_AFTER_SECONDS:
+            if name == self._active_agent:
+                if not force:
+                    return False
+                self._active_agent = None  # caller has already handed the mic on
+            if not force and time.time() - seen <= AGENT_OFFLINE_AFTER_SECONDS:
                 return False
             del self._agents[name]
             self._agent_labels.pop(name, None)
@@ -1105,6 +1110,11 @@ class ListenerState:
                 self._agents.setdefault(name, time.time())
                 self._active_agent = name
             return self._active_agent
+
+    def clear_active_agent(self) -> None:
+        """No conversation receives the mic (the last tab was closed)."""
+        with self._lock:
+            self._active_agent = None
 
     def restore_active_agent(self, name: str) -> None:
         """Carry the user's chosen agent across a daemon restart.

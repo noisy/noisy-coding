@@ -146,13 +146,14 @@ function onDrop(target: Tab) {
       </span>
       <span class="tab-label">{{ tab.label }}</span>
       <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[tab.name] ?? 0 }" :aria-hidden="tab.name !== active" title="Receiving your speech">Mic</span>
-      <!-- Dismiss: offline conversations only; overlaid so hover never
-           changes the tab's width. -->
+      <!-- Close, on every tab, like a browser: it hides the conversation,
+           it does not end the session. Closing the mic's tab hands the mic
+           to the next one (the daemon decides and says so). Overlaid so
+           hover never changes the tab's width. -->
       <span
-        v-if="!tab.online"
         class="dismiss"
         role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('dismiss', tab.name)" @keydown.space.stop.prevent="$emit('dismiss', tab.name)"
-        title="Dismiss this conversation"
+        title="Close this conversation"
         @click.stop="$emit('dismiss', tab.name)"
         >✕</span
       >
@@ -169,7 +170,8 @@ button { position:relative; display:inline-flex; align-items:center; gap:8px; fo
 .tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
 button:hover { color:var(--ink); background:var(--surface-hover); }
 button.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
-button.offline { border-style:dashed; padding-right:34px; }
+button { padding-right:34px; } /* room for the overlaid ✕ on every tab */
+button.offline { border-style:dashed; }
 button.dragging { opacity:.5; }
 .statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; }
 .dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }

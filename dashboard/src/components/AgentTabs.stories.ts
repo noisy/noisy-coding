@@ -17,7 +17,10 @@ export default meta;
  *  option-B priority ladder: MUTE (with or without a waiting count) >
  *  SPEAKING (green equalizer) > WORKING (violet pulse) > WAIT count
  *  (amber) > idle dot. WORK+3 / SPEAK+3 prove the count stays hidden
- *  while the agent is busy; ENDED shows the greyed offline tab.
+ *  while the agent is busy; ENDED shows the greyed tab of a session that
+ *  ended. Every tab carries a close ✕, the SELECTED one too - closing the
+ *  mic's tab hands the mic to the next conversation. Liveness comes from
+ *  the daemon's conversation registry, not heartbeats.
  */
 export const StateMatrix: StoryObj<typeof AgentTabs> = {
   render: () => {

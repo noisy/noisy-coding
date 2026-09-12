@@ -352,6 +352,19 @@ def _apply_harness_event(
     registry = state.conversations
     conversation = registry.apply(name, result, adapter.capabilities)
     key = conversation.key
+    if conversation.hidden:
+        # The user closed this tab. Routine hooks from a still-running
+        # session must not resurrect it; only a new session or a new user
+        # turn does (registry.apply un-hides on those). Identity and drain
+        # rules still apply - closing a tab does not change who speaks.
+        return {
+            "conversation": key,
+            "may_drain": result.may_drain,
+            "speech_identity": result.speech_identity,
+            "listener": "none",
+            "participant": result.participant,
+            "label": conversation.label(),
+        }
     already = key in state.agents
     state.register_agent(key, conversation.label())
     if not already:
@@ -409,21 +422,26 @@ def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], mo
 
 
 def _stable_agents_meta(state: ListenerState) -> dict:
-    """Legacy tab metadata with a RESTART-STABLE arrival stamp.
+    """Tab metadata driven by the conversation registry, not by heartbeats.
 
-    The dashboard still orders tabs by `activated_at`, which state.py stamps
-    on every offline->online edge. After a daemon restart the tabs reloaded
-    from the registry come back first and the user's own session, whose next
-    hook arrives a moment later, gets the freshest stamp - and jumps from
-    first to last. The registry knows when each conversation was really
-    created, so use that; a tab's place must not depend on who happened to
-    poll first after boot. Manual drag order is untouched.
+    `online` used to mean "heartbeat within 180 s", which made a tab flip
+    grey mid-think, hid the close button for three minutes after every
+    daemon restart (each tab re-registered with a fresh heartbeat), and
+    reshuffled the strip depending on who polled first. The registry knows
+    the truth from lifecycle events: a conversation is alive until its
+    session ends, its arrival is when it was created, and its order is its
+    position. Tabs the registry does not know keep the legacy shape.
     """
     meta = state.agents_meta
     for name, entry in meta.items():
         conversation = state.conversations.get(name)
-        if conversation is not None:
-            entry["activated_at"] = conversation.created_at
+        if conversation is None:
+            continue
+        status = state.conversations.status(name)
+        entry["online"] = status != "ended"
+        entry["status"] = status
+        entry["activated_at"] = conversation.created_at
+        entry["offline_since"] = conversation.last_event_at if status == "ended" else None
     return meta
 
 
@@ -683,12 +701,27 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond({"error": "name required"}, status=400)
             elif self.path == "/dismiss-agent":
                 name = str(self._read_json_body().get("name", "")).strip()
-                if state.dismiss_agent(name):
-                    state.add_event("agent", f"'{name}' dismissed")
-                    self._respond({"dismissed": name})
-                else:
-                    # Active or still-online conversations cannot be dismissed.
-                    self._respond({"error": "agent is active or online"}, status=409)
+                name = state.conversations.resolve(name) or name
+                if name not in state.agents:
+                    self._respond({"error": "unknown agent"}, status=404)
+                    return
+                handed_to = None
+                if name == state.active_agent:
+                    # Closing the mic's tab hands the mic to the next visible
+                    # conversation (browser-tab semantics), loudly - the user
+                    # must know where their speech goes now.
+                    remaining = [k for k in state.conversations.visible_keys()
+                                 if k != name and k in state.agents]
+                    handed_to = remaining[0] if remaining else None
+                    state.set_active_agent(handed_to) if handed_to else state.clear_active_agent()
+                    state.add_event("agent", f"mic handed to '{handed_to}'" if handed_to else "mic released - no conversation active")
+                    save_settings(state)
+                # Hidden, not forgotten: the conversation stays in the registry
+                # and comes back when the user talks there again.
+                state.dismiss_agent(name, force=True)
+                state.conversations.hide(name)
+                state.add_event("agent", f"'{name}' closed")
+                self._respond({"dismissed": name, "active_agent": state.active_agent})
             elif self.path == "/mute-agent":
                 body = self._read_json_body()
                 name = str(body.get("agent", "")).strip()

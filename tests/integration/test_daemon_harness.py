@@ -168,3 +168,48 @@ def test_tab_order_is_stable_across_a_daemon_restart(daemon):
     _s, body = call("GET", "/status")
     meta = body["agents_meta"]
     assert meta[first["transcript_path"]]["activated_at"] < meta[second["transcript_path"]]["activated_at"]
+
+
+def test_tab_liveness_comes_from_the_registry_not_heartbeats(daemon):
+    state, call, event = daemon
+    rows = _rows("session.jsonl")
+    event(rows[0])
+    key = rows[0]["transcript_path"]
+    listener = event(next(r for r in rows if r["hook_event_name"] == "Stop"))["listener_id"]
+    call("POST", "/harness/listener", {"conversation": key, "listener_id": listener, "reason": "timeout"})
+    _s, body = call("GET", "/status")
+    tab = body["agents_meta"][key]
+    # Deaf is still alive (session running, just not listening) - never greyed as ended.
+    assert tab["online"] is True and tab["status"] == "deaf"
+    event({**rows[0], "hook_event_name": "SessionEnd"})
+    _s, body = call("GET", "/status")
+    assert body["agents_meta"][key]["online"] is False
+    assert body["agents_meta"][key]["status"] == "ended"
+
+
+def test_close_hides_a_live_background_tab_until_the_user_talks_there_again(daemon):
+    state, call, event = daemon
+    rows = _rows("session.jsonl")
+    first = rows[0]
+    second = {**first, "session_id": "22222222-0000-0000-0000-000000000000",
+              "transcript_path": "/Users/dev/.claude/projects/p/22222222.jsonl"}
+    event(first)
+    event(second)  # live, background (first is active)
+    status, body = call("POST", "/dismiss-agent", {"name": second["session_id"]})  # alias works
+    assert status == 200 and body["dismissed"] == second["transcript_path"]
+    assert second["transcript_path"] not in state.agents
+    # A routine hook from the still-running session does NOT bring it back...
+    event({**second, "hook_event_name": "PostToolUse", "tool_name": "Bash"})
+    assert second["transcript_path"] not in state.agents
+    # ...but the user typing there does.
+    event({**second, "hook_event_name": "UserPromptSubmit"})
+    assert second["transcript_path"] in state.agents
+    # Closing the mic's tab hands the mic to the next visible conversation.
+    assert state.active_agent == first["transcript_path"]
+    status, body = call("POST", "/dismiss-agent", {"name": first["transcript_path"]})
+    assert status == 200
+    assert body["active_agent"] == second["transcript_path"] == state.active_agent
+    assert first["transcript_path"] not in state.agents
+    # Closing the last one releases the mic entirely.
+    status, body = call("POST", "/dismiss-agent", {"name": second["transcript_path"]})
+    assert status == 200 and body["active_agent"] is None

@@ -114,13 +114,14 @@ describe("AgentTabs", () => {
     expect(labels).toEqual(["old", "young", "dead2", "dead1"]);
   });
 
-  it("greys out offline tabs and lets only them be dismissed", async () => {
+  it("greys out ended tabs, and every tab can be closed - the mic's too", async () => {
     const wrapper = mount(AgentTabs, {
       props: {
-        agents: { live: "live", gone: "gone" },
+        agents: { live: "live", other: "other", gone: "gone" },
         meta: {
           live: { label: "live", online: true, activated_at: 1, offline_since: null },
-          gone: { label: "gone", online: false, activated_at: 2, offline_since: 3 },
+          other: { label: "other", online: true, activated_at: 2, offline_since: null },
+          gone: { label: "gone", online: false, activated_at: 3, offline_since: 4 },
         },
         active: "live",
         viewed: "live",
@@ -128,13 +129,17 @@ describe("AgentTabs", () => {
       },
     });
 
-    const [live, gone] = wrapper.findAll("button");
+    const [live, other, gone] = wrapper.findAll("button");
     expect(live.classes()).not.toContain("offline");
-    expect(live.find(".dismiss").exists()).toBe(false);
+    // Every tab closes like a browser tab, including the one receiving the
+    // mic (the daemon hands the mic on and says where it went).
+    expect(live.find(".dismiss").exists()).toBe(true);
+    expect(other.find(".dismiss").exists()).toBe(true);
     expect(gone.classes()).toContain("offline");
 
     await gone.find(".dismiss").trigger("click");
-    expect(wrapper.emitted("dismiss")).toEqual([["gone"]]);
+    await other.find(".dismiss").trigger("click");
+    expect(wrapper.emitted("dismiss")).toEqual([["gone"], ["other"]]);
     expect(wrapper.emitted("select")).toBeUndefined(); // ✕ must not also select
   });
 

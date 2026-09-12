@@ -134,6 +134,7 @@ class ConversationRegistry:
             elif event.kind == "turn_started":
                 conversation.turn_open = True
                 conversation.ended = False
+                conversation.hidden = False  # the user is talking there again
             elif event.kind == "turn_ended":
                 conversation.turn_open = False
             elif event.kind == "activity":
