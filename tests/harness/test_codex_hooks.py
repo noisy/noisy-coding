@@ -5,8 +5,8 @@ from __future__ import annotations
 from noisy_coding.harness.codex_hooks.adapter import CodexHooks
 
 
-def _title(payload):
-    events = CodexHooks(agent_label="Codex").interpret(payload).events
+def _title(payload, index_text=""):
+    events = CodexHooks(agent_label="Codex", read_index=lambda: index_text).interpret(payload).events
     started = [e for e in events if e.kind == "session_started"]
     if started and started[0].title:
         return started[0].title
@@ -31,8 +31,21 @@ def test_codex_without_a_cwd_falls_back_to_the_id():
     assert title == "Codex · codex-de"
 
 
+def test_codex_tab_takes_the_threads_own_name_when_codex_has_one():
+    index = "\n".join([
+        '{"id":"01a07a7e-538f","thread_name":"AstraWork","updated_at":"2026-09-10T12:41:06Z"}',
+        '{"id":"other-thread","thread_name":"Something else","updated_at":"2026-09-10T12:50:00Z"}',
+        '{"id":"01a07a7e-538f","thread_name":"package_bundle","updated_at":"2026-09-10T13:11:47Z"}',
+        'not json at all',
+    ])
+    title = _title({"hook_event_name": "SessionStart", "session_id": "01a07a7e-538f", "cwd": "/w/Work"}, index)
+    assert title == "Codex · package_bundle"  # the LAST name wins, the project fallback is not used
+    assert _title({"hook_event_name": "SessionStart", "session_id": "unnamed-1", "cwd": "/w/Work"}, index) \
+        == "Codex · Work · unname"
+
+
 def test_codex_keys_by_session_id_and_never_drains_a_participant():
-    result = CodexHooks().interpret(
+    result = CodexHooks(read_index=lambda: "").interpret(
         {"hook_event_name": "PostToolUse", "session_id": "codex-x", "agent_id": "sub-1", "cwd": "/w/p"})
     assert result.conversation == "codex-x"
     assert result.participant == "sub-1"

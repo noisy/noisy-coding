@@ -10,7 +10,10 @@ there is no transcript path to key on.
 
 from __future__ import annotations
 
+import json
 import os
+from collections.abc import Callable
+from pathlib import Path
 
 from noisy_coding.harness.base import (
     Capabilities,
@@ -35,6 +38,33 @@ from noisy_coding.harness.hook_common import (
 # user still expected it to hear them (2026-09-10).
 DEFAULT_LISTEN_SECONDS = 3600.0
 DEFAULT_LABEL = "Codex"
+# Codex keeps thread names here (Codex Desktop and the TUI both write it):
+# one JSON object per line, {"id", "thread_name", "updated_at"}, append-only,
+# so the LAST line for an id is the current name. It is the Codex equivalent
+# of Claude's /rename title in the transcript.
+SESSION_INDEX = Path.home() / ".codex" / "session_index.jsonl"
+
+
+def _read_session_index() -> str:
+    try:
+        return SESSION_INDEX.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def thread_name_from_index(text: str, session_id: str) -> str:
+    """The latest thread_name recorded for this thread id, or ''."""
+    name = ""
+    for line in text.splitlines():
+        if session_id not in line:
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if row.get("id") == session_id and row.get("thread_name"):
+            name = str(row["thread_name"])
+    return name
 
 
 class CodexHooks:
@@ -42,7 +72,10 @@ class CodexHooks:
     label = "Codex"
 
     def __init__(
-        self, listen_seconds: float = DEFAULT_LISTEN_SECONDS, agent_label: str = DEFAULT_LABEL
+        self,
+        listen_seconds: float = DEFAULT_LISTEN_SECONDS,
+        agent_label: str = DEFAULT_LABEL,
+        read_index: Callable[[], str] = _read_session_index,
     ) -> None:
         self.capabilities = Capabilities(
             wake="long_poll",
@@ -52,6 +85,7 @@ class CodexHooks:
             spawn=False,
         )
         self._agent_label = agent_label
+        self._read_index = read_index
 
     def interpret(self, payload: dict) -> Interpretation:
         if not isinstance(payload, dict):
@@ -62,17 +96,19 @@ class CodexHooks:
         key = session_id
         participant = str(payload.get("agent_id") or "").strip() or None
         event_name = str(payload.get("hook_event_name") or "")
-        # Codex has no /rename title like Claude, so a bare id is unreadable
-        # when several Codex threads are open. Name the tab by its project
-        # (the working directory) and keep a short id so two threads in the
-        # SAME project stay distinct.
+        # The tab is named by the thread's own name (session_index.jsonl,
+        # which Codex updates on /rename and on auto-titling). Until a thread
+        # has one, fall back to the project (working directory) plus a short
+        # id so two threads in the SAME project stay distinct.
+        thread_name = thread_name_from_index(self._read_index(), session_id)
         cwd = str(payload.get("cwd") or "").strip().rstrip("/")
         project = os.path.basename(cwd) if cwd else ""
-        title = (
-            f"{self._agent_label} · {project} · {session_id[:6]}"
-            if project
-            else f"{self._agent_label} · {session_id[:8]}"
-        )
+        if thread_name:
+            title = f"{self._agent_label} · {thread_name}"
+        elif project:
+            title = f"{self._agent_label} · {project} · {session_id[:6]}"
+        else:
+            title = f"{self._agent_label} · {session_id[:8]}"
         events: list[Event] = []
         may_drain = False
         listener = "none"
