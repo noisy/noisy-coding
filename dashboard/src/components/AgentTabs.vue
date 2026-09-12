@@ -148,8 +148,9 @@ function onDrop(target: Tab) {
       <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[tab.name] ?? 0 }" :aria-hidden="tab.name !== active" title="Receiving your speech">Mic</span>
       <!-- Close, on every tab, like a browser: it hides the conversation,
            it does not end the session. Closing the mic's tab hands the mic
-           to the next one (the daemon decides and says so). Overlaid so
-           hover never changes the tab's width. -->
+           to the next one (the daemon decides and says so). A real flex
+           slot at the end, always present, so it can never sit on top of
+           the Mic badge and the tab's width never shifts on hover. -->
       <span
         class="dismiss"
         role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('dismiss', tab.name)" @keydown.space.stop.prevent="$emit('dismiss', tab.name)"
@@ -170,7 +171,6 @@ button { position:relative; display:inline-flex; align-items:center; gap:8px; fo
 .tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
 button:hover { color:var(--ink); background:var(--surface-hover); }
 button.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
-button { padding-right:34px; } /* room for the overlaid ✕ on every tab */
 button.offline { border-style:dashed; }
 button.dragging { opacity:.5; }
 .statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; }
@@ -182,7 +182,7 @@ button.dragging { opacity:.5; }
 .waitcount { color:var(--amber); font-size:11px; }
 .mutecount, .mutespk { color:var(--red); }
 .mutespk { width:14px; height:14px; }
-.dismiss { position:absolute; right:5px; padding:4px; color:var(--muted); }
+.dismiss { flex:none; width:16px; margin-left:2px; text-align:center; padding:2px 0; color:var(--muted); line-height:1; }
 .dismiss:hover, .dismiss:focus-visible { color:var(--red); }
 @keyframes eq { 50% { transform:scaleY(.5); } }
 
