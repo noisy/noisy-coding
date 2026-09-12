@@ -213,3 +213,23 @@ def test_close_hides_a_live_background_tab_until_the_user_talks_there_again(daem
     # Closing the last one releases the mic entirely.
     status, body = call("POST", "/dismiss-agent", {"name": second["transcript_path"]})
     assert status == 200 and body["active_agent"] is None
+
+
+def test_a_closed_tab_that_speaks_comes_back_as_itself_not_as_a_hash(daemon, monkeypatch):
+    state, call, event = daemon
+    rows = _rows("title.jsonl")  # a session with a real title ("reksio")
+    event(rows[0])
+    key = rows[0]["transcript_path"]
+    other = {**rows[0], "session_id": "33333333-0000-0000-0000-000000000000",
+             "transcript_path": "/Users/dev/.claude/projects/p/33333333.jsonl", "session_title": "other"}
+    event(other)  # so "reksio" is not the active tab and may be closed
+    status, _ = call("POST", "/active-agent", {"name": other["transcript_path"]})
+    status, _ = call("POST", "/dismiss-agent", {"name": key})
+    assert status == 200 and key not in state.agents
+    monkeypatch.setattr(http_api.speech, "submit", lambda *_a, **_k: None)
+    # The closed session speaks, presenting its session id (an alias).
+    status, _ = call("POST", "/speak", {"text": "still here", "agent": rows[0]["session_id"], "wait": False})
+    assert status == 200
+    assert key in state.agents                      # same key, back on the strip
+    assert state.agent_labels[key] == "reksio"      # same title - no hash tab
+    assert rows[0]["session_id"] not in state.agents  # and no second tab under the alias

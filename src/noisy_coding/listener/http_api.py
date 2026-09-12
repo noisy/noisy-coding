@@ -445,6 +445,26 @@ def _stable_agents_meta(state: ListenerState) -> dict:
     return meta
 
 
+def _revive_if_known(state: ListenerState, presented: str) -> str:
+    """Resolve an id to its conversation and bring a closed tab back properly.
+
+    A closed (hidden) conversation whose session then speaks, reports
+    activity or registers must reappear as ITSELF - same key, same title -
+    not as a fresh hash-labelled tab conjured by the legacy auto-register.
+    Returns the key to use (the presented id when the registry does not
+    know it).
+    """
+    key = state.conversations.resolve(presented) or presented
+    conversation = state.conversations.get(key)
+    if conversation is None:
+        return key
+    if conversation.hidden or key not in state.agents:
+        state.conversations.unhide(key)
+        state.register_agent(key, conversation.label())
+        state.add_event("agent", f"'{conversation.label()}' is back (its session spoke)")
+    return key
+
+
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -684,7 +704,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/register":
                 body = self._read_json_body()
                 name = str(body.get("name", "")).strip()
-                name = state.conversations.resolve(name) or name
+                name = _revive_if_known(state, name) if name else name
                 label = str(body.get("label", "")).strip()
                 if name:
                     already = name in state.agents
@@ -1045,7 +1065,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/activity":
                 body = self._read_json_body()
                 agent = str(body.get("agent") or "")
-                agent = state.conversations.resolve(agent) or agent
+                if agent:
+                    agent = _revive_if_known(state, agent)
                 state.set_activity(agent, str(body.get("text") or ""))
                 self._respond({"ok": True})
             elif self.path == "/ptt":
@@ -1265,9 +1286,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if live_bridge is not None:
                     live_bridge.stop_tab_playback()
             claimed = str(body.get("agent") or "")
-            resolved = state.conversations.resolve(claimed) if claimed else None
-            if resolved:
-                body = {**body, "agent": resolved}
+            if claimed:
+                body = {**body, "agent": _revive_if_known(state, claimed)}
             agent, speaker, voice_override = _resolve_speaker(state, body)
             if state.take_voice_claims_dirty():
                 save_voice_claims(state)
