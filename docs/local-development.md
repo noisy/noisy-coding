@@ -21,9 +21,25 @@ visuals get tested.
 
 Port taken? `NOISY_CODING_DEV_HTTP_PORT=7775 scripts/dev_daemon.sh`.
 
-Config note: the dev daemon reads the host's `~/.config/noisy-coding`
-(API key, settings, history), while production reads its own container
-volume — the two never collide, but they also don't share settings.
+### Separate config dir — mandatory
+
+A dev install MUST use its own config directory, never the production one.
+`scripts/dev_daemon.sh` sets `NOISY_CODING_CONFIG_DIR` to
+`~/.config/noisy-coding-dev` (override with `NOISY_CODING_DEV_CONFIG_DIR`),
+so the dev daemon keeps its OWN history, conversations, settings and voice
+claims. Production (the native app) uses the default `~/.config/noisy-coding`.
+
+This is not optional polish. The config dir holds every persistent file,
+and two daemons pointed at one dir fight over it - last writer wins, so a
+dev session's tabs and history bleed into production and vice versa, and a
+"clear history" on one is undone by the other. The split must be on disk,
+not merely on ports.
+
+The MCP server and the hooks are config-dir-agnostic - they reach the
+daemon by port and carry no persistent state - so ONLY the daemon needs
+the env var. On first run `dev_daemon.sh` seeds the new dev dir with just
+`credentials.json` and `providers.json` copied from production, so voice
+works without a re-setup; everything else starts empty.
 
 ## 2. Point sessions in this repo at the dev instance
 
