@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "NOISY_CODING_LISTENER_PORT=7765 python3 \"$CLAUDE_PROJECT_DIR/hooks/claude_hook.py\"",
-            "timeout": 3630,
+            "timeout": 14430,
             "statusMessage": "Listening for your voice (dev)",
             "asyncRewake": true,
             "rewakeSummary": "🎙️ Voice message received (dev)"
@@ -82,7 +82,7 @@
           {
             "type": "command",
             "command": "NOISY_CODING_LISTENER_PORT=7765 python3 \"$CLAUDE_PROJECT_DIR/hooks/claude_hook.py\"",
-            "timeout": 3630,
+            "timeout": 14430,
             "statusMessage": "Listening for your voice (dev)",
             "asyncRewake": true,
             "rewakeSummary": "🎙️ Voice message received (dev)"

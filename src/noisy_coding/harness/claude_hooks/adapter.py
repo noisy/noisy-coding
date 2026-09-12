@@ -36,7 +36,7 @@ from noisy_coding.harness.hook_common import (
 
 # How long the Stop-hook listener waits for voice before it expires. The
 # registered hook timeout must exceed this (install adds slack).
-DEFAULT_LISTEN_SECONDS = 3600.0
+DEFAULT_LISTEN_SECONDS = 14400.0  # 4h; U1 showed no platform cap, deaf state covers the rest
 
 
 def _read_file(path: str) -> str:

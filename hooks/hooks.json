@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
-            "timeout": 3630,
+            "timeout": 14430,
             "statusMessage": "Listening for your voice",
             "asyncRewake": true,
             "rewakeSummary": "🎙️ Voice message received"
@@ -82,7 +82,7 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/claude_hook.py\"",
-            "timeout": 3630,
+            "timeout": 14430,
             "statusMessage": "Listening for your voice",
             "asyncRewake": true,
             "rewakeSummary": "🎙️ Voice message received"

@@ -22,7 +22,7 @@ SETTINGS = Path.home() / ".claude" / "settings.json"
 SCRIPT = HOOKS_DIR / "claude_hook.py"
 # The listener waits this long for voice before the tab goes deaf. The hook
 # timeout must outlive it (slack for the wake itself).
-LISTEN_SECONDS = 3600
+LISTEN_SECONDS = 14400  # 4h idle window (U1: no hook-timeout cap); deaf state is the fallback
 LISTENER_EVENTS = ("SessionStart", "Stop")
 QUICK_EVENTS = ("UserPromptSubmit", "SubagentStart", "SubagentStop")
 TOOL_EVENTS = ("PreToolUse", "PostToolUse")
