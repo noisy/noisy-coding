@@ -504,7 +504,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond({"transcripts": [], "nudge": None, "stand_down": True})
                     return
                 active_before = state.active_agent
-                transcripts = [asdict(t) for t in state.drain(agent)]
+                conversation = state.conversations.get(agent or "")
+                hidden = bool(conversation and conversation.hidden)
+                transcripts = [asdict(t) for t in state.drain(agent, touch=not hidden)]
                 if state.active_agent != active_before:
                     save_settings(state)  # bootstrap activation must stick too
                 # Narration nudge (#16): piggybacks on the poll the hooks

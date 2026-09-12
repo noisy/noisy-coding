@@ -796,13 +796,16 @@ class ListenerState:
                 self._update_utterance_locked(utterance_id, status="cancelled by you")
             return cancelled
 
-    def drain(self, agent: str | None = None) -> list[Transcript]:
+    def drain(self, agent: str | None = None, touch: bool = True) -> list[Transcript]:
         with self._lock:
             # Register/refresh the caller. No agent given → single-agent
-            # mode (everyone drains everything).
+            # mode (everyone drains everything). touch=False for a listener
+            # whose tab the user CLOSED: its poller may keep draining, but a
+            # poll is not a reason to put the tab back on the strip.
             if agent is not None:
-                self._touch_agent_locked(agent)
-                if self._active_agent is None:
+                if touch:
+                    self._touch_agent_locked(agent)
+                if self._active_agent is None and touch:
                     self._active_agent = agent  # first to register wins by default
                 # Deliver by ADDRESSEE (stamped at recording start, #17).
                 # Unstamped transcripts keep the old rule: active agent only.

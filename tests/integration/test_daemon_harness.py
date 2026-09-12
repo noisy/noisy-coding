@@ -233,3 +233,24 @@ def test_a_closed_tab_that_speaks_comes_back_as_itself_not_as_a_hash(daemon, mon
     assert key in state.agents                      # same key, back on the strip
     assert state.agent_labels[key] == "reksio"      # same title - no hash tab
     assert rows[0]["session_id"] not in state.agents  # and no second tab under the alias
+
+
+def test_a_closed_tabs_listener_polling_does_not_resurrect_it(daemon):
+    state, call, event = daemon
+    rows = _rows("session.jsonl")
+    event(rows[0])
+    key = rows[0]["transcript_path"]
+    other = {**rows[0], "session_id": "44444444-0000-0000-0000-000000000000",
+             "transcript_path": "/Users/dev/.claude/projects/p/44444444.jsonl"}
+    event(other)
+    call("POST", "/active-agent", {"name": other["transcript_path"]})
+    listener = event(next(r for r in rows if r["hook_event_name"] == "Stop"))["listener_id"]
+    status, _ = call("POST", "/dismiss-agent", {"name": key})
+    assert status == 200 and key not in state.agents
+    # The session's Stop poller keeps polling for up to an hour...
+    for _ in range(3):
+        _s, body = call("GET", f"/drain?conversation={key}&listener={listener}")
+        assert body["stand_down"] is False  # it is still the current listener
+    # ...and the closed tab stays closed - no hash tab, no legacy re-register.
+    assert key not in state.agents
+    assert key not in call("GET", "/status")[1]["agents_meta"]
