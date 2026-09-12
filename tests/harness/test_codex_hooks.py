@@ -17,18 +17,18 @@ def _title(payload, index_text=""):
 def test_codex_tab_is_named_by_its_project_with_a_short_id():
     title = _title({"hook_event_name": "SessionStart",
                     "session_id": "codex-0a1b2c3d", "cwd": "/Users/dev/noisy-coding"})
-    assert title == "Codex · noisy-coding · codex-"
+    assert title == "noisy-coding · codex-"
 
 
 def test_two_codex_threads_in_one_project_stay_distinct():
     a = _title({"hook_event_name": "Stop", "session_id": "a1a1a1a1-1", "cwd": "/w/proj"})
     b = _title({"hook_event_name": "Stop", "session_id": "b2b2b2b2-2", "cwd": "/w/proj"})
-    assert a != b and a.startswith("Codex · proj ·") and b.startswith("Codex · proj ·")
+    assert a != b and a.startswith("proj ·") and b.startswith("proj ·")
 
 
 def test_codex_without_a_cwd_falls_back_to_the_id():
     title = _title({"hook_event_name": "SessionStart", "session_id": "codex-deadbeef"})
-    assert title == "Codex · codex-de"
+    assert title == "codex-de"
 
 
 def test_codex_tab_takes_the_threads_own_name_when_codex_has_one():
@@ -39,9 +39,9 @@ def test_codex_tab_takes_the_threads_own_name_when_codex_has_one():
         'not json at all',
     ])
     title = _title({"hook_event_name": "SessionStart", "session_id": "01a07a7e-538f", "cwd": "/w/Work"}, index)
-    assert title == "Codex · package_bundle"  # the LAST name wins, the project fallback is not used
+    assert title == "package_bundle"  # the LAST name wins, no prefix, no project fallback
     assert _title({"hook_event_name": "SessionStart", "session_id": "unnamed-1", "cwd": "/w/Work"}, index) \
-        == "Codex · Work · unname"
+        == "Work · unname"
 
 
 def test_codex_keys_by_session_id_and_never_drains_a_participant():

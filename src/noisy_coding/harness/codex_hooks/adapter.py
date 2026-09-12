@@ -103,12 +103,14 @@ class CodexHooks:
         thread_name = thread_name_from_index(self._read_index(), session_id)
         cwd = str(payload.get("cwd") or "").strip().rstrip("/")
         project = os.path.basename(cwd) if cwd else ""
+        # No "Codex ·" prefix: the harness is shown elsewhere on the tab, and
+        # the name is what the user reads (Krzysztof, 2026-09-10).
         if thread_name:
-            title = f"{self._agent_label} · {thread_name}"
+            title = thread_name
         elif project:
-            title = f"{self._agent_label} · {project} · {session_id[:6]}"
+            title = f"{project} · {session_id[:6]}"
         else:
-            title = f"{self._agent_label} · {session_id[:8]}"
+            title = session_id[:8]
         events: list[Event] = []
         may_drain = False
         listener = "none"
