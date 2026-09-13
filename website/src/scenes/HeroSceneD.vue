@@ -80,7 +80,7 @@ onMounted(() => {
       :class="{ faded }"
       :style="{ transform: `scale(${scale})`, '--cut': `${cut}%` }"
       role="img"
-      aria-label="Split screen: the same Claude Code session typed in grayscale on the left and spoken in color with the NOISY-CODING widget on the right; the color side sweeps across and wins"
+      aria-label="Split screen: the same Claude Code session typed in grayscale on the left and spoken in color with the NOISY STUDIO widget on the right; the color side sweeps across and wins"
     >
       <!-- the keyboard era: terminal only, drained of color -->
       <div class="era era-typing">

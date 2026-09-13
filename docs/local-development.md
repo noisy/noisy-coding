@@ -1,6 +1,6 @@
 # Running a local dev instance next to production
 
-The production noisy-coding lives in a Docker container and owns the default
+The production Noisy Studio lives in a Docker container and owns the default
 ports (8765 HTTP/dashboard, 8766 WS bridge, 8767 MCP). A development instance
 runs straight from this checkout on shifted ports, so both answer at the same
 time: your other projects keep talking to production while sessions in this

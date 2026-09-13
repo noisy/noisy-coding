@@ -20,7 +20,7 @@ interface Step {
   speakMs?: number; // user only: how long the live transcript runs
 }
 const SCRIPT: Step[] = [
-  { role: "claude", holdMs: 600, text: "Hey - I'm the web demo of the noisy-coding companion. Talk to me like you'd talk to your agent." },
+  { role: "claude", holdMs: 600, text: "Hey - I'm the web demo of the Noisy Studio companion. Talk to me like you'd talk to your agent." },
   { role: "user", holdMs: 1800, speakMs: 1400, text: "can you fix my code?" },
   { role: "claude", holdMs: 900, text: "Not from here - in this demo I have no Claude Code attached, so I can't touch a repo. I'm the voice layer only." },
   { role: "claude", holdMs: 2600, text: "In the real app this exact conversation drives a live Claude Code session - it fixes the bug while you talk." },
@@ -33,7 +33,7 @@ const SCRIPT: Step[] = [
  * "no Claude Code attached" moment is beat one - the first thing a real
  * visitor earns by talking. */
 const GREETING =
-  "Hey - I'm the noisy-coding companion. Your mic should be opening right now - say something: this is what your terminal sounds like with a voice.";
+  "Hey - I'm the Noisy Studio companion. Your mic should be opening right now - say something: this is what your terminal sounds like with a voice.";
 const BEATS = [
   "I hear you. In the real app that would have gone straight to Claude Code mid-task - here in the browser I have no agent attached, so I'm just listening.",
   "That's the whole loop: you talk, your agent keeps working. Download the app and this exact widget sits over your terminal.",
@@ -154,7 +154,7 @@ export function useScriptedDriver(options: ScriptedDriverOptions = {}): Scripted
         at(cursor, () => {
           mode.value = "claude";
           activity.value = null;
-          say(`script-${i + 1}`, s.text);
+          say(i === 0 ? "studio-script-1" : `script-${i + 1}`, s.text);
         });
         next(i + 1);
       }
@@ -173,7 +173,7 @@ export function useScriptedDriver(options: ScriptedDriverOptions = {}): Scripted
     feed.value = [];
     liveText.value = "";
     mode.value = "claude";
-    say("greet", GREETING);
+    say("studio-greet", GREETING);
     at(1200, () => (mode.value = "idle"));
   }
 

@@ -16,7 +16,7 @@ onBeforeUnmount(() => observer?.disconnect());
 </script>
 <template>
   <div ref="frame" class="dashboard-demo" :style="{height: `${height * scale}px`}">
-    <iframe :src="url" title="Interactive Noisy Coding dashboard with demonstration data" loading="lazy" :width="width" :height="height" :style="{transform: `scale(${scale})`}" allow="microphone 'none'; camera 'none'" />
+    <iframe :src="url" title="Interactive Noisy Studio dashboard with demonstration data" loading="lazy" :width="width" :height="height" :style="{transform: `scale(${scale})`}" allow="microphone 'none'; camera 'none'" />
   </div>
   <p class="image-caption">The real dashboard, with sample conversations. Try its tabs and character controls. <a :href="url" target="_blank" rel="noopener">Open full size ↗</a></p>
 </template>

@@ -1,6 +1,6 @@
 {
   "name": "noisy-coding",
-  "interface": { "displayName": "Noisy Coding" },
+  "interface": { "displayName": "Noisy Studio" },
   "plugins": [{
     "name": "noisy-coding",
     "source": { "source": "local", "path": "./" },

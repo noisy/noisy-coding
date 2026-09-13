@@ -107,7 +107,7 @@ Live smoke test (spends API credits, plays audio):
 uv run python scripts/smoke_test.py "Hello from Grok"
 ```
 
-Hacking on noisy-coding itself? See
+Hacking on Noisy Studio itself? See
 [local-development.md](local-development.md) for running a dev instance
 next to production.
 # Codex

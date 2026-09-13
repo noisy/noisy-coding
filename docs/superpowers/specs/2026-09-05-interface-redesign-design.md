@@ -1,4 +1,4 @@
-# Noisy Coding interface redesign
+# Noisy Studio interface redesign
 
 The user delegated the visual design and requested uninterrupted implementation and testing. The prepared worktree remains on `feat/interface-redesign` at base `890dfc6`. Storybook on port 6007 was opened and actual companion and dashboard screenshots inspected before styling began.
 

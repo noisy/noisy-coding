@@ -2,7 +2,7 @@
 
 ## Approved direction
 
-One website, delivered in two reviewable passes: visual redesign and regenerated product screenshots first; sharper messaging and additional selling-point sections second. The user approved the product showcase direction verbally on 2026-09-08. Preserve the Noisy Coding product name.
+One website, delivered in two reviewable passes: visual redesign and regenerated product screenshots first; sharper messaging and additional selling-point sections second. The user approved the product showcase direction verbally on 2026-09-08. Preserve the Noisy Studio product name.
 
 ## Visual design
 

@@ -73,7 +73,7 @@ export interface Utterance {
   id: number;
   /** Human label from agent registration; absent for older daemons/history. */
   agent_label?: string;
-  /** daemon = noisy-coding speaking for itself (setup confirmations …) —
+  /** daemon = Noisy Studio speaking for itself (setup confirmations …) —
    * same voice pipeline as claude cards, but never attributed to Claude. */
   role: "user" | "claude" | "system" | "daemon";
   status: string;

@@ -1,6 +1,6 @@
 ---
 name: creating-releases
-description: How to cut a noisy-coding release — version bump, tag, GitHub release via gh, and above all HOW TO WRITE the release notes (agent-quotable Highlights, pain-first framing, upgrade notes derived from what changed). Repo-local skill for maintainers; use whenever asked to release, publish a version, or write release notes.
+description: How to cut a Noisy Studio release — version bump, tag, GitHub release via gh, and above all HOW TO WRITE the release notes (agent-quotable Highlights, pain-first framing, upgrade notes derived from what changed). Repo-local skill for maintainers; use whenever asked to release, publish a version, or write release notes.
 ---
 
 # Creating releases

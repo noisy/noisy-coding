@@ -450,7 +450,7 @@ const LANGUAGES: Record<string, string> = {
        mic works, API-dependent sections sit dimmed behind the key prompt. -->
   <div v-if="unconfigured" class="setup-overlay" role="dialog" aria-modal="true" aria-labelledby="setup-title">
     <div class="setup-box">
-      <div id="setup-title" class="setup-title">Welcome to Noisy Coding</div>
+      <div id="setup-title" class="setup-title">Welcome to Noisy Studio</div>
       <!-- Engine first, key second (#36/#37): the cards decide whether the
            key form below applies at all. -->
       <EngineChoice @mode="gateMode = $event" />
@@ -538,7 +538,7 @@ const LANGUAGES: Record<string, string> = {
                 </g>
               </svg>
               <div>
-                <div class="title">Noisy Coding</div>
+                <div class="title">Noisy Studio</div>
                 <div class="sub">Your voice, in the workflow</div>
               </div>
             </div>

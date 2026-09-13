@@ -13,6 +13,11 @@ const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, dia
 const path = require("node:path");
 const { loadDesktopIcons } = require("./icons");
 const http = require("node:http");
+
+// Keep existing browser preferences and permissions when the app display name changes.
+// Source launches used the production name, even with NOISY_MODE=local.
+const legacyProfileName = app.getName() === "Noisy Studio Dev" ? "Noisy Coding Dev" : "Noisy Coding";
+app.setPath("userData", path.join(app.getPath("appData"), legacyProfileName));
 const { spawn } = require("node:child_process");
 
 // The daemon serves the built dashboard under /next/ - the bare /companion
@@ -182,7 +187,7 @@ function createDashboard() {
     height: 900,
     // An ordinary window: it has a title bar, it goes behind other windows,
     // it belongs in the Dock. Everything the widget deliberately is not.
-    title: "Noisy Coding",
+    title: "Noisy Studio",
     backgroundColor: "#050e18",
     show: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
@@ -384,7 +389,7 @@ function createSplash() {
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   const html = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:#050e18;color:#3fd8ff;font:600 13px -apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;letter-spacing:.25em">
-  <div>NOISY-CODING</div>
+  <div>NOISY STUDIO</div>
   <div style="margin-top:10px;width:160px;height:2px;background:#0c2233;overflow:hidden;border-radius:1px"><div style="width:40%;height:100%;background:#3fd8ff;animation:s 1.1s ease-in-out infinite alternate"></div></div>
   <div style="margin-top:10px;font-size:9px;color:#5b7c8f;letter-spacing:.2em">STARTING THE DAEMON</div>
   <style>@keyframes s{from{margin-left:0}to{margin-left:60%}}</style></body>`;
@@ -404,7 +409,7 @@ app.whenReady().then(async () => {
     // not-found page reads as a broken app, not an absent service.
     dialog.showMessageBox({
       type: "warning",
-      message: `Noisy Coding (${MODE})`,
+      message: `Noisy Studio (${MODE})`,
       detail: `${problem}.\n\nStart it, then reload with Ctrl+Alt+R.`,
       buttons: ["Continue"],
     });
@@ -440,8 +445,8 @@ app.whenReady().then(async () => {
   });
   tray.setToolTip(
     attachedPort
-      ? `noisy-coding - attached to :${attachedPort}`
-      : `noisy-coding - no daemon found (expected :${OWN_PORT})`,
+      ? `Noisy Studio - attached to :${attachedPort}`
+      : `Noisy Studio - no daemon found (expected :${OWN_PORT})`,
   );
   buildTray();
 

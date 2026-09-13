@@ -15,3 +15,8 @@ Line texts live in `src/demo/useScriptedDriver.ts` (GREETING, BEATS, SCRIPT).
   SCRIPT; user lines 2 and 5 need no clip)
 
 Keep clips small (mono, ~48-64 kbps) - they ship in the site bundle.
+
+The rebrand uses `studio-greet` and `studio-script-1` for the two lines that
+name Noisy Studio. They currently use the browser speech fallback. The old
+`greet.mp3` and `script-1.mp3` recordings are retained as source assets but
+are not selected by the driver; replacement clips must use the new keys.

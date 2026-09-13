@@ -1,7 +1,7 @@
 # Live demo - phase 2 architecture
 
 How the TRY IT LIVE section connects the browser to a real-time Grok (xAI)
-voice model. Finalized with the noisy-coding architecture session
+voice model. Finalized with the Noisy Studio architecture session
 (stream-day-4). The phase-1 scripted demo stays forever as the fallback.
 
 ## DORMANT for v1 (2026-09-04)

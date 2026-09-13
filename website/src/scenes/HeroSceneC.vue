@@ -98,7 +98,7 @@ onMounted(() => {
       :class="{ faded }"
       :style="{ transform: `scale(${scale})` }"
       role="img"
-      aria-label="The NOISY-CODING companion widget talks center stage while the Claude Code terminal materializes from a blur behind it"
+      aria-label="The NOISY STUDIO companion widget talks center stage while the Claude Code terminal materializes from a blur behind it"
     >
       <div class="terminal-slot" :class="`t${terminalStage}`">
         <ClaudeCodeMock full-bleed banner="both" :visible-lines="visibleLines" />

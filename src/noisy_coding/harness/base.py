@@ -1,4 +1,4 @@
-"""The agent-harness contract: how noisy-coding attaches to an agent system.
+"""The agent-harness contract: how Noisy Studio attaches to an agent system.
 
 A harness (Claude Code hooks, Codex hooks, later a channel or an SDK) is
 an adapter that turns whatever the agent system sends us into a small

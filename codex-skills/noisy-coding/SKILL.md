@@ -1,11 +1,11 @@
 ---
 name: noisy-coding
-description: Speak concise replies aloud through noisy-coding and handle incoming voice while working in Codex. Use when noisy-coding tools are available, the user speaks through its hooks, or requests a voice conversation. Includes first-time setup and troubleshooting.
+description: Speak concise replies aloud through Noisy Studio and handle incoming voice while working in Codex. Use when Noisy Studio tools are available, the user speaks through its hooks, or requests a voice conversation. Includes first-time setup and troubleshooting.
 ---
 
 # Voice conversations in Codex
 
-noisy-coding is a voice layer: a daemon owns the microphone and speakers,
+Noisy Studio is a voice layer: a daemon owns the microphone and speakers,
 and this plugin's hooks carry your spoken answers out and the user's speech
 in. You send only text; the daemon owns voice, speed and personality.
 

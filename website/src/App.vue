@@ -9,14 +9,14 @@ const source = "https://github.com/noisy/noisy-coding";
 <template>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header wrap">
-    <a class="brand" href="#" aria-label="Noisy Coding home">
+    <a class="brand" href="#" aria-label="Noisy Studio home">
       <svg viewBox="0 0 46 46" width="40" height="40" aria-hidden="true">
         <rect x="3" y="3" width="40" height="40" rx="11" fill="#263448" />
         <g stroke="#b8cff3" stroke-width="3.2" stroke-linecap="round">
           <path d="M14 17v12M20 11v24M26 15v16M32 19v8" />
         </g>
       </svg>
-      Noisy Coding
+      Noisy Studio
     </a>
     <nav aria-label="Main navigation">
       <a href="#voices">Hear it</a><a href="#character">Character</a
@@ -110,7 +110,7 @@ const source = "https://github.com/noisy/noisy-coding";
     </section>
   </main>
   <footer class="site-footer wrap">
-    <a class="brand" href="#">Noisy Coding</a
+    <a class="brand" href="#">Noisy Studio</a
     ><span>Your voice, in the workflow.</span
     ><a :href="source">Built in the open ↗</a>
   </footer>

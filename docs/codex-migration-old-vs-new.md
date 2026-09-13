@@ -1,6 +1,6 @@
-# noisy-coding in Codex: what changed (paste this into an existing thread)
+# Noisy Studio in Codex: what changed (paste this into an existing thread)
 
-You are a Codex session that has used noisy-coding's **old** voice
+You are a Codex session that has used Noisy Studio's **old** voice
 integration. It was rebuilt for 3.0. Nothing you do as a speaker changes -
 you still call `speak` and `announce` - but the plumbing under you is
 different, and one old habit is now actively wrong. Read this once, then

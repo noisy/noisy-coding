@@ -8,7 +8,7 @@
 
 ## Global constraints
 
-Keep Noisy Coding branding, synthetic screenshots and disabled live microphone demo. Base work on merged v3-desktop. Do not modify the daemon or original checkout. No automatic speech or deployment. Support reduced motion, keyboard access, root and subpath builds.
+Keep Noisy Studio branding, synthetic screenshots and disabled live microphone demo. Base work on merged v3-desktop. Do not modify the daemon or original checkout. No automatic speech or deployment. Support reduced motion, keyboard access, root and subpath builds.
 
 ## 1. Visual foundation
 
