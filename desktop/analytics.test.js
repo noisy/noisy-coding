@@ -17,7 +17,7 @@ function setup(t, overrides = {}) {
     async captureImmediate(event) { events.push(event); }
     async shutdown(timeout) { shutdowns.push(timeout); }
   }
-  const options = { config: { projectToken: 'test-project', host: 'https://example.test' }, dataPath, mode: 'production', isPackaged: true, version: '1.2.3', platform: 'darwin', ...overrides };
+  const options = { config: { projectToken: 'test-project', host: 'https://example.test' }, dataPath, exclusionPath: path.join(dataPath, 'excluded'), mode: 'production', isPackaged: true, version: '1.2.3', platform: 'darwin', ...overrides };
   return { create: () => createDesktopAnalytics(options, Client), events, shutdowns, clientCount: () => clients };
 }
 
@@ -37,7 +37,7 @@ test('consenting installs retain a random identity across launches and only send
   assert.match(id, /^[0-9a-f-]{36}$/);
   assert.deepEqual(fixture.events, ['analytics_enabled', 'app_started'].map(event => ({
     distinctId: id, event, disableGeoip: true,
-    properties: { surface: 'desktop', app_version: '1.2.3', platform: 'darwin', $process_person_profile: false },
+    properties: { surface: 'desktop', app_version: '1.2.3', build_variant: 'production', platform: 'darwin', $process_person_profile: false },
   })));
 });
 
@@ -55,7 +55,7 @@ test('opting out remains effective after relaunch and opting in creates a fresh 
   assert.notEqual(fixture.events[1].distinctId, oldId);
 });
 
-for (const overrides of [{ mode: 'local' }, { isPackaged: false }, { config: {} }]) {
+for (const overrides of [{ isPackaged: false }, { config: {} }]) {
   test(`development and unconfigured builds cannot enable collection: ${JSON.stringify(overrides)}`, t => {
     const fixture = setup(t, overrides);
     const analytics = fixture.create();
@@ -63,6 +63,24 @@ for (const overrides of [{ mode: 'local' }, { isPackaged: false }, { config: {} 
     assert.deepEqual({ enabled: analytics.enabled, events: fixture.events, clients: fixture.clientCount() }, { enabled: false, events: [], clients: 0 });
   });
 }
+
+test('packaged development builds identify their variant after consent', t => {
+  const fixture = setup(t, { mode: 'local' });
+  fixture.create().setEnabled(true);
+  assert.equal(fixture.events[0].properties.build_variant, 'dev');
+});
+
+test('device exclusion overrides consent in existing instances and subsequent launches', t => {
+  const fixture = setup(t);
+  const first = fixture.create();
+  first.setEnabled(true);
+  const second = fixture.create();
+  first.setExcluded(true);
+  first.setEnabled(true);
+  second.track('app_started');
+  fixture.create().track('app_started');
+  assert.deepEqual({ enabled: first.enabled, excluded: second.excluded, events: fixture.events.map(event => event.event) }, { enabled: false, excluded: true, events: ['analytics_enabled'] });
+});
 
 test('shutdown asks the SDK to finish within two seconds', async t => {
   const fixture = setup(t);

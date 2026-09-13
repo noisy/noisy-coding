@@ -1,6 +1,7 @@
 import type { PostHog, PostHogConfig } from 'posthog-js';
 
 export const PREFERENCE_KEY = 'noisy-usage-analytics';
+export const EXCLUSION_KEY = 'noisy-exclude-analytics';
 type Client = Pick<PostHog, 'init' | 'capture' | 'opt_in_capturing' | 'opt_out_capturing' | 'reset'>;
 type Preference = 'enabled' | 'disabled' | null;
 
@@ -11,6 +12,7 @@ export function createWebsiteAnalytics(client: Client, options: {
   storage: Pick<Storage, 'getItem' | 'setItem'>;
   origin: string;
   pathname: string;
+  excludeThisBrowser?: boolean;
 }) {
   const available = options.production && Boolean(options.projectToken);
   let preference: Preference = null;
@@ -19,14 +21,19 @@ export function createWebsiteAnalytics(client: Client, options: {
     if (stored === 'enabled' || stored === 'disabled') preference = stored;
   } catch { /* Storage can be blocked; the current visit can still opt in. */ }
   let initialized = false;
+  let excluded = options.excludeThisBrowser === true;
+  try {
+    if (excluded) options.storage.setItem(EXCLUSION_KEY, 'true');
+    else excluded = options.storage.getItem(EXCLUSION_KEY) === 'true';
+  } catch { /* Keep the in-memory exclusion if storage is unavailable. */ }
 
   function capture(event: '$pageview' | 'installation_guide_opened', properties: Record<string, string> = {}) {
-    if (!available || preference !== 'enabled' || !initialized) return;
+    if (!available || excluded || preference !== 'enabled' || !initialized) return;
     try { client.capture(event, { ...properties, surface: 'website' }); } catch { /* Analytics must not interrupt navigation. */ }
   }
 
   function start() {
-    if (!available || preference !== 'enabled') return;
+    if (!available || excluded || preference !== 'enabled') return;
     if (!initialized) {
       const config: Partial<PostHogConfig> = {
         api_host: options.host,
@@ -45,7 +52,8 @@ export function createWebsiteAnalytics(client: Client, options: {
         // Do not retain automatic URL, referrer, campaign or browser properties.
         before_send: (event) => {
           if (!event || !['$pageview', 'installation_guide_opened'].includes(event.event)) return null;
-          const allowed = ['distinct_id', '$device_id', '$session_id', '$window_id', '$lib', '$lib_version', '$process_person_profile', '$geoip_disable', 'surface', 'guide'];
+          // The browser SDK carries its ingestion token inside properties.
+          const allowed = ['token', 'distinct_id', '$device_id', '$session_id', '$window_id', '$lib', '$lib_version', '$process_person_profile', '$geoip_disable', 'surface', 'guide'];
           event.properties = Object.fromEntries(Object.entries(event.properties || {}).filter(([key]) => allowed.includes(key)));
           event.properties.$current_url = options.origin + options.pathname;
           event.properties.$pathname = options.pathname;
@@ -63,8 +71,15 @@ export function createWebsiteAnalytics(client: Client, options: {
   return {
     available,
     get preference() { return preference; },
+    get excluded() { return excluded; },
     start,
+    setExcluded(value: boolean) {
+      excluded = value;
+      try { options.storage.setItem(EXCLUSION_KEY, String(value)); } catch { /* Session-only exclusion. */ }
+      this.setEnabled(false);
+    },
     setEnabled(enabled: boolean) {
+      if (enabled && excluded) return;
       const next = enabled ? 'enabled' : 'disabled';
       if (preference === next) return;
       preference = next;

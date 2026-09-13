@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createWebsiteAnalytics, PREFERENCE_KEY } from './controller.ts';
+import { createWebsiteAnalytics, PREFERENCE_KEY, EXCLUSION_KEY } from './controller.ts';
 
-function setup({ production = true, projectToken = 'test-project', saved = null as string | null } = {}) {
+function setup({ production = true, projectToken = 'test-project', saved = null as string | null, excludeThisBrowser = false } = {}) {
   const calls: unknown[][] = [];
   let config: any;
   const storage = new Map<string, string>();
@@ -15,7 +15,7 @@ function setup({ production = true, projectToken = 'test-project', saved = null 
     reset: () => { calls.push(['reset']); },
   };
   const analytics = createWebsiteAnalytics(client as any, {
-    production, projectToken, host: 'https://example.test',
+    production, projectToken, excludeThisBrowser, host: 'https://example.test',
     origin: 'https://noisy.example', pathname: '/',
     storage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => { storage.set(key, value); } },
   });
@@ -49,6 +49,20 @@ test('withdrawing analytics stops further captures and clears identity through t
   assert.deepEqual(calls, [['reset'], ['opt-out']]);
 });
 
+test('browser exclusion persists and overrides attempts to enable analytics', () => {
+  const { analytics, calls, storage } = setup();
+  analytics.setExcluded(true);
+  analytics.setEnabled(true);
+  analytics.trackGuide('codex');
+  assert.deepEqual({ calls, excluded: analytics.excluded, saved: storage.get(EXCLUSION_KEY) }, { calls: [], excluded: true, saved: 'true' });
+});
+
+test('an exclusion link overrides saved consent before the SDK initializes', () => {
+  const { analytics, calls } = setup({ saved: 'enabled', excludeThisBrowser: true });
+  analytics.start();
+  assert.deepEqual(calls, []);
+});
+
 for (const options of [{ production: false }, { projectToken: '' }]) {
   test(`unconfigured or development builds stay silent: ${JSON.stringify(options)}`, () => {
     const { analytics, calls } = setup({ ...options, saved: 'enabled' });
@@ -61,11 +75,11 @@ test('outbound events exclude query strings, transcripts and automatic browser p
   const { analytics, config } = setup();
   analytics.setEnabled(true);
   const result = config().before_send({ event: '$pageview', properties: {
-    distinct_id: 'visitor-1', surface: 'website', '$current_url': 'https://noisy.example/?token=private',
+    token: 'test-project', distinct_id: 'visitor-1', surface: 'website', '$current_url': 'https://noisy.example/?token=private',
     '$referrer': 'https://example.test/private', transcript: 'private conversation', email: 'private@example.test',
   } });
   assert.deepEqual(result, { event: '$pageview', properties: {
-    distinct_id: 'visitor-1', surface: 'website', '$current_url': 'https://noisy.example/', '$pathname': '/', '$geoip_disable': true,
+    token: 'test-project', distinct_id: 'visitor-1', surface: 'website', '$current_url': 'https://noisy.example/', '$pathname': '/', '$geoip_disable': true,
   } });
   assert.equal(config().before_send({ event: '$autocapture', properties: {} }), null);
 });

@@ -15,6 +15,7 @@ on:
     branches: [main, v3-desktop]
     paths:
       - "website/**"
+      - "scripts/analytics-config.cjs"
       - "dashboard/src/**" # the site renders the real product components
       - "dashboard/public/**"
       - ".github/workflows/deploy-website.yml"
@@ -35,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        id: pages
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -43,9 +46,10 @@ jobs:
       - name: Install and build (website only)
         working-directory: website
         env:
-          # Project Pages site is served from /<repo>/. For a custom domain
-          # later: set this to "/" (or drop it) - see website/README.md.
-          PAGES_BASE: /${{ github.event.repository.name }}/
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+          POSTHOG_HOST: https://us.i.posthog.com
+          # Follow the configured custom domain or project Pages path.
+          PAGES_BASE: ${{ steps.pages.outputs.base_path }}/
         run: |
           npm ci
           npm run build

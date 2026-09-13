@@ -382,6 +382,7 @@ function buildTray() {
       label: 'Share optional usage analytics',
       type: 'checkbox',
       checked: analytics.enabled,
+      enabled: !analytics.excluded,
       click: async (item) => {
         if (item.checked) {
           const { response } = await dialog.showMessageBox({
@@ -394,6 +395,15 @@ function buildTray() {
           });
           analytics.setEnabled(response === 1);
         } else analytics.setEnabled(false);
+        buildTray();
+      },
+    }, {
+      label: 'Exclude this device from analytics (all variants)',
+      type: 'checkbox',
+      checked: analytics.excluded,
+      click: (item) => {
+        try { analytics.setExcluded(item.checked); }
+        catch { dialog.showErrorBox('Could not save analytics exclusion', 'Check that your application settings folder is writable, then try again.'); }
         buildTray();
       },
     }, { type: 'separator' }] : []),
@@ -429,6 +439,7 @@ app.whenReady().then(async () => {
   analytics = createDesktopAnalytics({
     config: loadAnalyticsConfig(),
     dataPath: app.getPath('userData'),
+    exclusionPath: path.join(app.getPath('appData'), 'noisy-studio-analytics-excluded'),
     mode: MODE,
     isPackaged: app.isPackaged,
     version: app.getVersion(),

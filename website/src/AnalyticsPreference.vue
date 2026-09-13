@@ -3,19 +3,27 @@ import { ref } from 'vue';
 import { websiteAnalytics } from './analytics';
 const expanded = ref(websiteAnalytics.preference === null);
 const enabled = ref(websiteAnalytics.preference === 'enabled');
+const excluded = ref(websiteAnalytics.excluded);
 function choose(value: boolean) {
   websiteAnalytics.setEnabled(value);
   enabled.value = value;
   expanded.value = false;
 }
+function exclude(value: boolean) {
+  websiteAnalytics.setExcluded(value);
+  excluded.value = value;
+  enabled.value = false;
+  expanded.value = false;
+}
 </script>
 <template>
   <aside v-if="websiteAnalytics.available" class="analytics-preference" aria-label="Usage analytics">
-    <button type="button" :aria-expanded="expanded" @click="expanded = !expanded">Usage analytics: {{ enabled ? 'on' : 'off' }}</button>
+    <button type="button" :aria-expanded="expanded" @click="expanded = !expanded">Usage analytics: {{ excluded ? 'browser excluded' : enabled ? 'on' : 'off' }}</button>
     <div v-if="expanded" class="analytics-choice">
       <p>Help improve Noisy Studio by sharing page visits and setup-guide clicks with PostHog. Optional analytics uses a random browser ID stored on this device. No voice, conversation content, or session recordings are collected.</p>
-      <button type="button" @click="choose(true)">Allow analytics</button>
+      <button type="button" :disabled="excluded" @click="choose(true)">Allow analytics</button>
       <button type="button" @click="choose(false)">No thanks</button>
+      <button type="button" @click="exclude(!excluded)">{{ excluded ? 'Stop excluding this browser' : 'Exclude this browser from analytics' }}</button>
     </div>
   </aside>
 </template>

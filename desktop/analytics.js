@@ -11,8 +11,8 @@ function loadAnalyticsConfig() {
   catch { return {}; }
 }
 
-function createDesktopAnalytics({ config, dataPath, mode, isPackaged, version, platform }, Client = PostHog) {
-  const available = isPackaged && mode === 'production' && Boolean(config.projectToken);
+function createDesktopAnalytics({ config, dataPath, exclusionPath, mode, isPackaged, version, platform }, Client = PostHog) {
+  const available = isPackaged && Boolean(config.projectToken);
   const preferencePath = path.join(dataPath, 'usage-analytics.json');
   let state = { enabled: false, distinctId: null };
   if (available) {
@@ -22,6 +22,7 @@ function createDesktopAnalytics({ config, dataPath, mode, isPackaged, version, p
     } catch { /* New installs and unreadable preferences default to no collection. */ }
   }
   let client;
+  const isExcluded = () => Boolean(exclusionPath && fs.existsSync(exclusionPath));
   function getClient() {
     if (!client) {
       client = new Client(config.projectToken, {
@@ -37,23 +38,30 @@ function createDesktopAnalytics({ config, dataPath, mode, isPackaged, version, p
     return client;
   }
   function track(event) {
-    if (!available || !state.enabled || !EVENTS.has(event)) return;
+    if (!available || isExcluded() || !state.enabled || !EVENTS.has(event)) return;
     try {
       // Immediate delivery avoids retaining a batch after analytics is disabled.
       void getClient().captureImmediate({
         distinctId: state.distinctId,
         event,
         disableGeoip: true,
-        properties: { surface: 'desktop', app_version: version, platform, $process_person_profile: false },
+        properties: { surface: 'desktop', app_version: version, build_variant: mode === 'local' ? 'dev' : 'production', platform, $process_person_profile: false },
       }).catch(() => {});
     } catch { /* Analytics never interrupts app startup or a window action. */ }
   }
   return {
     available,
-    get enabled() { return available && state.enabled; },
+    get enabled() { return available && !isExcluded() && state.enabled; },
+    get excluded() { return isExcluded(); },
     track,
+    setExcluded(excluded) {
+      if (!exclusionPath) return;
+      if (excluded) fs.writeFileSync(exclusionPath, '', { mode: 0o600 });
+      else if (fs.existsSync(exclusionPath)) fs.unlinkSync(exclusionPath);
+      this.setEnabled(false);
+    },
     setEnabled(enabled) {
-      if (!available || enabled === state.enabled) return;
+      if (!available || (enabled && isExcluded()) || enabled === state.enabled) return;
       const next = { enabled, distinctId: enabled ? randomUUID() : null };
       // An unwritable setting must never prevent a user from opting out.
       if (!enabled) state = next;
