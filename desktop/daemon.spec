@@ -24,7 +24,6 @@ a = Analysis(
         # analysis does not see them.
         "sounddevice",
         "_sounddevice_data",
-        "webrtcvad",
         "httpx",
         "anyio",
         "certifi",
