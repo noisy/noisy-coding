@@ -454,6 +454,10 @@ def _stable_agents_meta(state: ListenerState) -> dict:
             continue
         status = state.conversations.status(name)
         entry["label"] = conversation.label()  # a name, never an id or a path
+        # The strip's order is the registry's persisted position (which
+        # drag-and-drop updates), so it is identical before and after a
+        # restart. The in-memory manual_pos table did not survive one.
+        entry["manual_pos"] = conversation.position
         entry["online"] = status != "ended"
         entry["status"] = status
         entry["activated_at"] = conversation.created_at
@@ -733,8 +737,16 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/register":
                 body = self._read_json_body()
                 name = str(body.get("name", "")).strip()
-                name = _revive_if_known(state, name) if name else name
+                name = state.conversations.resolve(name) or name
                 label = str(body.get("label", "")).strip()
+                known = state.conversations.get(name)
+                if known is not None and known.hidden:
+                    # The user closed this tab. Sessions on the old hook
+                    # scripts re-register on every tool call; that must not
+                    # bring the tab back. Keep its name current, stay hidden.
+                    state.conversations.adopt(name, label, unhide=False)
+                    self._respond({"registered": name, "active_agent": state.active_agent, "hidden": True})
+                    return
                 if name:
                     already = name in state.agents
                     active_before = state.active_agent
@@ -1099,9 +1111,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/activity":
                 body = self._read_json_body()
                 agent = str(body.get("agent") or "")
-                if agent:
-                    agent = _revive_if_known(state, agent)
-                state.set_activity(agent, str(body.get("text") or ""))
+                agent = state.conversations.resolve(agent) or agent
+                known = state.conversations.get(agent)
+                if known is None or not known.hidden:
+                    state.set_activity(agent, str(body.get("text") or ""))
                 self._respond({"ok": True})
             elif self.path == "/ptt":
                 # Lease renewal/release for push-to-talk; the UI renews

@@ -407,7 +407,9 @@ def run(config: VadConfig | None = None) -> None:
     stt_executor = ThreadPoolExecutor(max_workers=1)
     # Browser-tab audio: a WS bridge one port up feeds the SAME frames
     # queue, so downstream (VAD/STT/PTT) can't tell tab from hardware.
-    start_bridge(state, frames, config.frame_samples, port)
+    from noisy_coding.listener.http_api import state_snapshot
+
+    start_bridge(state, frames, config.frame_samples, port, snapshot=lambda: state_snapshot(state))
 
     def on_audio(indata: np.ndarray, *_args: object) -> None:
         frames.put(indata[:, 0].copy())

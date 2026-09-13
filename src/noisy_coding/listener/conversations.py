@@ -156,7 +156,9 @@ class ConversationRegistry:
         self._save()
         return conversation
 
-    def adopt(self, key: str, title: str = "", harness: str = "legacy") -> Conversation:
+    def adopt(
+        self, key: str, title: str = "", harness: str = "legacy", unhide: bool = True
+    ) -> Conversation:
         """Register a conversation that arrived outside the harness contract
         (the legacy /register endpoint used by old hook scripts), so it is
         persisted like any other and survives a daemon restart. A real title
@@ -170,7 +172,8 @@ class ConversationRegistry:
             self._by_key[conversation.key] = conversation
         if title and title != key and title != key[:8]:
             conversation.title = title
-        conversation.hidden = False
+        if unhide:
+            conversation.hidden = False
         conversation.last_event_at = self._clock()
         self._save()
         return conversation

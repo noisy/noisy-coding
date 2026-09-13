@@ -267,3 +267,44 @@ def test_a_tab_registered_by_old_hook_scripts_is_persisted_and_keeps_its_rename(
     _s, body = call("GET", "/status")
     assert body["agents_meta"]["legacy-session-1"]["label"] == "stream-day-9"
     assert body["conversations"]["legacy-session-1"]["label"] == "stream-day-9"
+
+
+def test_old_hook_registration_and_activity_do_not_reopen_a_closed_tab(daemon):
+    state, call, event = daemon
+    first = _rows("session.jsonl")[0]
+    event(first)
+    call("POST", "/register", {"name": "legacy-2", "label": "old path"})
+    status, _ = call("POST", "/dismiss-agent", {"name": "legacy-2"})
+    assert status == 200 and "legacy-2" not in state.agents
+    # Every tool call of an old-script session re-registers and reports activity...
+    call("POST", "/register", {"name": "legacy-2", "label": "old path renamed"})
+    call("POST", "/activity", {"agent": "legacy-2", "text": "Bash · ls"})
+    # ...the tab stays closed, but its name is kept current for when it returns.
+    assert "legacy-2" not in state.agents
+    assert state.conversations.get("legacy-2").hidden is True
+    assert state.conversations.get("legacy-2").title == "old path renamed"
+
+
+def test_strip_order_is_the_persisted_registry_position(daemon):
+    state, call, event = daemon
+    rows = _rows("session.jsonl")
+    a = rows[0]
+    b = {**a, "session_id": "55555555-0000-0000-0000-000000000000", "transcript_path": "/Users/dev/.claude/projects/p/5.jsonl"}
+    c = {**a, "session_id": "66666666-0000-0000-0000-000000000000", "transcript_path": "/Users/dev/.claude/projects/p/6.jsonl"}
+    for r in (a, b, c):
+        event(r)
+    call("POST", "/reorder-agents", {"order": [c["transcript_path"], a["transcript_path"], b["transcript_path"]]})
+    _s, body = call("GET", "/status")
+    by_pos = sorted(body["agents_meta"], key=lambda k: body["agents_meta"][k]["manual_pos"])
+    assert by_pos == [c["transcript_path"], a["transcript_path"], b["transcript_path"]]
+
+
+def test_state_snapshot_is_the_same_data_as_status_plus_utterances(daemon):
+    state, call, event = daemon
+    event(_rows("session.jsonl")[0])
+    snapshot = http_api.state_snapshot(state)
+    assert snapshot["type"] == "snapshot"
+    _s, status = call("GET", "/status")
+    assert set(snapshot["status"]) == set(status)  # one builder, one shape
+    assert snapshot["status"]["conversations"].keys() == status["conversations"].keys()
+    assert snapshot["utterances"] == state.utterances()

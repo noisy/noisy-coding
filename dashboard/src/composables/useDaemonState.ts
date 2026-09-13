@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
   getCharacter, getEvents, getStatus, getUtterances, setActiveAgent, dismissAgent as apiDismissAgent, reorderAgents as apiReorderAgents, type DaemonEvent,
 } from "../api/client";
+import { openStateStream, type StateSnapshot, type StreamHandle } from "../api/stateStream";
 import { validStatusChange } from "../machines/chat";
 import type { Character, DaemonStatus, Utterance } from "../types";
 
@@ -97,33 +98,42 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     }
   }
 
-  async function tick() {
+  /* RENDER WHAT THE DAEMON SAYS. `apply` is the one place daemon state
+   * enters this module - fed by the pushed WebSocket snapshot (#73) or, while
+   * the socket is down, by the polling fallback. It replaces, never merges:
+   * a tab the daemon no longer lists is gone from the strip on the next
+   * frame, which is what made stale/duplicate tabs impossible. */
+  function apply(s: DaemonStatus, all: Utterance[], askedAt: number) {
+    status.value = s;
+    offline.value = false;
+    // A poll/snapshot that left before the daemon confirmed a click may
+    // still carry the previous agent; only one issued afterwards may speak.
+    if (!selecting && askedAt >= settledAt) viewedAgent.value = s.active_agent;
+    if (viewedAgent.value && !(viewedAgent.value in s.agents)) {
+      viewedAgent.value = s.active_agent;
+    }
+    const agent = viewedAgent.value ?? undefined;
+    auditTransitions(all);
+    allUtterances.value = all;
+    // System rows (mic switched, …) belong to every tab's timeline.
+    utterances.value = agent ? all.filter((u) => u.agent === agent || u.role === "system") : all;
+    utterancesFor.value = agent ?? null;
+    if (agent !== lastCharacterAgent || character.value === null) {
+      lastCharacterAgent = agent;
+      getCharacter(agent)
+        .then((c) => {
+          character.value = c;
+          cacheCharacter(c);
+        })
+        .catch(() => {});
+    }
+  }
+  let lastCharacterAgent: string | undefined | null = null;
+
+  /* Failures (STT/TTS errors) live in the daemon's event log, not in the
+   * snapshot; fetch them on the side at a relaxed cadence. */
+  async function pullEvents() {
     try {
-      const askedAt = Date.now();
-      const s = await getStatus();
-      status.value = s;
-      offline.value = false;
-      // A poll that left before the daemon confirmed a click may still
-      // carry the previous agent; only a poll issued afterwards may speak.
-      if (!selecting && askedAt >= settledAt) viewedAgent.value = s.active_agent;
-      if (viewedAgent.value && !(viewedAgent.value in s.agents)) {
-        viewedAgent.value = s.active_agent;
-      }
-      const agent = viewedAgent.value ?? undefined;
-      // One unfiltered fetch serves both the viewed log and the unread
-      // badges on background tabs.
-      const all = await getUtterances();
-      auditTransitions(all);
-      allUtterances.value = all;
-      // System rows (mic switched, …) belong to every tab's timeline.
-      utterances.value = agent
-        ? all.filter((u) => u.agent === agent || u.role === "system")
-        : all;
-      utterancesFor.value = agent ?? null;
-      character.value = await getCharacter(agent);
-      cacheCharacter(character.value);
-      // Surface system failures (STT/TTS errors) that otherwise die
-      // silently in the daemon's event log.
       const fresh = await getEvents(lastEventSeq);
       if (fresh.length) {
         lastEventSeq = fresh[fresh.length - 1].seq;
@@ -133,8 +143,37 @@ function createDaemonState(pollMs: number): SharedDaemonState {
         }
       }
     } catch {
+      /* the next pull will try again */
+    }
+  }
+
+  /* Polling fallback: used until the state stream is open, and again
+   * whenever it drops. One unfiltered fetch serves both the viewed log and
+   * the unread badges on background tabs. */
+  async function tick() {
+    if (streamOpen) {
+      await pullEvents();
+      return;
+    }
+    try {
+      const askedAt = Date.now();
+      const s = await getStatus();
+      const all = await getUtterances();
+      apply(s, all, askedAt);
+      await pullEvents();
+    } catch {
       offline.value = true;
     }
+  }
+
+  let streamOpen = false;
+  let stream: StreamHandle | null = null;
+  function onSnapshot(snapshot: StateSnapshot) {
+    apply(snapshot.status, snapshot.utterances, Date.now());
+  }
+  function onStreamState(open: boolean) {
+    streamOpen = open;
+    if (!open) tick(); // fall back at once, do not wait for the next interval
   }
 
   function selectAgent(name: string) {
@@ -182,12 +221,16 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     if (subscribers++ === 0) {
       tick();
       timer = setInterval(tick, pollMs);
+      stream = openStateStream(onSnapshot, onStreamState);
     }
   }
   function unsubscribe() {
     if (--subscribers === 0) {
       clearInterval(timer);
       timer = undefined;
+      stream?.close();
+      stream = null;
+      streamOpen = false;
     }
   }
 

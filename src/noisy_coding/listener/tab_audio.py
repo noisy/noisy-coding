@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 import queue
 import threading
 
@@ -29,6 +30,8 @@ import numpy as np
 from .state import ListenerState
 
 BRIDGE_PORT_OFFSET = 1  # WS lives one port above the HTTP API
+STATE_PATH = "/state"   # same port, this path: the pushed state stream (#73)
+STATE_PUSH_INTERVAL_SECONDS = 0.1
 
 
 class FrameRechunker:
@@ -59,7 +62,9 @@ class TabAudioBridge:
         state: ListenerState,
         frames: "queue.Queue[np.ndarray]",
         frame_samples: int,
+            snapshot: "Callable[[], dict] | None" = None,
     ) -> None:
+        self._snapshot = snapshot  # builder for the /state stream (#73)
         self._state = state
         self._frames = frames
         self._frame_samples = frame_samples
@@ -175,6 +180,10 @@ class TabAudioBridge:
     # --- WS plumbing ----------------------------------------------------------
 
     def _handle(self, ws) -> None:  # pragma: no cover — thin I/O shell
+        request = getattr(ws, "request", None)
+        if request is not None and getattr(request, "path", "") == STATE_PATH:
+            self._serve_state(ws)
+            return
         connection_id = id(ws)
         rechunker = FrameRechunker(self._frame_samples)
         try:
@@ -204,6 +213,40 @@ class TabAudioBridge:
         finally:
             self.release(connection_id)
 
+    def _serve_state(self, ws) -> None:  # pragma: no cover — thin I/O shell
+        """Push the daemon's whole state whenever it changes (#73).
+
+        The dashboard used to poll /status and merge; every stale-strip bug
+        came from that merge. Here the client gets a full snapshot on connect
+        and a new full snapshot whenever anything differs, and renders
+        exactly that. A JSON digest decides "differs", so no state mutation
+        anywhere has to remember to signal - correctness over cleverness.
+        Cadence is bounded by STATE_PUSH_INTERVAL_SECONDS.
+        """
+        if self._snapshot is None:
+            ws.send(json.dumps({"type": "error", "reason": "state stream not configured"}))
+            return
+        last_digest = None
+        ws.socket.settimeout(STATE_PUSH_INTERVAL_SECONDS) if hasattr(ws, "socket") else None
+        while True:
+            try:
+                snapshot = self._snapshot()
+                payload = json.dumps(snapshot)
+            except Exception as error:  # a broken builder must not kill the bridge
+                payload = json.dumps({"type": "error", "reason": str(error)[:200]})
+            digest = hash(payload)
+            if digest != last_digest:
+                ws.send(payload)
+                last_digest = digest
+            try:
+                # Client messages are heartbeats or nothing; a closed socket
+                # raises here and ends the loop.
+                ws.recv(timeout=STATE_PUSH_INTERVAL_SECONDS)
+            except TimeoutError:
+                continue
+            except Exception:
+                return
+
     def serve_forever(self, port: int) -> None:  # pragma: no cover — thread shell
         from websockets.sync.server import serve
 
@@ -227,10 +270,13 @@ def start_bridge(
     frames: "queue.Queue[np.ndarray]",
     frame_samples: int,
     http_port: int,
+    snapshot: "Callable[[], dict] | None" = None,
 ) -> TabAudioBridge:
-    """Start the WS bridge on http_port+1 in a daemon thread."""
+    """Start the WS bridge on http_port+1 in a daemon thread. `snapshot`
+    builds the message pushed on the /state path whenever the daemon's
+    state changes (the dashboard renders from it instead of polling)."""
     global _bridge
-    _bridge = TabAudioBridge(state, frames, frame_samples)
+    _bridge = TabAudioBridge(state, frames, frame_samples, snapshot=snapshot)
     threading.Thread(
         target=_bridge.serve_forever, args=(http_port + BRIDGE_PORT_OFFSET,), daemon=True
     ).start()
