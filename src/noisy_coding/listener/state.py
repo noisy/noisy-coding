@@ -32,6 +32,18 @@ VOICE_POOL = (
 )
 
 
+def speaker_key(name: str) -> str:
+    """Ledger key for a speaker or agent name: case-insensitive, trimmed.
+
+    Viewers speak as their display name ("WootDragon") while the ledger
+    once held them lowercased ("wootdragon"); a case-sensitive lookup then
+    never found the entry and re-claimed a voice on every reload - the
+    second mid-conversation voice change of 2026-09-13. Display casing is
+    for reading aloud; identity is case-insensitive.
+    """
+    return str(name).strip().casefold()
+
+
 def hash_pick(seed: str, pool: tuple[str, ...]) -> str:
     # crc32, not hash(): stable across daemon restarts (PYTHONHASHSEED).
     return pool[zlib.crc32(seed.encode()) % len(pool)]
@@ -225,8 +237,8 @@ class ListenerState:
                     # chosen voice must be claimed there too, or the voice
                     # claimed at seeding stays marked taken while the tab
                     # actually uses another (#54).
-                    if self._voice_claims.get(key) != char["voice"]:
-                        self._voice_claims[key] = char["voice"]
+                    if self._voice_claims.get(speaker_key(key)) != char["voice"]:
+                        self._voice_claims[speaker_key(key)] = char["voice"]
                         self._voice_claims_dirty = True
             if "speed" in values:
                 try:
@@ -256,7 +268,7 @@ class ListenerState:
                     if key in present:
                         seen.add(voice)
                     continue
-                self._voice_claims.pop(key, None)  # re-claim from the free set
+                self._voice_claims.pop(speaker_key(key), None)  # re-claim from the free set
                 free = tuple(v for v in pool if v != default_voice and v not in seen)
                 new_voice = self._claim_voice_locked(key, free or pool, hash_pick)
                 if new_voice != voice:
@@ -369,10 +381,11 @@ class ListenerState:
         # two restored tabs must not be handed the same voice. Only a tab the
         # user closed, or a session long gone from the registry, lets go.
         present = live | set(self.conversations.visible_keys())
-        agents = set(self._characters) | set(self._agents)
+        agents = {speaker_key(k) for k in self._characters} | {speaker_key(k) for k in self._agents}
+        present_keys = {speaker_key(k) for k in present}
         taken = {
             voice for name, voice in self._voice_claims.items()
-            if name not in agents or name in present
+            if name not in agents or name in present_keys
         }
         taken.update(
             char.get("voice", "")
@@ -403,16 +416,19 @@ class ListenerState:
         """
         with self._lock:
             seen: set[str] = set()
-            for name, voice in claims.items():
+            for raw_name, voice in claims.items():
                 if not (isinstance(voice, str) and voice.isalpha()):
                     continue
+                name = speaker_key(raw_name)
+                if name in self._voice_claims:
+                    continue  # a case variant of a name already restored: first one wins
                 voice = voice.lower()
                 if voice in seen:
                     free = tuple(v for v in pool if v not in seen)
                     if free:
                         voice = hash_pick(str(name), free)
                         self._voice_claims_dirty = True
-                self._voice_claims[str(name)] = voice
+                self._voice_claims[name] = voice
                 seen.add(voice)
 
     def claim_voice(self, name: str, pool: tuple[str, ...], hash_pick) -> str:
@@ -427,12 +443,13 @@ class ListenerState:
             return self._claim_voice_locked(name, pool, hash_pick)
 
     def _claim_voice_locked(self, name: str, pool: tuple[str, ...], hash_pick) -> str:
-        claimed = self._voice_claims.get(name)
+        key = speaker_key(name)
+        claimed = self._voice_claims.get(key)
         if claimed:
             return claimed
         free = [v for v in pool if v not in self._taken_voices()]
-        voice = hash_pick(name, tuple(free)) if free else hash_pick(name, pool)
-        self._voice_claims[name] = voice
+        voice = hash_pick(key, tuple(free)) if free else hash_pick(key, pool)
+        self._voice_claims[key] = voice
         self._voice_claims_dirty = True
         return voice
 
@@ -443,6 +460,7 @@ class ListenerState:
         else holds it - first come, first served, no stealing).
         """
         voice = str(voice).strip().lower()
+        name = speaker_key(name)
         with self._lock:
             if voice not in pool:
                 return "unknown"

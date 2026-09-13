@@ -702,3 +702,17 @@ def test_restored_tabs_on_the_strip_never_share_a_voice_even_before_they_poll():
     state.rehome_default_voice_copies()
     voices = [state.character(k)["voice"] for k in tabs]
     assert len(set(voices)) == 4, voices
+
+
+
+def test_speaker_names_are_matched_case_insensitively_in_the_ledger():
+    state = ListenerState()
+    first = state.claim_voice("wootdragon", VOICE_POOL, _pick_first)
+    assert state.claim_voice("WootDragon", VOICE_POOL, _pick_first) == first   # same person, same voice
+    assert state.claim_voice(" WOOTDRAGON ", VOICE_POOL, _pick_first) == first
+    assert state.set_voice_claim("WootDragon", "orion", VOICE_POOL) == "ok"
+    assert state.claim_voice("wootdragon", VOICE_POOL, _pick_first) == "orion"
+    # A file holding both casings restores ONE entry, the first one wins.
+    fresh = ListenerState()
+    fresh.load_voice_claims({"wootdragon": "helios", "WootDragon": "rex"})
+    assert fresh.voice_claims() == {"wootdragon": "helios"}
