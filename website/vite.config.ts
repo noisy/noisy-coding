@@ -12,9 +12,8 @@ const { analyticsConfig } = createRequire(import.meta.url)('../scripts/analytics
 const repo = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
-  // GitHub Pages serves a project site from /<repo>/ - the deploy workflow
-  // sets PAGES_BASE=/noisy-coding/. Local dev and a future custom domain
-  // both use the default "/" (a custom domain needs no base at all).
+  // noisystudio.ai and local development serve from the domain root.
+  // PAGES_BASE can override this for GitHub Pages project hosting.
   base: process.env.PAGES_BASE ?? "/",
   plugins: [vue()],
   define: { __APP_VERSION__: JSON.stringify(dashboardPackage.version), __POSTHOG_CONFIG__: JSON.stringify(analyticsConfig()) },
