@@ -19,16 +19,18 @@ import time
 import urllib.request
 from pathlib import Path
 
+from _environment import getenv
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 
-PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
+PORT = getenv("NOISY_STUDIO_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
 POLL_INTERVAL_SECONDS = 0.5
-REWAKE_WAIT_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "3600"))
+REWAKE_WAIT_SECONDS = float(getenv("NOISY_STUDIO_REWAKE_WAIT_SECONDS", "3600"))
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
-GRACE_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_GRACE_SECONDS", "2.0"))
+GRACE_SECONDS = float(getenv("NOISY_STUDIO_REWAKE_GRACE_SECONDS", "2.0"))
 GRACE_CAP_SECONDS = 20.0
 
 # Per-session identity is resolved from stdin in main() and stored here so the
@@ -114,7 +116,7 @@ def _collect_continuation(first: str) -> str:
 
 VOICE_INSTRUCTION = (
     "Treat this as his next message. Answer it now — aloud via the "
-    "noisy-coding speak tool (briefly) and in text."
+    "noisy-studio speak tool (briefly) and in text."
 )
 
 

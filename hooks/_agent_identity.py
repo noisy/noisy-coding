@@ -3,7 +3,7 @@
 
 Per-session multi-agent: a session's identity is its session_id (stable,
 unique, given to every hook on stdin). Its human label is the /rename title
-found in the transcript. An explicit NOISY_CODING_AGENT_NAME still wins, so the
+found in the transcript. An explicit NOISY_STUDIO_AGENT_NAME still wins, so the
 old per-config setup keeps working.
 
 The MCP server can't see session_id, so the hook also writes a
@@ -13,12 +13,13 @@ cwd -> {agent, title} mapping to a file the server reads by its own cwd.
 from __future__ import annotations
 
 import json
-import os
 import urllib.request
 from pathlib import Path
 
+from _environment import getenv
+
 MAP_FILE = Path.home() / ".config" / "noisy-coding" / "sessions.json"
-PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
+PORT = getenv("NOISY_STUDIO_LISTENER_PORT", "8765")
 
 
 def _register(agent: str, label: str) -> None:
@@ -54,19 +55,19 @@ def _title_from_transcript(path: str) -> str:
 def identity(hook_input: dict) -> tuple[str, str]:
     """Return (agent_id, label) for this session.
 
-    agent_id: NOISY_CODING_AGENT_NAME if set, else the session_id.
+    agent_id: NOISY_STUDIO_AGENT_NAME if set, else the session_id.
     label:    the session's /rename title if any, else a short agent_id.
     """
-    env_name = os.environ.get("NOISY_CODING_AGENT_NAME", "").strip()
+    env_name = getenv("NOISY_STUDIO_AGENT_NAME", "").strip()
     session_id = str(hook_input.get("session_id", "") or "")
     agent_id = env_name or session_id or "default"
 
-    label = (os.environ.get("NOISY_CODING_SESSION_TITLE", "").strip()
-             if os.environ.get("NOISY_CODING_HARNESS") == "codex" else env_name)
+    label = (getenv("NOISY_STUDIO_SESSION_TITLE", "").strip()
+             if getenv("NOISY_STUDIO_HARNESS") == "codex" else env_name)
     if not label:
         # Set by exec.sh, which reads the transcript host-side: inside the
         # container the transcript_path below points at a file we can't see.
-        label = os.environ.get("NOISY_CODING_SESSION_TITLE", "").strip()
+        label = getenv("NOISY_STUDIO_SESSION_TITLE", "").strip()
     if not label:
         label = _title_from_transcript(hook_input.get("transcript_path", ""))
     if not label:
@@ -74,7 +75,7 @@ def identity(hook_input: dict) -> tuple[str, str]:
 
     # Let the MCP server (which has no session_id) find its agent by cwd.
     cwd = str(hook_input.get("cwd", "") or "")
-    if cwd and os.environ.get("NOISY_CODING_HARNESS") != "codex":
+    if cwd and getenv("NOISY_STUDIO_HARNESS") != "codex":
         try:
             MAP_FILE.parent.mkdir(parents=True, exist_ok=True)
             data = {}

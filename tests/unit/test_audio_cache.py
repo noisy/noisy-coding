@@ -1,7 +1,7 @@
 import os
 
-from noisy_coding.listener import audio_cache
-from noisy_coding.listener.audio_cache import AudioCache
+from noisy_studio.listener import audio_cache
+from noisy_studio.listener.audio_cache import AudioCache
 
 
 def test_put_then_get_returns_the_same_bytes():

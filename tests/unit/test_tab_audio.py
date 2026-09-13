@@ -2,8 +2,8 @@ import queue
 
 import numpy as np
 
-from noisy_coding.listener.state import ListenerState
-from noisy_coding.listener.tab_audio import FrameRechunker, TabAudioBridge
+from noisy_studio.listener.state import ListenerState
+from noisy_studio.listener.tab_audio import FrameRechunker, TabAudioBridge
 
 FRAME_SAMPLES = 480  # 30 ms @ 16 kHz
 
@@ -178,7 +178,7 @@ def test_ingest_marks_the_tab_mic_as_live():
 
 
 def test_state_snapshot_digest_ignores_volatile_fields_only():
-    from noisy_coding.listener.tab_audio import snapshot_digest
+    from noisy_studio.listener.tab_audio import snapshot_digest
 
     base = {"type": "snapshot", "status": {"agents": ["a"], "nudge_clocks": {"a": 1}, "mic_level": 0.1}, "utterances": []}
     clocks_moved = {**base, "status": {**base["status"], "nudge_clocks": {"a": 2}, "mic_level": 0.7}}

@@ -10,11 +10,12 @@ call or a turn.
 from __future__ import annotations
 
 import json
-import os
 import urllib.error
 import urllib.request
 
-PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
+from _environment import getenv
+
+PORT = getenv("NOISY_STUDIO_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
 
 

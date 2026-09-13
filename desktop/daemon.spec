@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path.cwd()
 
 a = Analysis(
-    [str(ROOT / "src" / "noisy_coding" / "listener" / "__main__.py")],
+    [str(ROOT / "src" / "noisy_studio" / "listener" / "__main__.py")],
     pathex=[str(ROOT / "src")],
     binaries=[],
     datas=[
@@ -42,7 +42,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="noisy-coding-daemon",
+    name="noisy-studio-daemon",
     debug=False,
     strip=False,
     upx=False,

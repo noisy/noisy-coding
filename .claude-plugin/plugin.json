@@ -1,14 +1,14 @@
 {
-  "name": "noisy-coding",
+  "name": "noisy-studio",
   "description": "Voice coding for Claude Code, Jarvis-style — talk to your agent while it works. Ships the voice hooks and connects to the Noisy Studio daemon (Docker or native).",
   "version": "2.17.0",
   "mcpServers": {
-    "noisy-coding": {
+    "noisy-studio": {
       "type": "stdio",
       "command": "sh",
       "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/mcp_exec.sh"]
     }
   },
   "author": { "name": "Krzysztof Szumny", "email": "noisy.pl@gmail.com" },
-  "homepage": "https://github.com/noisy/noisy-coding"
+  "homepage": "https://github.com/noisy/noisy-studio"
 }
