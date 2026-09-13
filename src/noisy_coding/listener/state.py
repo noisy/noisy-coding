@@ -337,14 +337,29 @@ class ListenerState:
         with self._lock:
             return dict(self._voice_claims)
 
-    def load_voice_claims(self, claims: dict) -> None:
-        """Restore claims from disk, keeping the ledger self-consistent."""
+    def load_voice_claims(self, claims: dict, pool: tuple[str, ...] = VOICE_POOL) -> None:
+        """Restore claims from disk, keeping the ledger self-consistent.
+
+        A name whose voice duplicates an earlier entry used to be DROPPED,
+        so it re-claimed from scratch at its next speak and drew whatever was
+        free - a regular's voice changed mid-stream (2026-09-13). Duplicates
+        are now RE-HOMED onto a free pool voice, deterministically, so the
+        entry survives the reload; only once the pool is exhausted does a
+        duplicate keep its (shared) voice. The check is case-insensitive.
+        """
         with self._lock:
             seen: set[str] = set()
             for name, voice in claims.items():
-                if isinstance(voice, str) and voice.isalpha() and voice not in seen:
-                    self._voice_claims[str(name)] = voice.lower()
-                    seen.add(voice.lower())
+                if not (isinstance(voice, str) and voice.isalpha()):
+                    continue
+                voice = voice.lower()
+                if voice in seen:
+                    free = tuple(v for v in pool if v not in seen)
+                    if free:
+                        voice = hash_pick(str(name), free)
+                        self._voice_claims_dirty = True
+                self._voice_claims[str(name)] = voice
+                seen.add(voice)
 
     def claim_voice(self, name: str, pool: tuple[str, ...], hash_pick) -> str:
         """The voice for `name`, claiming a free one on first sight.

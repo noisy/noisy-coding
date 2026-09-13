@@ -2,7 +2,7 @@ import threading
 import time
 
 from noisy_coding.listener import state as state_module
-from noisy_coding.listener.state import ListenerState
+from noisy_coding.listener.state import VOICE_POOL, ListenerState
 
 
 def _finishes_within(fn, seconds: float) -> bool:
@@ -575,13 +575,16 @@ def test_set_voice_claim_is_idempotent_for_the_current_holder():
     assert state.set_voice_claim("xfuroo", "atlas", pool) == "ok"
 
 
-def test_load_voice_claims_drops_duplicates_from_a_corrupted_file():
+def test_load_voice_claims_rehomes_duplicates_from_a_corrupted_file():
+    # Formerly "drops duplicates": dropping made the speaker re-claim a random
+    # free voice at their next speak. Re-homing keeps every name and keeps the
+    # ledger exclusive.
     state = ListenerState()
-
-    state.load_voice_claims({"first": "atlas", "second": "atlas"})
-
-    assert list(state.voice_claims().values()) == ["atlas"]
-
+    state.load_voice_claims({"a": "atlas", "b": "atlas", "c": 3, "d": "not a voice!"})
+    claims = state.voice_claims()
+    assert claims["a"] == "atlas"
+    assert "c" not in claims and "d" not in claims           # garbage rows are still skipped
+    assert claims["b"] != "atlas" and claims["b"] in VOICE_POOL  # duplicate re-homed, not dropped
 
 
 def test_pending_transcripts_survive_a_restart_and_are_delivered_by_the_new_process():
@@ -624,3 +627,24 @@ def test_an_explicitly_chosen_agent_voice_is_kept():
     state.set_character({"voice": "orion"}, agent="tab-a")
     assert state.character("tab-a")["voice"] == "orion"
     assert state.character("tab-b")["voice"] != "orion"  # first come, first served
+
+
+
+def test_reloading_the_ledger_rehomes_duplicates_instead_of_dropping_them():
+    state = ListenerState()
+    # Two names on one voice (a capitalised duplicate used to slip past the check).
+    state.load_voice_claims({"frank": "castor", "betangle": "Castor", "cat": "cosmo"})
+    claims = state.voice_claims()
+    assert set(claims) == {"frank", "betangle", "cat"}          # nobody is dropped
+    assert claims["frank"] == "castor"                           # first keeps its voice
+    assert claims["betangle"] not in ("castor", "cosmo")         # duplicate re-homed onto a free voice
+    assert len(set(claims.values())) == 3                        # still exclusive
+    assert state.take_voice_claims_dirty() is True               # and the repair gets saved
+
+
+def test_reloading_keeps_duplicates_only_when_the_pool_is_exhausted():
+    state = ListenerState()
+    pool = ("ara", "luna")
+    state.load_voice_claims({"a": "ara", "b": "luna", "c": "ara"}, pool=pool)
+    claims = state.voice_claims()
+    assert claims == {"a": "ara", "b": "luna", "c": "ara"}  # shared voice beats no voice
