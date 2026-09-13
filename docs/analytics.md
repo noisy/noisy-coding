@@ -4,11 +4,11 @@ The marketing website and packaged Electron app use one PostHog project, separat
 
 ## What is collected
 
-Analytics is optional. Website visitors choose in the footer; desktop users choose **Share optional usage analytics** in the menu bar. Turning it off stops new captures and discards the local analytics identity. Already delivered events are not deleted. Browser and desktop identities are separate random IDs; no cross-device identity or website-to-install attribution is claimed.
+Website analytics starts automatically for new visitors. The footer provides a one-click opt-out; previously saved opt-outs and browser exclusions remain respected. Desktop analytics remains opt-in: users choose **Share optional usage analytics** in the menu bar. Turning it off stops new captures and discards the local analytics identity. Already delivered events are not deleted. Browser and desktop identities are separate random IDs; no cross-device identity or website-to-install attribution is claimed.
 
 | Surface | Event | Meaning / properties |
 | --- | --- | --- |
-| Website | `$pageview` | A page visit after consent; URL excludes query string and fragment |
+| Website | `$pageview` | A page visit unless opted out or excluded; URL excludes query string and fragment |
 | Website | `installation_guide_opened` | Setup guide clicked; `guide` is `claude_code` or `codex`, not proof of installation |
 | Desktop | `analytics_enabled` | User enabled optional usage analytics |
 | Desktop | `app_started` | A subsequent application launch with consent already saved |
@@ -23,7 +23,7 @@ Desktop events use immediate, best-effort delivery; there is no durable offline 
 
 ## Excluding your own usage
 
-Open `https://noisystudio.ai/?analytics=off` once in each browser profile after deployment. This saves a browser exclusion that overrides the consent switch. The footer lets you remove the exclusion explicitly; clearing site data also removes it. The preference is per origin, so repeat it for an old GitHub Pages address if you still use that address.
+Open `https://noisystudio.ai/?analytics=off` once in each browser profile after deployment. This saves a browser exclusion that overrides the analytics switch. The footer lets you remove the exclusion explicitly; clearing site data also removes it. The preference is per origin, so repeat it for an old GitHub Pages address if you still use that address.
 
 For desktop, **Exclude this device from analytics (all variants)** writes `noisy-studio-analytics-excluded` in Electron’s shared application-data directory. Both variants check that marker before every event. It applies to this OS user, including applications already running with this integration. Remove it through the same menu to resume eligibility, then opt in separately.
 
@@ -45,11 +45,11 @@ Useful first questions: website visits versus guide clicks; distinct consenting 
 
 ## Verification
 
-Run website tests, `typecheck:analytics`, the website build, and desktop tests. A production preview uses the configured project only after explicit consent, so use a test project when exercising real event delivery. Confirm events in PostHog before treating a successful ingestion response as proof of reporting. Full website type checking currently reports pre-existing shared Vue ref-type errors and a missing application-version declaration.
+Run website tests, `typecheck:analytics`, the website build, and desktop tests. A production preview starts website tracking automatically unless opted out or excluded, so use a test project when exercising real event delivery. Confirm events in PostHog before treating a successful ingestion response as proof of reporting. Full website type checking currently reports pre-existing shared Vue ref-type errors and a missing application-version declaration.
 
 ## Website engagement funnel
 
-The starter dashboard is extended in place. Website metrics must filter `surface = website` and the production `$current_url = https://noisystudio.ai/`, excluding local previews and validation events. Counts represent consenting, non-excluded browser IDs, not all visitors or identified people.
+The starter dashboard is extended in place. Website metrics must filter `surface = website` and the production `$current_url = https://noisystudio.ai/`, excluding local previews and validation events. Counts represent tracked, non-excluded browser IDs, not identified people. Opt-outs, blockers, and failed delivery reduce coverage. Website tracking changed from opt-in to automatic on 2026-09-13; earlier counts cover only visitors who explicitly opted in.
 
 | Event | Dimensions | Meaning |
 | --- | --- | --- |
@@ -61,4 +61,4 @@ The starter dashboard is extended in place. Website metrics must filter `surface
 
 Call `websiteAnalytics.trackDownload(platform, placement)` in the future download link's click handler. There is currently no release download link in this branch; setup-guide links and Get started links must not emit `download_clicked`. A download click is not proof of download completion or installation.
 
-Use unique users for reach; total event counts for repeat control usage. The core funnel is pageview → Get started (one-day conversion window). Show scroll reach and hero/crew interaction separately: visitors need not scroll or watch a demo before converting. When downloads ship, add pageview → download_clicked as the main conversion funnel. Scroll depth measures reach, not proof that text was read; anchor navigation can cross several thresholds. Pre-consent activity is not replayed. On a subsequent consented scroll, current viewport depth is measured.
+Use unique users for reach; total event counts for repeat control usage. The core funnel is pageview → Get started (one-day conversion window). Show scroll reach and hero/crew interaction separately: visitors need not scroll or watch a demo before converting. When downloads ship, add pageview → download_clicked as the main conversion funnel. Scroll depth measures reach, not proof that text was read; anchor navigation can cross several thresholds. Activity while opted out is not replayed. On a subsequent tracked scroll, current viewport depth is measured.
