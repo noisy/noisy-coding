@@ -43,9 +43,8 @@ jobs:
       - name: Install and build (website only)
         working-directory: website
         env:
-          # Project Pages site is served from /<repo>/. For a custom domain
-          # later: set this to "/" (or drop it) - see website/README.md.
-          PAGES_BASE: /${{ github.event.repository.name }}/
+          # noisystudio.ai serves the website at the domain root.
+          PAGES_BASE: /
         run: |
           npm ci
           npm run build

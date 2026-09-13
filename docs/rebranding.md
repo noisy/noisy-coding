@@ -1,7 +1,7 @@
 # Noisy Studio: technical rename and upgrade risks
 
 The product and GitHub repository are now Noisy Studio. The website lives at
-https://noisy.github.io/noisy-studio/. This second change renames Python package
+https://noisystudio.ai/. This second change renames Python package
 and import paths, CLI commands, plugin/marketplace identifiers, MCP server names,
 private npm packages, the bundled daemon executable, and repository references.
 
@@ -34,7 +34,7 @@ private npm packages, the bundled daemon executable, and repository references.
 | Frozen daemon filename | **MEDIUM** | A shell-only update with an old daemon binary fails to launch. Rebuild the daemon and shell together; distribute a complete application bundle. |
 | Environment prefix | **MEDIUM** | Conflicting old/new values can select a different endpoint or config directory. New wins, old remains fallback. Avoid setting both during rollout unless the precedence is intentional. |
 | Docker publication under two names | **MEDIUM** | Release credentials must be able to publish `noisy/noisy-studio` as well as the old repository; publication is not transactional. A failure can leave only one tag updated. Verify both destinations before announcing a release. Existing Compose/install flows keep pulling the old image until the new coordinate is available. |
-| Private npm package names and GitHub links | **LOW** | No public npm packages are replaced. Lockfile root names change together. Pages continues deriving its base from the repository name. |
+| Private npm package names and GitHub links | **LOW** | No public npm packages are replaced. Lockfile root names change together. Production uses the custom-domain root base; project-path builds remain supported. |
 | Persistent and OS identities | **LOW in this PR** | Their legacy spelling is deliberate: renaming them could hide saved data, create new volumes, split concurrent writes, or reset OS permissions. They are not migrated here. |
 
 ## Rollout order

@@ -12,7 +12,7 @@ The page imports `src/assets/shots/*.png`. See that directory's README for sourc
 
 ## Build and deployment
 
-`npm run build` emits only the static site in `website/dist`. `PAGES_BASE=/noisy-studio/ npm run build` builds for GitHub Pages project hosting. Vite resolves the imported portraits, favicon and screenshots with the configured base.
+`npm run build` emits only the static site in `website/dist`. The production site at https://noisystudio.ai uses `PAGES_BASE=/`. `PAGES_BASE=/noisy-studio/ npm run build` builds for GitHub Pages project hosting. Vite resolves the imported portraits, favicon and screenshots with the configured base.
 
 The existing deploy-website workflow publishes `website/dist` on matching changes to main or v3-desktop. It does not serve source, the daemon, or website-backend. Feature branches are previewed locally and are not deployed by this workflow.
 
