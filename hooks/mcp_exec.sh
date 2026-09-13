@@ -17,13 +17,13 @@ tries=0
 until docker exec noisy-coding true 2>/dev/null; do
     tries=$((tries + 1))
     if [ "$tries" -ge 240 ]; then
-        echo "noisy-studio container not running" >&2
+        echo "Noisy Studio container (noisy-coding) not running" >&2
         exit 1
     fi
     sleep 0.5
 done
 
-# The image sets NOISY_STUDIO_MCP_TRANSPORT=http for its long-running
+# The image sets NOISY_CODING_MCP_TRANSPORT=http for its long-running
 # server on 8767 — this per-session instance must speak stdio instead.
 # CLAUDE_CODE_SESSION_ID rides along so the server knows WHICH session it
 # speaks for (#15) — docker exec does not inherit the host environment.
