@@ -156,6 +156,25 @@ class ConversationRegistry:
         self._save()
         return conversation
 
+    def adopt(self, key: str, title: str = "", harness: str = "legacy") -> Conversation:
+        """Register a conversation that arrived outside the harness contract
+        (the legacy /register endpoint used by old hook scripts), so it is
+        persisted like any other and survives a daemon restart. A real title
+        updates the name; a fallback label (the key or its prefix) does not."""
+        conversation = self._by_key.get(key)
+        if conversation is None:
+            conversation = Conversation(
+                key=key, harness=harness, created_at=self._clock(),
+                position=self._next_position(), short_id=key[:8],
+            )
+            self._by_key[conversation.key] = conversation
+        if title and title != key and title != key[:8]:
+            conversation.title = title
+        conversation.hidden = False
+        conversation.last_event_at = self._clock()
+        self._save()
+        return conversation
+
     # -- listener lease -----------------------------------------------
 
     def listener_started(

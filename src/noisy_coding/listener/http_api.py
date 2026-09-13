@@ -481,6 +481,83 @@ def _revive_if_known(state: ListenerState, presented: str) -> str:
     return key
 
 
+def status_payload(state: ListenerState) -> dict:
+    """The daemon's full state as the dashboard sees it - ONE builder for
+    GET /status and for the WebSocket state stream, so both surfaces can
+    never disagree about what the daemon means."""
+    _maybe_refresh_latest_version(state)
+    from noisy_coding import providers as _providers
+
+    return {
+                            "listening": not state.paused,
+                            "muted": state.user_muted,
+                            "voice_muted": state.voice_muted,
+                            "api_key_set": bool(credentials.api_key()),
+                            # The gate's real question: is a READY engine
+                            # selected both ways? (A local-only setup is
+                            # configured with no key at all.) Additive key.
+                            "voice_ready": _providers.voice_ready(),
+                            # Named speakers whose bubbles carry a platform
+                            # tint (twitch purple / youtube red).
+                            "speaker_colors": state.speaker_colors(),
+                            "speaker_labels": state.speaker_labels(),
+                            "api_key_hint": credentials.api_key_hint(),
+                            "recording": state.recording,
+                            "claude_speaking": state.claude_speaking,
+                            "playing_utterance_id": state.playing_utterance_id,
+                            "stt_latency_ms": state.latency_ms["stt"],
+                            "tts_latency_ms": state.latency_ms["tts"],
+                            "speaking_agents": state.speaking_agents,
+                            "queued": state.queued_count,
+                            "last_transcript_at": state.last_transcript_at,
+                            "session_cost_usd": state.session_cost_usd,
+                            "usage": state.usage,
+                            "credits_usd": state.credits_usd,
+                            "mode": state.mode,
+                            "tts_mode": state.tts_mode,
+                            "end_silence_ms": state.end_silence_ms,
+                            "mic_sensitivity": state.mic_sensitivity,
+                            "smart_turn": state.smart_turn,
+                            "smart_turn_mode": state.smart_turn_mode,
+                            "detection_mode": state.detection_mode,
+                            "ptt_hold_key": state.ptt_hold_key,
+                            "ptt_toggle_key": state.ptt_toggle_key,
+                            "ptt_cancel_key": state.ptt_cancel_key,
+                            "shutdown_at": state.shutdown_at,
+                            "ptt_held": state.ptt_held,
+                            "input_device": state.input_device,
+                            "output_device": state.output_device,
+                            "tab_audio": state.tab_audio_alive,
+                            "activity": state.activity,
+                            "nudge_clocks": state.nudge_clocks(),
+                            "language": state.language,
+                            "diagnostic_checks": state.diagnostic_checks,
+                            "agents": state.agents,
+                            "agent_labels": _named_agent_labels(state),
+                            "agents_meta": _stable_agents_meta(state),
+                            # Each conversation's voice, so a client can draw its
+                            # portrait without asking /character once per agent.
+                            "agent_voices": {
+                                name: state.character(name).get("voice", "")
+                                for name in state.agents
+                            },
+                            "queued_by_agent": state.queued_by_agent,
+                            "muted_agents": state.muted_agents,
+                            "version": DAEMON_VERSION,
+                            "latest_version": state.latest_version,
+                            "active_agent": state.active_agent,
+                            # The harness-contract view of the tabs (keys,
+                            # aliases, live/idle/deaf/ended, listening_until).
+                            "conversations": state.conversations.snapshot(),
+                        }
+
+
+def state_snapshot(state: ListenerState) -> dict:
+    """Everything the dashboard renders, in one message: status plus every
+    utterance. Pushed over the state stream whenever it changes."""
+    return {"type": "snapshot", "status": status_payload(state), "utterances": state.utterances()}
+
+
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -604,73 +681,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path.startswith("/next/"):
                 self._serve_hud_file(url.path[len("/next/"):] or "index.html")
             elif url.path == "/status":
-                _maybe_refresh_latest_version(state)
-                from noisy_coding import providers as _providers
-
-                self._respond(
-                    {
-                        "listening": not state.paused,
-                        "muted": state.user_muted,
-                        "voice_muted": state.voice_muted,
-                        "api_key_set": bool(credentials.api_key()),
-                        # The gate's real question: is a READY engine
-                        # selected both ways? (A local-only setup is
-                        # configured with no key at all.) Additive key.
-                        "voice_ready": _providers.voice_ready(),
-                        # Named speakers whose bubbles carry a platform
-                        # tint (twitch purple / youtube red).
-                        "speaker_colors": state.speaker_colors(),
-                        "speaker_labels": state.speaker_labels(),
-                        "api_key_hint": credentials.api_key_hint(),
-                        "recording": state.recording,
-                        "claude_speaking": state.claude_speaking,
-                        "playing_utterance_id": state.playing_utterance_id,
-                        "stt_latency_ms": state.latency_ms["stt"],
-                        "tts_latency_ms": state.latency_ms["tts"],
-                        "speaking_agents": state.speaking_agents,
-                        "queued": state.queued_count,
-                        "last_transcript_at": state.last_transcript_at,
-                        "session_cost_usd": state.session_cost_usd,
-                        "usage": state.usage,
-                        "credits_usd": state.credits_usd,
-                        "mode": state.mode,
-                        "tts_mode": state.tts_mode,
-                        "end_silence_ms": state.end_silence_ms,
-                        "mic_sensitivity": state.mic_sensitivity,
-                        "smart_turn": state.smart_turn,
-                        "smart_turn_mode": state.smart_turn_mode,
-                        "detection_mode": state.detection_mode,
-                        "ptt_hold_key": state.ptt_hold_key,
-                        "ptt_toggle_key": state.ptt_toggle_key,
-                        "ptt_cancel_key": state.ptt_cancel_key,
-                        "shutdown_at": state.shutdown_at,
-                        "ptt_held": state.ptt_held,
-                        "input_device": state.input_device,
-                        "output_device": state.output_device,
-                        "tab_audio": state.tab_audio_alive,
-                        "activity": state.activity,
-                        "nudge_clocks": state.nudge_clocks(),
-                        "language": state.language,
-                        "diagnostic_checks": state.diagnostic_checks,
-                        "agents": state.agents,
-                        "agent_labels": _named_agent_labels(state),
-                        "agents_meta": _stable_agents_meta(state),
-                        # Each conversation's voice, so a client can draw its
-                        # portrait without asking /character once per agent.
-                        "agent_voices": {
-                            name: state.character(name).get("voice", "")
-                            for name in state.agents
-                        },
-                        "queued_by_agent": state.queued_by_agent,
-                        "muted_agents": state.muted_agents,
-                        "version": DAEMON_VERSION,
-                        "latest_version": state.latest_version,
-                        "active_agent": state.active_agent,
-                        # The harness-contract view of the tabs (keys,
-                        # aliases, live/idle/deaf/ended, listening_until).
-                        "conversations": state.conversations.snapshot(),
-                    }
-                )
+                self._respond(status_payload(state))
             else:
                 self._respond({"error": "not found"}, status=404)
 
@@ -727,6 +738,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if name:
                     already = name in state.agents
                     active_before = state.active_agent
+                    # Old hook scripts register here directly, bypassing the
+                    # harness contract. Adopt the conversation into the
+                    # registry so it is persisted and its rename is kept -
+                    # otherwise these tabs vanished on every daemon restart.
+                    state.conversations.adopt(name, label)
                     state.register_agent(name, label)
                     if not already:  # avoid spamming the event log every hook fire
                         state.add_event("agent", f"'{label or name}' registered")

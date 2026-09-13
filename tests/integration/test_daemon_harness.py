@@ -254,3 +254,16 @@ def test_a_closed_tabs_listener_polling_does_not_resurrect_it(daemon):
     # ...and the closed tab stays closed - no hash tab, no legacy re-register.
     assert key not in state.agents
     assert key not in call("GET", "/status")[1]["agents_meta"]
+
+
+def test_a_tab_registered_by_old_hook_scripts_is_persisted_and_keeps_its_rename(daemon, tmp_path):
+    state, call, event = daemon
+    # Legacy path: no harness event, just /register with a session id and a title.
+    call("POST", "/register", {"name": "legacy-session-1", "label": "stream-day-8"})
+    call("POST", "/register", {"name": "legacy-session-1", "label": "stream-day-9"})  # /rename
+    call("POST", "/register", {"name": "legacy-session-1", "label": "legacy-s"})       # fallback label must not win
+    conversation = state.conversations.get("legacy-session-1")
+    assert conversation is not None and conversation.title == "stream-day-9"
+    _s, body = call("GET", "/status")
+    assert body["agents_meta"]["legacy-session-1"]["label"] == "stream-day-9"
+    assert body["conversations"]["legacy-session-1"]["label"] == "stream-day-9"
