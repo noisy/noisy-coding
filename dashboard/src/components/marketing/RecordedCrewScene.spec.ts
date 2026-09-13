@@ -32,6 +32,7 @@ it("waits for Play, starts with sound, and shows transport controls only during 
     await video.trigger("ended");
     expect(wrapper.find('button[aria-label="Play demo"]').exists()).toBe(true);
     expect(wrapper.find(".scene-sound").exists()).toBe(false);
+    expect(wrapper.emitted("interaction")).toEqual([["play"], ["mute"], ["pause"], ["play"]]);
   } finally { wrapper.unmount(); }
 });
 it("uses one media clock and turns sound off when the scene leaves view", async () => {
@@ -57,6 +58,7 @@ it("uses one media clock and turns sound off when the scene leaves view", async 
     wrapper.vm.restart();
     expect(media.currentTime).toBe(0);
     expect(wrapper.findAll("audio")).toHaveLength(0);
+    expect(wrapper.emitted("interaction")).toBeUndefined();
   } finally { wrapper.unmount(); }
 });
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { websiteAnalytics } from './analytics';
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import HeroSceneG from "./scenes/HeroSceneG.vue";
 const headlines = [
@@ -61,7 +62,7 @@ onBeforeUnmount(() => {
         Hear what matters. Answer naturally. Keep your attention on the work.
       </p>
       <div class="hero-actions">
-        <a class="button primary" href="#install"
+        <a class="button primary" href="#install" @click="websiteAnalytics.trackGetStarted('hero')"
           >Give your agent a voice <span aria-hidden="true">↗</span></a
         >
         <span>Claude Code · Codex preview</span>

@@ -30,7 +30,7 @@ const cameraTransform = computed(() => {
   const y = Math.max(-100, Math.min(100, props.cameraOffsetY)) / 100 * travel;
   return `translate(${x}%, ${y}%) scale(${cameraScale.value})`;
 });
-const emit = defineEmits<{ time: [timeMs: number] }>();
+const emit = defineEmits<{ time: [timeMs: number]; interaction: [action: 'play' | 'pause' | 'mute' | 'unmute'] }>();
 const video = ref<HTMLVideoElement | null>(null);
 const timeMs = ref(0);
 const soundOn = ref(false);
@@ -129,7 +129,7 @@ defineExpose({ restart, toggleSound, soundOn, seek, pause, play: () => setSound(
         @error="playbackError = true" />
     </div>
       <button v-if="playbackControls" class="scene-playback" :class="{ 'scene-pause': playing }" type="button"
-        :aria-label="playing ? 'Pause demo' : 'Play demo'" @click="playing ? pause() : setSound(true)">
+        :aria-label="playing ? 'Pause demo' : 'Play demo'" @click="emit('interaction', playing ? 'pause' : 'play'); playing ? pause() : setSound(true)">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path v-if="!playing" d="M8 4v16l13-8z" />
           <path v-else d="M6 4h4v16H6zM14 4h4v16h-4z" />
@@ -137,7 +137,7 @@ defineExpose({ restart, toggleSound, soundOn, seek, pause, play: () => setSound(
       </button>
       <button v-if="!playbackControls || playing" class="scene-sound" type="button" :aria-pressed="soundOn"
         :aria-label="soundOn ? 'Mute demo sound' : 'Enable demo sound'"
-        :title="soundOn ? 'Mute sound' : 'Enable sound'" @click="toggleSound()">
+        :title="soundOn ? 'Mute sound' : 'Enable sound'" @click="emit('interaction', soundOn ? 'mute' : 'unmute'); toggleSound()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M11 5 6 9H3v6h3l5 4V5Z" />

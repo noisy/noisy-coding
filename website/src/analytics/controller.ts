@@ -3,6 +3,7 @@ import type { PostHog, PostHogConfig } from 'posthog-js';
 export const PREFERENCE_KEY = 'noisy-usage-analytics';
 export const EXCLUSION_KEY = 'noisy-exclude-analytics';
 type Client = Pick<PostHog, 'init' | 'capture' | 'opt_in_capturing' | 'opt_out_capturing' | 'reset'>;
+const EVENTS = ['$pageview', 'installation_guide_opened', 'page_scrolled', 'scroll_depth_reached', 'video_demo_interacted', 'get_started_clicked', 'download_clicked'] as const;
 type Preference = 'enabled' | 'disabled' | null;
 
 export function createWebsiteAnalytics(client: Client, options: {
@@ -27,7 +28,7 @@ export function createWebsiteAnalytics(client: Client, options: {
     else excluded = options.storage.getItem(EXCLUSION_KEY) === 'true';
   } catch { /* Keep the in-memory exclusion if storage is unavailable. */ }
 
-  function capture(event: '$pageview' | 'installation_guide_opened', properties: Record<string, string> = {}) {
+  function capture(event: typeof EVENTS[number], properties: Record<string, string | number> = {}) {
     if (!available || excluded || preference !== 'enabled' || !initialized) return;
     try { client.capture(event, { ...properties, surface: 'website' }); } catch { /* Analytics must not interrupt navigation. */ }
   }
@@ -51,9 +52,9 @@ export function createWebsiteAnalytics(client: Client, options: {
         persistence: 'localStorage',
         // Do not retain automatic URL, referrer, campaign or browser properties.
         before_send: (event) => {
-          if (!event || !['$pageview', 'installation_guide_opened'].includes(event.event)) return null;
+          if (!event || !EVENTS.includes(event.event as typeof EVENTS[number])) return null;
           // The browser SDK carries its ingestion token inside properties.
-          const allowed = ['token', 'distinct_id', '$device_id', '$session_id', '$window_id', '$lib', '$lib_version', '$process_person_profile', '$geoip_disable', 'surface', 'guide'];
+          const allowed = ['token', 'distinct_id', '$device_id', '$session_id', '$window_id', '$lib', '$lib_version', '$process_person_profile', '$geoip_disable', 'surface', 'guide', 'depth_percent', 'demo', 'action', 'placement', 'platform'];
           event.properties = Object.fromEntries(Object.entries(event.properties || {}).filter(([key]) => allowed.includes(key)));
           event.properties.$current_url = options.origin + options.pathname;
           event.properties.$pathname = options.pathname;
@@ -70,6 +71,7 @@ export function createWebsiteAnalytics(client: Client, options: {
 
   return {
     available,
+    get enabled() { return available && initialized && !excluded && preference === 'enabled'; },
     get preference() { return preference; },
     get excluded() { return excluded; },
     start,
@@ -90,6 +92,11 @@ export function createWebsiteAnalytics(client: Client, options: {
         client.opt_out_capturing();
       }
     },
+    trackScroll() { capture('page_scrolled'); },
+    trackDepth(depth: number) { capture('scroll_depth_reached', { depth_percent: depth }); },
+    trackDemo(demo: 'hero' | 'crew', action: 'play' | 'pause' | 'mute' | 'unmute') { capture('video_demo_interacted', { demo, action }); },
+    trackGetStarted(placement: 'header' | 'hero') { capture('get_started_clicked', { placement }); },
+    trackDownload(platform: 'mac' | 'windows' | 'linux', placement: 'header' | 'hero' | 'install') { capture('download_clicked', { platform, placement }); },
     trackGuide(guide: 'claude_code' | 'codex') { capture('installation_guide_opened', { guide }); },
   };
 }
