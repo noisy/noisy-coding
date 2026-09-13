@@ -27,15 +27,15 @@ function notify() { emit('notify', { platform: selected.value, email: email.valu
     </template>
     <template v-else>
       <p v-if="!compact" class="platform-kicker">{{ name.toUpperCase() }} VERSION · COMING LATER</p>
-      <h3 v-if="!compact">Your platform.<br>Next on the horizon.</h3>
-      <p class="platform-description">{{ compact ? `Be first to hear when the ${name} version is ready.` : `Noisy Studio is coming to ${name}. Leave your email for a release notification.` }}</p>
+      <h3 v-if="!compact">{{ name }} is next.</h3>
+      <p class="platform-description">{{ name }} version coming soon.</p>
       <form @submit.prevent="notify">
         <label :for="emailId">Email address</label>
         <input :id="emailId" v-model="email" type="email" autocomplete="email" placeholder="you@example.com" required>
-        <button class="platform-primary" type="submit">Notify me when the {{ name }} version is ready <span aria-hidden="true">→</span></button>
+        <button class="platform-primary" type="submit">Notify me <span aria-hidden="true">→</span></button>
       </form>
     </template>
-    <a class="platform-secondary" href="https://github.com/noisy/noisy-studio/releases" target="_blank" rel="noopener">All releases <span aria-hidden="true">↗</span></a>
+    <a class="platform-secondary" href="https://github.com/noisy/noisy-studio/releases" target="_blank" rel="noopener">Other downloads <span aria-hidden="true">↗</span></a>
   </section>
 </template>
 <style scoped>
