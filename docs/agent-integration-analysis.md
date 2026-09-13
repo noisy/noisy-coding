@@ -378,3 +378,12 @@ NOISY_CODING_CONFIG_DIR, so it ran on the production config dir: an empty
 registry, "all tabs gone", and a stray conversations.json written into
 the production dir. The script sets port AND config dir together; never
 start the daemon by hand with an ad-hoc env.
+
+### Idea (Krzysztof, on stream 2026-09-13): tell the agent what was heard
+
+When the user interrupts a spoken reply, the agent should learn which
+part of its sentence was actually heard and which was cut - so it can
+resume or rephrase only the unheard part instead of repeating or dropping
+it. The daemon knows the cut point (bytes played / streaming progress);
+delivering it with the next [VOICE] message is the cheap version. Not
+scheduled; noted for a ticket when Krzysztof wants one.
