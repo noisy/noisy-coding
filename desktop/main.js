@@ -13,6 +13,8 @@ const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, dia
 const path = require("node:path");
 const { loadDesktopIcons } = require("./icons");
 const http = require("node:http");
+const { createDesktopAnalytics, loadAnalyticsConfig } = require('./analytics');
+let analytics = null;
 
 // Keep existing browser preferences and permissions when the app display name changes.
 // Source launches used the production name, even with NOISY_MODE=local.
@@ -177,6 +179,7 @@ let tray = null;
 let ghost = false;
 
 function createDashboard() {
+  analytics?.track('dashboard_opened');
   if (dash && !dash.isDestroyed()) {
     dash.show();
     dash.focus();
@@ -225,7 +228,10 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   win.loadURL(widgetUrl());
-  win.once("ready-to-show", () => win.show());
+  win.once("ready-to-show", () => {
+    win.show();
+    analytics?.track('widget_shown');
+  });
 
   /* Hide the window while it reloads.
    *
@@ -297,6 +303,7 @@ function watchHover(win) {
 
 function setGhost(on) {
   ghost = on;
+  analytics?.track(on ? 'click_through_enabled' : 'click_through_disabled');
   // forward:true keeps hover and scroll working while clicks pass through -
   // without it the widget becomes a picture you cannot even scroll.
   win?.setIgnoreMouseEvents(on, { forward: true });
@@ -355,7 +362,9 @@ function buildTray() {
       label: win && !win.isDestroyed() && win.isVisible() ? "Hide widget" : "Show widget",
       click: () => {
         if (!win || win.isDestroyed()) return createWindow();
-        win.isVisible() ? win.hide() : win.show();
+        const wasVisible = win.isVisible();
+        wasVisible ? win.hide() : win.show();
+        analytics?.track(wasVisible ? 'widget_hidden' : 'widget_shown');
         buildTray();
       },
     },
@@ -369,6 +378,25 @@ function buildTray() {
       },
     },
     { type: "separator" },
+    ...(analytics?.available ? [{
+      label: 'Share optional usage analytics',
+      type: 'checkbox',
+      checked: analytics.enabled,
+      click: async (item) => {
+        if (item.checked) {
+          const { response } = await dialog.showMessageBox({
+            type: 'question',
+            message: 'Share usage analytics?',
+            detail: 'Send app starts, daemon readiness, and window actions to PostHog with a random installation ID, app version, and operating system. No audio, conversations, file paths, or session recordings are collected. You can turn this off in the menu at any time.',
+            buttons: ['No thanks', 'Allow analytics'],
+            defaultId: 0,
+            cancelId: 0,
+          });
+          analytics.setEnabled(response === 1);
+        } else analytics.setEnabled(false);
+        buildTray();
+      },
+    }, { type: 'separator' }] : []),
     { label: "Quit", role: "quit" },
   ]);
   tray?.setContextMenu(menu);
@@ -398,11 +426,21 @@ function createSplash() {
 }
 
 app.whenReady().then(async () => {
+  analytics = createDesktopAnalytics({
+    config: loadAnalyticsConfig(),
+    dataPath: app.getPath('userData'),
+    mode: MODE,
+    isPackaged: app.isPackaged,
+    version: app.getVersion(),
+    platform: process.platform,
+  });
+  analytics.track('app_started');
   /* Attach before opening anything: both windows are views of a daemon, and
    * pointing them at nothing produces a not-found page that looks like a
    * bug rather than a missing service. */
   const splash = createSplash();
   await resolveMode();
+  analytics.track(attachedPort ? 'daemon_ready' : 'daemon_unavailable');
   splash.destroy();
   if (problem) {
     // Say what is missing rather than opening a window onto nothing - a
@@ -441,6 +479,7 @@ app.whenReady().then(async () => {
   tray.on("click", () => {
     if (!win || win.isDestroyed()) return createWindow();
     win.show();
+    analytics?.track('widget_shown');
     win.setAlwaysOnTop(true, "screen-saver");
   });
   tray.setToolTip(
@@ -508,7 +547,13 @@ app.on("window-all-closed", () => {});
 
 /* Take the daemon down with us. It was started for this app; leaving it
  * running would hold the microphone open with nothing to talk to. */
-app.on("before-quit", () => {
+let flushingAnalytics = false;
+app.on("before-quit", (event) => {
   child?.kill("SIGTERM");
   child = null;
+  if (analytics && !flushingAnalytics) {
+    flushingAnalytics = true;
+    event.preventDefault();
+    void analytics.shutdown().finally(() => app.quit());
+  }
 });
