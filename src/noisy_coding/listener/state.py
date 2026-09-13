@@ -242,14 +242,27 @@ class ListenerState:
         moved = []
         with self._lock:
             default_voice = self._characters.get("", {}).get("voice", DEFAULT_VOICE)
+            present = set(self.conversations.visible_keys()) | set(self._agents)
+            seen: set[str] = set()
             for key, char in self._characters.items():
-                if not key or char.get("voice") != default_voice:
+                if not key:
+                    continue
+                voice = char.get("voice", "")
+                # Two reasons to move: a plain copy of the shared default, or
+                # a duplicate among the tabs that are actually on the strip.
+                duplicate = key in present and voice in seen
+                if voice != default_voice and not duplicate:
+                    if key in present:
+                        seen.add(voice)
                     continue
                 self._voice_claims.pop(key, None)  # re-claim from the free set
-                voice = self._claim_voice_locked(key, pool, hash_pick)
-                if voice != default_voice:
-                    char["voice"] = voice
+                free = tuple(v for v in pool if v != default_voice and v not in seen)
+                new_voice = self._claim_voice_locked(key, free or pool, hash_pick)
+                if new_voice != voice:
+                    char["voice"] = new_voice
                     moved.append(key)
+                if key in present:
+                    seen.add(new_voice)
         return moved
 
     def all_characters(self) -> dict:
@@ -350,10 +363,15 @@ class ListenerState:
         # AGENT TAB's claim counts only while the tab is live: a dormant or
         # closed session must not squat on a voice (#54 made tab voices
         # ledger claims too).
+        # A tab that is on the strip (visible in the registry) holds its
+        # voice even between heartbeats - at boot nobody has polled yet, and
+        # two restored tabs must not be handed the same voice. Only a tab the
+        # user closed, or a session long gone from the registry, lets go.
+        present = live | set(self.conversations.visible_keys())
         agents = set(self._characters) | set(self._agents)
         taken = {
             voice for name, voice in self._voice_claims.items()
-            if name not in agents or name in live
+            if name not in agents or name in present
         }
         taken.update(
             char.get("voice", "")

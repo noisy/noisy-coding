@@ -675,3 +675,30 @@ def test_choosing_a_voice_for_a_tab_updates_its_ledger_claim():
     state.set_character({"voice": "orion"}, agent="tab-a")
     assert state.voice_claims()["tab-a"] == "orion"
     assert seeded not in state.voice_claims().values() or seeded == "orion"
+
+
+
+def test_restored_tabs_on_the_strip_never_share_a_voice_even_before_they_poll():
+    from noisy_coding.harness.base import Capabilities
+    from noisy_coding.harness.fake.adapter import FakeHarness, FakeSession
+
+    state = ListenerState()
+    harness = FakeHarness()
+    tabs = []
+    for _ in range(4):
+        session = FakeSession()
+        state.conversations.apply(harness.name, harness.interpret(session.start()), harness.capabilities)
+        tabs.append(session.conversation)
+    default_voice = state.character()["voice"]
+    # Pre-fix persistence: every tab a copy of the default; nobody has polled yet.
+    for key in tabs:
+        state.set_character({"voice": default_voice}, agent=key)
+    state.rehome_default_voice_copies()
+    voices = [state.character(k)["voice"] for k in tabs]
+    assert len(set(voices)) == 4, voices
+    assert default_voice not in voices
+    # A second run with two tabs colliding by hand still resolves to distinct voices.
+    state.set_character({"voice": voices[0]}, agent=tabs[1])
+    state.rehome_default_voice_copies()
+    voices = [state.character(k)["voice"] for k in tabs]
+    assert len(set(voices)) == 4, voices
