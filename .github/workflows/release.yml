@@ -9,6 +9,10 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)build the desktop app for, e.g. v3.0.0-alpha.1"
+        required: true
 
 jobs:
   # Guard against the drift that let .claude-plugin/plugin.json ship three
@@ -63,3 +67,53 @@ jobs:
             gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
               --draft --generate-notes --title "$GITHUB_REF_NAME" $prerelease
           fi
+
+  # The desktop app is the product in 3.x. macOS runners build the packaged
+  # daemon (PyInstaller) and the Electron bundle and attach them to the
+  # release, so every tag gets a downloadable app - unsigned for now
+  # (signing/notarisation needs Apple certificates as secrets; #72 family).
+  desktop-app:
+    needs: [verify-version]
+    runs-on: macos-14
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      # PyInstaller is a build-time tool, not a project dependency; the npm
+      # script expects it in the project venv (.venv/bin/pyinstaller).
+      - run: uv pip install pyinstaller
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dashboard and desktop dependencies
+        run: |
+          (cd dashboard && npm ci)
+          (cd desktop && npm ci)
+      - name: Build the dashboard and the packaged daemon
+        working-directory: desktop
+        run: |
+          npm run build:ui
+          npm run build:daemon
+      - name: Package the macOS app
+        working-directory: desktop
+        run: npx electron-builder --mac --publish never
+      - name: Attach the app to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The draft may not exist yet on a fresh tag (github-release job
+          # runs in parallel); wait for it briefly rather than racing.
+          for i in $(seq 1 30); do
+            gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 && break
+            sleep 10
+          done
+          ls -la desktop/dist
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber desktop/dist/*.dmg desktop/dist/*.zip
