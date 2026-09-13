@@ -19,6 +19,7 @@ const meta = {
 } satisfies Meta<typeof Website>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+export const ComingSoon: Story = { name: 'Current website · Coming soon', args: {} };
 export const Mac: Story = { name: 'macOS visitor', args: { previewPlatform: 'mac' } };
 export const Windows: Story = { name: 'Windows visitor', args: { previewPlatform: 'windows' } };
 export const Linux: Story = { name: 'Linux visitor', args: { previewPlatform: 'linux' } };

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DownloadButton from './DownloadButton.vue';
 import { computed, onMounted, ref } from 'vue';
 type Platform = 'mac' | 'windows' | 'linux';
 const props = defineProps<{ platform?: Platform; downloadUrl?: string; compact?: boolean }>();
@@ -20,10 +21,7 @@ function notify() { emit('notify', { platform: selected.value, email: email.valu
       <p v-if="!compact" class="platform-kicker">MADE FOR YOUR MAC</p>
       <h3 v-if="!compact">Your next conversation<br>starts here.</h3>
       <p v-if="!compact" class="platform-description">Bring Noisy Studio into your coding workflow.</p>
-      <component :is="downloadUrl ? 'a' : 'button'" class="platform-primary" :href="downloadUrl" :disabled="!downloadUrl">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" /></svg>
-        Download for macOS
-      </component>
+      <DownloadButton :download-url="downloadUrl" />
     </template>
     <template v-else>
       <p v-if="!compact" class="platform-kicker">{{ name.toUpperCase() }} VERSION · COMING LATER</p>

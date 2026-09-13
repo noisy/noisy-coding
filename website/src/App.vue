@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import DownloadButton from "./DownloadButton.vue";
 import PlatformDownload from "./PlatformDownload.vue";
-const props = defineProps<{ previewPlatform?: 'mac' | 'windows' | 'linux'; dashboardPreviewUrl?: string }>();
+defineProps<{ previewPlatform?: 'mac' | 'windows' | 'linux'; dashboardPreviewUrl?: string }>();
 import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
@@ -30,7 +29,7 @@ const source = "https://github.com/noisy/noisy-coding";
     >
   </header>
   <main id="main">
-    <HeroShowcase><template v-if="previewPlatform" #download><PlatformDownload :platform="previewPlatform" compact /></template></HeroShowcase>
+    <HeroShowcase><template #download><PlatformDownload :platform="previewPlatform ?? 'mac'" compact /></template></HeroShowcase>
     <section
       id="workflow"
       class="wrap workflow-summary"
@@ -65,15 +64,7 @@ const source = "https://github.com/noisy/noisy-coding";
             Hear the progress, give direction, and keep creating.
           </p>
         </div>
-        <PlatformDownload v-if="previewPlatform" :platform="previewPlatform" />
-        <div v-else class="download-panel">
-          <div class="download-product">
-            <div class="download-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 13v6m7-12v18m6-15v12m7-9v6" /></svg></div>
-            <div><p class="eyebrow">Your voice, in the workflow</p><h3>Noisy Studio</h3></div>
-          </div>
-          <DownloadButton />
-          <div class="download-guides"><span>Setup guides</span><a :href="`${source}/blob/v3-desktop/README.md#install-for-claude-code`">Claude Code ↗</a><a :href="`${source}/blob/v3-desktop/docs/codex.md`">Codex ↗</a></div>
-        </div>
+        <PlatformDownload :platform="previewPlatform ?? 'mac'" />
       </div>
     </section>
     <section class="section wrap questions">
