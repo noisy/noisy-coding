@@ -46,6 +46,7 @@ let capture, origin = 0, ticker;
 function update() { revision.value++; }
 function reset() {
   session.value = null; takeBlob.value = null; artifacts.value = null; reviewMs.value = 0;
+  recordingMode.value = 'camera';
   if (agentsUrl.value) URL.revokeObjectURL(agentsUrl.value);
   agentsUrl.value = '';
   if (archiveUrl.value) URL.revokeObjectURL(archiveUrl.value);
@@ -177,9 +178,12 @@ onBeforeUnmount(() => {
           <template v-if="!active && phase !== 'done'">
             <h2>Make yourself comfortable.</h2>
             <ol class="instructions"><li>Put on headphones to keep the other voices out of your recording.</li><li>Read the script below, then try a rehearsal.</li><li>When recording, keep the pauses. Listen naturally between your lines.</li></ol>
-            <label class="field-label" for="recording-mode">How are you recording?</label>
-            <select id="recording-mode" v-model="recordingMode" :disabled="busy"><option value="camera">Camera + microphone in this browser</option><option value="external">My own camera + browser microphone reference</option></select>
-            <p v-if="recordingMode === 'external'" class="hint">Start your own camera first. This page records a microphone reference so we can align your original camera file afterward. Send that original too.</p>
+            <section class="recording-reference" aria-label="Recording with your own equipment">
+              <h3>Your equipment. One shared reference.</h3>
+              <p>Use your own camera and microphone for the final footage. Record in this browser at the same time using your webcam and microphone; this gives you a live preview and gives us a reference for matching your footage to the dialogue.</p>
+              <p>Start both recordings, then clap once or use a clapperboard in view of both cameras before your first line. Keep both recordings running through the pauses.</p>
+              <p>When finished, send your original camera recording together with the Demo Studio ZIP.</p>
+            </section>
             <div class="actions"><button class="primary" :disabled="busy" @click="start(true)">{{ busy ? 'Opening devices…' : 'Record a take' }}</button><button :disabled="busy" @click="start(false)">Rehearse first</button></div>
             <label class="reopen">Open an existing take<input aria-label="Open existing recording and timing" type="file" accept=".webm,.mp4,.json" multiple :disabled="busy" @change="reopen"></label>
           </template>
@@ -190,7 +194,7 @@ onBeforeUnmount(() => {
             <p class="hint">{{ phase === 'user' ? 'Take your time. Press Space when you finish this line.' : 'Keep the camera rolling. Your next line appears when the reply finishes.' }}</p>
             <button class="primary next" :disabled="phase !== 'user' || busy" @click="advance">Finished speaking <kbd>Space</kbd></button>
             <div class="actions"><button @click="finish" :disabled="busy">Stop take</button><button v-if="isRecording" @click="sync">Mark sync point</button></div>
-            <p v-if="isRecording" class="hint">Optional: say “sync” as you mark a point, to help align an external camera.</p>
+            <p v-if="isRecording" class="hint">For an extra timing marker, press Mark sync point as you clap once in view of both cameras.</p>
           </template>
           <template v-else>
             <p class="eyebrow">{{ isRecording ? 'TAKE SAVED IN THIS TAB' : 'REHEARSAL FINISHED' }}</p><h2>{{ events.at(-1)?.complete ? 'That’s a wrap.' : 'Take stopped.' }}</h2><p class="hint">{{ isRecording ? 'Download the ZIP before leaving. It includes your original recording, timing, and a separate agent audio track.' : 'Ready when you are. You can rehearse again or record your take.' }}</p>
