@@ -20,24 +20,16 @@ Microphone audio goes to the app's Grok STT provider; video stays in browser mem
 
 ## Scenarios
 
-Choose a scenario above the camera. **1 · Meet your crew** keeps the original
-Lux/Rex/Luna exchange. **2 · Hero — fix the webhook** follows the hero widget:
+Choose a scenario above the camera:
 
-1. Listen to Lux: “I'm ready.” / “Your session is running. I'll keep you posted.”
-2. Say “What's wrong with the webhook?” and press Space.
-3. Lux: “Bad signatures were retried forever. I made them fail fast.”
-4. Say “Good. Run the full suite.” and press Space.
-5. Lux: “Running - both paths are pinned by the new test.” The take ends.
+1. **Scenario 1: Fix search and deploy** — the hands-free hero conversation.
+2. **Scenario 2: Meet your crew** — the Lux/Rex/Luna exchange.
 
-The camera records the introduction too. Agent playback arrivals and a
-`terminal-enter` scene cue are recorded before the first user turn. The JSON
-includes the selected scenario snapshot; old JSON without it remains supported.
-Hero clips use Grok Lux, English, speed 1.1. They live in this local authoring
-tool; the existing website hero stays unchanged until a take is selected.
+The webhook scenario is no longer offered. Existing recordings and source clips are retained.
 
 ### Hero: search and deployment
 
-**3 · Hero — fix search and deploy** is the longer hands-free take: report
+**Scenario 1: Fix search and deploy** is the longer hands-free take: report
 broken partial search, ask for case-insensitive matches, request tests, deploy
 to production, then say thanks. The complete approved dialogue is shown in the
 scenario selector. Five prerecorded Lux clips accompany five user turns.

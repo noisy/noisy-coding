@@ -12,19 +12,7 @@ const crewTurns = [
 ];
 
 export const SCENARIOS = [
-  { id: 'crew', title: '1 · Meet your crew', intro: [], turns: crewTurns },
-  { id: 'hero', title: '2 · Hero — fix the webhook', intro: [
-    { voice: 'Lux', clip: 'hero-lux-1', text: "I'm ready." },
-    { voice: 'Lux', clip: 'hero-lux-2', text: "Your session is running. I'll keep you posted." },
-  ], turns: [
-    { prompt: "What's wrong with the webhook?", agent: 'Lux', replies: [
-      { voice: 'Lux', clip: 'hero-lux-3', text: 'Bad signatures were retried forever. I made them fail fast.' },
-    ] },
-    { prompt: 'Good. Run the full suite.', agent: 'Lux', replies: [
-      { voice: 'Lux', clip: 'hero-lux-4', text: 'Running - both paths are pinned by the new test.' },
-    ] },
-  ] },
-  { id: 'hero-search', title: '3 · Hero — fix search and deploy', intro: [], turns: [
+  { id: 'hero-search', title: 'Scenario 1: Fix search and deploy', intro: [], turns: [
     { prompt: 'The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.', agent: 'Lux', replies: [
       { voice: 'Lux', clip: 'hero-lux-search-1', text: "The last change switched to exact matching. I'll bring back partial matches." },
     ] },
@@ -40,4 +28,5 @@ export const SCENARIOS = [
     ] },
     { prompt: 'Perfect. Thanks.', agent: 'Lux', replies: [] },
   ] },
+  { id: 'crew', title: 'Scenario 2: Meet your crew', intro: [], turns: crewTurns },
 ];
