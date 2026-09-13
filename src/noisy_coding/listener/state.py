@@ -118,6 +118,10 @@ class ListenerState:
         self._mic_level = 0.0  # live mic RMS 0..1, for the dashboard oscilloscope
         self._activity: dict[str, dict] = {}  # agent -> current tool one-liner
         self._playing_utterance_id = 0  # which card is on the speakers right now
+        # id -> reason for clips cut short by the user; the playback thread
+        # consumes it when it finishes bookkeeping, so a cut clip can never
+        # be relabelled "played" by the code that did not know it was cut.
+        self._interrupted: dict[int, str] = {}
         self._latency_ms: dict = {"stt": None, "tts": None}  # last measured
         self._last_recording_end = float("-inf")  # monotonic time of last utterance end
         self._last_transcript_at = 0.0
@@ -1243,8 +1247,14 @@ class ListenerState:
                 utterance["status"] = f"unheard — {reason}"
                 utterance["updated_at"] = time.time()
                 break
+            self._interrupted[utterance_id] = reason
             self._playing_utterance_id = 0
             return utterance_id
+
+    def consume_interrupted(self, utterance_id: int) -> str | None:
+        """Was this clip cut short by the user? Returns the reason once."""
+        with self._lock:
+            return self._interrupted.pop(utterance_id, None)
 
     def skip_unheard(self, agent: str | None = None) -> int:
         """Skip-all: settle every parked UNHEARD card without playing it.

@@ -36,3 +36,16 @@ def test_user_mute_is_not_overridden_by_the_key():
     _ptt_barge_in(state)
     assert state.user_muted is True
     assert state.paused is True  # paused property includes the user mute
+
+
+
+def test_the_interrupt_is_remembered_until_the_playback_thread_consumes_it():
+    state = ListenerState()
+    clip = state.create_utterance("claude", "playing through speakers…", text="x")
+    state.set_playing_utterance_id(clip)
+    state.interrupt_playing_as_unheard("interrupted by push-to-talk")
+    # Streaming bookkeeping overwrites the card after the cut...
+    state.update_utterance(clip, status="playing through speakers…")
+    # ...and the playback thread, finishing, re-applies the interrupt exactly once.
+    assert state.consume_interrupted(clip) == "interrupted by push-to-talk"
+    assert state.consume_interrupted(clip) is None

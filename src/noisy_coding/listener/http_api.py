@@ -1100,6 +1100,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"paused": paused})
             elif self.path == "/interrupt":
                 # Stop whatever is on the speakers; queued speech continues.
+                # The cut clip parks as UNHEARD so catch-up can replay it.
+                state.interrupt_playing_as_unheard("stopped by you")
                 playback.stop_all_players()
                 live_bridge = tab_audio.bridge()
                 if live_bridge is not None:

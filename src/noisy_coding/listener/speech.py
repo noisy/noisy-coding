@@ -550,9 +550,15 @@ def _play_prepared(
     played_seconds = time.monotonic() - playing_since
     _log(f"[speak] done in {played_seconds:.1f}s")
     state.add_event("speak_done", f"głos '{prepared.voice}'")
-    # A mute mid-clip kills the player and parks the card as unheard —
-    # the cut-short clip must not be relabeled "played" here.
-    if not state.utterance_is_unheard(utterance_id):
+    # A mute, the stop button or a push-to-talk barge-in kills the player and
+    # parks the card as unheard - the cut-short clip must not be relabeled
+    # "played" here. The streaming path keeps writing progress after the
+    # cut, so the mark alone was not enough: the interrupt is recorded and
+    # re-applied once this thread is done (#61, #64).
+    reason = state.consume_interrupted(utterance_id)
+    if reason:
+        state.update_utterance(utterance_id, status=f"unheard — {reason}")
+    elif not state.utterance_is_unheard(utterance_id):
         state.update_utterance(
             utterance_id, status="played", duration_s=round(played_seconds, 1)
         )
