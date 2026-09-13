@@ -2,7 +2,7 @@
   "name": "noisy-coding-companion",
   "version": "2.17.0",
   "private": true,
-  "description": "The noisy-coding companion widget, always on top",
+  "description": "The Noisy Studio companion widget, always on top",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -11,19 +11,19 @@
     "dmg": "npm run build:icons && electron-builder --mac",
     "local": "NOISY_MODE=local electron .",
     "build:daemon": "cd .. && .venv/bin/pyinstaller desktop/daemon.spec --distpath desktop/build/daemon --noconfirm --log-level WARN",
-    "dist:dev": "npm run build:icons && electron-builder --mac --dir -c.extraMetadata.noisyMode=local -c.productName=\"Noisy Coding Dev\" -c.appId=pl.noisy.coding.companion.dev -c.directories.output=dist-dev -c.mac.icon=build/icon-dev.icns",
+    "dist:dev": "npm run build:icons && electron-builder --mac --dir -c.extraMetadata.noisyMode=local -c.productName=\"Noisy Studio Dev\" -c.appId=pl.noisy.coding.companion.dev -c.directories.output=dist-dev -c.mac.icon=build/icon-dev.icns",
     "build:ui": "cd ../dashboard && npm run build",
-    "test": "node --test icons.test.js",
+    "test": "node --test *.test.js",
     "build:icons": "node scripts/build-icons.cjs"
   },
   "devDependencies": {
     "electron": "^32.0.0",
     "electron-builder": "^25.0.0"
   },
-  "productName": "Noisy Coding",
+  "productName": "Noisy Studio",
   "build": {
     "appId": "pl.noisy.coding.companion",
-    "productName": "Noisy Coding",
+    "productName": "Noisy Studio",
     "directories": {
       "output": "dist",
       "buildResources": "build"
