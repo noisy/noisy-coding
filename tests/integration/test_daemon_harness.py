@@ -308,3 +308,28 @@ def test_state_snapshot_is_the_same_data_as_status_plus_utterances(daemon):
     assert set(snapshot["status"]) == set(status)  # one builder, one shape
     assert snapshot["status"]["conversations"].keys() == status["conversations"].keys()
     assert snapshot["utterances"] == state.utterances()
+
+
+def test_an_agents_interrupt_flag_cuts_only_its_own_speech(daemon, monkeypatch):
+    state, call, event = daemon
+    stops = []
+    monkeypatch.setattr(http_api.playback, "stop_all_players", lambda: stops.append("stop"))
+    monkeypatch.setattr(http_api.speech, "submit", lambda *_a, **_k: None)
+    rows = _rows("session.jsonl")
+    event(rows[0])
+    me = rows[0]["transcript_path"]
+    other = {**rows[0], "session_id": "77777777-0000-0000-0000-000000000000",
+             "transcript_path": "/Users/dev/.claude/projects/p/7.jsonl"}
+    event(other)
+    # Another conversation is on the speakers.
+    clip = state.create_utterance("claude", "playing…", text="theirs", agent=other["transcript_path"])
+    state.set_playing_utterance_id(clip)
+    call("POST", "/speak", {"text": "mine, urgent", "agent": me, "interrupt": True, "wait": False})
+    assert stops == []                                   # not cut
+    assert state.playing_clip()["id"] == clip            # still theirs
+    assert any(e["detail"].startswith("interrupt ignored") for e in state.events_since(0))
+    # Its own clip on the speakers: the interrupt applies.
+    state.set_playing_utterance_id(state.create_utterance("claude", "playing…", text="mine, stale", agent=me))
+    call("POST", "/speak", {"text": "mine, newer", "agent": me, "interrupt": True, "wait": False})
+    assert stops == ["stop"]
+    assert state.playing_clip() is None

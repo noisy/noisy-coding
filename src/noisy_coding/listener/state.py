@@ -1344,6 +1344,17 @@ class ListenerState:
             self._playing_utterance_id = 0
             return utterance_id
 
+    def playing_clip(self) -> dict | None:
+        """A copy of the card on the speakers right now, or None."""
+        with self._lock:
+            utterance_id = self._playing_utterance_id
+            if not utterance_id:
+                return None
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    return dict(utterance)
+            return None
+
     def consume_interrupted(self, utterance_id: int) -> str | None:
         """Was this clip cut short by the user? Returns the reason once."""
         with self._lock:

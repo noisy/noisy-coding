@@ -86,6 +86,7 @@ def _ptt_barge_in(state: ListenerState) -> bool:
     from noisy_coding import playback
     from noisy_coding.listener import tab_audio
 
+    clip = state.playing_clip()
     playback.stop_all_players()
     bridge = tab_audio.bridge()
     if bridge is not None:
@@ -93,7 +94,23 @@ def _ptt_barge_in(state: ListenerState) -> bool:
             bridge.stop_tab_playback()
         except Exception:
             pass
-    interrupted = state.interrupt_playing_as_unheard("interrupted by push-to-talk")
+    # Whose clip did we cut? Krzysztof's rule (2026-09-13): when the user
+    # talks, everyone goes quiet - but only the ADDRESSEE's message may have
+    # become obsolete by what the user is about to say, so it parks as
+    # UNHEARD (replay or skip). Another agent's message is still valid: it
+    # waits and plays again, from the start, once the user has finished.
+    addressee = state.active_agent
+    owner = (clip or {}).get("agent") or addressee
+    if clip and owner != addressee:
+        interrupted = state.interrupt_playing_as_unheard("waiting — you were speaking")
+        text = str(clip.get("text") or "")
+        if interrupted and text:
+            try:
+                speech.submit(state, text, agent=owner, card=False, source_id=interrupted)
+            except Exception:
+                pass  # worst case the card stays unheard and is replayable
+    else:
+        interrupted = state.interrupt_playing_as_unheard("interrupted by push-to-talk")
     state.set_paused(False)
     return bool(interrupted)
 

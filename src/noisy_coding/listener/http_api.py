@@ -1315,20 +1315,27 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # so bail BEFORE the interrupt below can do any damage.
                 self._respond({"skipped": True})
                 return
-            if body.get("interrupt"):
-                # Cut the current utterance short — wherever it is playing:
-                # local player processes AND the browser tab (same pair of
-                # stops as /interrupt, or replay-clicks in browser-output
-                # mode would leave the old clip talking over the new one).
-                # BEFORE submit, so the stop can never race ahead and cut
-                # down the very clip we are about to queue.
-                playback.stop_all_players()
-                live_bridge = tab_audio.bridge()
-                if live_bridge is not None:
-                    live_bridge.stop_tab_playback()
             claimed = str(body.get("agent") or "")
             if claimed:
                 body = {**body, "agent": _revive_if_known(state, claimed)}
+            if body.get("interrupt"):
+                # Cut the current utterance short — wherever it is playing:
+                # local player processes AND the browser tab. BEFORE submit,
+                # so the stop can never race ahead and cut down the very
+                # clip we are about to queue. Scoped to the caller's OWN
+                # conversation: an agent may cut its own stale sentence, it
+                # may not cut another agent off mid-word (2026-09-13). If
+                # someone else is speaking, the new clip simply queues.
+                playing = state.playing_clip()
+                owner = (playing or {}).get("agent") if playing else None
+                if playing is None or owner in (None, body.get("agent")):
+                    state.interrupt_playing_as_unheard("replaced by a newer message")
+                    playback.stop_all_players()
+                    live_bridge = tab_audio.bridge()
+                    if live_bridge is not None:
+                        live_bridge.stop_tab_playback()
+                else:
+                    state.add_event("speak_wait", "interrupt ignored — another conversation is speaking")
             agent, speaker, voice_override = _resolve_speaker(state, body)
             if state.take_voice_claims_dirty():
                 save_voice_claims(state)

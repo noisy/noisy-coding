@@ -58,3 +58,30 @@ def test_daemon_boot_helpers_are_importable():
     from noisy_coding.listener import daemon
     for name in ("save_characters", "_load_history", "_save_history", "_ptt_barge_in"):
         assert callable(getattr(daemon, name))
+
+
+
+def test_barge_in_parks_the_addressees_clip_but_requeues_another_agents(monkeypatch):
+    from noisy_coding.listener import daemon, speech
+
+    requeued = []
+    monkeypatch.setattr(speech, "submit", lambda state, text, **kw: requeued.append((text, kw)) or None)
+
+    # Case 1: the agent you are talking to is speaking -> obsolete-able -> UNHEARD, no requeue.
+    state = ListenerState()
+    state.register_agent("me", "Me"); state.register_agent("other", "Other")
+    state.set_active_agent("me")
+    clip = state.create_utterance("claude", "playing…", text="old answer", agent="me")
+    state.set_playing_utterance_id(clip); state.set_paused(True)
+    assert daemon._ptt_barge_in(state) is True
+    assert state.playing_clip() is None
+    assert next(u for u in state.utterances() if u["id"] == clip)["status"] == "unheard — interrupted by push-to-talk"
+    assert requeued == []
+
+    # Case 2: a DIFFERENT agent is speaking -> still valid -> waits and replays from the start.
+    clip2 = state.create_utterance("claude", "playing…", text="valid update", agent="other")
+    state.set_playing_utterance_id(clip2); state.set_paused(True)
+    assert daemon._ptt_barge_in(state) is True
+    card = next(u for u in state.utterances() if u["id"] == clip2)
+    assert card["status"] == "unheard — waiting — you were speaking"
+    assert requeued == [("valid update", {"agent": "other", "card": False, "source_id": clip2})]
