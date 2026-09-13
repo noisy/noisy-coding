@@ -267,3 +267,23 @@ letter-spacing:0}
     animation-duration:.01ms!important;
   transition-duration:.01ms!important}
 }
+
+/* Bound the real widget to its embedded viewport, not the browser window. */
+.companion-frame.companion-window {
+  height: 350px;
+  min-height: 0;
+  flex-shrink: 0;
+}
+.stage-caption, .stage-foot { flex-shrink: 0; }
+.take-player { margin-top: 20px; }
+.take-player audio[aria-hidden] { display: none; }
+.take-player input[type=range] { width: 100%; accent-color: var(--brand-accent); }
+@media (max-width: 850px) {
+  .stage { height: 410px; }
+  .companion-frame.companion-window { height: 310px; }
+}
+
+.reopen { display: block; margin-top: 18px; color: var(--muted); font-size: 12px; }
+.reopen input { display: block; width: 100%; margin-top: 8px; font: inherit; }
+
+.download-zip { display: inline-block; text-decoration: none; padding: 11px 16px; border-radius: 9px; }

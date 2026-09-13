@@ -1,5 +1,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import TakeReview from './TakeReview.vue';
+import { companionAt } from './preview.mjs';
+import { renderAgents, bundleTake } from './artifacts.mjs';
 import Companion from '@dashboard/components/Companion.vue';
 import { SCENARIOS } from '../../../tools/demo-recorder/scenarios.mjs';
 import heroTake from '@dashboard/components/marketing/recorded-hero/hero-recording.json';
@@ -22,6 +25,11 @@ const isRecording = ref(false);
 const error = ref('');
 const camera = ref(null);
 const mediaUrl = ref('');
+const agentsUrl = ref('');
+const archiveUrl = ref('');
+const artifacts = shallowRef(null);
+const preparing = ref(false);
+const reviewMs = ref(0);
 const takeBlob = shallowRef(null);
 const duration = ref(0);
 const elapsed = ref(0);
@@ -32,26 +40,16 @@ const pendingDownloads = computed(() => !!takeBlob.value && (!savedMedia.value |
 const active = computed(() => ['user', 'reply'].includes(phase.value));
 const current = computed(() => { revision.value; return scenario.value.turns[session.value?.turn ?? 0]; });
 const events = computed(() => { revision.value; return [...(session.value?.events ?? [])]; });
-const preview = computed(() => {
-  let voice = 'lux', mode = 'idle', activity = null, liveText = '';
-  const feed = [];
-  for (const event of events.value) {
-    if (event.type === 'user-start') { voice = event.voice.toLowerCase(); mode = 'user'; liveText = event.prompt; }
-    if (event.type === 'user-end') { feed.push({ role: 'user', text: liveText, id: event.sequence, voice }); liveText = ''; mode = 'idle'; }
-    if (event.type === 'agent-start') { voice = event.voice.toLowerCase(); mode = 'claude'; feed.push({ role: 'claude', text: event.text, id: event.sequence, voice }); }
-    if (event.type === 'agent-end') mode = 'idle';
-    if (event.type === 'activity-start') activity = event.text;
-    if (event.type === 'activity-end') activity = null;
-    if (event.type === 'recording-stop') { activity = null; mode = 'idle'; liveText = ''; }
-  }
-  const voices = [...new Set(scenario.value.turns.flatMap(turn => [turn.agent, ...turn.replies.map(reply => reply.voice)]))];
-  return { voice, mode, activity, liveText, feed: feed.filter(message => message.voice === voice), agents: voices.map(name => ({ name, label: name === 'Lux' ? 'Claude' : name, voice: name.toLowerCase(), active: voice === name.toLowerCase() })) };
-});
+const preview = computed(() => companionAt(events.value, scenario.value, mediaUrl.value ? reviewMs.value : Infinity));
 const clockLabel = computed(() => `${Math.floor(elapsed.value / 60000).toString().padStart(2, '0')}:${Math.floor(elapsed.value / 1000 % 60).toString().padStart(2, '0')}`);
 let capture, origin = 0, ticker;
 function update() { revision.value++; }
 function reset() {
-  session.value = null; takeBlob.value = null;
+  session.value = null; takeBlob.value = null; artifacts.value = null; reviewMs.value = 0;
+  if (agentsUrl.value) URL.revokeObjectURL(agentsUrl.value);
+  agentsUrl.value = '';
+  if (archiveUrl.value) URL.revokeObjectURL(archiveUrl.value);
+  archiveUrl.value = '';
   if (mediaUrl.value) URL.revokeObjectURL(mediaUrl.value);
   mediaUrl.value = ''; elapsed.value = 0; error.value = '';
   savedMedia.value = savedTiming.value = false;
@@ -94,6 +92,8 @@ async function finish() {
   if (recording) {
     takeBlob.value = await recording.stop();
     mediaUrl.value = URL.createObjectURL(takeBlob.value);
+    reviewMs.value = 0;
+    await prepareAudio();
   }
   busy.value = false;
 }
@@ -107,24 +107,59 @@ function saveMedia() {
   const extension = takeBlob.value.type.includes('mp4') ? 'mp4' : 'webm';
   download(takeBlob.value, `${filename.value}.${extension}`); savedMedia.value = true;
 }
-function saveTiming() {
-  const take = { version: 1, name: filename.value, durationMs: duration.value, scenario: scenario.value,
+function takeDocument() {
+  return { version: 1, name: filename.value, durationMs: duration.value, scenario: scenario.value,
     clock: 'milliseconds since MediaRecorder start event', transcriptSource: 'script; not live transcription',
     media: { mimeType: takeBlob.value?.type ?? null, audio: 'microphone only; agent clips are separate assets' },
     transcriptOffsetsMs: {}, events: events.value, presentation: events.value.map(event => ({ ...event, displayAtMs: event.atMs })) };
-  download(new Blob([JSON.stringify(take, null, 2)], { type: 'application/json' }), `${filename.value}.json`); savedTiming.value = true;
+}
+function saveTiming() {
+  download(new Blob([JSON.stringify(takeDocument(), null, 2)], { type: 'application/json' }), `${filename.value}.json`); savedTiming.value = true;
+}
+async function reopen(event) {
+  const files = [...event.target.files];
+  event.target.value = '';
+  const metadata = files.find(file => file.name.endsWith('.json'));
+  const original = files.find(file => !file.name.endsWith('.json'));
+  if (!metadata || !original) { error.value = 'Select the original recording and its timing JSON together.'; return; }
+  try {
+    const take = JSON.parse(await metadata.text());
+    if (take.version !== 1 || !Number.isFinite(take.durationMs) || take.durationMs <= 0 || !Array.isArray(take.events) || !take.events.every(event => Number.isFinite(event.atMs) && event.atMs >= 0) || !SCENARIOS.some(s => s.id === take.scenario?.id)) throw new Error('Unsupported take');
+    reset(); selected.value = take.scenario.id;
+    session.value = { phase: 'done', events: take.events, stop() {} };
+    duration.value = take.durationMs;
+    filename.value = original.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '-');
+    takeBlob.value = original; mediaUrl.value = URL.createObjectURL(original);
+    isRecording.value = true; recordingMode.value = original.type.startsWith('audio/') ? 'external' : 'camera';
+    savedMedia.value = savedTiming.value = true;
+    await prepareAudio();
+  } catch { error.value = 'Could not open this take. Choose a Demo Studio recording and its matching timing JSON.'; }
+}
+async function prepareAudio() {
+  preparing.value = true;
+  try {
+    artifacts.value = await renderAgents(events.value, duration.value, clips);
+    if (agentsUrl.value) URL.revokeObjectURL(agentsUrl.value);
+    agentsUrl.value = URL.createObjectURL(artifacts.value.audio);
+    const archive = await bundleTake(takeBlob.value, takeDocument(), artifacts.value);
+    if (archiveUrl.value) URL.revokeObjectURL(archiveUrl.value);
+    archiveUrl.value = URL.createObjectURL(archive);
+  } catch (e) { error.value = 'Could not prepare agent audio. Your original recording and timing can still be downloaded. ' + e.message; }
+  finally { preparing.value = false; }
 }
 function keydown(event) {
   if (event.code !== 'Space' || event.repeat || /INPUT|SELECT|TEXTAREA|BUTTON|A/.test(event.target.tagName) || event.target.isContentEditable) return;
   if (active.value) { event.preventDefault(); void advance(); }
 }
 function beforeLeave(event) {
-  if (active.value || busy.value || pendingDownloads.value) { event.preventDefault(); event.returnValue = ''; }
+  if (active.value || busy.value || preparing.value || pendingDownloads.value) { event.preventDefault(); event.returnValue = ''; }
 }
 onMounted(() => { window.addEventListener('keydown', keydown); window.addEventListener('beforeunload', beforeLeave); });
 onBeforeUnmount(() => {
   session.value?.stop(); clearInterval(ticker); void capture?.stop();
   if (mediaUrl.value) URL.revokeObjectURL(mediaUrl.value);
+  if (agentsUrl.value) URL.revokeObjectURL(agentsUrl.value);
+  if (archiveUrl.value) URL.revokeObjectURL(archiveUrl.value);
   window.removeEventListener('keydown', keydown); window.removeEventListener('beforeunload', beforeLeave);
 });
 </script>
@@ -138,7 +173,7 @@ onBeforeUnmount(() => {
       <div class="workspace">
         <section class="director" aria-label="Recording controls">
           <label class="field-label" for="scenario">Your scene</label>
-          <select id="scenario" v-model="selected" :disabled="active || busy || pendingDownloads" @change="reset"><option v-for="item in SCENARIOS" :value="item.id">{{ item.title }}</option></select>
+          <select id="scenario" v-model="selected" :disabled="active || busy || preparing || pendingDownloads" @change="reset"><option v-for="item in SCENARIOS" :value="item.id">{{ item.title }}</option></select>
           <template v-if="!active && phase !== 'done'">
             <h2>Make yourself comfortable.</h2>
             <ol class="instructions"><li>Put on headphones to keep the other voices out of your recording.</li><li>Read the script below, then try a rehearsal.</li><li>When recording, keep the pauses. Listen naturally between your lines.</li></ol>
@@ -146,6 +181,7 @@ onBeforeUnmount(() => {
             <select id="recording-mode" v-model="recordingMode" :disabled="busy"><option value="camera">Camera + microphone in this browser</option><option value="external">My own camera + browser microphone reference</option></select>
             <p v-if="recordingMode === 'external'" class="hint">Start your own camera first. This page records a microphone reference so we can align your original camera file afterward. Send that original too.</p>
             <div class="actions"><button class="primary" :disabled="busy" @click="start(true)">{{ busy ? 'Opening devices…' : 'Record a take' }}</button><button :disabled="busy" @click="start(false)">Rehearse first</button></div>
+            <label class="reopen">Open an existing take<input aria-label="Open existing recording and timing" type="file" accept=".webm,.mp4,.json" multiple :disabled="busy" @change="reopen"></label>
           </template>
           <template v-else-if="active">
             <div class="take-status"><span>{{ isRecording ? '● RECORDING' : 'REHEARSAL' }}</span><time>{{ clockLabel }}</time></div>
@@ -157,18 +193,19 @@ onBeforeUnmount(() => {
             <p v-if="isRecording" class="hint">Optional: say “sync” as you mark a point, to help align an external camera.</p>
           </template>
           <template v-else>
-            <p class="eyebrow">{{ isRecording ? 'TAKE SAVED IN THIS TAB' : 'REHEARSAL FINISHED' }}</p><h2>{{ events.at(-1)?.complete ? 'That’s a wrap.' : 'Take stopped.' }}</h2><p class="hint">{{ isRecording ? 'Download both files before leaving. Nothing is uploaded automatically.' : 'Ready when you are. You can rehearse again or record your take.' }}</p>
-            <div class="actions" v-if="takeBlob"><button class="primary" @click="saveMedia">{{ savedMedia ? '✓ ' : '' }}Download recording</button><button @click="saveTiming">{{ savedTiming ? '✓ ' : '' }}Download timing</button></div>
-            <button class="new-take" :disabled="pendingDownloads || busy" @click="reset">New take</button>
+            <p class="eyebrow">{{ isRecording ? 'TAKE SAVED IN THIS TAB' : 'REHEARSAL FINISHED' }}</p><h2>{{ events.at(-1)?.complete ? 'That’s a wrap.' : 'Take stopped.' }}</h2><p class="hint">{{ isRecording ? 'Download the ZIP before leaving. It includes your original recording, timing, and a separate agent audio track.' : 'Ready when you are. You can rehearse again or record your take.' }}</p>
+            <div v-if="takeBlob" class="actions"><a v-if="archiveUrl" class="primary download-zip" :href="archiveUrl" :download="`${filename}.zip`" @click="savedMedia = savedTiming = true">Download ZIP</a><button v-else disabled>Preparing audio & ZIP…</button><button v-if="!archiveUrl && !preparing" @click="prepareAudio">Retry audio & ZIP</button></div>
+            <div class="actions" v-if="takeBlob"><button @click="saveMedia">{{ savedMedia ? '✓ ' : '' }}Download recording</button><button @click="saveTiming">{{ savedTiming ? '✓ ' : '' }}Download timing</button></div>
+            <button class="new-take" :disabled="pendingDownloads || busy || preparing" @click="reset">New take</button>
           </template>
           <details class="script"><summary>Read the full script <span>{{ scenario.turns.length }} lines for you</span></summary><div v-if="scenario.intro.length" class="script-turn"><p v-for="reply in scenario.intro"><b>{{ reply.voice }}</b>{{ reply.text }}</p></div><div v-for="turn in scenario.turns" class="script-turn"><p><b>You</b>{{ turn.prompt }}</p><p v-for="reply in turn.replies"><b>{{ reply.voice }}</b>{{ reply.text }}</p></div></details>
         </section>
         <section class="preview-area" aria-label="Live companion preview">
           <div class="preview-top"><span>LIVE COMPANION</span><span>Script preview · no live transcription</span></div>
-          <div class="stage"><div class="stage-caption">Your voice, in the workflow.</div><div class="companion-frame"><Companion v-bind="preview" avatar-set="editorial" :max-height="320" /></div><div class="stage-foot">{{ active ? 'The preview follows your take.' : 'The real widget. Your next conversation.' }}</div></div>
+          <div class="stage"><div class="stage-caption">Your voice, in the workflow.</div><div class="companion-frame companion-window"><Companion v-bind="preview" avatar-set="editorial" follow-latest :max-height="320" /></div><div class="stage-foot">{{ active ? 'The preview follows your take.' : 'The real widget. Your next conversation.' }}</div></div>
           <video v-if="active && isRecording && recordingMode === 'camera'" ref="camera" class="camera-preview" autoplay muted playsinline aria-label="Your camera preview"></video>
-          <video v-if="mediaUrl && recordingMode === 'camera'" :src="mediaUrl" class="take-review" controls playsinline aria-label="Review your original recording"></video>
-          <audio v-else-if="mediaUrl" :src="mediaUrl" controls aria-label="Review microphone reference"></audio>
+          <TakeReview v-if="mediaUrl && agentsUrl" :recording="mediaUrl" :agents="agentsUrl" :camera="recordingMode === 'camera'" :duration-ms="duration" @time="reviewMs = $event" />
+          <p v-else-if="mediaUrl && preparing" class="hint">Preparing synchronized conversation playback…</p>
           <p class="privacy">Camera and microphone start only when you choose Record. Your recording stays in this tab until you download it. Agent voices are added separately during editing.</p>
         </section>
       </div>

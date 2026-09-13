@@ -11,3 +11,7 @@ Download both the original recording and timing JSON. The version-1 JSON preserv
 Run `npm test --prefix website` for timing, interruption and media boundary tests. A physical camera/microphone test needs permission in the browser and is not simulated by these tests.
 
 The hero-search scenario derives every pause from the homepage's original take and saved presentation edits through `recordedActivitySchedule`. This includes quiet intervals and activities before replies and after replies, before the actor's next line. Actor delivery remains free-paced; Space anchors the following authored gap. Labels come from the shared `CONSOLE_ACTIVITIES` mapping. Other scenarios retain their authored reply pauses.
+
+After recording, Studio renders a stereo 48 kHz PCM WAV of agent speech entirely in the browser. Each clip starts at its captured agent-start timestamp and is clipped at agent-end or the take end. The original actor recording is never re-encoded. Download ZIP packages both, the timing JSON, used MP3 source clips and editing instructions. Archives are prepared before the download link appears. Separate original/timing downloads remain available if audio preparation fails.
+
+The finished-take player uses the original media as the clock for the widget and aligned agent track. Pause, seek, playback speed and volume apply to the conversation preview. Open an existing take by selecting its original media and matching version-1 JSON together. For externally filmed video, the preview shows the browser reference until the external original is aligned separately.

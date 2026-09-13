@@ -57,6 +57,8 @@ const props = withDefaults(
     liveText?: string;
     /** Pixel height of the visible thread; older messages scroll away. */
     maxHeight?: number;
+    /** Scripted previews always follow the current line, including after seeking. */
+    followLatest?: boolean;
     /** Live mic level, 0..1. Drives the spectrum. */
     level?: number;
     /** What the agent is doing between messages ("running Bash", …), from
@@ -348,7 +350,7 @@ function onScroll() {
 async function stickToBottom(smooth = true): Promise<void> {
   await nextTick();
   const el = scroller.value;
-  if (!el || !following.value) return;
+  if (!el || (!following.value && !props.followLatest)) return;
   // Two frames: the first lands after Vue patches the DOM, the second after
   // the browser has laid it out. Scrolling in between aims at a height that
   // is about to change, which is how the newest message kept ending up just
@@ -366,7 +368,7 @@ async function stickToBottom(smooth = true): Promise<void> {
  * Fitting has to finish before anything decides where the bottom is.
  */
 watch(
-  () => [props.feed.length, props.liveText, props.maxHeight],
+  () => [props.feed.length, props.liveText, props.maxHeight, props.activity],
   async () => {
     await refit();
     // Jump, do not glide: after a re-fit the layout has already moved, and a
