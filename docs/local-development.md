@@ -37,9 +37,11 @@ not merely on ports.
 
 The MCP server and the hooks are config-dir-agnostic - they reach the
 daemon by port and carry no persistent state - so ONLY the daemon needs
-the env var. On first run `dev_daemon.sh` seeds the new dev dir with just
-`credentials.json` and `providers.json` copied from production, so voice
-works without a re-setup; everything else starts empty.
+the env var. On first run `dev_daemon.sh` seeds the new dev dir from
+production with `credentials.json`, `providers.json` and `settings.json`
+(hotkeys, detection mode, language, modes, devices - minus the per-instance
+`active_agent`), so voice and your habits work without a re-setup; history
+and conversations start empty.
 
 ## 2. Point sessions in this repo at the dev instance
 

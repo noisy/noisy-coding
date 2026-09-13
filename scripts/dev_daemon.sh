@@ -25,14 +25,20 @@ if [ ! -f dashboard/dist/index.html ]; then
     (cd dashboard && npm install && npm run build)
 fi
 
-# First run seeds the dev dir with just the credentials/providers from
-# production so voice works without a re-setup; everything else starts empty.
+# First run seeds the dev dir from production: credentials, the provider
+# choice AND the tuning settings (hotkeys, push-to-talk vs auto detection,
+# language, batch/live modes, devices) - minus active_agent, which is per
+# instance. History and conversations start empty on purpose.
 if [ ! -d "$DEV_CONFIG_DIR" ]; then
     mkdir -p "$DEV_CONFIG_DIR"
     for f in credentials.json providers.json; do
         [ -f "$HOME/.config/noisy-coding/$f" ] && cp "$HOME/.config/noisy-coding/$f" "$DEV_CONFIG_DIR/$f"
     done
-    echo "seeded new dev config dir $DEV_CONFIG_DIR (credentials/providers only)"
+    if [ -f "$HOME/.config/noisy-coding/settings.json" ]; then
+        python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d.pop("active_agent",None); json.dump(d,open(sys.argv[2],"w"),indent=2)' \
+            "$HOME/.config/noisy-coding/settings.json" "$DEV_CONFIG_DIR/settings.json"
+    fi
+    echo "seeded new dev config dir $DEV_CONFIG_DIR (credentials, providers, settings)"
 fi
 
 echo "LOCAL DEV daemon → http://127.0.0.1:${DEV_HTTP_PORT}  (config: ${DEV_CONFIG_DIR})"
