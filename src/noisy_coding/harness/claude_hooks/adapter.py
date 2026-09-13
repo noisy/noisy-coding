@@ -48,17 +48,29 @@ def _read_file(path: str) -> str:
 
 
 def title_from_transcript(text: str) -> str:
-    """The latest /rename title recorded in a transcript, or ''."""
-    title = ""
+    """The session's current name from its transcript, or ''.
+
+    A /rename title (customTitle) always wins. Without one, Claude Code's
+    own auto-generated summary title (the name shown in /resume) is the
+    name. Latest row of each kind wins.
+    """
+    custom = ""
+    summary = ""
     for line in text.splitlines():
-        if '"customTitle"' not in line and '"session-title"' not in line:
-            continue
-        try:
-            row = json.loads(line)
-        except ValueError:
-            continue
-        title = str(row.get("customTitle") or row.get("title") or title)
-    return title
+        if '"customTitle"' in line or '"session-title"' in line:
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            custom = str(row.get("customTitle") or row.get("title") or custom)
+        elif '"type": "summary"' in line or '"type":"summary"' in line:
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if row.get("type") == "summary" and row.get("summary"):
+                summary = str(row["summary"])
+    return custom or summary
 
 
 class ClaudeHooks:

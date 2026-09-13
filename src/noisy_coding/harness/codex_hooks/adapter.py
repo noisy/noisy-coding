@@ -11,7 +11,6 @@ there is no transcript path to key on.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -96,21 +95,18 @@ class CodexHooks:
         key = session_id
         participant = str(payload.get("agent_id") or "").strip() or None
         event_name = str(payload.get("hook_event_name") or "")
-        # The tab is named by the thread's own name (session_index.jsonl,
-        # which Codex updates on /rename and on auto-titling). Until a thread
-        # has one, fall back to the project (working directory) plus a short
-        # id so two threads in the SAME project stay distinct.
-        thread_name = thread_name_from_index(self._read_index(), session_id)
-        cwd = str(payload.get("cwd") or "").strip().rstrip("/")
-        project = os.path.basename(cwd) if cwd else ""
-        # No "Codex ·" prefix: the harness is shown elsewhere on the tab, and
-        # the name is what the user reads (Krzysztof, 2026-09-10).
-        if thread_name:
-            title = thread_name
-        elif project:
-            title = f"{project} · {session_id[:6]}"
-        else:
-            title = session_id[:8]
+        # The tab is named by the thread's own name: from the payload when a
+        # client sends it, else from session_index.jsonl (Codex updates it on
+        # /rename and on auto-titling).
+        thread_name = (
+            str(payload.get("thread_name") or "").strip()
+            or thread_name_from_index(self._read_index(), session_id)
+        )
+        # The tab shows the thread's name and nothing else - no prefix, no
+        # project, no id (Krzysztof, 2026-09-13). Until Codex has named the
+        # thread the registry shows its neutral placeholder and keeps the
+        # last known name after that.
+        title = thread_name
         events: list[Event] = []
         may_drain = False
         listener = "none"

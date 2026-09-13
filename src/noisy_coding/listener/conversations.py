@@ -58,8 +58,13 @@ class Conversation:
     listener: Listener | None = None
     deaf_reason: str = ""
 
+    # What a tab is called before its session has any name of its own. A
+    # tab never shows an id or a path (Krzysztof, 2026-09-13): the newest
+    # real name wins, and until one exists this neutral text stands in.
+    UNNAMED = "New conversation"
+
     def label(self) -> str:
-        return self.title or self.short_id or self.key[-8:]
+        return self.title or self.UNNAMED
 
 
 class ConversationRegistry:

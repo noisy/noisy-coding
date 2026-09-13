@@ -57,7 +57,7 @@ def test_session_start_creates_the_tab_before_any_message(daemon):
     assert response["listener"] == "start" and response["listener_id"]
     _status, body = call("GET", "/status")
     tab = body["conversations"][key]
-    assert tab["label"] == "6eef14ed"
+    assert tab["label"] == "New conversation"  # a name, never an id
     assert tab["status"] == "idle"
     assert tab["aliases"] == [start["session_id"]]
     assert key in body["agents"]
@@ -100,7 +100,7 @@ def test_a_stale_listener_stands_down_and_the_current_one_wakes(daemon):
     assert current["stand_down"] is False
     assert current["delivery"]["exit_code"] == 2
     assert current["transcripts"][0]["text"] == "are you there"
-    assert state.utterances()[-1]["status"] == "delivered to 6eef14ed"
+    assert state.utterances()[-1]["status"] == "delivered to New conversation"  # the recipient is named, never an id
 
 
 def test_listener_timeout_makes_the_tab_deaf_and_loud(daemon):

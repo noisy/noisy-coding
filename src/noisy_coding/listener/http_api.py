@@ -95,7 +95,7 @@ def _resolve_speaker(
         # just speak racing ahead of the hooks in a brand-new session, and
         # the hooks' later re-register with a real title must win. The
         # event row below stays as the loud part.
-        state.register_agent(agent, label=agent[:8])
+        state.register_agent(agent, label="New conversation")
         state.add_event("agent", f"unknown speaker '{agent[:8]}…' auto-registered")
         # A NAMED speaker keeps its persona voice even on this emergency
         # path - otherwise every viewer collapses onto the agent's default
@@ -421,6 +421,21 @@ def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], mo
     return _render_for(state, key, [t["text"] for t in transcripts], moment)
 
 
+def _named_agent_labels(state: ListenerState) -> dict:
+    """agent -> label, with the registry's name for every conversation it
+    knows. The legacy table falls back to the raw agent string (an id, or
+    for Claude a transcript path) when it has no label; that must never
+    reach the screen."""
+    labels = state.agent_labels
+    for name in list(labels):
+        conversation = state.conversations.get(name)
+        if conversation is not None:
+            labels[name] = conversation.label()
+        elif labels[name] == name:
+            labels[name] = "New conversation"
+    return labels
+
+
 def _stable_agents_meta(state: ListenerState) -> dict:
     """Tab metadata driven by the conversation registry, not by heartbeats.
 
@@ -438,6 +453,7 @@ def _stable_agents_meta(state: ListenerState) -> dict:
         if conversation is None:
             continue
         status = state.conversations.status(name)
+        entry["label"] = conversation.label()  # a name, never an id or a path
         entry["online"] = status != "ended"
         entry["status"] = status
         entry["activated_at"] = conversation.created_at
@@ -637,7 +653,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "language": state.language,
                         "diagnostic_checks": state.diagnostic_checks,
                         "agents": state.agents,
-                        "agent_labels": state.agent_labels,
+                        "agent_labels": _named_agent_labels(state),
                         "agents_meta": _stable_agents_meta(state),
                         # Each conversation's voice, so a client can draw its
                         # portrait without asking /character once per agent.

@@ -62,7 +62,7 @@ def test_session_start_registers_the_tab_and_listens_until_the_window_ends(daemo
     assert result.returncode == 0 and result.stdout == ""
     assert 1.0 <= time.time() - began < 5.0
     key = start["transcript_path"]
-    assert state.agent_labels[key] == "6eef14ed"
+    assert state.agent_labels[key] == "New conversation"
     # The window ran out: the tab is deaf and says so.
     assert state.conversations.status(key) == "deaf"
     assert state.conversations.deaf_reason(key) == "timeout"
@@ -80,7 +80,7 @@ def test_post_tool_use_delivers_queued_voice_as_context(daemon):
     assert "please add a test" in output["hookSpecificOutput"]["additionalContext"]
     assert output["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
     assert "please add a test" in output["systemMessage"]
-    assert state.utterances()[-1]["status"] == "delivered to 6eef14ed"
+    assert state.utterances()[-1]["status"] == "delivered to New conversation"  # the recipient is named, never an id
 
 
 def test_a_subagents_post_tool_use_leaves_the_parents_queue_alone(daemon):
@@ -177,7 +177,7 @@ def test_codex_hook_reads_its_endpoint_from_the_settings_file(daemon, tmp_path):
     result = _run(CODEX_HOOK, payload, port, env)
     assert result.returncode == 0
     # Named by project (the cwd basename) plus a short id, not a bare hash.
-    assert state.agent_labels["codex-abc12345"] == f"{tmp_path.name} · codex-"
+    assert state.agent_labels["codex-abc12345"] == "New conversation"
     _queue(state, "codex-abc12345", "codex, are you there")
     began = time.time()
     result = _run(CODEX_HOOK, {**payload, "hook_event_name": "Stop"}, port, env)

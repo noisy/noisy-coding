@@ -65,3 +65,13 @@ def test_speak_identity_is_the_conversation_key_for_every_server_name():
                                "tool_input": {"command": "ls -la"}})
     assert other.speech_identity is None
     assert other.events[0].detail == "Bash · ls -la"
+
+
+def test_claude_auto_summary_title_is_a_name_until_the_user_renames():
+    transcript = "\n".join([
+        json.dumps({"type": "user", "message": "hi"}),
+        json.dumps({"type": "summary", "summary": "Fix the tab naming"}),
+    ])
+    assert title_from_transcript(transcript) == "Fix the tab naming"
+    renamed = transcript + "\n" + json.dumps({"type": "custom-title", "customTitle": "reksio"})
+    assert title_from_transcript(renamed) == "reksio"  # /rename wins over the auto title
