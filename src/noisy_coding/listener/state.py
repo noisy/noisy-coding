@@ -219,12 +219,38 @@ class ListenerState:
             voice = values.get("voice")
             if isinstance(voice, str) and voice.isalpha():
                 char["voice"] = voice.lower()
+                if key:
+                    # The ledger is the record of who sounds like what; a
+                    # chosen voice must be claimed there too, or the voice
+                    # claimed at seeding stays marked taken while the tab
+                    # actually uses another (#54).
+                    if self._voice_claims.get(key) != char["voice"]:
+                        self._voice_claims[key] = char["voice"]
+                        self._voice_claims_dirty = True
             if "speed" in values:
                 try:
                     char["speed"] = max(MIN_SPEED, min(MAX_SPEED, float(values["speed"])))
                 except (TypeError, ValueError):
                     pass
             return dict(char)
+
+    def rehome_default_voice_copies(self, pool: tuple[str, ...] = VOICE_POOL) -> list[str]:
+        """Move agent tabs that merely COPIED the shared default voice onto
+        exclusive voices (#54 for tabs created before the fix). The shared
+        bucket keeps the default. Returns the agents that were moved. Runs
+        once at boot after characters are loaded; idempotent afterwards."""
+        moved = []
+        with self._lock:
+            default_voice = self._characters.get("", {}).get("voice", DEFAULT_VOICE)
+            for key, char in self._characters.items():
+                if not key or char.get("voice") != default_voice:
+                    continue
+                self._voice_claims.pop(key, None)  # re-claim from the free set
+                voice = self._claim_voice_locked(key, pool, hash_pick)
+                if voice != default_voice:
+                    char["voice"] = voice
+                    moved.append(key)
+        return moved
 
     def all_characters(self) -> dict:
         with self._lock:
@@ -319,7 +345,16 @@ class ListenerState:
             for name, seen in self._agents.items()
             if now - seen <= AGENT_OFFLINE_AFTER_SECONDS
         }
-        taken = set(self._voice_claims.values())
+        # Named speakers (viewers, subagent personas) hold their claim for
+        # good - they come back after weeks and must sound the same. An
+        # AGENT TAB's claim counts only while the tab is live: a dormant or
+        # closed session must not squat on a voice (#54 made tab voices
+        # ledger claims too).
+        agents = set(self._characters) | set(self._agents)
+        taken = {
+            voice for name, voice in self._voice_claims.items()
+            if name not in agents or name in live
+        }
         taken.update(
             char.get("voice", "")
             for name, char in self._characters.items()

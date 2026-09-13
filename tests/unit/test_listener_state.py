@@ -648,3 +648,30 @@ def test_reloading_keeps_duplicates_only_when_the_pool_is_exhausted():
     state.load_voice_claims({"a": "ara", "b": "luna", "c": "ara"}, pool=pool)
     claims = state.voice_claims()
     assert claims == {"a": "ara", "b": "luna", "c": "ara"}  # shared voice beats no voice
+
+
+
+def test_tabs_that_copied_the_default_voice_are_rehomed_once_the_shared_bucket_keeps_it():
+    state = ListenerState()
+    default_voice = state.character()["voice"]
+    # Pre-fix persisted characters: every tab a copy of the shared one.
+    for agent in ("tab-a", "tab-b"):
+        state.set_character({"voice": default_voice, "humor": 70}, agent=agent)
+    state.set_character({"voice": "orion"}, agent="tab-c")  # a real choice
+    moved = state.rehome_default_voice_copies()
+    assert set(moved) == {"tab-a", "tab-b"}
+    voices = {a: state.character(a)["voice"] for a in ("tab-a", "tab-b", "tab-c")}
+    assert voices["tab-c"] == "orion"                     # explicit choice untouched
+    assert default_voice not in voices.values()            # copies moved off
+    assert len(set(voices.values())) == 3                  # and are distinct
+    assert state.character()["voice"] == default_voice     # shared bucket keeps it
+    assert state.character("tab-a")["humor"] == 70         # only the voice changed
+    assert state.rehome_default_voice_copies() == []       # idempotent
+
+
+def test_choosing_a_voice_for_a_tab_updates_its_ledger_claim():
+    state = ListenerState()
+    seeded = state.character("tab-a")["voice"]            # claimed at seeding
+    state.set_character({"voice": "orion"}, agent="tab-a")
+    assert state.voice_claims()["tab-a"] == "orion"
+    assert seeded not in state.voice_claims().values() or seeded == "orion"

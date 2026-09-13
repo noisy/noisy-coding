@@ -349,6 +349,10 @@ def run(config: VadConfig | None = None) -> None:
                 state.set_character(char, agent_key)
         else:
             state.set_character(saved_chars)
+        moved = state.rehome_default_voice_copies()
+        if moved:
+            _log(f"[character] {len(moved)} tab(s) moved off the shared default voice (#54)")
+            save_characters(state)
     except (OSError, ValueError, AttributeError):
         pass
     # A voice a speaker earned is theirs across restarts too - the ledger is
