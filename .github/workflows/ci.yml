@@ -25,6 +25,7 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: dashboard/package-lock.json }
       - run: npm ci
       - run: npx vitest run
+      - run: npm ci --prefix ../website
       - name: Check Demo Studio recording and timing
         run: node --test ../website/src/demo-studio/*.test.mjs
       - name: Check desktop icon resources and modes
