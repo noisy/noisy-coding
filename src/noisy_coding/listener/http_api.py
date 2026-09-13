@@ -46,17 +46,9 @@ _latest_check_lock = threading.Lock()
 # Each unknown session id gets a stable voice from this pool (hash-picked,
 # never the parent's current voice), so a given subagent keeps one voice and
 # one portrait for its whole life.
-SUBAGENT_VOICE_POOL = (
-    "ara", "carina", "eve", "iris", "luna", "celeste", "ursa", "liora", "aurora",
-    "altair", "atlas", "kepler", "rex", "cosmo", "helios", "leo", "sirius",
-    "castor", "helix", "lumen", "lux", "naksh", "orion", "perseus", "rigel",
-    "sal", "zagan", "zenith",
-)
-
-
-def _hash_pick(seed: str, pool: tuple[str, ...]) -> str:
-    # crc32, not hash(): stable across daemon restarts (PYTHONHASHSEED).
-    return pool[zlib.crc32(seed.encode()) % len(pool)]
+# One pool and one hash for everyone who gets a voice - see state.VOICE_POOL.
+from noisy_coding.listener.state import VOICE_POOL as SUBAGENT_VOICE_POOL  # noqa: E402
+from noisy_coding.listener.state import hash_pick as _hash_pick  # noqa: E402
 
 
 def _subagent_voice(state: ListenerState, session_id: str, parent_voice: str) -> str:

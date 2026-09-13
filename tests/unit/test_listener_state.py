@@ -605,3 +605,22 @@ def test_pending_transcripts_survive_a_restart_and_are_delivered_by_the_new_proc
     assert [t.text for t in new.drain("tab-a")] == ["still here after the restart"]
     assert new.utterances()[-1]["status"].startswith("delivered to")
     assert new.load_transcripts([{"garbage": True}]) == 0  # a bad row is skipped, not fatal
+
+
+
+def test_new_agent_tabs_get_distinct_voices_not_a_copy_of_the_default():
+    state = ListenerState()
+    default_voice = state.character()["voice"]
+    voices = [state.character(agent)["voice"] for agent in ("tab-a", "tab-b", "tab-c")]
+    assert len(set(voices)) == 3, voices          # told apart by ear
+    assert default_voice not in voices             # the shared voice is live, so it is taken
+    assert state.character()["voice"] == default_voice  # the shared bucket is untouched
+    # Stable: asking again returns the same voice, no reshuffle.
+    assert state.character("tab-a")["voice"] == voices[0]
+
+
+def test_an_explicitly_chosen_agent_voice_is_kept():
+    state = ListenerState()
+    state.set_character({"voice": "orion"}, agent="tab-a")
+    assert state.character("tab-a")["voice"] == "orion"
+    assert state.character("tab-b")["voice"] != "orion"  # first come, first served

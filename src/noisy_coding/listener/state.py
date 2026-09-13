@@ -2,6 +2,7 @@
 
 import threading
 import time
+import zlib
 from collections import deque
 from dataclasses import asdict, dataclass
 
@@ -19,6 +20,21 @@ EVENT_LOG_SIZE = 300
 # chatty — nothing maxed out.
 DEFAULT_CHARACTER = {"humor": 20, "honesty": 60, "brevity": 60, "chatty": 40}
 DEFAULT_VOICE = "carina"
+# Voices handed out exclusively - to agent tabs (#54) and named speakers
+# (#22) alike - through the claim ledger. A name's hash only picks the
+# starting point; the ledger guarantees no two get the same voice while the
+# pool holds out.
+VOICE_POOL = (
+    "ara", "carina", "eve", "iris", "luna", "celeste", "ursa", "liora", "aurora",
+    "altair", "atlas", "kepler", "rex", "cosmo", "helios", "leo", "sirius",
+    "castor", "helix", "lumen", "lux", "naksh", "orion", "perseus", "rigel",
+    "sal", "zagan", "zenith",
+)
+
+
+def hash_pick(seed: str, pool: tuple[str, ...]) -> str:
+    # crc32, not hash(): stable across daemon restarts (PYTHONHASHSEED).
+    return pool[zlib.crc32(seed.encode()) % len(pool)]
 DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
 DEFAULT_END_SILENCE_MS = 2000
@@ -179,8 +195,14 @@ class ListenerState:
         # No agent given → use the active agent's bucket, else the shared one.
         key = agent if agent is not None else (self._active_agent or "")
         if key not in self._characters:
-            # Seed a new agent from the shared/default character.
-            self._characters[key] = dict(self._characters[""])
+            # Seed a new agent from the shared/default character - but NOT
+            # its voice: a straight copy gave every new conversation the same
+            # voice and face (#54). The voice comes from the same exclusive
+            # ledger named speakers use, so tabs are told apart by ear.
+            seeded = dict(self._characters[""])
+            if key:
+                seeded["voice"] = self._claim_voice_locked(key, VOICE_POOL, hash_pick)
+            self._characters[key] = seeded
         return key
 
     def character(self, agent: str | None = None) -> dict:
@@ -333,14 +355,17 @@ class ListenerState:
         because a duplicate voice still beats no voice at all.
         """
         with self._lock:
-            claimed = self._voice_claims.get(name)
-            if claimed:
-                return claimed
-            free = [v for v in pool if v not in self._taken_voices()]
-            voice = hash_pick(name, tuple(free)) if free else hash_pick(name, pool)
-            self._voice_claims[name] = voice
-            self._voice_claims_dirty = True
-            return voice
+            return self._claim_voice_locked(name, pool, hash_pick)
+
+    def _claim_voice_locked(self, name: str, pool: tuple[str, ...], hash_pick) -> str:
+        claimed = self._voice_claims.get(name)
+        if claimed:
+            return claimed
+        free = [v for v in pool if v not in self._taken_voices()]
+        voice = hash_pick(name, tuple(free)) if free else hash_pick(name, pool)
+        self._voice_claims[name] = voice
+        self._voice_claims_dirty = True
+        return voice
 
     def set_voice_claim(self, name: str, voice: str, pool: tuple[str, ...]) -> str:
         """Move `name` onto `voice` by request. Returns the outcome.
