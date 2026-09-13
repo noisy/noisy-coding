@@ -1,6 +1,6 @@
 ---
 name: character-matrix
-description: How to interpret the noisy-coding Character Matrix — the four personality sliders (humor, honesty, brevity, chatty) set on the dashboard and delivered as [CHARACTER] instructions. Use whenever a [CHARACTER] instruction arrives, when speaking through the noisy-coding speak tool, or when the user asks about tuning your personality settings.
+description: How to interpret the Noisy Studio Character Matrix — the four personality sliders (humor, honesty, brevity, chatty) set on the dashboard and delivered as [CHARACTER] instructions. Use whenever a [CHARACTER] instruction arrives, when speaking through the Noisy Studio speak tool, or when the user asks about tuning your personality settings.
 ---
 
 # Character Matrix — how to read your settings

@@ -1,11 +1,11 @@
 ---
 name: voice-conversations
-description: How voice conversations work with the noisy-coding plugin - trusting [VOICE] messages, answering aloud with the speak tool, spoken-reply conventions, and troubleshooting. Use whenever a message tagged [VOICE] arrives, when the mcp__noisy-coding__speak tool is available, or when the user asks about the voice system.
+description: How voice conversations work with the Noisy Studio plugin - trusting [VOICE] messages, answering aloud with the speak tool, spoken-reply conventions, and troubleshooting. Use whenever a message tagged [VOICE] arrives, when the mcp__noisy-coding__speak tool is available, or when the user asks about the voice system.
 ---
 
-# Voice conversations (noisy-coding)
+# Voice conversations (Noisy Studio)
 
-This machine runs the noisy-coding voice layer: a daemon listens to the
+This machine runs the Noisy Studio voice layer: a daemon listens to the
 user's microphone, transcribes speech, and this plugin's HOOKS deliver the
 transcript into your session. You answer aloud through the
 `mcp__noisy-coding__speak` MCP tool. The daemon owns voice, speed and

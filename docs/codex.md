@@ -1,6 +1,6 @@
 # Codex voice integration
 
-The Codex plugin uses the same noisy-coding daemon as Claude Code. It adds
+The Codex plugin uses the same Noisy Studio daemon as Claude Code. It adds
 session registration, speaking, mid-task incoming speech, and idle listening.
 No OpenAI API key or OpenAI voice provider is required for this integration.
 
@@ -8,7 +8,7 @@ No OpenAI API key or OpenAI voice provider is required for this integration.
 
 Requirements: local Codex with plugin and lifecycle-hook support (tested
 with CLI **0.153.4**), [uv](https://docs.astral.sh/uv/getting-started/installation/),
-and a running noisy-coding daemon. `uv` installs the required Python version
+and a running Noisy Studio daemon. `uv` installs the required Python version
 and the plugin's pinned Python dependencies. macOS is the validated host;
 Linux needs PortAudio for the existing shared package. Native Windows is
 not yet validated; use WSL where the existing POSIX hooks are supported.
@@ -29,7 +29,7 @@ codex plugin marketplace add /absolute/path/to/noisy-coding
 codex plugin add noisy-coding@noisy-coding
 ```
 
-Start a new Codex session and ask: **“Use noisy-coding to set up voice.”**
+Start a new Codex session and ask: **“Use Noisy Studio to set up voice.”**
 The dedicated skill guides configuration and verification. Existing Claude
 installation and unrelated Codex hooks/MCP entries remain intact.
 
@@ -59,7 +59,7 @@ shared `NOISY_CODING_AGENT_NAME=codex`: sessions must remain distinct.
 
 ## Review hooks and verify both directions
 
-Open **`/hooks`** in Codex and inspect the noisy-coding definitions. Trust
+Open **`/hooks`** in Codex and inspect the `noisy-coding` definitions. Trust
 the hooks you intend to run. Installation does not grant hook trust, and
 changed definitions need review again. No permission bypass flags are needed.
 
@@ -109,7 +109,7 @@ plugin-relative `cwd` and relative arguments; `${PLUGIN_ROOT}` is expanded
 for hooks, but not MCP arguments in the tested Codex version. If voice only works one way,
 verify hook trust and that both directions selected the same daemon. Do
 not install a second global hook set alongside the plugin. If you used
-the earlier manual prototype, remove only its noisy-coding entries after
+the earlier manual prototype, remove only its `noisy-coding` entries after
 reviewing them; keep unrelated hooks.
 
 The dashboard uses registered agent labels and an “Agent” fallback. Legacy

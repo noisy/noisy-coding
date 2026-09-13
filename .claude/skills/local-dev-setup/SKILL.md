@@ -1,9 +1,9 @@
 ---
 name: local-dev-setup
-description: Set up or fix the side-by-side LOCAL DEV instance of noisy-coding in this repo — dev daemon on port 7765, noisy-coding-dev MCP, project-scoped hooks. Use when asked to prepare the local development environment, when the dev daemon is down, or when a session in this repo should talk to the dev instance instead of production.
+description: Set up or fix the side-by-side LOCAL DEV instance of Noisy Studio in this repo — dev daemon on port 7765, noisy-coding-dev MCP, project-scoped hooks. Use when asked to prepare the local development environment, when the dev daemon is down, or when a session in this repo should talk to the dev instance instead of production.
 ---
 
-# Local dev environment for noisy-coding contributors
+# Local dev environment for Noisy Studio contributors
 
 This skill lives in `.claude/skills/` — project scope, for people hacking on
 THIS repo. It is deliberately NOT in the plugin's `skills/` directory, so it

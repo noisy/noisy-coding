@@ -1,6 +1,6 @@
 ---
 name: after-production-release
-description: What to tell the user right after publishing a noisy-coding release — derive the minimal refresh steps (image? plugin? per-session reloads?) from what actually changed and present them as a short spoken summary plus a bulleted console checklist. Use every time a release/tag is pushed, when the user asks "what do I need to do now?", or after the Docker image lands on the Hub.
+description: What to tell the user right after publishing a Noisy Studio release — derive the minimal refresh steps (image? plugin? per-session reloads?) from what actually changed and present them as a short spoken summary plus a bulleted console checklist. Use every time a release/tag is pushed, when the user asks "what do I need to do now?", or after the Docker image lands on the Hub.
 ---
 
 # After a production release: tell the user exactly how to refresh

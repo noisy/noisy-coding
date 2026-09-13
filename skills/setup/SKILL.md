@@ -1,11 +1,11 @@
 ---
 name: setup
-description: Install or repair noisy-coding for this machine - the native app that carries the voice daemon, plus the hooks that let Claude Code reach it. USE when the user asks how to install noisy-coding, when the speak tool is missing or failing, when the dashboard is unreachable, when a fresh clone has no hooks configured, or when voice works one way only.
+description: Install or repair Noisy Studio for this machine - the native app that carries the voice daemon, plus the hooks that let Claude Code reach it. USE when the user asks how to install Noisy Studio, when the speak tool is missing or failing, when the dashboard is unreachable, when a fresh clone has no hooks configured, or when voice works one way only.
 ---
 
-# Setting up noisy-coding
+# Setting up Noisy Studio
 
-noisy-coding is a voice layer for Claude Code: a background **daemon** owns
+Noisy Studio is a voice layer for Claude Code: a background **daemon** owns
 the microphone and speakers, and this plugin's **hooks** carry your spoken
 answers out and the user's speech in. Three things must be true at once -
 the daemon running, the hooks registered, and both pointed at the same
@@ -24,7 +24,7 @@ done
 
 - **9765** - the native app's daemon (the normal install).
 - **7765** - a local dev instance from a checkout (see the local-development
-  docs). Only relevant when working on noisy-coding itself.
+  docs). Only relevant when working on Noisy Studio itself.
 - **neither answers** - no daemon is running yet; go to step 2.
 
 Whatever port answered is THE port for the rest of setup. Every hook and

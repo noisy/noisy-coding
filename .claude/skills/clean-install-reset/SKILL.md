@@ -1,6 +1,6 @@
 ---
 name: clean-install-reset
-description: Wipe noisy-coding leftovers from this machine so the install path can be tested from scratch — hooks, MCP entries, plugin/marketplace remnants, config, optionally the Docker volume. Use when the user wants to test a clean/fresh installation, reset the setup, or hunt down stale noisy-coding (or legacy grok-voice) artifacts. Repo-local skill: guides an interactive audit, never a blind delete.
+description: Wipe Noisy Studio leftovers from this machine so the install path can be tested from scratch — hooks, MCP entries, plugin/marketplace remnants, config, optionally the Docker volume. Use when the user wants to test a clean/fresh installation, reset the setup, or hunt down stale Noisy Studio (or legacy grok-voice) artifacts. Repo-local skill: guides an interactive audit, never a blind delete.
 ---
 
 # Clean-slate reset for install testing
@@ -58,5 +58,5 @@ grok may belong to xAI's CLI, not this project — flag, don't touch).
 
 Sanity: `grep -i "noisy\|grok" ~/.claude/settings.json ~/.claude.json` should
 come back empty (modulo unrelated matches), `claude plugin list` shows no
-noisy-coding, `docker ps -a` no container. Then hand the user back to the
+`noisy-coding`, `docker ps -a` no container. Then hand the user back to the
 README quick start and observe the fresh install like a new user would.

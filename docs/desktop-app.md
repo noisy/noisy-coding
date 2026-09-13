@@ -35,7 +35,7 @@ is involved. Everything else on this list is small by comparison.
 **2. The hooks.** This is the part that does not fit the "just an app"
 story, and it is worth stating plainly:
 
-noisy-coding is not only a daemon and a UI. Claude Code reaches it through
+Noisy Studio is not only a daemon and a UI. Claude Code reaches it through
 **hooks** configured in `.claude/settings.json`, which name a port. A user
 who installs the app still has to point their hooks at whichever daemon the
 app is running - otherwise the app is a pretty window that no agent talks

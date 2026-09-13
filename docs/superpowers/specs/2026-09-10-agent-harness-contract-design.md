@@ -2,7 +2,7 @@
 
 ## Scope and acceptance
 
-noisy-coding talks to agent systems (Claude Code today, Codex today, an SDK
+Noisy Studio talks to agent systems (Claude Code today, Codex today, an SDK
 or channel adapter tomorrow) through one contract, the way it already talks
 to TTS/STT engines through `providers/`. Adding a harness means one
 directory that implements the contract plus one line in a registry; the

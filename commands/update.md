@@ -1,5 +1,5 @@
 ---
-description: Update the noisy-coding voice backend (Docker) to the latest release
+description: Update the Noisy Studio voice backend (Docker) to the latest release
 ---
 
 If you are running in Codex, follow the update section of the
@@ -7,7 +7,7 @@ installed plugin root's `docs/codex.md`. Identify the selected daemon before
 updating it; the Docker steps below apply only to a Docker installation.
 Codex plugin updates use its marketplace and `/hooks` review flow.
 
-Update the user's noisy-coding backend. Follow these steps in order and narrate briefly:
+Update the user's Noisy Studio backend. Follow these steps in order and narrate briefly:
 
 1. Check what is running: `docker inspect noisy-coding --format '{{.Config.Image}} {{.Image}}'`. If the container does not exist, stop and point the user at `/noisy-coding:setup` instead.
 2. Record the current image digest, then pull: `docker pull noisy/noisy-coding:latest`. If the digest did not change, tell the user they are already on the latest version and stop.

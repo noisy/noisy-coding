@@ -1,6 +1,6 @@
 ---
 name: dashboard-design-language
-description: The noisy-coding dashboard's design decisions — color semantics, the fixed-slot rule, blink rules, overlay-not-push, conversation-scoped layout, geometry as script constants, and the Storybook-first workflow. Repo-local skill; consult BEFORE styling or adding any dashboard UI so new work speaks the established language.
+description: The Noisy Studio dashboard's design decisions — color semantics, the fixed-slot rule, blink rules, overlay-not-push, conversation-scoped layout, geometry as script constants, and the Storybook-first workflow. Repo-local skill; consult BEFORE styling or adding any dashboard UI so new work speaks the established language.
 ---
 
 # Dashboard design language

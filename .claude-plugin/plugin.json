@@ -1,6 +1,6 @@
 {
   "name": "noisy-coding",
-  "description": "Voice coding for Claude Code, Jarvis-style — talk to your agent while it works. Ships the voice hooks and connects to the noisy-coding daemon (Docker or native).",
+  "description": "Voice coding for Claude Code, Jarvis-style — talk to your agent while it works. Ships the voice hooks and connects to the Noisy Studio daemon (Docker or native).",
   "version": "2.17.0",
   "mcpServers": {
     "noisy-coding": {

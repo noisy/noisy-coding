@@ -1,7 +1,10 @@
-# noisy-coding
+# Noisy Studio
 
 **Talk to your coding agent while it works — voice support for Claude Code, and Codex in preview.**
 It's your voice that's noisy, not your code.
+
+Previously noisy-coding. Installation commands and configuration identifiers
+retain their existing names for compatibility; see [the rebranding notes](docs/rebranding.md).
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/noisy/noisy-coding)](https://hub.docker.com/r/noisy/noisy-coding)
 [![Release](https://img.shields.io/github/v/release/noisy/noisy-coding)](https://github.com/noisy/noisy-coding/releases)
@@ -70,7 +73,7 @@ hardware mic/speakers, remote hosts, all configuration knobs — live in
 ## Install for Codex (preview)
 
 Install the Codex plugin, then ask it to set up voice. You need local Codex
-with lifecycle hooks, `uv`, and a running noisy-coding daemon (app or Docker).
+with lifecycle hooks, `uv`, and a running Noisy Studio daemon (app or Docker).
 See [the Codex guide](docs/codex.md) for pre-release checkout installation,
 endpoint selection, and a spoken round-trip check.
 
@@ -79,7 +82,7 @@ codex plugin marketplace add noisy/noisy-coding
 codex plugin add noisy-coding@noisy-coding
 ```
 
-In a new session: **“Use noisy-coding to set up voice.”** Review its hooks
+In a new session: **“Use Noisy Studio to set up voice.”** Review its hooks
 through `/hooks`; the installer preserves unrelated settings. The chat uses
 registered agent labels, so multiple integrations can share one dashboard.
 
@@ -120,7 +123,7 @@ speak (MCP, stdio or HTTP :8767) -> POST /speak -> daemon queue
 - [docs/codex.md](docs/codex.md) — Codex setup, hook trust, identity, and removal
 - [docs/ports.md](docs/ports.md) — what each port is for
 - [docs/local-development.md](docs/local-development.md) — hacking on
-  noisy-coding itself
+  Noisy Studio itself
 
 ## License
 

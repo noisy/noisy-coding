@@ -1,4 +1,4 @@
-# noisy-coding — agent notes
+# Noisy Studio — agent notes
 
 Voice coding for Claude Code: a daemon (production runs in Docker) plus Claude
 Code hooks and an MCP server. Python backend in `src/noisy_coding/`, Vue

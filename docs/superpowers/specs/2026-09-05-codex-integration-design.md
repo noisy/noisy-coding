@@ -2,7 +2,7 @@
 
 ## Scope and acceptance
 
-Users install a Codex plugin, select their existing noisy-coding daemon,
+Users install a Codex plugin, select their existing Noisy Studio daemon,
 review its hooks, and complete a spoken round trip. Two Codex sessions and
 a Claude session can share a working directory without sharing identity.
 The dashboard describes the actual agent rather than calling every agent

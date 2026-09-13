@@ -1,6 +1,6 @@
-# Why noisy-coding integrates with five Claude Code hooks
+# Why Noisy Studio integrates with five Claude Code hooks
 
-Noisy-coding turns Claude Code into a voice conversation partner without
+Noisy Studio turns Claude Code into a voice conversation partner without
 changing Claude Code itself. Everything rides on hooks: they carry your spoken
 words *into* the model and report the model's activity *out* to the dashboard.
 
@@ -10,7 +10,7 @@ a concrete gap that showed up in real voice sessions. This document explains
 what each hook does, why it exists, and where the hooks get registered.
 
 Every hook **fails open**: if the daemon is not running, the hook exits
-silently and Claude Code behaves exactly as if noisy-coding were not installed.
+silently and Claude Code behaves exactly as if Noisy Studio were not installed.
 Keyboard-only sessions pay (almost) nothing.
 
 ## The five hooks at a glance
@@ -124,7 +124,7 @@ Notes:
   in the container, and the host needs no Python at all. The flip side: the
   session's environment variables (e.g. `NOISY_CODING_LISTENER_PORT`) do not
   reach the scripts, so these hooks always talk to the containerized daemon.
-- The **installer is idempotent**: rerunning it replaces noisy-coding entries
+- The **installer is idempotent**: rerunning it replaces `noisy-coding` entries
   in `settings.json` in place and leaves everything else untouched.
 - Having both the plugin *and* installer-written entries active would fire
   every hook twice. If you switch install paths, remove the old registration.
