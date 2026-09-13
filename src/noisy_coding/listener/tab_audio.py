@@ -32,6 +32,19 @@ from .state import ListenerState
 BRIDGE_PORT_OFFSET = 1  # WS lives one port above the HTTP API
 STATE_PATH = "/state"   # same port, this path: the pushed state stream (#73)
 STATE_PUSH_INTERVAL_SECONDS = 0.1
+# Fields that change on every tick by nature (clocks, meter levels). A change
+# in ONLY these is not "something happened"; they ride along with real
+# changes and otherwise refresh at this relaxed cadence.
+STATE_VOLATILE_KEYS = frozenset({"nudge_clocks", "mic_level"})
+STATE_VOLATILE_INTERVAL_SECONDS = 1.0
+
+
+def snapshot_digest(snapshot: dict) -> int:
+    """Identity of a snapshot with the volatile fields masked out - equal
+    digests mean nothing the dashboard should redraw for has changed."""
+    status = snapshot.get("status") or {}
+    stable = {k: v for k, v in status.items() if k not in STATE_VOLATILE_KEYS}
+    return hash(json.dumps({"status": stable, "utterances": snapshot.get("utterances")}, sort_keys=True, default=str))
 
 
 class FrameRechunker:
@@ -226,18 +239,25 @@ class TabAudioBridge:
         if self._snapshot is None:
             ws.send(json.dumps({"type": "error", "reason": "state stream not configured"}))
             return
+        import time as _time
+
         last_digest = None
-        ws.socket.settimeout(STATE_PUSH_INTERVAL_SECONDS) if hasattr(ws, "socket") else None
+        last_sent_at = 0.0
         while True:
             try:
                 snapshot = self._snapshot()
+                digest = snapshot_digest(snapshot)
                 payload = json.dumps(snapshot)
             except Exception as error:  # a broken builder must not kill the bridge
                 payload = json.dumps({"type": "error", "reason": str(error)[:200]})
-            digest = hash(payload)
-            if digest != last_digest:
+                digest = None
+            now = _time.monotonic()
+            meaningful = digest != last_digest
+            volatile_due = now - last_sent_at >= STATE_VOLATILE_INTERVAL_SECONDS
+            if meaningful or volatile_due:
                 ws.send(payload)
                 last_digest = digest
+                last_sent_at = now
             try:
                 # Client messages are heartbeats or nothing; a closed socket
                 # raises here and ends the loop.
