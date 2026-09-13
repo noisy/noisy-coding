@@ -1319,7 +1319,9 @@ class ListenerState:
         with self._lock:
             return self._playing_utterance_id
 
-    def interrupt_playing_as_unheard(self, reason: str, agent: str | None = None) -> int:
+    def interrupt_playing_as_unheard(
+        self, reason: str, agent: str | None = None, label: str = "unheard"
+    ) -> int:
         """Mute pressed mid-clip: park the playing utterance as UNHEARD.
 
         The clip was cut short, so it must not read "played" — catch-up
@@ -1337,10 +1339,13 @@ class ListenerState:
                 owner = utterance.get("agent") or self._active_agent
                 if agent is not None and owner != agent:
                     return 0
-                utterance["status"] = f"unheard — {reason}"
+                # label: "unheard" = may still be worth hearing (counts for
+                # catch-up); "skipped" = the user dismissed it deliberately
+                # (the stop button) - final, never counted again.
+                utterance["status"] = f"{label} — {reason}"
                 utterance["updated_at"] = time.time()
                 break
-            self._interrupted[utterance_id] = reason
+            self._interrupted[utterance_id] = f"{label} — {reason}"
             self._playing_utterance_id = 0
             return utterance_id
 
@@ -1356,7 +1361,7 @@ class ListenerState:
             return None
 
     def consume_interrupted(self, utterance_id: int) -> str | None:
-        """Was this clip cut short by the user? Returns the reason once."""
+        """Was this clip cut short by the user? Returns its final status once."""
         with self._lock:
             return self._interrupted.pop(utterance_id, None)
 

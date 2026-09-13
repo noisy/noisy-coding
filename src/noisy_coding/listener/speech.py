@@ -555,9 +555,9 @@ def _play_prepared(
     # "played" here. The streaming path keeps writing progress after the
     # cut, so the mark alone was not enough: the interrupt is recorded and
     # re-applied once this thread is done (#61, #64).
-    reason = state.consume_interrupted(utterance_id)
-    if reason:
-        state.update_utterance(utterance_id, status=f"unheard — {reason}")
+    final_status = state.consume_interrupted(utterance_id)
+    if final_status:
+        state.update_utterance(utterance_id, status=final_status)
     elif not state.utterance_is_unheard(utterance_id):
         state.update_utterance(
             utterance_id, status="played", duration_s=round(played_seconds, 1)

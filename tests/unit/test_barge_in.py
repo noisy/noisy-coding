@@ -47,7 +47,7 @@ def test_the_interrupt_is_remembered_until_the_playback_thread_consumes_it():
     # Streaming bookkeeping overwrites the card after the cut...
     state.update_utterance(clip, status="playing through speakers…")
     # ...and the playback thread, finishing, re-applies the interrupt exactly once.
-    assert state.consume_interrupted(clip) == "interrupted by push-to-talk"
+    assert state.consume_interrupted(clip) == "unheard — interrupted by push-to-talk"
     assert state.consume_interrupted(clip) is None
 
 
@@ -85,3 +85,15 @@ def test_barge_in_parks_the_addressees_clip_but_requeues_another_agents(monkeypa
     card = next(u for u in state.utterances() if u["id"] == clip2)
     assert card["status"] == "unheard — waiting — you were speaking"
     assert requeued == [("valid update", {"agent": "other", "card": False, "source_id": clip2})]
+
+
+
+def test_the_stop_button_settles_the_clip_as_skipped_not_unheard():
+    state = ListenerState()
+    clip = state.create_utterance("claude", "playing through speakers…", text="x", agent="a")
+    state.set_playing_utterance_id(clip)
+    state.interrupt_playing_as_unheard("stopped by you", label="skipped")
+    card = next(u for u in state.utterances() if u["id"] == clip)
+    assert card["status"] == "skipped — stopped by you"
+    assert state.utterance_is_unheard(clip) is False          # never counted for catch-up
+    assert state.consume_interrupted(clip) == "skipped — stopped by you"  # and stays so after bookkeeping
