@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { onMounted, onBeforeUnmount } from 'vue';
+import { observePageScroll } from './analytics/scroll';
 import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
 import DashboardShowcase from "./DashboardShowcase.vue";
 import AnalyticsPreference from './AnalyticsPreference.vue';
 import { websiteAnalytics } from './analytics';
+let stopScroll: (() => void) | undefined;
+onMounted(() => { stopScroll = observePageScroll(window, document, websiteAnalytics); });
+onBeforeUnmount(() => stopScroll?.());
 const source = "https://github.com/noisy/noisy-coding";
 </script>
 
@@ -24,7 +29,7 @@ const source = "https://github.com/noisy/noisy-coding";
       <a href="#voices">Hear it</a><a href="#character">Character</a
       ><a :href="source">GitHub ↗</a>
     </nav>
-    <a class="button small" href="#install"
+    <a class="button small" href="#install" @click="websiteAnalytics.trackGetStarted('header')"
       >Get started <span aria-hidden="true">↗</span></a
     >
   </header>

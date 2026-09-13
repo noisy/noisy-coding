@@ -11,7 +11,7 @@ import { activityAt, presentationTake, type TurnTiming, type ActivityBlock } fro
 const props = withDefaults(defineProps<{ manualPlayback?: boolean; activityBlocks?: ActivityBlock[]; presentationEdits?: TurnTiming[]; cameraZoom?: number; cameraOffsetX?: number; cameraOffsetY?: number }>(), {
   activityBlocks: () => savedPresentation.activities as ActivityBlock[], presentationEdits: () => savedPresentation.turns as TurnTiming[], cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0,
 });
-const emit = defineEmits<{time: [timeMs: number]}>();
+const emit = defineEmits<{time: [timeMs: number]; interaction: [action: 'play' | 'pause' | 'mute' | 'unmute']}>();
 const adjustedTake = computed(() => presentationTake(take, props.presentationEdits));
 const activity = (time: number) => activityAt(take, props.presentationEdits, time, props.activityBlocks);
 const scene = ref<InstanceType<typeof RecordedCrewScene>>();
@@ -19,7 +19,7 @@ defineExpose({ seek: (ms: number) => scene.value?.seek(ms), pause: () => scene.v
 </script>
 <template>
   <RecordedCrewScene ref="scene" class="hero-recording" layout="hero"
-    :recording-src="recording" :recording-poster="poster" :recording-take="adjustedTake" :manual-playback="manualPlayback" :activity-at-time="activity" @time="emit('time', $event)"
+    :recording-src="recording" :recording-poster="poster" :recording-take="adjustedTake" :manual-playback="manualPlayback" :activity-at-time="activity" @time="emit('time', $event)" @interaction="emit('interaction', $event)"
     :camera-zoom="cameraZoom" :camera-offset-x="cameraOffsetX" :camera-offset-y="cameraOffsetY">
     <template #default="{ timeMs }">
       <div class="hero-terminal" :class="{ visible: timeMs >= 1800 }">

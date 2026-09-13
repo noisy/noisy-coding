@@ -83,3 +83,26 @@ test('outbound events exclude query strings, transcripts and automatic browser p
   } });
   assert.equal(config().before_send({ event: '$autocapture', properties: {} }), null);
 });
+
+test('engagement events respect consent and preserve only declared dimensions', () => {
+  const { analytics, calls, config } = setup();
+  const engage = () => {
+    analytics.trackScroll(); analytics.trackDepth(50);
+    analytics.trackDemo('hero', 'unmute'); analytics.trackGetStarted('header');
+    analytics.trackDownload('mac', 'install');
+  };
+  engage();
+  assert.deepEqual(calls, []);
+  analytics.setEnabled(true); calls.length = 0; engage();
+  assert.deepEqual(calls.map(call => call.slice(1)), [
+    ['page_scrolled', { surface: 'website' }],
+    ['scroll_depth_reached', { depth_percent: 50, surface: 'website' }],
+    ['video_demo_interacted', { demo: 'hero', action: 'unmute', surface: 'website' }],
+    ['get_started_clicked', { placement: 'header', surface: 'website' }],
+    ['download_clicked', { platform: 'mac', placement: 'install', surface: 'website' }],
+  ]);
+  const outgoing = config().before_send({ event: 'video_demo_interacted', properties: { demo: 'crew', action: 'play', transcript: 'private' } });
+  assert.deepEqual(outgoing.properties, { demo: 'crew', action: 'play', '$current_url': 'https://noisy.example/', '$pathname': '/', '$geoip_disable': true });
+  analytics.setExcluded(true); calls.length = 0; engage();
+  assert.deepEqual(calls, []);
+});

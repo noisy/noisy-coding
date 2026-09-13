@@ -46,3 +46,19 @@ Useful first questions: website visits versus guide clicks; distinct consenting 
 ## Verification
 
 Run website tests, `typecheck:analytics`, the website build, and desktop tests. A production preview uses the configured project only after explicit consent, so use a test project when exercising real event delivery. Confirm events in PostHog before treating a successful ingestion response as proof of reporting. Full website type checking currently reports pre-existing shared Vue ref-type errors and a missing application-version declaration.
+
+## Website engagement funnel
+
+The starter dashboard is extended in place. Website metrics must filter `surface = website` and the production `$current_url = https://noisystudio.ai/`, excluding local previews and validation events. Counts represent consenting, non-excluded browser IDs, not all visitors or identified people.
+
+| Event | Dimensions | Meaning |
+| --- | --- | --- |
+| `page_scrolled` | — | First scroll below the top, once per page load |
+| `scroll_depth_reached` | `depth_percent`: 25, 50, 75, 90, 100 | Bottom of viewport reaches the percentage of document height, once per threshold per load |
+| `video_demo_interacted` | `demo`: hero/crew; `action`: play/pause/mute/unmute | Deliberate control click; autoplay and automatic visibility pauses do not count |
+| `get_started_clicked` | `placement`: header/hero | Existing link to the installation section; setup intent |
+| `download_clicked` | `platform`: mac/windows/linux; `placement`: header/hero/install | Reserved for a real release download link |
+
+Call `websiteAnalytics.trackDownload(platform, placement)` in the future download link's click handler. There is currently no release download link in this branch; setup-guide links and Get started links must not emit `download_clicked`. A download click is not proof of download completion or installation.
+
+Use unique users for reach; total event counts for repeat control usage. The core funnel is pageview → Get started (one-day conversion window). Show scroll reach and hero/crew interaction separately: visitors need not scroll or watch a demo before converting. When downloads ship, add pageview → download_clicked as the main conversion funnel. Scroll depth measures reach, not proof that text was read; anchor navigation can cross several thresholds. Pre-consent activity is not replayed. On a subsequent consented scroll, current viewport depth is measured.
