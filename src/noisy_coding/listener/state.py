@@ -122,6 +122,7 @@ class ListenerState:
         self._paused = False  # transient echo-mute while Claude speaks
         self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
         self._tab_mic = False  # the tab's mic is actually capturing
+        self._active_input_device = ""  # what is actually open right now (#41)
         self._output_device = "system"  # where Claude's voice plays: system | browser
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
@@ -538,9 +539,20 @@ class ListenerState:
             return self._input_device
 
     def set_input_device(self, name: str) -> str:
+        """The user's PREFERENCE (persisted). What is actually open lives in
+        active_input_device - a failed open must never rewrite the pick (#41)."""
         with self._lock:
             self._input_device = str(name)
             return self._input_device
+
+    @property
+    def active_input_device(self) -> str:
+        with self._lock:
+            return self._active_input_device
+
+    def set_active_input_device(self, name: str) -> None:
+        with self._lock:
+            self._active_input_device = str(name)
 
     @property
     def output_device(self) -> str:

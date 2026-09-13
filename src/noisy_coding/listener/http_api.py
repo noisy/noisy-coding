@@ -522,6 +522,9 @@ def status_payload(state: ListenerState) -> dict:
                             "shutdown_at": state.shutdown_at,
                             "ptt_held": state.ptt_held,
                             "input_device": state.input_device,
+                            # What is actually open right now; differs from
+                            # input_device while the pick is unavailable (#41).
+                            "active_input_device": state.active_input_device,
                             "output_device": state.output_device,
                             "tab_audio": state.tab_audio_alive,
                             "activity": state.activity,

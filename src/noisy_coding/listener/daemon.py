@@ -57,6 +57,9 @@ API_KEY_CHECK_SECONDS = 2.0
 # long-lived PortAudio stream can come back degraded (wrong device /
 # resampling), which garbles STT. Reopen instead of trusting it.
 AUDIO_GAP_REOPEN_SECONDS = 5.0
+# While the user's preferred microphone cannot be opened and we run on the
+# fallback, retry the pick this often (#41).
+PICK_RETRY_SECONDS = 10.0
 # And when the stream dies OUTRIGHT (device disappears mid-utterance),
 # frames stop arriving at all — the loop must not block forever waiting
 # for one, or `recording` wedges True and the speech gate never releases.
@@ -298,20 +301,27 @@ def _finalize_stream(
 
 
 def _open_input_stream(
-    state: ListenerState, config: VadConfig, on_audio
-) -> sd.InputStream | None:
-    """Open the selected microphone, falling back to the system default.
+    state: ListenerState, config: VadConfig, on_audio, *, wanted: str | None = None
+) -> tuple["sd.InputStream | None", str]:
+    """Open the wanted microphone, falling back to the system default.
 
-    The user's pick may vanish (unplugged headphones) — revert to the
-    default instead of dying; only a failure of the default propagates.
-    Returns None for the browser tab: its frames arrive over the WS
-    bridge, there is no hardware stream to own.
+    Returns (stream, opened) where `opened` is the device actually in use:
+    the wanted name, "" for the system default, or "browser" for the tab
+    (its frames arrive over the WS bridge, so the stream is None).
+
+    The user's PICK is never rewritten here (#41): a device that is missing
+    right now - unplugged headphones, a dock mid-switch, PortAudio refusing
+    to reopen during a hardware change - falls back for the moment, and the
+    capture loop keeps retrying the pick until it comes back. Rewriting the
+    pick with the fallback is what made the selection "snap back to the
+    browser tab" and stay there until a restart.
     """
-    selected = state.input_device
+    selected = state.input_device if wanted is None else wanted
     if selected == "browser":
         _log("[mic] input = browser tab (WS bridge)")
+        state.set_active_input_device("browser")
         state.create_utterance("system", "", text="MIC → THIS BROWSER TAB")
-        return None
+        return None, "browser"
     options = {"device": selected} if selected else {}
     try:
         input_stream = sd.InputStream(
@@ -326,17 +336,19 @@ def _open_input_stream(
         if not selected:
             # No selection and even the default won't open: this host has
             # no usable audio hardware at all (a container, a headless
-            # box). The browser tab is the only possible microphone —
-            # switch to it instead of dying.
+            # box). The browser tab is the only possible microphone.
             _log(f"[mic] no audio hardware ({error}) — the browser tab is the microphone")
             state.add_event("mic_error", "no audio hardware — browser tab input")
-            state.set_input_device("browser")
-            return _open_input_stream(state, config, on_audio)
-        _log(f"[mic] cannot open '{selected}': {error} — reverting to system default")
-        state.add_event("mic_error", f"cannot open '{selected}' — reverted to system default")
-        state.set_input_device("")
-        return _open_input_stream(state, config, on_audio)
+            return _open_input_stream(state, config, on_audio, wanted="browser")
+        _log(f"[mic] cannot open '{selected}': {error} — using system default for now, will retry")
+        state.add_event("mic_error", f"cannot open '{selected}' — system default for now, retrying")
+        stream, opened = _open_input_stream(state, config, on_audio, wanted="")
+        state.create_utterance(
+            "system", "", text=f"MIC → system default (preferred '{selected}' unavailable, retrying)"
+        )
+        return stream, opened
     input_stream.start()
+    state.set_active_input_device(selected)
     _log(f"[mic] listening on {selected or 'system default'}")
     # An inline system row in the conversation timeline: seeing "mic →
     # Jabra" right above three garbled messages explains them instantly,
@@ -344,7 +356,7 @@ def _open_input_stream(
     state.create_utterance(
         "system", "", text=f"MIC → {selected or 'system default'}"
     )
-    return input_stream
+    return input_stream, selected
 
 
 def run(config: VadConfig | None = None) -> None:
@@ -479,8 +491,9 @@ def run(config: VadConfig | None = None) -> None:
     _log(f"noisy-coding-listener: mic on, API at http://127.0.0.1:{port}")
     _log("Endpoints: GET /drain /status, POST /speak /pause /resume. Ctrl+C to stop.")
 
-    active_input = _open_input_stream(state, config, on_audio)
-    active_device = state.input_device
+    active_input, active_device = _open_input_stream(state, config, on_audio)
+    wanted_device = state.input_device  # the pick we last acted on
+    last_pick_retry = time.monotonic()
     try:
         try:
             current_utterance_id = 0
@@ -490,7 +503,7 @@ def run(config: VadConfig | None = None) -> None:
             last_frame_at = time.monotonic()
 
             def reopen_input(reason: str, kind: str = "mic") -> None:
-                nonlocal active_input, active_device, segmenter, stream, last_frame_at
+                nonlocal active_input, active_device, wanted_device, last_pick_retry, segmenter, stream, last_frame_at
                 _log(f"[mic] {reason} — reopening input stream")
                 state.add_event(kind, f"input reopened: {reason}")
                 # New stream = new acoustics: the adaptive noise floor
@@ -525,8 +538,9 @@ def run(config: VadConfig | None = None) -> None:
                     _log("[mic] PortAudio reinitialized - device table refreshed")
                 except Exception as error:  # noqa: BLE001 - keep the old instance
                     _log(f"[mic] PortAudio reinit skipped: {error}")
-                active_input = _open_input_stream(state, config, on_audio)
-                active_device = state.input_device
+                active_input, active_device = _open_input_stream(state, config, on_audio)
+                wanted_device = state.input_device
+                last_pick_retry = time.monotonic()
                 last_frame_at = time.monotonic()
 
             def finalize_open_segment() -> None:
@@ -563,8 +577,10 @@ def run(config: VadConfig | None = None) -> None:
                 try:
                     frame = frames.get(timeout=FRAME_WAIT_SECONDS)
                 except queue.Empty:
-                    if state.input_device != active_device:
+                    if state.input_device != wanted_device:
                         reopen_input("input device switched")  # native ↔ browser too
+                    elif active_device != state.input_device and time.monotonic() - last_pick_retry >= PICK_RETRY_SECONDS:
+                        reopen_input("retrying the preferred microphone")
                     elif active_device == "browser":
                         # The tab is the mic and stopped sending: nothing to
                         # reopen. The lease decides — a dead tab mid-utterance
@@ -579,9 +595,15 @@ def run(config: VadConfig | None = None) -> None:
                 now = time.monotonic()
                 frame_gap = now - last_frame_at
                 last_frame_at = now
-                if state.input_device != active_device:
+                if state.input_device != wanted_device:
                     reopen_input("microphone switched")
                     continue  # this frame may still be the old stream's
+                if active_device != state.input_device and now - last_pick_retry >= PICK_RETRY_SECONDS:
+                    # Running on the fallback while the user's pick is
+                    # missing: try the pick again - it comes back by itself
+                    # when the headset or dock reappears (#41).
+                    reopen_input("retrying the preferred microphone")
+                    continue
                 # Hardware only: a long gap means stale PortAudio buffers
                 # (sleep/wake). A tab hiccup has no hardware to reanimate.
                 if active_device != "browser" and frame_gap > AUDIO_GAP_REOPEN_SECONDS:
