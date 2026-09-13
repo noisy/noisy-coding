@@ -70,6 +70,33 @@ PENDING_FILE = CONFIG_DIR / "pending.json"
 HISTORY_SAVE_SECONDS = 5.0
 
 
+def _ptt_barge_in(state: ListenerState) -> bool:
+    """The held push-to-talk key wins over the echo mute (#61, #64).
+
+    Capture is muted while the agent speaks so the microphone does not hear
+    the speakers - and the capture loop dropped every frame while that mute
+    was set, even with the key physically held. The key responded, the hum
+    played, nothing was captured. Holding the key is a deliberate act, so
+    it preempts: stop playback (speakers AND browser tab), park the cut clip
+    as UNHEARD so it can be replayed, lift the mute, and let this frame reach
+    the segmenter. Auto (VAD) detection never does this - a cough must not
+    cut the agent off. Returns True when a clip was actually interrupted.
+    """
+    from noisy_coding import playback
+    from noisy_coding.listener import tab_audio
+
+    playback.stop_all_players()
+    bridge = tab_audio.bridge()
+    if bridge is not None:
+        try:
+            bridge.stop_tab_playback()
+        except Exception:
+            pass
+    interrupted = state.interrupt_playing_as_unheard("interrupted by push-to-talk")
+    state.set_paused(False)
+    return bool(interrupted)
+
+
 def _load_history(state: ListenerState) -> None:
     try:
         items = json.loads(HISTORY_FILE.read_text())
@@ -541,10 +568,24 @@ def run(config: VadConfig | None = None) -> None:
                 if now >= key_check_at:
                     api_key_present = bool(credentials.api_key())
                     key_check_at = now + API_KEY_CHECK_SECONDS
+                if (
+                    state.paused
+                    and not state.user_muted
+                    and state.detection_mode == "ptt"
+                    and state.ptt_held
+                ):
+                    # Echo mute vs a HELD key: the key wins (#61, #64).
+                    if _ptt_barge_in(state):
+                        _log("[recording] push-to-talk interrupted the agent")
+                        state.add_event("barge_in", "push-to-talk interrupted the agent's speech")
                 if state.paused:
                     # A muted mic isn't listening — the oscilloscope must
                     # flatline instead of showing our own playback echo.
                     state.set_mic_level(0.0)
+                    # And it must never CLAIM to be recording (#61): the UI
+                    # read a stale flag while no frame reached the segmenter.
+                    if not segmenter.is_recording:
+                        state.set_recording(False)
                     # A muted mic must not stay recording either: paused
                     # frames never reach the segmenter, so an utterance
                     # open at mute time would freeze in "transcribing…"
