@@ -288,7 +288,7 @@ def _queue_first_contact_intro(state: ListenerState) -> None:
     state.add_transcript(
         "[DASHBOARD] The user just finished first-contact setup and is "
         "looking at the dashboard. Introduce yourself aloud with the "
-        "speak tool — welcome them to noisy-coding in one or two warm "
+        "speak tool — welcome them to Noisy Studio in one or two warm "
         "sentences and ask them to click the amber ENABLE TAB AUDIO "
         "banner so this tab can also become their microphone."
     )
@@ -1148,7 +1148,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                             state,
                             "New xAI key accepted — every voice check passed, "
                             "and you are hearing the proof right now. " + next_step,
-                            role="daemon",  # noisy-coding speaks for itself here
+                            role="daemon",  # Noisy Studio speaks for itself here
                         )
                     self._respond(
                         {

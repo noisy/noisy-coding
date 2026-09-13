@@ -275,7 +275,7 @@ async function copyLog() {
   <div class="vignette" />
   <div class="hud">
     <header class="dbg-header">
-      <div class="title">NOISY-CODING // CHAT SANDBOX</div>
+      <div class="title">NOISY STUDIO // CHAT SANDBOX</div>
       <span class="sub">/debug — clicks drive the real ConversationLog; buttons follow the chat machine; nothing touches the daemon</span>
     </header>
 

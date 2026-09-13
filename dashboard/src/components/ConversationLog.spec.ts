@@ -62,7 +62,7 @@ describe("ConversationLog", () => {
     });
 
     const whos = wrapper.findAll(".who").map((n) => n.text());
-    expect(whos).toEqual(["NOISY-CODING", "AGENT"]);
+    expect(whos).toEqual(["NOISY STUDIO", "AGENT"]);
     expect(wrapper.findAll(".msg")[0].classes()).toContain("accent-cyan");
   });
 

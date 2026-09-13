@@ -180,7 +180,7 @@ def submit(
     duplicate it in the log (utterance_id 0 makes every update a no-op).
     Returns None when this source is already queued/playing (deduped).
 
-    role="daemon" is for noisy-coding speaking for ITSELF (setup
+    role="daemon" is for Noisy Studio speaking for ITSELF (setup
     confirmations) — same pipeline, but the card is never attributed to
     Claude. Internal call sites only; /speak never exposes it.
     """

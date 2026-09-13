@@ -31,17 +31,17 @@ export function useTabStatus(status: Ref<DaemonStatus | null>): void {
   watch(
     () => {
       const s = status.value;
-      if (!s) return "⏸|noisy-coding";
+      if (!s) return "⏸|Noisy Studio";
       const speaking = (s.speaking_agents ?? [])[0] ?? "";
       const active =
         s.agents_meta?.[s.active_agent ?? ""]?.label ||
         (s.active_agent ?? "").slice(0, 8) ||
-        "noisy-coding";
-      if (s.muted) return `🔇|muted — ${active || "noisy-coding"}`;
-      if (speaking || s.claude_speaking) return `🗣|▶ ${speaking || active} — noisy-coding`;
+        "Noisy Studio";
+      if (s.muted) return `🔇|muted — ${active || "Noisy Studio"}`;
+      if (speaking || s.claude_speaking) return `🗣|▶ ${speaking || active} — Noisy Studio`;
       if (s.recording) return `🎙|● recording — ${active}`;
-      if (s.listening) return `🎙|${active} — noisy-coding`;
-      return `⏸|${active} — noisy-coding`;
+      if (s.listening) return `🎙|${active} — Noisy Studio`;
+      return `⏸|${active} — Noisy Studio`;
     },
     (packed) => {
       const [glyph, title] = packed.split("|");

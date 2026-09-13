@@ -29,6 +29,6 @@ jobs:
       - name: Check Demo Studio recording and timing
         run: node --test ../website/src/demo-studio/*.test.mjs
       - name: Check desktop icon resources and modes
-        run: node --test ../desktop/icons.test.js
+        run: node --test ../desktop/*.test.js
       - run: npx vue-tsc --noEmit
       - run: npx vite build

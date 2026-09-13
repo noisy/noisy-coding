@@ -26,7 +26,7 @@ const fromDaemon = computed(() => props.utterance.role === "daemon");
 // attributed to the main agent: its own name, its own accent.
 const speaker = computed(() => (props.utterance.speaker || "").trim());
 const who = computed(() => {
-  if (fromDaemon.value) return "NOISY-CODING";
+  if (fromDaemon.value) return "NOISY STUDIO";
   if (speaker.value && props.label) return props.label.toUpperCase();
   const agent = (props.utterance.agent_label?.trim() || "Agent").toUpperCase();
   if (speaker.value) return `${speaker.value.toUpperCase()} · ${agent}`;

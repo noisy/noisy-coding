@@ -79,7 +79,7 @@ const noop = () => {};
               </g>
             </svg>
             <div>
-              <div class="title">Noisy Coding</div>
+              <div class="title">Noisy Studio</div>
               <div class="sub">Your voice, in the workflow</div>
             </div>
           </div>
