@@ -63,6 +63,10 @@ FRAME_WAIT_SECONDS = 2.0
 # Conversation history persistence: the log used to live only in memory,
 # so every daemon restart wiped the conversation from the dashboard.
 HISTORY_FILE = CONFIG_DIR / "history.json"
+# Transcripts waiting for an agent (#76): they used to live only in memory,
+# so every restart silently ate whatever the user had just said to a tab
+# that was not listening at that moment.
+PENDING_FILE = CONFIG_DIR / "pending.json"
 HISTORY_SAVE_SECONDS = 5.0
 
 
@@ -73,12 +77,21 @@ def _load_history(state: ListenerState) -> None:
             state.load_utterances(items)
     except (OSError, ValueError):
         pass
+    try:
+        pending = json.loads(PENDING_FILE.read_text())
+        if isinstance(pending, list) and pending:
+            restored = state.load_transcripts(pending)
+            if restored:
+                _log(f"[history] restored {restored} waiting message(s) from the previous run")
+    except (OSError, ValueError):
+        pass
 
 
 def _save_history(state: ListenerState) -> None:
     try:
         HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
         HISTORY_FILE.write_text(json.dumps(state.snapshot_utterances()))
+        PENDING_FILE.write_text(json.dumps(state.snapshot_transcripts()))
     except OSError:
         pass
 
@@ -87,7 +100,7 @@ def _history_saver(state: ListenerState) -> None:
     last_saved = ""
     while True:
         threading.Event().wait(HISTORY_SAVE_SECONDS)
-        snapshot = json.dumps(state.snapshot_utterances())
+        snapshot = json.dumps([state.snapshot_utterances(), state.snapshot_transcripts()])
         if snapshot != last_saved:
             _save_history(state)
             last_saved = snapshot

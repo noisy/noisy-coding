@@ -3,7 +3,7 @@
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from noisy_coding.listener.conversations import ConversationRegistry
 from noisy_coding.listener.vad import (
@@ -684,6 +684,40 @@ class ListenerState:
     def snapshot_utterances(self) -> list[dict]:
         with self._lock:
             return [dict(u) for u in self._utterances]
+
+    def snapshot_transcripts(self) -> list[dict]:
+        """The transcripts still waiting for an agent, for persistence (#76)."""
+        with self._lock:
+            return [asdict(t) for t in self._transcripts]
+
+    def load_transcripts(self, items: list[dict]) -> int:
+        """Restore transcripts a previous daemon run had not delivered yet.
+
+        Call AFTER load_utterances: the cards these belong to were coerced to
+        'dropped — daemon restart' there, and here they go back to awaiting
+        pickup, because the new process CAN deliver them. Returns how many
+        were restored.
+        """
+        restored = 0
+        with self._lock:
+            for item in items:
+                try:
+                    transcript = Transcript(
+                        text=str(item["text"]),
+                        timestamp=float(item.get("timestamp", 0.0)),
+                        utterance_id=int(item.get("utterance_id", 0)),
+                        addressee=str(item.get("addressee", "") or ""),
+                    )
+                except (KeyError, TypeError, ValueError):
+                    continue
+                self._transcripts.append(transcript)
+                restored += 1
+                for utterance in self._utterances:
+                    if utterance.get("id") == transcript.utterance_id and utterance.get("role") == "user":
+                        utterance["status"] = "ready — awaiting pickup"
+            if restored:
+                self._add_event_locked("restored", f"{restored} waiting message(s) survived the restart")
+        return restored
 
     def load_utterances(self, items: list[dict]) -> None:
         """Restore history saved by a previous daemon run.

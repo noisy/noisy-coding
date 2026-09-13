@@ -581,3 +581,27 @@ def test_load_voice_claims_drops_duplicates_from_a_corrupted_file():
     state.load_voice_claims({"first": "atlas", "second": "atlas"})
 
     assert list(state.voice_claims().values()) == ["atlas"]
+
+
+
+def test_pending_transcripts_survive_a_restart_and_are_delivered_by_the_new_process():
+    old = ListenerState()
+    old.register_agent("tab-a", "Alpha")
+    card = old.create_utterance("user", "recording…", agent="tab-a")
+    old.add_transcript("still here after the restart", card)
+    saved_history = old.snapshot_utterances()
+    saved_pending = old.snapshot_transcripts()
+    assert saved_pending[0]["addressee"] == "tab-a"
+
+    new = ListenerState()
+    new.register_agent("tab-a", "Alpha")
+    new.load_utterances(saved_history)
+    # load_utterances alone would have written the message off...
+    assert new.utterances()[-1]["status"] == "dropped — daemon restart"
+    # ...restoring the queue brings the card back to awaiting pickup and the
+    # message is delivered to the addressee like nothing happened.
+    assert new.load_transcripts(saved_pending) == 1
+    assert new.utterances()[-1]["status"] == "ready — awaiting pickup"
+    assert [t.text for t in new.drain("tab-a")] == ["still here after the restart"]
+    assert new.utterances()[-1]["status"].startswith("delivered to")
+    assert new.load_transcripts([{"garbage": True}]) == 0  # a bad row is skipped, not fatal
