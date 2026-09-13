@@ -93,8 +93,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dashboard and desktop dependencies
+      - name: Install dashboard, website and desktop dependencies
         run: |
+          # The dashboard build type-checks the shared analytics module under
+          # website/src, which needs website's packages (posthog-js) installed.
+          (cd website && npm ci)
           (cd dashboard && npm ci)
           (cd desktop && npm ci)
       - name: Build the dashboard and the packaged daemon
