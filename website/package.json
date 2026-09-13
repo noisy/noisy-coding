@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/demo-studio/*.test.mjs"
+    "test": "node --test src/demo-studio/*.test.mjs && node --experimental-strip-types --test src/analytics/*.test.ts",
+    "typecheck:analytics": "tsc --noEmit --skipLibCheck --target ES2022 --module ESNext --moduleResolution bundler src/analytics/controller.ts src/analytics/index.ts src/env.d.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",
+    "posthog-js": "1.430.3",
     "vue": "^3.5.13",
     "xstate": "^5.32.6"
   },
