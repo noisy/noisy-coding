@@ -25,8 +25,9 @@ jobs:
           dashboard=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' dashboard/package.json | head -1)
           plugin=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
           codex_plugin=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' .codex-plugin/plugin.json | head -1)
-          echo "pyproject=$pyproject dashboard=$dashboard plugin=$plugin codex_plugin=$codex_plugin"
-          if [ "$pyproject" != "$dashboard" ] || [ "$pyproject" != "$plugin" ] || [ "$pyproject" != "$codex_plugin" ]; then
+          desktop=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' desktop/package.json | head -1)
+          echo "pyproject=$pyproject dashboard=$dashboard plugin=$plugin codex_plugin=$codex_plugin desktop=$desktop"
+          if [ "$pyproject" != "$dashboard" ] || [ "$pyproject" != "$plugin" ] || [ "$pyproject" != "$codex_plugin" ] || [ "$pyproject" != "$desktop" ]; then
             echo "::error::version mismatch across files — run scripts/bump_version.py"
             exit 1
           fi
@@ -98,6 +99,8 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "release $GITHUB_REF_NAME already exists — nothing to do"
           else
+            prerelease=""
+            case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease";; esac
             gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
-              --draft --generate-notes --title "$GITHUB_REF_NAME"
+              --draft --generate-notes --title "$GITHUB_REF_NAME" $prerelease
           fi

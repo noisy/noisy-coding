@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Bump the project version in every file that carries it, in one shot.
 
-The version lives in five places that must never drift apart:
+The version lives in six places that must never drift apart:
 pyproject.toml, uv.lock, dashboard/package.json, .claude-plugin/plugin.json,
-and .codex-plugin/plugin.json.
+.codex-plugin/plugin.json and desktop/package.json.
 Bumping them by hand is how .claude-plugin/plugin.json fell three releases
 behind (issue #7). Run this instead:
 
@@ -22,7 +22,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
+# X.Y.Z, optionally with a pre-release suffix (3.0.0-alpha.1). The same
+# string goes into every file: PEP 440 accepts the hyphenated form (it
+# normalises to 3.0.0a1), npm and the plugin manifests take it verbatim,
+# and the release workflow compares the raw strings and the tag.
+SEMVER = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z][0-9A-Za-z.]*)?$")
 
 
 def read_current_version() -> str:
@@ -79,7 +83,7 @@ def main() -> int:
 
     new_version = sys.argv[1].lstrip("v")
     if not SEMVER.match(new_version):
-        print(f"error: '{new_version}' is not a X.Y.Z semver", file=sys.stderr)
+        print(f"error: '{new_version}' is not X.Y.Z or X.Y.Z-<prerelease>", file=sys.stderr)
         return 2
 
     current = read_current_version()
@@ -88,9 +92,12 @@ def main() -> int:
     bump_json_version("dashboard/package.json", new_version)
     bump_json_version(".claude-plugin/plugin.json", new_version)
     bump_json_version(".codex-plugin/plugin.json", new_version)
+    # The desktop app carries the version too (About box, updater, DMG name).
+    bump_json_version("desktop/package.json", new_version)
 
     print(f"bumped {current} -> {new_version} in pyproject.toml, uv.lock, "
-          "dashboard/package.json, .claude-plugin/plugin.json")
+          "dashboard/package.json, .claude-plugin/plugin.json, "
+          ".codex-plugin/plugin.json, desktop/package.json")
     return 0
 
 
