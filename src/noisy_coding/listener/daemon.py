@@ -29,6 +29,7 @@ from noisy_coding.listener.http_api import (
     SETTINGS_FILE,
     start_http_api,
     SPEAKER_COLORS_FILE,
+    save_characters,
 )
 from noisy_coding.listener.state import ListenerState
 from noisy_coding.listener.tab_audio import start_bridge

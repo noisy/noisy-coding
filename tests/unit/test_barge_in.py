@@ -49,3 +49,12 @@ def test_the_interrupt_is_remembered_until_the_playback_thread_consumes_it():
     # ...and the playback thread, finishing, re-applies the interrupt exactly once.
     assert state.consume_interrupted(clip) == "interrupted by push-to-talk"
     assert state.consume_interrupted(clip) is None
+
+
+def test_daemon_boot_helpers_are_importable():
+    # A NameError at boot took the dev daemon down on stream (2026-09-13):
+    # rehome_default_voice_copies() called save_characters() that daemon.py
+    # never imported. Keep every boot-time helper resolvable.
+    from noisy_coding.listener import daemon
+    for name in ("save_characters", "_load_history", "_save_history", "_ptt_barge_in"):
+        assert callable(getattr(daemon, name))
