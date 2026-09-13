@@ -8,7 +8,7 @@ const scenario = { id: 'example', intro: [], turns: [
 ] };
 function setup(overrides = {}) {
   let time = 0;
-  return new StudioSession(scenario, { now: () => time, update() {},
+  return new StudioSession(scenario, { schedule: { beforeTurn: {}, beforeReply: { clip1: [{ durationMs: 1200, text: 'Thinking…' }] } }, now: () => time, update() {},
     wait: async ms => { time += ms; }, play: async (_reply, _signal, started) => { started(); time += 500; }, ...overrides });
 }
 test('records actual reply playback and advances only once for repeated Space presses', async () => {
@@ -33,19 +33,13 @@ test('stopping during activity prevents late audio and further prompts', async (
   assert.equal(session.events.filter(e => e.type === 'user-start').length, 1);
 });
 
-test('hero production pause is exported between replies and every line stays ordered', async () => {
-  const { SCENARIOS } = await import('../../../tools/demo-recorder/scenarios.mjs');
-  let time = 0;
-  const session = new StudioSession(SCENARIOS.find(s => s.id === 'hero-search'), {
-    now: () => time, update() {}, wait: async ms => { time += ms; },
-    play: async (_reply, _signal, started) => { started(); time += 100; },
-  });
+test('replays quiet gaps and work after replies before prompting the actor', async () => {
+  const session = setup({ schedule: { beforeReply: {}, beforeTurn: { u2: [
+    { durationMs: 200, text: null }, { durationMs: 3300, text: 'Editing file' }, { durationMs: 100, text: null },
+  ] } } });
   await session.start();
-  while (session.phase === 'user') await session.advance();
-  const events = session.events;
-  const deploying = events.find(e => e.text === 'Deploying to production');
-  const onIt = events.find(e => e.type === 'agent-end' && e.clip === 'hero-lux-search-4');
-  const live = events.find(e => e.type === 'agent-start' && e.clip === 'hero-lux-search-production');
-  assert.deepEqual([deploying.atMs, live.atMs], [onIt.atMs, onIt.atMs + 2200]);
-  assert.deepEqual(events.filter(e => e.type === 'user-start').map(e => e.utterance), ['u1','u2','u3','u4','u5']);
+  await session.advance();
+  assert.deepEqual(session.events.filter(e => ['activity-start', 'activity-end', 'user-start'].includes(e.type)).map(e => [e.type, e.atMs]), [
+    ['user-start', 0], ['activity-start', 700], ['activity-end', 4000], ['user-start', 4100],
+  ]);
 });

@@ -2,6 +2,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import Companion from '@dashboard/components/Companion.vue';
 import { SCENARIOS } from '../../../tools/demo-recorder/scenarios.mjs';
+import heroTake from '@dashboard/components/marketing/recorded-hero/hero-recording.json';
+import heroEdits from '../../../tools/demo-recorder/takes/hero-v1/presentation-edits.json';
+import { recordedActivitySchedule } from '@dashboard/components/marketing/recordedActivitySchedule';
 import { StudioSession, wait } from './session.mjs';
 import { captureTake, download, playClip } from './media.mjs';
 
@@ -62,6 +65,7 @@ async function start(record) {
     else origin = performance.now();
     session.value = new StudioSession(scenario.value, {
       now: () => performance.now() - origin, update, wait,
+      schedule: scenario.value.id === 'hero-search' ? recordedActivitySchedule(heroTake, heroEdits.turns, heroEdits.activities) : null,
       play: (reply, signal, started) => playClip(clips[reply.clip], signal, started),
     });
     const started = session.value.start();
@@ -146,7 +150,7 @@ onBeforeUnmount(() => {
           <template v-else-if="active">
             <div class="take-status"><span>{{ isRecording ? '● RECORDING' : 'REHEARSAL' }}</span><time>{{ clockLabel }}</time></div>
             <p class="eyebrow">{{ phase === 'user' ? `YOUR LINE · ${session.turn + 1} OF ${scenario.turns.length}` : 'LISTEN & REACT' }}</p>
-            <h2 class="prompt">{{ phase === 'user' ? current?.prompt : preview.activity || `${preview.voice[0].toUpperCase() + preview.voice.slice(1)} is replying…` }}</h2>
+            <h2 class="prompt">{{ phase === 'user' ? current?.prompt : preview.activity || (preview.mode === 'claude' ? `${preview.voice[0].toUpperCase() + preview.voice.slice(1)} is replying…` : 'A short pause…') }}</h2>
             <p class="hint">{{ phase === 'user' ? 'Take your time. Press Space when you finish this line.' : 'Keep the camera rolling. Your next line appears when the reply finishes.' }}</p>
             <button class="primary next" :disabled="phase !== 'user' || busy" @click="advance">Finished speaking <kbd>Space</kbd></button>
             <div class="actions"><button @click="finish" :disabled="busy">Stop take</button><button v-if="isRecording" @click="sync">Mark sync point</button></div>

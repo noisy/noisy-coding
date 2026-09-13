@@ -1,7 +1,7 @@
 /** Script playback uses one clock; recordings and exported events share its origin. */
 export class StudioSession {
-  constructor(scenario, { now, play, wait, update }) {
-    Object.assign(this, { scenario, now, play, wait, update });
+  constructor(scenario, { now, play, wait, update, schedule = null }) {
+    Object.assign(this, { scenario, now, play, wait, update, schedule });
     this.events = [];
     this.turn = 0;
     this.phase = 'ready';
@@ -15,10 +15,12 @@ export class StudioSession {
     this.phase = 'reply';
     this.log('recording-start');
     await this.replies(this.scenario.intro);
-    if (!this.abort.signal.aborted) this.prompt();
+    if (!this.abort.signal.aborted) await this.prompt();
   }
-  prompt() {
+  async prompt() {
     if (this.turn >= this.scenario.turns.length) return this.stop(true);
+    await this.pauses(this.schedule?.beforeTurn[`u${this.turn + 1}`] ?? []);
+    if (this.abort.signal.aborted) return;
     const turn = this.scenario.turns[this.turn];
     this.phase = 'user';
     this.log('user-start', { utterance: `u${this.turn + 1}`, prompt: turn.prompt, voice: turn.agent });
@@ -30,30 +32,28 @@ export class StudioSession {
     const turn = this.scenario.turns[this.turn];
     this.log('transcript', { utterance: `u${this.turn + 1}`, text: turn.prompt, final: true, source: 'script' });
     this.log('user-end', { utterance: `u${this.turn + 1}` });
-    if (turn.replies.length) {
-      const statuses = ['Thinking', 'Updating search', 'Running tests', 'Thinking'];
-      this.log('activity-start', { text: this.scenario.id === 'hero-search' ? statuses[this.turn] ?? 'Thinking' : 'Thinking' });
-      await this.wait(1200, this.abort.signal);
-      if (this.abort.signal.aborted) return;
-      this.log('activity-end');
-    }
     await this.replies(turn.replies);
     if (this.abort.signal.aborted) return;
     this.turn++;
-    this.prompt();
+    await this.prompt();
   }
   async replies(replies) {
     for (const reply of replies) {
       if (this.abort.signal.aborted) return;
-      if (reply.pauseBeforeMs) {
-        this.log('activity-start', { text: 'Deploying to production' });
-        await this.wait(reply.pauseBeforeMs, this.abort.signal);
-        if (this.abort.signal.aborted) return;
-        this.log('activity-end');
-      }
+      await this.pauses(this.schedule?.beforeReply[reply.clip] ?? (reply.pauseBeforeMs ? [{ durationMs: reply.pauseBeforeMs, text: null }] : []));
+      if (this.abort.signal.aborted) return;
       await this.play(reply, this.abort.signal, () => this.log('agent-start', reply));
       if (this.abort.signal.aborted) return;
       this.log('agent-end', { clip: reply.clip });
+    }
+  }
+  async pauses(pauses) {
+    for (const pause of pauses) {
+      if (this.abort.signal.aborted) return;
+      if (pause.text) this.log('activity-start', { text: pause.text });
+      await this.wait(pause.durationMs, this.abort.signal);
+      if (this.abort.signal.aborted) return;
+      if (pause.text) this.log('activity-end');
     }
   }
   stop(complete = false) {
