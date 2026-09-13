@@ -37,7 +37,7 @@ it once, and it starts its own daemon on 9765 - no Docker, no Python for
 the user to manage.
 
 - Download the latest release asset from
-  <https://github.com/noisy/noisy-coding/releases>, move it to
+  <https://github.com/noisy/noisy-studio/releases>, move it to
   `/Applications`.
 - It is currently a **beta and unsigned**: the first launch needs
   **right-click -> Open**, because a double-click is blocked by macOS.

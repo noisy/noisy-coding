@@ -3,7 +3,7 @@ import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
 import DashboardShowcase from "./DashboardShowcase.vue";
-const source = "https://github.com/noisy/noisy-coding";
+const source = "https://github.com/noisy/noisy-studio";
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 # Voice avatar families
 
-Eight generated families cover the complete 28-voice `SUBAGENT_VOICE_POOL` in `src/noisy_coding/listener/http_api.py`:
+Eight generated families cover the complete 28-voice `SUBAGENT_VOICE_POOL` in `src/noisy_studio/listener/http_api.py`:
 
 - `editorial`: illustrated people
 - `matte`: softly sculpted people
@@ -11,7 +11,7 @@ Eight generated families cover the complete 28-voice `SUBAGENT_VOICE_POOL` in `s
 - `robots`: original robot personalities with science-fiction nods
 - `agents`: Matrix-inspired black suits and sunglasses, using the human voice identities
 
-The coverage audit includes [issue #44](https://github.com/noisy/noisy-coding/issues/44): Aurora and Liora were in the backend pool but absent from the frontend voice picker and old sprite mapping. Both are included in every new family. The pool and frontend catalog must match; `catalog.spec.ts` checks this independently of the hand-maintained artwork order. Other provider-specific or future unknown voices display a readable monogram and a development warning instead of disappearing.
+The coverage audit includes [issue #44](https://github.com/noisy/noisy-studio/issues/44): Aurora and Liora were in the backend pool but absent from the frontend voice picker and old sprite mapping. Both are included in every new family. The pool and frontend catalog must match; `catalog.spec.ts` checks this independently of the hand-maintained artwork order. Other provider-specific or future unknown voices display a readable monogram and a development warning instead of disappearing.
 
 ## Assets and exact generation input
 

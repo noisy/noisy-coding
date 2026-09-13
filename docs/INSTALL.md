@@ -18,7 +18,7 @@ docker run -d --name noisy-coding \
 open http://127.0.0.1:8765
 
 # 3. connect Claude Code to the MCP server in the container
-claude mcp add --transport http --scope user noisy-coding http://127.0.0.1:8767/mcp
+claude mcp add --transport http --scope user noisy-studio http://127.0.0.1:8767/mcp
 
 # 4. register the hooks (this is how Claude HEARS you), restart Claude Code
 docker run --rm -v ~/.claude:/root/.claude noisy/noisy-coding \
@@ -49,11 +49,11 @@ daemon natively. Requires Python 3.13 and
 dashboard, never in the shell.
 
 ```bash
-git clone https://github.com/noisy/noisy-coding && cd noisy-coding
+git clone https://github.com/noisy/noisy-studio && cd noisy-studio
 uv sync
-uv run noisy-coding-listener          # first run triggers the mic prompt
-claude mcp add noisy-coding --scope user \
-  -- uv run --project "$PWD" noisy-coding-mcp
+uv run noisy-studio-listener          # first run triggers the mic prompt
+claude mcp add noisy-studio --scope user \
+  -- uv run --project "$PWD" noisy-studio-mcp
 python3 hooks/install.py
 open http://127.0.0.1:8765            # paste your xAI API key
 ```
@@ -81,16 +81,16 @@ setups only:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `NOISY_CODING_LISTENER_PORT` | `8765` | Port of the daemon's HTTP API |
-| `NOISY_CODING_BIND` | `127.0.0.1` | HTTP/WS bind address (`0.0.0.0` in Docker) |
-| `NOISY_CODING_STT_LANGUAGE` | auto | Initial language hint (the UI selector overrides) |
-| `NOISY_CODING_MODE` | `batch` | Initial STT mode (`batch`/`live`) |
-| `NOISY_CODING_STOP_WAIT_SECONDS` | `30` | How long the Stop hook waits for speech |
-| `NOISY_CODING_NO_AUTOSPAWN` | — | Don't auto-start the daemon from the server |
-| `NOISY_CODING_INPUT_DEVICE` | system default | Initial mic (`browser` = the dashboard tab) |
-| `NOISY_CODING_OUTPUT_DEVICE` | `system` | Initial speaker (`browser` = the dashboard tab) |
-| `NOISY_CODING_MCP_TRANSPORT` | `stdio` | `http` exposes the MCP server (Docker) |
-| `NOISY_CODING_MCP_PORT` | `8767` | MCP HTTP port (with `http` transport) |
+| `NOISY_STUDIO_LISTENER_PORT` | `8765` | Port of the daemon's HTTP API |
+| `NOISY_STUDIO_BIND` | `127.0.0.1` | HTTP/WS bind address (`0.0.0.0` in Docker) |
+| `NOISY_STUDIO_STT_LANGUAGE` | auto | Initial language hint (the UI selector overrides) |
+| `NOISY_STUDIO_MODE` | `batch` | Initial STT mode (`batch`/`live`) |
+| `NOISY_STUDIO_STOP_WAIT_SECONDS` | `30` | How long the Stop hook waits for speech |
+| `NOISY_STUDIO_NO_AUTOSPAWN` | — | Don't auto-start the daemon from the server |
+| `NOISY_STUDIO_INPUT_DEVICE` | system default | Initial mic (`browser` = the dashboard tab) |
+| `NOISY_STUDIO_OUTPUT_DEVICE` | `system` | Initial speaker (`browser` = the dashboard tab) |
+| `NOISY_STUDIO_MCP_TRANSPORT` | `stdio` | `http` exposes the MCP server (Docker) |
+| `NOISY_STUDIO_MCP_PORT` | `8767` | MCP HTTP port (with `http` transport) |
 
 ## Development
 

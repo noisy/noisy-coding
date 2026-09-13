@@ -11,7 +11,7 @@ const repo = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
   // GitHub Pages serves a project site from /<repo>/ - the deploy workflow
-  // sets PAGES_BASE=/noisy-coding/. Local dev and a future custom domain
+  // sets PAGES_BASE=/noisy-studio/. Local dev and a future custom domain
   // both use the default "/" (a custom domain needs no base at all).
   base: process.env.PAGES_BASE ?? "/",
   plugins: [vue()],

@@ -16,8 +16,8 @@ not yet validated; use WSL where the existing POSIX hooks are supported.
 After this branch is released:
 
 ```sh
-codex plugin marketplace add noisy/noisy-coding
-codex plugin add noisy-coding@noisy-coding
+codex plugin marketplace add noisy/noisy-studio
+codex plugin add noisy-studio@noisy-studio
 ```
 
 For a clean checkout before release, register the checkout instead. Use a
@@ -25,8 +25,8 @@ checkout without `.venv` or `node_modules`: local marketplace installation
 copies the plugin directory, including local dependency caches.
 
 ```sh
-codex plugin marketplace add /absolute/path/to/noisy-coding
-codex plugin add noisy-coding@noisy-coding
+codex plugin marketplace add /absolute/path/to/noisy-studio
+codex plugin add noisy-studio@noisy-studio
 ```
 
 Start a new Codex session and ask: **“Use Noisy Studio to set up voice.”**
@@ -53,13 +53,13 @@ uv run --frozen python scripts/install_codex.py --port 9765
 ```
 
 It writes only `~/.config/noisy-coding/codex.json`; both hooks and MCP read
-that file. `NOISY_CODING_CODEX_CONFIG` can select another settings file and
-`NOISY_CODING_LISTENER_PORT` is an explicit endpoint override. Do not set a
-shared `NOISY_CODING_AGENT_NAME=codex`: sessions must remain distinct.
+that file. `NOISY_STUDIO_CODEX_CONFIG` can select another settings file and
+`NOISY_STUDIO_LISTENER_PORT` is an explicit endpoint override. Do not set a
+shared `NOISY_STUDIO_AGENT_NAME=codex`: sessions must remain distinct.
 
 ## Review hooks and verify both directions
 
-Open **`/hooks`** in Codex and inspect the `noisy-coding` definitions. Trust
+Open **`/hooks`** in Codex and inspect the `noisy-studio` definitions. Trust
 the hooks you intend to run. Installation does not grant hook trust, and
 changed definitions need review again. No permission bypass flags are needed.
 
@@ -109,7 +109,7 @@ plugin-relative `cwd` and relative arguments; `${PLUGIN_ROOT}` is expanded
 for hooks, but not MCP arguments in the tested Codex version. If voice only works one way,
 verify hook trust and that both directions selected the same daemon. Do
 not install a second global hook set alongside the plugin. If you used
-the earlier manual prototype, remove only its `noisy-coding` entries after
+the earlier manual prototype, remove only its `noisy-studio` entries after
 reviewing them; keep unrelated hooks.
 
 The dashboard uses registered agent labels and an “Agent” fallback. Legacy
@@ -122,13 +122,13 @@ Before removing the plugin, remove its integration settings from its root:
 
 ```sh
 uv run --frozen python scripts/install_codex.py --uninstall
-codex plugin remove noisy-coding@noisy-coding
+codex plugin remove noisy-studio@noisy-studio
 ```
 
 Removal preserves unrelated Codex configuration and the daemon's voices,
 credentials, and history. Stop listening in the old session or close it;
 removing a plugin does not retroactively cancel an already-running hook.
-Use `codex plugin marketplace upgrade noisy-coding` to refresh a tracked
+Use `codex plugin marketplace upgrade noisy-studio` to refresh a tracked
 marketplace, reinstall through the plugin browser, and review changed hooks.
 
 Technical references: [Codex hooks](https://learn.chatgpt.com/docs/hooks),

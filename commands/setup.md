@@ -3,7 +3,7 @@ description: Start the Noisy Studio voice backend (Docker) and walk through firs
 ---
 
 If you are running in Codex, use the dedicated
-`codex-skills/noisy-coding/SKILL.md` and `docs/codex.md` in the installed
+`codex-skills/noisy-studio/SKILL.md` and `docs/codex.md` in the installed
 plugin root instead of the Claude Code steps below.
 Select the user's daemon port, configure the integration, review `/hooks`,
 and verify a spoken round trip. Do not assume Docker or port 8765.
@@ -31,6 +31,6 @@ Set up the Noisy Studio voice backend for this user. Follow these steps in order
    - click the big amber **ENABLE TAB AUDIO** banner (the container preselects this tab as microphone and speaker; the click grants the mic permission),
    - keep that tab open while talking.
 6. CLOSE THE LOOP — do not declare success yet. Ask the user to say when they've pasted the key and clicked the banner, then poll `curl -s http://127.0.0.1:8765/status` and confirm BOTH `"api_key_set": true` AND `"tab_audio": true`. Only then report the setup as complete. If either stays false, debug with the user (key rejected? mic permission denied?).
-7. The plugin already registered the MCP server and the voice hooks. On a first install the server usually shows as failed at this point — Claude Code tried to connect it at session start, before the container existed, and its ~30 s client-side timeout expired. NO full restart is needed: tell the user to run `/mcp`, pick `noisy-coding`, and choose **reconnect** — the launcher respawns, finds the container running, and the speak tool appears in this same session. (A restart works too, but reconnect is one menu action.) Without the speak tool Claude cannot answer aloud, though the user's speech already comes through. After the restart, messages tagged [VOICE] are the user's real spoken words delivered by this plugin's hooks — see the plugin's voice-conversations skill for the conventions.
+7. The plugin already registered the MCP server and the voice hooks. On a first install the server usually shows as failed at this point — Claude Code tried to connect it at session start, before the container existed, and its ~30 s client-side timeout expired. NO full restart is needed: tell the user to run `/mcp`, pick `noisy-studio`, and choose **reconnect** — the launcher respawns, finds the container running, and the speak tool appears in this same session. (A restart works too, but reconnect is one menu action.) Without the speak tool Claude cannot answer aloud, though the user's speech already comes through. After the restart, messages tagged [VOICE] are the user's real spoken words delivered by this plugin's hooks — see the plugin's voice-conversations skill for the conventions.
 
 Do not configure anything through environment variables — every setting lives in the dashboard UI.

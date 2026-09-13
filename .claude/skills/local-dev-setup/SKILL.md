@@ -1,6 +1,6 @@
 ---
 name: local-dev-setup
-description: Set up or fix the side-by-side LOCAL DEV instance of Noisy Studio in this repo — dev daemon on port 7765, noisy-coding-dev MCP, project-scoped hooks. Use when asked to prepare the local development environment, when the dev daemon is down, or when a session in this repo should talk to the dev instance instead of production.
+description: Set up or fix the side-by-side LOCAL DEV instance of Noisy Studio in this repo — dev daemon on port 7765, noisy-studio-dev MCP, project-scoped hooks. Use when asked to prepare the local development environment, when the dev daemon is down, or when a session in this repo should talk to the dev instance instead of production.
 ---
 
 # Local dev environment for Noisy Studio contributors
@@ -31,14 +31,14 @@ Python code; rebuild (`cd dashboard && npm run build`) after dashboard changes.
   would be auto-loaded by the plugin and leak the dev server to end users):
 
   ```sh
-  claude mcp add noisy-coding-dev --scope local \
-    --env NOISY_CODING_LISTENER_PORT=7765 -- uv run noisy-coding-mcp
+  claude mcp add noisy-studio-dev --scope local \
+    --env NOISY_STUDIO_LISTENER_PORT=7765 -- uv run noisy-studio-mcp
   ```
 
-  Tools appear as `mcp__noisy-coding-dev__*` after a restart.
+  Tools appear as `mcp__noisy-studio-dev__*` after a restart.
 - Hooks are committed to this repo, so normally there is nothing to do:
   `.claude/settings.json` → the five hooks duplicated with local commands
-  (`NOISY_CODING_LISTENER_PORT=7765 python3 hooks/<script>.py`). They run IN
+  (`NOISY_STUDIO_LISTENER_PORT=7765 python3 hooks/<script>.py`). They run IN
   ADDITION to the global production hooks — that is intended; each set talks
   to its own daemon.
 
@@ -55,8 +55,8 @@ headless-Chrome screenshot — before calling it done.
 
 ## 3. Sanity checks / gotchas
 
-- Speak through dev with `mcp__noisy-coding-dev__speak`, through production
-  with `mcp__noisy-coding__speak` — never assume they are the same daemon.
+- Speak through dev with `mcp__noisy-studio-dev__speak`, through production
+  with `mcp__noisy-studio__speak` — never assume they are the same daemon.
 - Dev reads the HOST config (`~/.config/noisy-coding`): shared API key, but
   its own voice/settings; production reads the container volume.
 - With both mics live the user's speech arrives TWICE (once per daemon) —

@@ -20,7 +20,7 @@ Keyboard-only sessions pay (almost) nothing.
 | 1 | `Stop` | — | `stop.py` | Keep the conversation alive: wait for your voice after a turn ends and wake the model with the transcript |
 | 2 | `PostToolUse` | `*` | `post_tool_use.py` | Deliver speech *mid-turn*: inject anything you said while a tool was running |
 | 3 | `PreToolUse` | `*` | `pre_tool_use.py` | Live dashboard: show what Claude is doing right now ("Edit · App.vue") |
-| 4 | `PreToolUse` | `mcp__noisy-coding__speak` | `pre_speak.py` | Echo the spoken text into the terminal while the speak call plays |
+| 4 | `PreToolUse` | `mcp__noisy-studio__speak` | `pre_speak.py` | Echo the spoken text into the terminal while the speak call plays |
 | 5 | `UserPromptSubmit` | — | `user_prompt_submit.py` | Light the "THINKING…" indicator from the very first token of a turn |
 
 Two of these carry voice into the model (1, 2); three exist purely so the human
@@ -110,21 +110,21 @@ line to "THINKING…". The youngest and simplest hook.
 
 The hook *scripts* are the same everywhere; what differs is who registers
 them and where they execute. There are three paths — you should have exactly
-**one** active, determined by how you installed noisy-coding:
+**one** active, determined by how you installed noisy-studio:
 
 | Install path | Registered in | Command shape | Scripts run |
 |---|---|---|---|
 | Plugin (recommended) | plugin's `hooks/hooks.json`, auto-loaded | `sh ${CLAUDE_PLUGIN_ROOT}/hooks/exec.sh <script>.py` | from the installed plugin |
-| Installer, docker mode | `~/.claude/settings.json` via `python3 hooks/install.py --docker` | `docker exec -i noisy-coding python3 /app/hooks/<script>.py` | **inside the container** |
+| Installer, docker mode | `~/.claude/settings.json` via `python3 hooks/install.py --docker` | `docker exec -i noisy-studio python3 /app/hooks/<script>.py` | **inside the container** |
 | Installer, local mode | `~/.claude/settings.json` via `python3 hooks/install.py` | `python3 <checkout>/hooks/<script>.py` | from your checkout |
 
 Notes:
 
 - The **docker mode** is fully hermetic — hooks, scripts and daemon all live
   in the container, and the host needs no Python at all. The flip side: the
-  session's environment variables (e.g. `NOISY_CODING_LISTENER_PORT`) do not
+  session's environment variables (e.g. `NOISY_STUDIO_LISTENER_PORT`) do not
   reach the scripts, so these hooks always talk to the containerized daemon.
-- The **installer is idempotent**: rerunning it replaces `noisy-coding` entries
+- The **installer is idempotent**: rerunning it replaces `noisy-studio` entries
   in `settings.json` in place and leaves everything else untouched.
 - Having both the plugin *and* installer-written entries active would fire
   every hook twice. If you switch install paths, remove the old registration.
@@ -134,7 +134,7 @@ Notes:
 The production setup (docker-mode hooks + containerized daemon) is deliberately
 sealed. To point a session at a locally-run development daemon instead,
 override the hooks **per project** (`.claude/settings.json` in this repo) with
-local-mode commands that set `NOISY_CODING_LISTENER_PORT` to the dev port.
+local-mode commands that set `NOISY_STUDIO_LISTENER_PORT` to the dev port.
 Every script reads that variable at invocation time and falls back to 8765,
 so no code changes are needed — only a second daemon on shifted ports and a
 project-scoped hook registration.
