@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import DownloadButton from "./DownloadButton.vue";
 import HeroSceneG from "./scenes/HeroSceneG.vue";
 const headlines = [
   ["Less typing.", "More conversation."],
@@ -61,9 +62,7 @@ onBeforeUnmount(() => {
         Hear what matters. Answer naturally. Keep your attention on the work.
       </p>
       <div class="hero-actions">
-        <a class="button primary" href="#install"
-          >Give your agent a voice <span aria-hidden="true">↗</span></a
-        >
+        <DownloadButton />
         <span>Claude Code · Codex preview</span>
       </div>
     </div>
@@ -119,11 +118,6 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 10px;
   margin-top: 18px;
-}
-.hero-actions .button {
-  font-size: 13px;
-  padding: 11px 16px;
-  gap: 16px;
 }
 .hero-actions > span {
   color: var(--muted);

@@ -294,43 +294,22 @@ img {
   gap: var(--layout-gap);
   align-items: center;
 }
-.install-options {
+.download-panel {
+  padding: clamp(24px, 3vw, 40px);
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--accent-surface), var(--bg1));
   display: grid;
-  gap: 14px;
+  gap: 28px;
 }
-.install-options > a {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  background: #1b1d21a6;
-  border: 1px solid var(--accent-border);
-  border-radius: 14px;
-  padding: 24px;
-  transition: background 0.2s;
-}
-.install-options > a:hover {
-  background: #353138;
-}
-.install-options > a > span {
-  font-size: 20px;
-  letter-spacing: -0.5px;
-}
-.install-options strong {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--amber);
-  display: flex;
-  justify-content: space-between;
-}
-.install-options small {
-  font-size: 10px;
-  letter-spacing: 0;
-  margin-left: 8px;
-  padding: 3px 7px;
-  border: 1px solid var(--accent-border);
-  border-radius: 5px;
-  color: var(--amber);
-}
+.download-product { display: flex; align-items: center; gap: 18px; }
+.download-product .eyebrow { margin: 0 0 5px; font-size: 10px; }
+.download-product h3 { margin: 0; font-size: 28px; letter-spacing: -.03em; }
+.download-icon { width: 58px; height: 58px; border: 1px solid var(--accent-border); background: var(--accent-surface); border-radius: 15px; color: var(--brand-accent); padding: 11px; flex-shrink: 0; }
+.download-guides { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 12px; }
+.download-guides > span { color: var(--muted); }
+.download-guides a { color: var(--ink); }
+
 .questions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

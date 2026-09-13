@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DownloadButton from "./DownloadButton.vue";
 import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
@@ -23,7 +24,7 @@ const source = "https://github.com/noisy/noisy-coding";
       ><a :href="source">GitHub ↗</a>
     </nav>
     <a class="button small" href="#install"
-      >Get started <span aria-hidden="true">↗</span></a
+      >Download <span aria-hidden="true">↓</span></a
     >
   </header>
   <main id="main">
@@ -58,23 +59,17 @@ const source = "https://github.com/noisy/noisy-coding";
           <p class="eyebrow">Make yourself heard</p>
           <h2>Your next session<br />could sound <em>different.</em></h2>
           <p class="section-intro">
-            Give your coding agent a voice. Choose your environment and follow
-            the setup guide to start your first conversation.
+            Bring voice into your coding workflow with Noisy Studio.
+            Hear the progress, give direction, and keep creating.
           </p>
         </div>
-        <div class="install-options">
-          <a
-            :href="`${source}/blob/v3-desktop/README.md#install-for-claude-code`"
-            ><span>Claude Code</span
-            ><strong
-              >Installation & setup <span aria-hidden="true">↗</span></strong
-            ></a
-          ><a :href="`${source}/blob/v3-desktop/docs/codex.md`"
-            ><span>Codex <small>Preview</small></span
-            ><strong
-              >Preview setup guide <span aria-hidden="true">↗</span></strong
-            ></a
-          >
+        <div class="download-panel">
+          <div class="download-product">
+            <div class="download-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 13v6m7-12v18m6-15v12m7-9v6" /></svg></div>
+            <div><p class="eyebrow">Your voice, in the workflow</p><h3>Noisy Studio</h3></div>
+          </div>
+          <DownloadButton />
+          <div class="download-guides"><span>Setup guides</span><a :href="`${source}/blob/v3-desktop/README.md#install-for-claude-code`">Claude Code ↗</a><a :href="`${source}/blob/v3-desktop/docs/codex.md`">Codex ↗</a></div>
         </div>
       </div>
     </section>
