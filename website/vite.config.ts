@@ -2,6 +2,8 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import dashboardPackage from "../dashboard/package.json";
 import { fileURLToPath, URL } from "node:url";
+import { createRequire } from 'node:module';
+const { analyticsConfig } = createRequire(import.meta.url)('../scripts/analytics-config.cjs');
 
 // The website reuses the dashboard's REAL components (Companion, the
 // marketing ClaudeCodeMock) through the @dashboard alias - nothing is
@@ -10,12 +12,11 @@ import { fileURLToPath, URL } from "node:url";
 const repo = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
-  // GitHub Pages serves a project site from /<repo>/ - the deploy workflow
-  // sets PAGES_BASE=/noisy-coding/. Local dev and a future custom domain
-  // both use the default "/" (a custom domain needs no base at all).
+  // noisystudio.ai and local development serve from the domain root.
+  // PAGES_BASE can override this for GitHub Pages project hosting.
   base: process.env.PAGES_BASE ?? "/",
   plugins: [vue()],
-  define: { __APP_VERSION__: JSON.stringify(dashboardPackage.version) },
+  define: { __APP_VERSION__: JSON.stringify(dashboardPackage.version), __POSTHOG_CONFIG__: JSON.stringify(analyticsConfig()) },
   build: { rollupOptions: { input: { main: repo("./index.html"), demoStudio: repo("./demo-studio/index.html"), dashboardDemo: repo("./dashboard-demo.html") } } },
   // The avatars sprite (public/avatars.png) is resolved at runtime by
   // voiceSprites.ts as an absolute /avatars.png - serve the dashboard's
