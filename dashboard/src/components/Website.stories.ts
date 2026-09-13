@@ -14,7 +14,7 @@ const meta = {
     onBeforeUnmount(() => style.remove());
     return { args };
   }, template: '<Website v-bind="args" />' }),
-  parameters: { layout: 'fullscreen', docs: { description: { component: 'Full website preview with shared platform selection. Downloads and notifications are design previews only.' } } },
+  parameters: { layout: 'fullscreen', docs: { description: { component: 'Full website preview with platform-specific calls to action. Downloads and notifications are design previews only.' } } },
   argTypes: { previewPlatform: { control: 'select', options: ['mac', 'windows', 'linux'] } },
 } satisfies Meta<typeof Website>;
 export default meta;

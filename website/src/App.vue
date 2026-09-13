@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
 import DownloadButton from "./DownloadButton.vue";
 import PlatformDownload from "./PlatformDownload.vue";
 const props = defineProps<{ previewPlatform?: 'mac' | 'windows' | 'linux'; dashboardPreviewUrl?: string }>();
-const platform = ref(props.previewPlatform ?? 'mac');
-watch(() => props.previewPlatform, value => { if (value) platform.value = value; });
 import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
@@ -33,7 +30,7 @@ const source = "https://github.com/noisy/noisy-coding";
     >
   </header>
   <main id="main">
-    <HeroShowcase><template v-if="previewPlatform" #download><PlatformDownload v-model:platform="platform" compact /></template></HeroShowcase>
+    <HeroShowcase><template v-if="previewPlatform" #download><PlatformDownload :platform="previewPlatform" compact /></template></HeroShowcase>
     <section
       id="workflow"
       class="wrap workflow-summary"
@@ -68,7 +65,7 @@ const source = "https://github.com/noisy/noisy-coding";
             Hear the progress, give direction, and keep creating.
           </p>
         </div>
-        <PlatformDownload v-if="previewPlatform" v-model:platform="platform" />
+        <PlatformDownload v-if="previewPlatform" :platform="previewPlatform" />
         <div v-else class="download-panel">
           <div class="download-product">
             <div class="download-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 13v6m7-12v18m6-15v12m7-9v6" /></svg></div>
