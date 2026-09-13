@@ -62,7 +62,7 @@ onBeforeUnmount(() => {
         Hear what matters. Answer naturally. Keep your attention on the work.
       </p>
       <div class="hero-actions">
-        <DownloadButton />
+        <slot name="download"><DownloadButton /></slot>
         <span>Claude Code · Codex preview</span>
       </div>
     </div>

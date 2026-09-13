@@ -19,7 +19,8 @@ const config: StorybookConfig = {
         ignored: [...(Array.isArray(ignored) ? ignored : ignored ? [ignored] : []), '**/storybook-static/**'],
       },
     };
-    config.resolve = { ...config.resolve, alias: [
+    config.resolve = { ...config.resolve, dedupe: ["vue", "xstate"], alias: [
+      { find: "@dashboard", replacement: fileURLToPath(new URL("../src", import.meta.url)) },
       { find: /^.*\/api\/client$/, replacement: fileURLToPath(new URL('../src/storybook/daemon.fixture.ts', import.meta.url)) },
       { find: /^.*\/composables\/useMicStream$/, replacement: fileURLToPath(new URL('../src/storybook/mic.fixture.ts', import.meta.url)) },
     ] };

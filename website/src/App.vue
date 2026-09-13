@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { ref, watch } from "vue";
 import DownloadButton from "./DownloadButton.vue";
+import PlatformDownload from "./PlatformDownload.vue";
+const props = defineProps<{ previewPlatform?: 'mac' | 'windows' | 'linux'; dashboardPreviewUrl?: string }>();
+const platform = ref(props.previewPlatform ?? 'mac');
+watch(() => props.previewPlatform, value => { if (value) platform.value = value; });
 import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
@@ -28,7 +33,7 @@ const source = "https://github.com/noisy/noisy-coding";
     >
   </header>
   <main id="main">
-    <HeroShowcase />
+    <HeroShowcase><template v-if="previewPlatform" #download><PlatformDownload v-model:platform="platform" compact /></template></HeroShowcase>
     <section
       id="workflow"
       class="wrap workflow-summary"
@@ -51,7 +56,7 @@ const source = "https://github.com/noisy/noisy-coding";
           record: revisit messages, replay an answer, and adjust how you listen.
         </p>
       </div>
-      <DashboardShowcase />
+      <DashboardShowcase :preview-url="dashboardPreviewUrl" />
     </section>
     <section id="install" class="section install-section">
       <div class="wrap install-grid">
@@ -63,7 +68,8 @@ const source = "https://github.com/noisy/noisy-coding";
             Hear the progress, give direction, and keep creating.
           </p>
         </div>
-        <div class="download-panel">
+        <PlatformDownload v-if="previewPlatform" v-model:platform="platform" />
+        <div v-else class="download-panel">
           <div class="download-product">
             <div class="download-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 13v6m7-12v18m6-15v12m7-9v6" /></svg></div>
             <div><p class="eyebrow">Your voice, in the workflow</p><h3>Noisy Studio</h3></div>

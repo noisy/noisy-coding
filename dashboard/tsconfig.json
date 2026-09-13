@@ -4,6 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "baseUrl": ".",
+    "paths": { "vue": ["./node_modules/vue"], "@dashboard/*": ["./src/*"] },
     "jsx": "preserve",
     "sourceMap": true,
     "resolveJsonModule": true,
