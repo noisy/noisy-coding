@@ -32,3 +32,20 @@ test('stopping during activity prevents late audio and further prompts', async (
   assert.equal(session.events.at(-1).type, 'recording-stop');
   assert.equal(session.events.filter(e => e.type === 'user-start').length, 1);
 });
+
+test('hero production pause is exported between replies and every line stays ordered', async () => {
+  const { SCENARIOS } = await import('../../../tools/demo-recorder/scenarios.mjs');
+  let time = 0;
+  const session = new StudioSession(SCENARIOS.find(s => s.id === 'hero-search'), {
+    now: () => time, update() {}, wait: async ms => { time += ms; },
+    play: async (_reply, _signal, started) => { started(); time += 100; },
+  });
+  await session.start();
+  while (session.phase === 'user') await session.advance();
+  const events = session.events;
+  const deploying = events.find(e => e.text === 'Deploying to production');
+  const onIt = events.find(e => e.type === 'agent-end' && e.clip === 'hero-lux-search-4');
+  const live = events.find(e => e.type === 'agent-start' && e.clip === 'hero-lux-search-production');
+  assert.deepEqual([deploying.atMs, live.atMs], [onIt.atMs, onIt.atMs + 2200]);
+  assert.deepEqual(events.filter(e => e.type === 'user-start').map(e => e.utterance), ['u1','u2','u3','u4','u5']);
+});

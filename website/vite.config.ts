@@ -16,7 +16,7 @@ export default defineConfig({
   base: process.env.PAGES_BASE ?? "/",
   plugins: [vue()],
   define: { __APP_VERSION__: JSON.stringify(dashboardPackage.version) },
-  build: { rollupOptions: { input: { main: repo("./index.html"), dashboardDemo: repo("./dashboard-demo.html") } } },
+  build: { rollupOptions: { input: { main: repo("./index.html"), demoStudio: repo("./demo-studio/index.html"), dashboardDemo: repo("./dashboard-demo.html") } } },
   // The avatars sprite (public/avatars.png) is resolved at runtime by
   // voiceSprites.ts as an absolute /avatars.png - serve the dashboard's
   // public dir so the same URL works here.
