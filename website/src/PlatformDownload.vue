@@ -33,7 +33,7 @@ function notify() { emit('notify', { platform: selected.value, email: email.valu
         <button class="platform-primary" type="submit">Notify me <span aria-hidden="true">→</span></button>
       </form>
     </template>
-    <a class="platform-secondary" href="https://github.com/noisy/noisy-studio/releases" target="_blank" rel="noopener">Other downloads <span aria-hidden="true">↗</span></a>
+    <!-- Restore the downloads link when release binaries are available. -->
   </section>
 </template>
 <style scoped>
