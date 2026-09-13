@@ -149,7 +149,7 @@ onMounted(() => {
        the product's transparent look - opaque bubbles, invisible panel -
        which is exactly the right story over page content. -->
   <Teleport to="body">
-    <div v-if="floating" class="demo-float" role="dialog" aria-label="noisy-coding companion demo">
+    <div v-if="floating" class="demo-float" role="dialog" aria-label="Noisy Studio companion demo">
       <div class="demo-float-bar">
         <span v-if="state === 'live' && !rt.micMuted.value" class="onair">&#9679; ON AIR - MIC IS LIVE</span>
         <span v-else-if="state === 'connecting'" class="offair">CONNECTING&hellip;</span>

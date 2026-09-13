@@ -73,7 +73,7 @@ onMounted(() => {
       class="scene-stage"
       :style="{ transform: `scale(${scale})` }"
       role="img"
-      aria-label="A finished Claude Code session with the NOISY-CODING widget rewinds to empty and replays itself forward at speed"
+      aria-label="A finished Claude Code session with the NOISY STUDIO widget rewinds to empty and replays itself forward at speed"
     >
       <div class="terminal-slot" :class="{ rewinding }">
         <ClaudeCodeMock full-bleed banner="both" :visible-lines="visibleLines" />

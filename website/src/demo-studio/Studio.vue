@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="studio-shell">
-    <header class="studio-header"><a :href="baseUrl" class="wordmark">Noisy Coding <span>/ Demo Studio</span></a><span class="private-note">Recorded here. Saved by you.</span></header>
+    <header class="studio-header"><a :href="baseUrl" class="wordmark">Noisy Studio <span>/ Demo Studio</span></a><span class="private-note">Recorded here. Saved by you.</span></header>
     <main>
       <div class="intro"><p class="eyebrow">THE RECORDING ROOM</p><h1>A conversation.<br><span>Just play your part.</span></h1><p>Say your line. Press Space. Listen and react. We’ll take care of the timing.</p></div>
       <div v-if="error" role="alert" class="error">{{ error }}</div>

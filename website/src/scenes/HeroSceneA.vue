@@ -109,7 +109,7 @@ onMounted(() => {
       :class="[`phase${phase}`, { faded }]"
       :style="{ transform: `scale(${scale})` }"
       role="img"
-      aria-label="A Claude Code terminal session fixing a webhook bug while the NOISY-CODING companion widget floats bottom-right, carrying the spoken exchange"
+      aria-label="A Claude Code terminal session fixing a webhook bug while the NOISY STUDIO companion widget floats bottom-right, carrying the spoken exchange"
     >
       <div class="terminal-slot">
         <ClaudeCodeMock full-bleed banner="both" :visible-lines="visibleLines" />
@@ -128,7 +128,7 @@ onMounted(() => {
         </div>
       </transition>
       <div class="scene-label label-cc" :class="{ on: labelCC }">Claude Code - your agent</div>
-      <div class="scene-label label-nc" :class="{ on: labelNC }">noisy-coding - the voice on top</div>
+      <div class="scene-label label-nc" :class="{ on: labelNC }">Noisy Studio - the voice on top</div>
     </div>
   </div>
 </template>

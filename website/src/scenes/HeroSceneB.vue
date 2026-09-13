@@ -84,7 +84,7 @@ onMounted(() => {
       :class="{ faded }"
       :style="{ transform: `scale(${scale})` }"
       role="img"
-      aria-label="A cinematic reveal: a huge Claude Code terminal pulls back and the NOISY-CODING companion widget drops in over it"
+      aria-label="A cinematic reveal: a huge Claude Code terminal pulls back and the NOISY STUDIO companion widget drops in over it"
     >
       <div class="camera" :class="{ out: zoomedOut }">
         <div class="terminal-slot">

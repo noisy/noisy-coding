@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
         class="scene-stage"
         :style="{ transform: `scale(${scale})` }"
         role="img"
-        aria-label="An ambient 3D-tilted scene: the Claude Code terminal streams its session while the NOISY-CODING widget floats and glows beside it"
+        aria-label="An ambient 3D-tilted scene: the Claude Code terminal streams its session while the NOISY STUDIO widget floats and glows beside it"
       >
         <div class="terminal-slot" :class="{ wiped: streamFade }">
           <ClaudeCodeMock full-bleed banner="both" :visible-lines="visibleLines" />
