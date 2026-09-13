@@ -21,6 +21,8 @@ HANDOFF-*.md
 ANALYSIS-*.md
 HANDOFF.md
 node_modules/
+analytics.local.json
+desktop/analytics-config.json
 # Local working drafts — they keep sneaking into commits by accident.
 issues-drafts/
 

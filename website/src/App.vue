@@ -3,6 +3,8 @@ import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
 import DashboardShowcase from "./DashboardShowcase.vue";
+import AnalyticsPreference from './AnalyticsPreference.vue';
+import { websiteAnalytics } from './analytics';
 const source = "https://github.com/noisy/noisy-coding";
 </script>
 
@@ -65,11 +67,12 @@ const source = "https://github.com/noisy/noisy-coding";
         <div class="install-options">
           <a
             :href="`${source}/blob/v3-desktop/README.md#install-for-claude-code`"
+            @click="websiteAnalytics.trackGuide('claude_code')"
             ><span>Claude Code</span
             ><strong
               >Installation & setup <span aria-hidden="true">↗</span></strong
             ></a
-          ><a :href="`${source}/blob/v3-desktop/docs/codex.md`"
+          ><a :href="`${source}/blob/v3-desktop/docs/codex.md`" @click="websiteAnalytics.trackGuide('codex')"
             ><span>Codex <small>Preview</small></span
             ><strong
               >Preview setup guide <span aria-hidden="true">↗</span></strong
@@ -114,4 +117,5 @@ const source = "https://github.com/noisy/noisy-coding";
     ><span>Your voice, in the workflow.</span
     ><a :href="source">Built in the open ↗</a>
   </footer>
+  <AnalyticsPreference />
 </template>
