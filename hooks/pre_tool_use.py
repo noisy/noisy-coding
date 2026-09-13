@@ -14,13 +14,13 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import re  # noqa: E402
+
 from _agent_identity import identity  # noqa: E402
 from post_tool_use import _activity_line, _post_activity  # noqa: E402
 
-import re  # noqa: E402
-
 IDENTITY_TOOLS = re.compile(
-    r"^mcp__[^\s]*noisy[_-]coding[^\s]*__(speak|announce|change_voice|set_speaker_style)$"
+    r"^mcp__[^\s]*noisy[_-](?:coding|studio)[^\s]*__(speak|announce|change_voice|set_speaker_style)$"
 )
 
 

@@ -11,10 +11,12 @@ import os
 import sys
 import urllib.request
 
+from _environment import getenv
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 
-PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
+PORT = getenv("NOISY_STUDIO_LISTENER_PORT", "8765")
 
 
 def _activity_line(hook_input: dict) -> str:
@@ -23,12 +25,12 @@ def _activity_line(hook_input: dict) -> str:
     if not tool:
         return ""
     params = hook_input.get("tool_input") or {}
-    if tool.startswith("mcp__noisy-coding__"):
+    if tool.startswith(("mcp__noisy-studio__", "mcp__noisy-coding__")):
         # Claude's own speech: name the act, not the plumbing. This line is
         # what explains a transcript stuck AWAITING — the speak call blocks
         # through synthesis AND playback, and it fires BEFORE the daemon
         # even creates the voice card.
-        action = tool[len("mcp__noisy-coding__"):]
+        action = tool.rsplit("__", 1)[-1]
         spoken = str(params.get("text") or "").strip()
         if action in ("speak", "announce") and spoken:
             return f"SPEAKING · „{spoken[:60]}”"

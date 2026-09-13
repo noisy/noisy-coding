@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "hooks"))
 from _codex_config import config_path  # noqa: E402
 
-OWNER = "noisy-coding"
+OWNER = "noisy-studio"
 MANAGED_KEYS = {"managed_by", "port", "listen_seconds", "agent_label"}
 
 
@@ -19,7 +19,7 @@ def configure_file(path, port=None, listen_seconds=3600, agent_label="Codex", un
     existing = json.loads(path.read_text()) if path.exists() else {}
     if not isinstance(existing, dict):
         raise ValueError("existing integration settings must be a JSON object")
-    if existing and existing.get("managed_by") != OWNER:
+    if existing and existing.get("managed_by") not in {OWNER, "noisy-coding"}:
         raise ValueError("existing file is not owned by this installer; preserve or move it explicitly first")
     if uninstall:
         result = {key: value for key, value in existing.items() if key not in MANAGED_KEYS}
@@ -29,7 +29,7 @@ def configure_file(path, port=None, listen_seconds=3600, agent_label="Codex", un
     else:
         if port is None or not 1 <= port <= 65535 or not 0 <= listen_seconds <= 3600:
             raise ValueError("port must be 1–65535 and listen-seconds 0–3600")
-        result = {**existing, "managed_by": OWNER, "port": port,
+        result = {**existing, "managed_by": existing.get("managed_by", OWNER), "port": port,
                   "listen_seconds": listen_seconds, "agent_label": agent_label}
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=".codex-")

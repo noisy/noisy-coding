@@ -1,47 +1,77 @@
-# Noisy Studio rebrand
+# Noisy Studio: technical rename and upgrade risks
 
-Noisy Studio is the new product name. This first change covers the dashboard,
-website, Demo Studio, desktop window/menu text, packaged app and download names,
-mobile view, setup greetings, plugin display text, and current documentation.
+The product and GitHub repository are now Noisy Studio. The website lives at
+https://noisystudio.ai/. This second change renames Python package
+and import paths, CLI commands, plugin/marketplace identifiers, MCP server names,
+private npm packages, the bundled daemon executable, and repository references.
 
-The macOS app builds as **Noisy Studio.app**, with **Noisy Studio Dev.app** for
-the development distribution. Electron Builder derives executable and download
-artifact names from these product names. The existing bundle IDs remain stable.
-The shell explicitly preserves the former Electron user-data directory before
-startup, including the separate packaged development profile. Backend settings,
-history, and credentials continue to use their existing configured directories.
-The former app bundle may remain installed alongside the renamed bundle; quit
-and replace the old application when installing the renamed build.
+## Compatibility retained
 
-## Compatibility names retained for the next change
+- New CLI commands are `noisy-studio-mcp`, `noisy-studio-listener`, and
+  `noisy-studio-mobile`. Their `noisy-coding-*` aliases call the same new modules.
+- Python imports now use `noisy_studio`. There is no `noisy_coding` import alias:
+  external Python callers must update their imports. Avoid two module identities
+  for the same mutable daemon state.
+- `NOISY_STUDIO_*` variables take precedence over `NOISY_CODING_*` when present,
+  including an explicitly empty value. The old prefix remains a fallback. Hooks
+  use the same stdlib reader as the daemon. Development scripts and desktop config
+  overrides accept their corresponding old variables as well.
+- Both old/new MCP prefixes are accepted by identity-sensitive hook matching.
+- The Codex installer accepts both ownership markers and preserves an existing
+  marker, so updating a legacy settings file does not prevent its old installer
+  from recognizing it. Unrelated settings remain intact.
+- On-disk `.config/noisy-coding*` directories, Electron profile directories,
+  bundle IDs, `noisy-coding.*` browser keys, Docker service/container/volume names,
+  and the existing MCP registry identity stay unchanged. No data is moved or deleted.
+- Existing checkout directories and running installations are not modified.
 
-| Area | Existing identifier | Why it remains |
+## Risk assessment
+
+| Change | Risk | Failure mode and mitigation |
 | --- | --- | --- |
-| Repository and checkout | `noisy/noisy-coding`, `noisy-coding/` | Repository and existing directory renames are deferred. |
-| Website URLs | Current domain and `/noisy-coding/` Pages base | Avoid broken links and deployment paths. |
-| Python and CLI | `noisy-coding`, `noisy_coding`, `noisy-coding-*` | Imports, entry points, metadata lookup, installers, and release scripts must move together. |
-| Plugins and MCP | `noisy-coding`, `mcp__noisy-coding__*` | Existing registrations, hook matchers, ownership markers, and update commands depend on them. |
-| Configuration | `NOISY_CODING_*`, `.config/noisy-coding*` | Renaming without fallback could disconnect integrations or hide saved state. |
-| Browser preferences | `noisy-coding.*` | Preserve accent, avatar, and audio settings. |
-| Desktop identity | `pl.noisy.coding.companion*`, old Electron profile names | Preserve application identity and existing profiles; OS upgrade/permission behavior still needs a packaged-app check. |
-| Internal build names | npm package names, `noisy-coding-daemon` | These are technical identities, separate from the visible app and download names. |
-| Docker and registry | Existing images, containers, services, volumes, MCP registry name | Hooks and installations depend on these; a volume rename can make saved state appear missing. |
+| Plugin IDs, marketplace ID, MCP registration names | **HIGH** | An installed plugin does not become a differently named plugin through a normal update. Installing both can duplicate hooks; switching before upgrading the daemon can lose identity matching. Upgrade the daemon first, replace the old plugin, reload hooks and restart affected sessions. |
+| Python distribution and import namespace | **HIGH for Python callers**, medium for CLI users | `import noisy_coding` no longer works. Update callers to `noisy_studio`. The new distribution retains all three old CLI entry points. Use a clean/synchronized environment; uninstalling a co-installed old distribution could remove shared console-script names. |
+| Frozen daemon filename | **MEDIUM** | A shell-only update with an old daemon binary fails to launch. Rebuild the daemon and shell together; distribute a complete application bundle. |
+| Environment prefix | **MEDIUM** | Conflicting old/new values can select a different endpoint or config directory. New wins, old remains fallback. Avoid setting both during rollout unless the precedence is intentional. |
+| Docker publication under two names | **MEDIUM** | Release credentials must be able to publish `noisy/noisy-studio` as well as the old repository; publication is not transactional. A failure can leave only one tag updated. Verify both destinations before announcing a release. Existing Compose/install flows keep pulling the old image until the new coordinate is available. |
+| Private npm package names and GitHub links | **LOW** | No public npm packages are replaced. Lockfile root names change together. Production uses the custom-domain root base; project-path builds remain supported. |
+| Persistent and OS identities | **LOW in this PR** | Their legacy spelling is deliberate: renaming them could hide saved data, create new volumes, split concurrent writes, or reset OS permissions. They are not migrated here. |
 
-A later technical rename needs agreed aliases/fallbacks, collision handling when
-both old and new settings exist, and rollback behavior. Do not replace these
-identifiers in installation examples until the corresponding implementation
-supports the new names. Existing ticket contents remain unchanged; historical design documents use
-the current brand in prose while retaining their original technical examples.
+## Rollout order
 
-## Recorded media
+1. Publish a release containing the new daemon package and both-prefix identity
+   matching. Keep the old Docker image coordinate and CLI aliases available.
+2. For desktop installs, rebuild and install the whole app, including
+   `noisy-studio-daemon`. Keep the same bundle ID and profile location.
+3. Stop/reload existing agent sessions when replacing the plugin. For Claude Code,
+   remove `noisy-coding@noisy`, refresh the `noisy` marketplace from
+   `noisy/noisy-studio`, then install `noisy-studio@noisy`. For Codex, remove
+   `noisy-coding@noisy-coding`, add/refresh the marketplace from
+   `noisy/noisy-studio`, then add `noisy-studio@noisy-studio`.
+4. Do not run old and new plugin hooks concurrently. Re-run the integration setup
+   for the intended daemon port and review the newly named hooks. Existing Codex
+   settings remain in `.config/noisy-coding/codex.json`.
+5. Complete a spoken round trip in each supported host before relying on the new
+   registration. Old-only daemons must not serve new-name plugins.
 
-The two scripted demo lines that name the product use new clip keys,
-`studio-greet` and `studio-script-1`, so the existing browser speech fallback
-reads the updated text instead of playing old-brand audio. Replacement recordings
-can be added under those keys without another driver change. The existing hero and crew recording transcripts contain no old product name;
-sampled video frames and their posters also produced no old-name OCR matches.
-This is a spot check, not a frame-by-frame or audio transcription audit.
+Merging code does not perform these release or local migration steps. The legacy
+MCP registry entry and third-party listing URLs stay until publication is separately
+coordinated; merely changing their names would advertise nonexistent registrations.
+The Docker Hub badge and existing install commands intentionally use the old image.
 
-The unreferenced `docs/img/desktop-dashboard.png` and
-`docs/img/companion-desktop-dock.png` retain the old name in historical captures.
-The generated website/dashboard screenshots are rebuilt from the new UI.
+## Rollback
+
+Restore the complete previous daemon/app release and the previous plugin together.
+Remove the new plugin registration before restoring the old one. Unset new-prefix
+variables when reverting to a release that only reads the old prefix. Stored data
+and ownership markers have not moved, so no reverse data migration is needed.
+A standalone Python caller must also revert its imports/environment coherently.
+
+## Media carried from the first PR
+
+The two renamed scripted lines use `studio-greet` and `studio-script-1`, with the
+existing browser speech fallback until replacement clips are added. Website
+screenshots use the new branding. The two unreferenced historical documentation
+captures, `docs/img/desktop-dashboard.png` and `docs/img/companion-desktop-dock.png`,
+retain their original pixels. Existing ticket contents and captured JSONL session
+fixtures remain unchanged.

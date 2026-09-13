@@ -78,8 +78,8 @@ let child = null;   // the daemon WE started, if any
 /** Where the frozen daemon lives: inside the bundle once packaged, in the
  *  build directory during development. */
 function daemonBinary() {
-  const packaged = path.join(process.resourcesPath || "", "daemon", "noisy-coding-daemon");
-  const local = path.join(__dirname, "build", "daemon", "noisy-coding-daemon");
+  const packaged = path.join(process.resourcesPath || "", "daemon", "noisy-studio-daemon");
+  const local = path.join(__dirname, "build", "daemon", "noisy-studio-daemon");
   return require("node:fs").existsSync(packaged) ? packaged : local;
 }
 
@@ -91,11 +91,11 @@ async function spawnDaemon() {
   child = spawn(bin, [], {
     env: {
       ...process.env,
-      NOISY_CODING_LISTENER_PORT: String(OWN_PORT),
+      NOISY_STUDIO_LISTENER_PORT: String(OWN_PORT),
       // Its own config directory: sharing one means sharing settings,
       // history and the voice ledger, where the last writer wins.
-      NOISY_CODING_CONFIG_DIR:
-        process.env.NOISY_CODING_CONFIG_DIR ||
+      NOISY_STUDIO_CONFIG_DIR:
+        process.env.NOISY_STUDIO_CONFIG_DIR || process.env.NOISY_CODING_CONFIG_DIR ||
         path.join(app.getPath("home"), ".config", "noisy-coding-app"),
     },
     stdio: "ignore",

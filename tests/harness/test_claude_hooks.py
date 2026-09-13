@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from noisy_coding.harness.claude_hooks.adapter import ClaudeHooks, title_from_transcript
+from noisy_studio.harness.claude_hooks.adapter import ClaudeHooks, title_from_transcript
 
 PAYLOAD = {
     "session_id": "6eef14ed-f7a3-4bf5-b268-03eba86b85f3",
@@ -56,8 +56,8 @@ def test_subagent_payload_is_a_participant_of_the_parent():
 
 def test_speak_identity_is_the_conversation_key_for_every_server_name():
     adapter = ClaudeHooks(read_text=lambda _p: "")
-    for tool in ("mcp__noisy-coding__speak", "mcp__noisy-coding-dev__announce",
-                 "mcp__plugin_noisy-coding_noisy-coding__change_voice"):
+    for tool in ("mcp__noisy-studio__speak", "mcp__noisy-studio-dev__announce",
+                 "mcp__plugin_noisy-studio_noisy-studio__change_voice"):
         result = adapter.interpret({**PAYLOAD, "hook_event_name": "PreToolUse", "tool_name": tool,
                                     "tool_input": {"text": "x"}})
         assert result.speech_identity == PAYLOAD["transcript_path"]

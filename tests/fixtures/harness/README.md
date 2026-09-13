@@ -1,6 +1,6 @@
 # Harness payload fixtures
 
-One directory per registry entry (`noisy_coding.harness.names()`), one
+One directory per registry entry (`noisy_studio.harness.names()`), one
 JSONL file per scenario, one raw hook payload per line, in the order the
 agent system sent them. `tests/harness/test_contract.py` requires
 `session.jsonl`, `resume.jsonl` and `title.jsonl`; `participant.jsonl`

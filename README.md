@@ -3,13 +3,15 @@
 **Talk to your coding agent while it works — voice support for Claude Code, and Codex in preview.**
 It's your voice that's noisy, not your code.
 
-Previously noisy-coding. Installation commands and configuration identifiers
-retain their existing names for compatibility; see [the rebranding notes](docs/rebranding.md).
+Previously noisy-coding. New installations use the `noisy-studio` commands
+and plugin IDs. Existing CLI commands, environment variables and saved data
+remain supported; read [the upgrade and risk notes](docs/rebranding.md) before
+switching an existing plugin installation.
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/noisy/noisy-coding)](https://hub.docker.com/r/noisy/noisy-coding)
-[![Release](https://img.shields.io/github/v/release/noisy/noisy-coding)](https://github.com/noisy/noisy-coding/releases)
-[![CI](https://github.com/noisy/noisy-coding/actions/workflows/ci.yml/badge.svg)](https://github.com/noisy/noisy-coding/actions/workflows/ci.yml)
-[![Last commit](https://img.shields.io/github/last-commit/noisy/noisy-coding)](https://github.com/noisy/noisy-coding/commits/main)
+[![Release](https://img.shields.io/github/v/release/noisy/noisy-studio)](https://github.com/noisy/noisy-studio/releases)
+[![CI](https://github.com/noisy/noisy-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/noisy/noisy-studio/actions/workflows/ci.yml)
+[![Last commit](https://img.shields.io/github/last-commit/noisy/noisy-studio)](https://github.com/noisy/noisy-studio/commits/main)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Glama score](https://glama.ai/mcp/servers/noisy/noisy-coding/badges/score.svg)](https://glama.ai/mcp/servers/noisy/noisy-coding)
 
@@ -47,12 +49,12 @@ Docker and a browser — no Python, no git, no environment variables.
 
 ```bash
 # terminal: marketplace + plugin in one line
-claude plugin marketplace add noisy/noisy-coding && claude plugin install noisy-coding@noisy
+claude plugin marketplace add noisy/noisy-studio && claude plugin install noisy-studio@noisy
 ```
 
 ```
 # inside Claude Code (new session):
-/noisy-coding:setup
+/noisy-studio:setup
 ```
 
 The setup command starts the published image and walks you through first
@@ -62,9 +64,9 @@ banner — that one click makes the tab your microphone and speaker. Keep
 the tab open and just talk.
 
 Prefer staying inside Claude Code? Same thing, four commands:
-`/plugin marketplace add noisy/noisy-coding` →
-`/plugin install noisy-coding@noisy` → `/reload-plugins` →
-`/noisy-coding:setup`.
+`/plugin marketplace add noisy/noisy-studio` →
+`/plugin install noisy-studio@noisy` → `/reload-plugins` →
+`/noisy-studio:setup`.
 
 Other setups — plain Docker without the plugin, native install with
 hardware mic/speakers, remote hosts, all configuration knobs — live in
@@ -78,8 +80,8 @@ See [the Codex guide](docs/codex.md) for pre-release checkout installation,
 endpoint selection, and a spoken round-trip check.
 
 ```sh
-codex plugin marketplace add noisy/noisy-coding
-codex plugin add noisy-coding@noisy-coding
+codex plugin marketplace add noisy/noisy-studio
+codex plugin add noisy-studio@noisy-studio
 ```
 
 In a new session: **“Use Noisy Studio to set up voice.”** Review its hooks

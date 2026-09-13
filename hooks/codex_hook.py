@@ -13,6 +13,8 @@ import json
 import os
 import sys
 
+from _environment import getenv
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _codex_config import configure  # noqa: E402
 
@@ -21,14 +23,14 @@ def main() -> None:
     try:
         settings = configure()
     except (ValueError, OSError, TypeError) as error:
-        print(json.dumps({"systemMessage": f"noisy-coding configuration error: {error}"}))
+        print(json.dumps({"systemMessage": f"noisy-studio configuration error: {error}"}))
         return
     import _hook_flow  # after configure(): the port comes from the settings file
 
     payload = _hook_flow.read_payload()
     if not payload:
         return
-    listen_seconds = float(os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "30"))
+    listen_seconds = float(getenv("NOISY_STUDIO_REWAKE_WAIT_SECONDS", "30"))
     try:
         code = _hook_flow.run("codex-hooks", payload, listen_seconds=listen_seconds)
     except Exception:

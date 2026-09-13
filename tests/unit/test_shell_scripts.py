@@ -52,7 +52,7 @@ def test_exec_sh_passes_the_session_title_extracted_host_side(tmp_path):
     run(EXEC_SH, ["stop.py"], hook_input, env)
 
     call = log.read_text()
-    assert "NOISY_CODING_SESSION_TITLE=release" in call  # last title wins
+    assert "NOISY_STUDIO_SESSION_TITLE=release" in call  # last title wins
     assert "/app/hooks/stop.py" in call
     # The hook input must be forwarded untouched.
     assert json.loads((tmp_path / "docker-stdin.txt").read_text()) == {
@@ -65,7 +65,7 @@ def test_exec_sh_sends_an_empty_title_when_the_transcript_is_unreadable(tmp_path
 
     run(EXEC_SH, ["stop.py"], '{"transcript_path": "/nope/missing.jsonl"}', env)
 
-    assert "NOISY_CODING_SESSION_TITLE= " in log.read_text()
+    assert "NOISY_STUDIO_SESSION_TITLE= " in log.read_text()
 
 
 def test_exec_sh_preserves_the_rewake_contract(tmp_path):
@@ -108,7 +108,7 @@ def test_mcp_exec_waits_for_the_container_then_execs_stdio(tmp_path):
     calls = log.read_text().splitlines()
     assert len(calls) >= 3  # it kept retrying instead of dying on the first refusal
     # The MCP instance must be forced to stdio (the image env says http).
-    assert "NOISY_CODING_MCP_TRANSPORT=stdio" in calls[-1]
+    assert "NOISY_STUDIO_MCP_TRANSPORT=stdio" in calls[-1]
     assert "noisy-coding-mcp" in calls[-1]
     # The session identity must cross the container boundary (#15) — without
     # it the server guesses by cwd and two tabs steal each other's replies.

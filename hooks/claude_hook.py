@@ -12,6 +12,8 @@ from __future__ import annotations
 import os
 import sys
 
+from _environment import getenv
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _hook_flow  # noqa: E402
 
@@ -22,7 +24,7 @@ def main() -> None:
         return
     # Optional: shorten the listening window (seconds); the daemon never
     # lets a hook lengthen it past the harness default.
-    window = os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS")
+    window = getenv("NOISY_STUDIO_REWAKE_WAIT_SECONDS")
     try:
         code = _hook_flow.run(
             "claude-hooks", payload, listen_seconds=float(window) if window else None

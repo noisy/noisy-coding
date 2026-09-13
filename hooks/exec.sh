@@ -1,5 +1,5 @@
 #!/bin/sh
-# Fail-open bridge between Claude Code hooks and the noisy-coding
+# Fail-open bridge between Claude Code hooks and the noisy-studio
 # container. Before the container exists (fresh install — setup has not
 # run yet) or while it is stopped, hooks must be SILENT: a wall of
 # "No such container" errors on every prompt is the worst possible first
@@ -9,7 +9,7 @@
 # This script also carries the session title across the container
 # boundary: the /rename title lives in the session transcript, a HOST
 # file the containerized hooks cannot read. So the title is extracted
-# here, host-side, and handed in as NOISY_CODING_SESSION_TITLE. On
+# here, host-side, and handed in as NOISY_STUDIO_SESSION_TITLE. On
 # Windows this runs under Git Bash (the Claude Code default shell);
 # without Git Bash there is no title and the dashboard falls back to
 # the short session id.
@@ -32,11 +32,11 @@ fi
 
 if [ -n "$ENV_ASSIGNMENT" ]; then
     OUTPUT=$(printf '%s' "$INPUT" | docker exec -i \
-        -e "$ENV_ASSIGNMENT" -e "NOISY_CODING_SESSION_TITLE=$TITLE" \
+        -e "$ENV_ASSIGNMENT" -e "NOISY_STUDIO_SESSION_TITLE=$TITLE" -e "NOISY_CODING_SESSION_TITLE=$TITLE" \
         noisy-coding python3 "/app/hooks/$SCRIPT" 2>&1)
 else
     OUTPUT=$(printf '%s' "$INPUT" | docker exec -i \
-        -e "NOISY_CODING_SESSION_TITLE=$TITLE" \
+        -e "NOISY_STUDIO_SESSION_TITLE=$TITLE" -e "NOISY_CODING_SESSION_TITLE=$TITLE" \
         noisy-coding python3 "/app/hooks/$SCRIPT" 2>&1)
 fi
 CODE=$?

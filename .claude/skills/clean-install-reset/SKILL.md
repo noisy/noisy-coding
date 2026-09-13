@@ -6,7 +6,7 @@ description: Wipe Noisy Studio leftovers from this machine so the install path c
 # Clean-slate reset for install testing
 
 Purpose: bring the machine to the state of a NEW user, so the plugin install
-path (`marketplace add` → `plugin install` → `/noisy-coding:setup`) can be
+path (`marketplace add` → `plugin install` → `/noisy-studio:setup`) can be
 tested honestly. This skill is a checklist and a conversation script, not a
 delete script — AUDIT first, show the user a table of findings, ASK about the
 destructive choices, and back up whatever you edit (one local directory,
@@ -20,7 +20,7 @@ user a ready `!`-prefixed command for the docker parts.
 
 1. `~/.claude/settings.json` — installer-era hooks (`docker exec -i
    noisy-coding …`) and `enabledPlugins` / `extraKnownMarketplaces` entries.
-2. `~/.claude.json` — a user-scope `mcpServers.noisy-coding` entry (from the
+2. `~/.claude.json` — a user-scope `mcpServers.noisy-studio` entry (from the
    manual `claude mcp add` path) and dead `projects` entries (e.g. the old
    `grok-voice-mcp` checkout).
 3. `~/.claude/plugins/` — `installed_plugins.json`, `known_marketplaces.json`
@@ -58,5 +58,5 @@ grok may belong to xAI's CLI, not this project — flag, don't touch).
 
 Sanity: `grep -i "noisy\|grok" ~/.claude/settings.json ~/.claude.json` should
 come back empty (modulo unrelated matches), `claude plugin list` shows no
-`noisy-coding`, `docker ps -a` no container. Then hand the user back to the
+`noisy-studio`, `docker ps -a` no container. Then hand the user back to the
 README quick start and observe the fresh install like a new user would.

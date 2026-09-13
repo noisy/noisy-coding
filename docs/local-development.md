@@ -19,13 +19,13 @@ it can never be confused with the blue production dashboard. Everything else
 looks production-identical on purpose: the dev instance is where production
 visuals get tested.
 
-Port taken? `NOISY_CODING_DEV_HTTP_PORT=7775 scripts/dev_daemon.sh`.
+Port taken? `NOISY_STUDIO_DEV_HTTP_PORT=7775 scripts/dev_daemon.sh`.
 
 ### Separate config dir — mandatory
 
 A dev install MUST use its own config directory, never the production one.
-`scripts/dev_daemon.sh` sets `NOISY_CODING_CONFIG_DIR` to
-`~/.config/noisy-coding-dev` (override with `NOISY_CODING_DEV_CONFIG_DIR`),
+`scripts/dev_daemon.sh` sets `NOISY_STUDIO_CONFIG_DIR` to
+`~/.config/noisy-coding-dev` (override with `NOISY_STUDIO_DEV_CONFIG_DIR`),
 so the dev daemon keeps its OWN history, conversations, settings and voice
 claims. Production (the native app) uses the default `~/.config/noisy-coding`.
 
@@ -51,9 +51,9 @@ Two integration points, both scoped to this repo so nothing else changes:
 scope), so an agent can never confuse the two:
 
 ```sh
-claude mcp add noisy-coding-dev --scope local \
-  --env NOISY_CODING_LISTENER_PORT=7765 \
-  -- uv run noisy-coding-mcp
+claude mcp add noisy-studio-dev --scope local \
+  --env NOISY_STUDIO_LISTENER_PORT=7765 \
+  -- uv run noisy-studio-mcp
 ```
 
 Local scope (per user, per project — stored in `~/.claude.json`) is
@@ -62,8 +62,8 @@ committed here is auto-loaded by the plugin and shipped to every end user
 (that bug shipped in 2.7.0–2.7.3). One command per contributor machine is
 the price of never leaking the dev server again.
 
-Production stays `noisy-coding`; the dev tools show up as
-`mcp__noisy-coding-dev__*`.
+Production stays `noisy-studio`; the dev tools show up as
+`mcp__noisy-studio-dev__*`.
 
 **Hooks** — production hooks run via `docker exec` inside the container and
 always reach the production daemon. Override them per project in this repo's
@@ -74,7 +74,7 @@ always reach the production daemon. Override them per project in this repo's
   "hooks": {
     "Stop": [{"hooks": [{
       "type": "command",
-      "command": "NOISY_CODING_LISTENER_PORT=7765 python3 hooks/stop.py",
+      "command": "NOISY_STUDIO_LISTENER_PORT=7765 python3 hooks/stop.py",
       "timeout": 3630, "asyncRewake": true
     }]}]
   }
@@ -92,7 +92,7 @@ its own daemon.)
   Prod is blue, dev is amber-badged.
 - **Rewake locks**: production's live inside the container
   (`/root/.config/noisy-coding`), dev's on the host — no collision.
-- **Naming**: `noisy-coding` = production, `noisy-coding-dev` = this checkout.
+- **Naming**: `noisy-studio` = production, `noisy-studio-dev` = this checkout.
   Never rename production.
 
 ## Iterating

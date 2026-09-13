@@ -1,4 +1,4 @@
-# noisy-coding in a box — works on ANY host OS.
+# noisy-studio in a box — works on ANY host OS.
 #
 # The container is hardware-free: all audio flows through the dashboard
 # page (the browser tab is the microphone AND the speaker), and the MCP
@@ -7,7 +7,7 @@
 #
 #   docker compose up -d
 #   open http://127.0.0.1:8765        → pick THIS BROWSER TAB (mic + output)
-#   claude mcp add --transport http noisy-coding http://127.0.0.1:8767/mcp
+#   claude mcp add --transport http noisy-studio http://127.0.0.1:8767/mcp
 #
 # Optional Linux-only native audio (host Pulse socket) stays possible —
 # see the commented variant in docker-compose.yml.
@@ -66,4 +66,4 @@ EXPOSE 8765 8766 8767
 
 # Two processes, one box: the listener daemon (HTTP 8765 + tab-audio WS
 # 8766) in the background, the MCP server (streamable HTTP 8767) as PID 1.
-CMD ["sh", "-c", "noisy-coding-listener & exec noisy-coding-mcp"]
+CMD ["sh", "-c", "noisy-studio-listener & exec noisy-studio-mcp"]

@@ -1,5 +1,5 @@
 #!/bin/sh
-# stdio MCP launcher: wait for the noisy-coding container, then hand the
+# stdio MCP launcher: wait for the noisy-studio container, then hand the
 # stream to the MCP server inside it.
 #
 # Why not plain HTTP to :8767? Claude Code connects a plugin's HTTP MCP
@@ -17,7 +17,7 @@ tries=0
 until docker exec noisy-coding true 2>/dev/null; do
     tries=$((tries + 1))
     if [ "$tries" -ge 240 ]; then
-        echo "noisy-coding container not running" >&2
+        echo "Noisy Studio container (noisy-coding) not running" >&2
         exit 1
     fi
     sleep 0.5
@@ -28,6 +28,7 @@ done
 # CLAUDE_CODE_SESSION_ID rides along so the server knows WHICH session it
 # speaks for (#15) — docker exec does not inherit the host environment.
 exec docker exec -i \
+    -e NOISY_STUDIO_MCP_TRANSPORT=stdio \
     -e NOISY_CODING_MCP_TRANSPORT=stdio \
     -e "CLAUDE_CODE_SESSION_ID=${CLAUDE_CODE_SESSION_ID:-}" \
     noisy-coding noisy-coding-mcp

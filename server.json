@@ -3,7 +3,7 @@
   "name": "io.github.noisy/noisy-coding",
   "description": "Voice interface for Claude Code: talk to your agent and it talks back while it works.",
   "repository": {
-    "url": "https://github.com/noisy/noisy-coding",
+    "url": "https://github.com/noisy/noisy-studio",
     "source": "github"
   },
   "version": "2.13.3",
