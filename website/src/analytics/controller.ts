@@ -4,7 +4,7 @@ export const PREFERENCE_KEY = 'noisy-usage-analytics';
 export const EXCLUSION_KEY = 'noisy-exclude-analytics';
 type Client = Pick<PostHog, 'init' | 'capture' | 'opt_in_capturing' | 'opt_out_capturing' | 'reset'>;
 const EVENTS = ['$pageview', 'installation_guide_opened', 'page_scrolled', 'scroll_depth_reached', 'video_demo_interacted', 'get_started_clicked', 'download_clicked'] as const;
-type Preference = 'enabled' | 'disabled' | null;
+type Preference = 'enabled' | 'disabled';
 
 export function createWebsiteAnalytics(client: Client, options: {
   projectToken: string;
@@ -16,11 +16,11 @@ export function createWebsiteAnalytics(client: Client, options: {
   excludeThisBrowser?: boolean;
 }) {
   const available = options.production && Boolean(options.projectToken);
-  let preference: Preference = null;
+  let preference: Preference = 'enabled';
   try {
     const stored = options.storage.getItem(PREFERENCE_KEY);
     if (stored === 'enabled' || stored === 'disabled') preference = stored;
-  } catch { /* Storage can be blocked; the current visit can still opt in. */ }
+  } catch { /* Storage can be blocked; use the default for this visit. */ }
   let initialized = false;
   let excluded = options.excludeThisBrowser === true;
   try {

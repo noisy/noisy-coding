@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { websiteAnalytics } from './analytics';
-const expanded = ref(websiteAnalytics.preference === null);
+const expanded = ref(false);
 const enabled = ref(websiteAnalytics.preference === 'enabled');
 const excluded = ref(websiteAnalytics.excluded);
 function choose(value: boolean) {
@@ -18,11 +18,11 @@ function exclude(value: boolean) {
 </script>
 <template>
   <aside v-if="websiteAnalytics.available" class="analytics-preference" aria-label="Usage analytics">
+    <p>We use PostHog for website usage statistics. Analytics starts automatically unless you turn it off or exclude this browser.</p>
+    <button v-if="!excluded" type="button" @click="choose(!enabled)">{{ enabled ? 'Turn off analytics' : 'Turn on analytics' }}</button>
     <button type="button" :aria-expanded="expanded" @click="expanded = !expanded">Usage analytics: {{ excluded ? 'browser excluded' : enabled ? 'on' : 'off' }}</button>
     <div v-if="expanded" class="analytics-choice">
-      <p>Help improve Noisy Studio by sharing page visits, scroll depth, video-demo controls, and setup or download clicks with PostHog. Optional analytics uses a random browser ID stored on this device. No voice, conversation content, or session recordings are collected.</p>
-      <button type="button" :disabled="excluded" @click="choose(true)">Allow analytics</button>
-      <button type="button" @click="choose(false)">No thanks</button>
+      <p>We collect page visits, scroll depth, video-demo controls, and setup or download clicks with PostHog. Analytics uses a random browser ID stored on this device. No voice, conversation content, or session recordings are collected.</p>
       <button type="button" @click="exclude(!excluded)">{{ excluded ? 'Stop excluding this browser' : 'Exclude this browser from analytics' }}</button>
     </div>
   </aside>

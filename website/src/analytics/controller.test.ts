@@ -22,8 +22,8 @@ function setup({ production = true, projectToken = 'test-project', saved = null 
   return { analytics, calls, storage, config: () => config };
 }
 
-test('initial visits and rejected analytics never initialize the SDK', () => {
-  const { analytics, calls } = setup();
+test('a saved opt-out prevents initialization and capture', () => {
+  const { analytics, calls } = setup({ saved: 'disabled' });
   analytics.start();
   analytics.trackGuide('codex');
   analytics.setEnabled(false);
@@ -31,8 +31,8 @@ test('initial visits and rejected analytics never initialize the SDK', () => {
   assert.deepEqual(calls, []);
 });
 
-test('accepting analytics records a pageview and guide click, and persists the choice', () => {
-  const { analytics, calls, storage } = setup();
+test('re-enabling analytics records a pageview and guide click, and persists the choice', () => {
+  const { analytics, calls, storage } = setup({ saved: 'disabled' });
   analytics.setEnabled(true);
   analytics.trackGuide('codex');
   assert.deepEqual({ calls, preference: storage.get(PREFERENCE_KEY) }, {
@@ -73,7 +73,7 @@ for (const options of [{ production: false }, { projectToken: '' }]) {
 
 test('outbound events exclude query strings, transcripts and automatic browser properties', () => {
   const { analytics, config } = setup();
-  analytics.setEnabled(true);
+  analytics.start();
   const result = config().before_send({ event: '$pageview', properties: {
     token: 'test-project', distinct_id: 'visitor-1', surface: 'website', '$current_url': 'https://noisy.example/?token=private',
     '$referrer': 'https://example.test/private', transcript: 'private conversation', email: 'private@example.test',
@@ -84,8 +84,8 @@ test('outbound events exclude query strings, transcripts and automatic browser p
   assert.equal(config().before_send({ event: '$autocapture', properties: {} }), null);
 });
 
-test('engagement events respect consent and preserve only declared dimensions', () => {
-  const { analytics, calls, config } = setup();
+test('engagement events respect opt-out and preserve only declared dimensions', () => {
+  const { analytics, calls, config } = setup({ saved: 'disabled' });
   const engage = () => {
     analytics.trackScroll(); analytics.trackDepth(50);
     analytics.trackDemo('hero', 'unmute'); analytics.trackGetStarted('header');
@@ -105,4 +105,20 @@ test('engagement events respect consent and preserve only declared dimensions', 
   assert.deepEqual(outgoing.properties, { demo: 'crew', action: 'play', '$current_url': 'https://noisy.example/', '$pathname': '/', '$geoip_disable': true });
   analytics.setExcluded(true); calls.length = 0; engage();
   assert.deepEqual(calls, []);
+});
+
+
+test('a new visitor records a pageview without clicking an analytics control', () => {
+  const { analytics, calls, storage } = setup();
+  analytics.start();
+  assert.deepEqual({ calls, enabled: analytics.enabled, saved: storage.get(PREFERENCE_KEY) }, {
+    calls: [['init'], ['opt-in'], ['capture', '$pageview', { surface: 'website' }]],
+    enabled: true, saved: undefined,
+  });
+});
+
+test('browser exclusion overrides automatic tracking for a new visitor', () => {
+  const { analytics, calls } = setup({ excludeThisBrowser: true });
+  analytics.start();
+  assert.deepEqual({ calls, enabled: analytics.enabled }, { calls: [], enabled: false });
 });
