@@ -23,6 +23,7 @@ import json
 
 from noisy_coding.listener.http_api import (
     CHARACTER_FILE,
+    DAEMON_VERSION,
     VOICE_CLAIMS_FILE,
     DEFAULT_PORT,
     PORT_ENV_VAR,
@@ -758,6 +759,10 @@ def run(config: VadConfig | None = None) -> None:
 
 
 def main() -> None:
+    if "--version" in sys.argv[1:]:
+        # Lets a build assert what it froze (#100) without opening audio.
+        print(DAEMON_VERSION)
+        return
     try:
         run()
     except sd.PortAudioError as error:

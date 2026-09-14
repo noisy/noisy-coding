@@ -1,6 +1,7 @@
 """Localhost HTTP API: transcript queue for the hooks + live dashboard."""
 
 import json
+import re
 import os
 import subprocess
 import sys
@@ -19,10 +20,24 @@ from noisy_coding.listener import pricing, speech, tab_audio
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
 from noisy_coding.listener.state import ListenerState
 
+_PRERELEASE_WORDS = {"a": "alpha", "b": "beta", "rc": "rc"}
+
+
+def display_version(metadata_version: str) -> str:
+    """Package metadata is PEP 440-normalised ("3.0.0a4"); the tag, the
+    plugin manifest and the UI build all say "3.0.0-alpha.4". The badge
+    compares strings, so the daemon must speak the same dialect (#100)."""
+    match = re.fullmatch(r"(\d+\.\d+\.\d+)(a|b|rc)(\d+)", metadata_version)
+    if not match:
+        return metadata_version
+    base, word, number = match.groups()
+    return f"{base}-{_PRERELEASE_WORDS[word]}.{number}"
+
+
 try:
     from importlib.metadata import version as _pkg_version
 
-    DAEMON_VERSION = _pkg_version("noisy-coding")
+    DAEMON_VERSION = display_version(_pkg_version("noisy-coding"))
 except Exception:  # editable installs before metadata exists
     DAEMON_VERSION = "dev"
 

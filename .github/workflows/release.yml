@@ -110,6 +110,14 @@ jobs:
         run: |
           npm run build:ui
           npm run build:daemon
+      - name: The frozen daemon must know its version
+        # Without bundled package metadata it reports "dev" (#100) and every
+        # user sees a broken version badge and update check.
+        run: |
+          built="$(desktop/build/daemon/noisy-coding-daemon --version)"
+          expected="${TAG#v}"
+          echo "daemon reports '$built', tag is '$expected'"
+          test "$built" = "$expected"
       - name: Package the macOS app
         working-directory: desktop
         run: npx electron-builder --mac --publish never

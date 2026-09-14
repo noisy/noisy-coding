@@ -8,6 +8,8 @@
 import sys
 from pathlib import Path
 
+from PyInstaller.utils.hooks import copy_metadata
+
 ROOT = Path.cwd()
 
 a = Analysis(
@@ -18,7 +20,11 @@ a = Analysis(
         # The built dashboard travels with the daemon - it serves these
         # files at /next/, and the app's windows load them from there.
         (str(ROOT / "dashboard" / "dist"), "dashboard/dist"),
-    ],
+    ]
+    # The daemon reads its own version from package metadata; without the
+    # dist-info the frozen build reports "dev" and the update check is
+    # meaningless (#100).
+    + copy_metadata("noisy-coding"),
     hiddenimports=[
         # Imported dynamically or through plugin machinery, so the static
         # analysis does not see them.
