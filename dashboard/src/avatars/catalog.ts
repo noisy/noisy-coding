@@ -5,7 +5,7 @@ export const AVATAR_COLUMNS = 6;
 export const AVATAR_ROWS = 5;
 export const AVATAR_VOICES: readonly string[] = voiceOrder;
 export const AVATAR_SETS = [
-  { id: 'editorial', name: 'Illustrated portraits', description: 'Clean illustrated portraits', image: new URL('../assets/voice-avatars/editorial.png', import.meta.url).href },
+  { id: 'editorial', name: 'Illustrated portraits', description: 'Clean illustrated portraits', image: new URL('../assets/voice-avatars/editorial.webp', import.meta.url).href },
   { id: 'matte', name: 'Matte portraits', description: 'Softly sculpted people', image: new URL('../assets/voice-avatars/matte.png', import.meta.url).href },
   { id: 'mineral', name: 'Minerals', description: 'Distinctive stone forms', image: new URL('../assets/voice-avatars/mineral.png', import.meta.url).href },
   { id: 'blobs', name: 'Blobs', description: 'Expressive little creatures', image: new URL('../assets/voice-avatars/blobs.png', import.meta.url).href },
