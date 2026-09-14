@@ -170,7 +170,14 @@ jobs:
             codesign --verify --deep --strict --verbose=2 "$app"
             codesign --verify --deep --strict --verbose=2 "$engine"
             xcrun stapler validate "$app"
-            for dmg in dist/*.dmg; do xcrun stapler validate "$dmg" || xcrun stapler staple "$dmg"; done
+            # electron-builder notarizes the .app only. The disk image needs its
+            # own submission before a ticket can be stapled to it; stapling
+            # lets Gatekeeper accept the download without a network round-trip.
+            for dmg in dist/*.dmg; do
+              xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
+              xcrun stapler staple "$dmg"
+              xcrun stapler validate "$dmg"
+            done
           else
             # Forks without a certificate: an UNSIGNED build (not even ad-hoc:
             # identity=null skips signing), named so nobody mistakes it for a
