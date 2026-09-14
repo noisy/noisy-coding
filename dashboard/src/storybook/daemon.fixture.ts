@@ -1,7 +1,7 @@
 /** Storybook-only daemon. Never sends network requests or plays real audio. */
 import type { Character, DaemonStatus, SettingsPatch, Utterance } from '../types';
 import type { DiagnosticChecks, ProvidersInfo } from '../api/client';
-export type Scenario = 'conversation' | 'recording' | 'speaking' | 'queued' | 'muted' | 'offline' | 'error' | 'empty' | 'setup' | 'shutdown' | 'long';
+export type Scenario = 'conversation' | 'recording' | 'speaking' | 'queued' | 'muted' | 'offline' | 'error' | 'empty' | 'setup' | 'shutdown' | 'long' | 'no-tabs';
 let scenario: Scenario = 'conversation';
 let status: DaemonStatus;
 let messages: Utterance[] = [];
@@ -20,10 +20,10 @@ export function resetScenario(next: Scenario) {
     session_cost_usd:{user:.0214,claude:.1187}, usage:{stt_seconds:764,tts_chars:18432}, credits_usd:4.21,
     mode:'batch',tts_mode:'live',end_silence_ms:1500,mic_sensitivity:50,smart_turn:.7,smart_turn_mode:'soft',detection_mode:'ptt',ptt_held:false,
     input_device:'',output_device:'system',tab_audio:false,activity:{},language:'en',
-    agents:{codex:1,claude:2,docs:3}, agent_labels:{codex:next === 'long' ? 'codex / investigate-checkout-performance-and-retry-handling' : 'Codex',claude:'Code review',docs:'Documentation'},
-    agent_voices:{codex:'lux',claude:'eve',docs:'rex'},active_agent:'codex',muted_agents:[], queued_by_agent:{claude:2},
+    agents:next === 'no-tabs' ? {} : {codex:1,claude:2,docs:3}, agent_labels:next === 'no-tabs' ? {} : {codex:next === 'long' ? 'codex / investigate-checkout-performance-and-retry-handling' : 'Codex',claude:'Code review',docs:'Documentation'},
+    agent_voices:{codex:'lux',claude:'eve',docs:'rex'},active_agent:next === 'no-tabs' ? null : 'codex',muted_agents:[], queued_by_agent:{claude:2},
     version:'2.17.0',latest_version:'2.17.0', shutdown_at:next === 'shutdown' ? now+180 : undefined,
-    agents_meta:{codex:{label:'Codex',online:true,activated_at:1,offline_since:null},claude:{label:'Code review',online:true,activated_at:2,offline_since:null},docs:{label:'Documentation',online:false,activated_at:3,offline_since:now-60}}
+    agents_meta:next === 'no-tabs' ? {} : {codex:{label:'Codex',online:true,activated_at:1,offline_since:null},claude:{label:'Code review',online:true,activated_at:2,offline_since:null},docs:{label:'Documentation',online:false,activated_at:3,offline_since:now-60}}
   };
   if(next === 'long') status.agents_meta!.codex.label=status.agent_labels.codex;
   character={humor:40,honesty:100,brevity:80,chatty:40,voice:'lux',speed:1.1};
@@ -34,7 +34,7 @@ export function resetScenario(next: Scenario) {
     'Done. Events now survive a redeploy, and the new test covers the retry path. The dashboard also shows how many events are waiting.'
   ];
   if(next === 'long') texts[3] = ('The event remains queued until the consumer confirms delivery. '+ 'https://example.test/reports/'+ 'long-path-without-breaks-'.repeat(12)+'\n').repeat(8);
-  messages=next === 'empty' || next === 'setup' ? [] : texts.map((text,i)=>({id:i+1,role:i%2 ? 'claude' : 'user',text,status:i%2 ? 'played' : 'delivered to Codex',voice:i%2 ? 'lux' : undefined,detail:i%2 ? 'Speech · 0.8s' : 'Transcribed · 0.4s',cost_usd:.001,agent:'codex',started_at:now-180+i*30,updated_at:now-180+i*30,committed_at:now-180+i*30}));
+  messages=next === 'empty' || next === 'setup' || next === 'no-tabs' ? [] : texts.map((text,i)=>({id:i+1,role:i%2 ? 'claude' : 'user',text,status:i%2 ? 'played' : 'delivered to Codex',voice:i%2 ? 'lux' : undefined,detail:i%2 ? 'Speech · 0.8s' : 'Transcribed · 0.4s',cost_usd:.001,agent:'codex',started_at:now-180+i*30,updated_at:now-180+i*30,committed_at:now-180+i*30}));
   if(next === 'recording') messages.push({id:5,role:'user',text:'Great. Next, let’s look at the slow dashboard query…',status:'recording...',detail:'Capturing your voice',cost_usd:0,agent:'codex',started_at:now,updated_at:now,committed_at:0});
   if(next === 'speaking') messages[3].status='speaking...';
   if(next === 'queued' || next === 'muted') messages.filter(m=>m.role==='claude').forEach(m=>m.status='unheard');

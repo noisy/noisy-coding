@@ -210,6 +210,12 @@ const gateMode = ref<"cloud" | "local">("cloud");
 // "Unconfigured" asks about a READY engine, not about a key: a local-only
 // setup has no key at all. voice_ready is additive — an older daemon
 // without it falls back to the key check.
+// Browser-tab semantics (#101): closing the last tab must take its window
+// with it. Without a viewed conversation the log would otherwise fall back
+// to EVERY utterance and render a pane no tab owns.
+const noTabs = computed(
+  () => status.value != null && Object.keys(status.value.agents ?? {}).length === 0,
+);
 const unconfigured = computed(
   () =>
     status.value != null &&
@@ -702,11 +708,14 @@ const LANGUAGES: Record<string, string> = {
         </div>
         <HudPanel v-if="!showSettings" class="convo-panel" :aria-label="status?.agent_labels?.[viewedAgent ?? ''] ?? 'Conversation'">
           <p v-if="offline" class="conversation-connection" role="status">Reconnecting to the voice service…</p>
+          <p v-else-if="noTabs" class="conversation-connection convo-empty" role="status">
+            No open conversations. Start or resume a Claude Code or Codex session and its tab appears here.
+          </p>
           <!-- Everything below the tabs is THIS conversation: the log on
                the left, and the conversation-scoped rail (voice avatar,
                character, turn timeline) inside the same frame on the
                right. Global widgets live in the left column instead. -->
-          <div class="convo-body">
+          <div v-if="!noTabs" class="convo-body">
             <div class="convo-main">
               <!-- Catch-up spans the bubbles column only, like telemetry —
                    never the rail. -->

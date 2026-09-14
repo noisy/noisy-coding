@@ -16,6 +16,8 @@ export const Muted=story('muted');
 export const Offline=story('offline');
 export const Error=story('error');
 export const Empty=story('empty');
+// The last tab was closed: the pane goes with it, no tab-less conversation (#101).
+export const LastTabClosed=story('no-tabs');
 export const Setup=story('setup');
 export const Shutdown=story('shutdown');
 export const LongContent=story('long');
