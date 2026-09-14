@@ -50,7 +50,7 @@ const keys = (chord: string) => {
 </script>
 
 <template>
-  <div class="hotkeys" :class="{ locked }">
+  <div class="hotkeys" :class="{ 'perm-locked': locked }">
     <div v-if="locked" class="gate" role="status">
       <div class="gatetext">
         <b>macOS is not letting Noisy Studio see your keys yet.</b>
@@ -112,7 +112,9 @@ const keys = (chord: string) => {
 .btn.primary:hover { color: var(--bg0); background: var(--accent-hover, var(--amber)); }
 
 .card { margin: 0; min-width: 0; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--bg1) 60%, transparent); }
-.locked .card { opacity: .45; pointer-events: none; }
+/* Not ".locked": the dashboard has a GLOBAL .locked rule that dims and
+   blocks clicks on the whole element - it swallowed the GRANT button. */
+.perm-locked .card { opacity: .45; pointer-events: none; }
 /* two panes of EXACTLY the same width: symmetric padding, divider on the second */
 .main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .pane { min-width: 0; padding-right: 20px; }
