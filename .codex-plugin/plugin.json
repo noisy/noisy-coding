@@ -1,6 +1,6 @@
 {
   "name": "noisy-coding",
-  "version": "3.0.0-alpha.7",
+  "version": "3.0.0-alpha.8",
   "description": "Talk to Codex while it works, with per-session voice and incoming speech.",
   "author": { "name": "Krzysztof Szumny" },
   "homepage": "https://github.com/noisy/noisy-coding",
