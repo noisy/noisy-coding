@@ -20,6 +20,11 @@ let analytics = null;
 // Source launches used the production name, even with NOISY_MODE=local.
 const legacyProfileName = app.getName() === "Noisy Studio Dev" ? "Noisy Coding Dev" : "Noisy Coding";
 app.setPath("userData", path.join(app.getPath("appData"), legacyProfileName));
+if (process.env.NOISY_SMOKE) {
+  // A smoke run must not share the Chromium profile with a running install:
+  // the profile lock would make the second instance exit before it prints.
+  app.setPath("userData", require("node:fs").mkdtempSync(path.join(require("node:os").tmpdir(), "noisy-smoke-")));
+}
 const { spawn } = require("node:child_process");
 
 // The daemon serves the built dashboard under /next/ - the bare /companion
@@ -459,6 +464,22 @@ app.whenReady().then(async () => {
   await resolveMode();
   analytics.track(attachedPort ? 'daemon_ready' : 'daemon_unavailable');
   splash.destroy();
+  if (process.env.NOISY_SMOKE) {
+    /* Smoke run (CI and `npm run smoke`): prove the packaged app starts,
+     * reaches a daemon and reports the right version - then leave. A missing
+     * module, a broken engine bundle or a wrong port all end here with a
+     * non-zero exit instead of a dialog nobody is watching. */
+    let version = null;
+    try {
+      const res = await fetch(`http://127.0.0.1:${attachedPort}/status`);
+      version = (await res.json()).version ?? null;
+    } catch { /* attachedPort null or daemon gone: reported below */ }
+    const ok = !!attachedPort && (!process.env.NOISY_SMOKE_VERSION || version === process.env.NOISY_SMOKE_VERSION);
+    // Synchronous write: app.exit() would drop a buffered stdout line.
+    require("node:fs").writeSync(1, `${JSON.stringify({ smoke: ok ? "ok" : "fail", mode: MODE, port: attachedPort, version, problem: problem || null })}\n`);
+    app.exit(ok ? 0 : 1);
+    return;
+  }
   if (problem) {
     // Say what is missing rather than opening a window onto nothing - a
     // not-found page reads as a broken app, not an absent service.

@@ -151,6 +151,11 @@ jobs:
             echo "No Developer ID certificate in secrets - building UNSIGNED (ad-hoc)."
             npx electron-builder --mac --publish never -c.mac.identity=null
           fi
+      - name: Smoke-test the packaged app
+        # Launches the real .app: a missing module, a broken engine bundle or
+        # a wrong version fails the release instead of a user's first launch.
+        working-directory: desktop
+        run: scripts/smoke.sh "dist/mac-arm64/Noisy Studio.app" "${TAG#v}"
       - name: Attach the app to the release
         env:
           GH_TOKEN: ${{ github.token }}

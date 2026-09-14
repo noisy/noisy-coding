@@ -8,14 +8,18 @@
     "build:analytics": "node ../scripts/analytics-config.cjs",
     "start": "electron .",
     "start:dev": "NOISY_MODE=local electron .",
-    "dist": "npm run build:icons && npm run build:ui && npm run build:daemon && electron-builder --mac --dir",
-    "dmg": "npm run build:icons && electron-builder --mac",
+    "dist": "npm run check:deps && npm run build:icons && npm run build:ui && npm run build:daemon && electron-builder --mac --dir",
+    "dmg": "npm run check:deps && npm run build:icons && electron-builder --mac",
     "local": "NOISY_MODE=local electron .",
-    "build:daemon": "cd .. && .venv/bin/pyinstaller desktop/daemon.spec --distpath desktop/build/daemon --noconfirm --log-level WARN",
-    "dist:dev": "npm run build:icons && electron-builder --mac --dir -c.extraMetadata.noisyMode=local -c.productName=\"Noisy Studio Dev\" -c.appId=pl.noisy.coding.companion.dev -c.directories.output=dist-dev -c.mac.icon=build/icon-dev.icns",
+    "build:daemon": "cd .. && uv sync --extra local && uv pip install --quiet --no-config pyinstaller && .venv/bin/pyinstaller desktop/daemon.spec --distpath desktop/build/daemon --noconfirm --clean --log-level WARN",
+    "dist:dev": "npm run check:deps && npm run build:icons && electron-builder --mac --dir -c.extraMetadata.noisyMode=local -c.productName=\"Noisy Studio Dev\" -c.appId=pl.noisy.coding.companion.dev -c.directories.output=dist-dev -c.mac.icon=build/icon-dev.icns",
     "build:ui": "cd ../dashboard && npm run build",
     "test": "node --test *.test.js",
-    "build:icons": "node scripts/build-icons.cjs"
+    "build:icons": "node scripts/build-icons.cjs",
+    "check:deps": "npm ls --omit=dev >/dev/null || (echo 'desktop: packages missing - run npm ci' && exit 1)",
+    "smoke": "scripts/smoke.sh \"dist/mac-arm64/Noisy Studio.app\" \"$npm_package_version\"",
+    "smoke:dev": "scripts/smoke.sh \"dist-dev/mac-arm64/Noisy Studio Dev.app\" \"$npm_package_version\"",
+    "smoke:installed": "scripts/smoke.sh \"/Applications/Noisy Studio.app\""
   },
   "devDependencies": {
     "electron": "^32.0.0",

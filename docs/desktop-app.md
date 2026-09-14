@@ -124,3 +124,32 @@ it upload to Apple's notary service and staple the ticket. The workflow then
 prints `spctl -a -vv`, which must say `accepted` and `source=Notarized
 Developer ID`. Nothing in the pipeline echoes a secret.
 
+## Quality gates - nobody launches an alpha by hand to find out it crashes
+
+Three checks, cheapest first, each catching a class of failure we have
+actually shipped or nearly shipped:
+
+1. **`npm run check:deps`** (runs automatically before `dist`, `dist:dev`
+   and `dmg`): refuses to package when desktop's declared dependencies are
+   not installed. A locally built app once crashed at launch with
+   `Cannot find module 'posthog-node'` because `npm ci` had never run.
+2. **The engine's `--version`** in the release workflow: the frozen daemon
+   must report the tag's version, or the metadata is not bundled (#100).
+3. **`scripts/smoke.sh <app> [version]`**: launches the built app with
+   `NOISY_SMOKE=1`; the main process resolves its mode, waits for a daemon,
+   prints one JSON line and exits 0 only if a daemon answered with the
+   expected version. Production apps spawn their engine on a scratch port
+   and config dir, so an installed copy is never touched. The release
+   workflow runs it on every tag before uploading assets; locally
+   `npm run smoke` (fresh dist), `npm run smoke:dev` (dev build, needs the
+   dev daemon on 7765) or `npm run smoke:installed`.
+
+The smoke test earned its keep on its first local run: the freshly built
+app reported the PREVIOUS version, because the frozen daemon copies its
+version from the venv's package metadata and `uv sync` had not run since
+the bump. `build:daemon` now syncs first.
+
+What this still does not cover: anything after the first window (rendering,
+audio devices, permissions). Those need the daemon's own test suite and
+Storybook, not a launch check.
+
