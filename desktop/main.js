@@ -79,10 +79,20 @@ let child = null;   // the daemon WE started, if any
 
 /** Where the frozen daemon lives: inside the bundle once packaged, in the
  *  build directory during development. */
+// The engine ships as its own app bundle so macOS lists its permissions
+// under a stable name and icon (#98); the bare binary is the pre-bundle
+// layout, still produced next to it for local runs.
+const ENGINE_EXECUTABLE = path.join("Noisy Studio Engine.app", "Contents", "MacOS", "noisy-coding-daemon");
+
 function daemonBinary() {
-  const packaged = path.join(process.resourcesPath || "", "daemon", "noisy-coding-daemon");
-  const local = path.join(__dirname, "build", "daemon", "noisy-coding-daemon");
-  return require("node:fs").existsSync(packaged) ? packaged : local;
+  const fs = require("node:fs");
+  const roots = [path.join(process.resourcesPath || "", "daemon"), path.join(__dirname, "build", "daemon")];
+  for (const root of roots) {
+    for (const candidate of [path.join(root, ENGINE_EXECUTABLE), path.join(root, "noisy-coding-daemon", "noisy-coding-daemon")]) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return path.join(roots[0], ENGINE_EXECUTABLE);
 }
 
 /** Start the daemon we carry and wait for it to answer. */
@@ -107,10 +117,10 @@ async function spawnDaemon() {
   });
   child.on("exit", () => (child = null));
 
-  // A one-file PyInstaller binary unpacks itself on every launch and then
-  // initializes audio - a cold start can exceed 20s, which is how "the
-  // bundled daemon did not start" appeared while the daemon was in fact
-  // still coming up. Wait up to 60s.
+  // The engine initializes audio and loads the dashboard before it answers;
+  // a cold start on a slow disk can take a while, which is how "the bundled
+  // daemon did not start" once appeared while it was in fact still coming
+  // up. Wait up to 60s.
   for (let i = 0; i < 120; i += 1) {
     if (await serves(OWN_PORT, "/status")) return OWN_PORT;
     await new Promise((r) => setTimeout(r, 500));

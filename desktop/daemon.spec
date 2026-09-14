@@ -5,12 +5,16 @@
 # dependency into a single executable, spawned by the shell on 9765.
 #
 # Build:  .venv/bin/pyinstaller desktop/daemon.spec --distpath desktop/build/daemon
+# Output: desktop/build/daemon/Noisy Studio Engine.app (the shipped engine) and
+#         desktop/build/daemon/noisy-coding-daemon/ (the same onedir tree, for local runs)
+import json
 import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import copy_metadata
 
 ROOT = Path.cwd()
+APP_VERSION = json.loads((ROOT / "desktop" / "package.json").read_text())["version"]
 
 a = Analysis(
     [str(ROOT / "src" / "noisy_coding" / "listener" / "__main__.py")],
@@ -41,15 +45,48 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+# onedir, not onefile: a bundle cannot be a single file, and the onefile
+# bootloader unpacks unsigned libraries into a temp dir on every launch -
+# slow to start and impossible to notarize (#95).
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="noisy-coding-daemon",
     debug=False,
     strip=False,
     upx=False,
     console=True,
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    name="noisy-coding-daemon",
+)
+
+# The engine is its own app bundle, not a bare executable (#98): macOS
+# keys permissions (microphone, Input Monitoring) to the code identity
+# of the process that asks. A bare PyInstaller binary gets a random ad-hoc
+# identifier per build - so the Privacy & Security panel showed a generic
+# "exec" icon, and every rebuild would have lost the grant. A bundle with
+# a stable identifier and an icon is listed as "Noisy Studio Engine".
+# LSUIElement keeps it out of the Dock; the Electron app is the face.
+app = BUNDLE(
+    coll,
+    name="Noisy Studio Engine.app",
+    icon=str(ROOT / "desktop" / "build" / "icon.icns"),
+    bundle_identifier="pl.noisy.studio.engine",
+    info_plist={
+        "CFBundleName": "Noisy Studio Engine",
+        "CFBundleDisplayName": "Noisy Studio Engine",
+        "CFBundleShortVersionString": APP_VERSION,
+        "CFBundleVersion": APP_VERSION,
+        "LSUIElement": True,
+        "NSHighResolutionCapable": True,
+        "NSMicrophoneUsageDescription": "Noisy Studio listens to you so your agents can hear you.",
+    },
 )

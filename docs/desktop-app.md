@@ -74,3 +74,20 @@ Add an "Install (macOS app)" section to the README and the plugin skill,
 covering: download, first launch (unsigned - clear the quarantine flag with `xattr -d com.apple.quarantine`, see the setup skill), how hooks
 get configured, and how to tell which daemon is answering. Not before -
 instructions for a flow that does not exist are worse than none.
+
+## The engine is its own app bundle
+
+The frozen daemon ships as `Contents/Resources/daemon/Noisy Studio
+Engine.app` (bundle id `pl.noisy.studio.engine`, `LSUIElement`, the app
+icon), not as a bare executable. macOS keys permissions to the code
+identity of the process that asks: a bare PyInstaller binary had a random
+ad-hoc identifier per build, so System Settings > Privacy & Security
+showed a generic "exec" icon for it (#98) and every rebuild would have
+lost the grant. Microphone and Input Monitoring are therefore listed
+under **Noisy Studio Engine**; the Electron app itself asks for nothing.
+Input Monitoring is requested only when the user picks a hotkey or
+presses GRANT ACCESS in settings, never at boot (#97).
+
+The bundle is a PyInstaller onedir tree (a bundle cannot be a single
+file, and onefile unpacked unsigned libraries into a temp dir on every
+launch - slow to start and impossible to notarize, #95).

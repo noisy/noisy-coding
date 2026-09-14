@@ -61,8 +61,8 @@
     },
     "extraResources": [
       {
-        "from": "build/daemon",
-        "to": "daemon"
+        "from": "build/daemon/Noisy Studio Engine.app",
+        "to": "daemon/Noisy Studio Engine.app"
       }
     ]
   },

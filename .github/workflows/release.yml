@@ -114,7 +114,8 @@ jobs:
         # Without bundled package metadata it reports "dev" (#100) and every
         # user sees a broken version badge and update check.
         run: |
-          built="$(desktop/build/daemon/noisy-coding-daemon --version)"
+          engine="desktop/build/daemon/Noisy Studio Engine.app/Contents/MacOS/noisy-coding-daemon"
+          built="$("$engine" --version)"
           expected="${TAG#v}"
           echo "daemon reports '$built', tag is '$expected'"
           test "$built" = "$expected"
