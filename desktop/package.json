@@ -43,7 +43,13 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
-      "identity": null,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Noisy Studio listens to you so your coding agents can hear you."
+      },
       "target": [
         {
           "target": "dmg",

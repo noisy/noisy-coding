@@ -91,3 +91,36 @@ presses GRANT ACCESS in settings, never at boot (#97).
 The bundle is a PyInstaller onedir tree (a bundle cannot be a single
 file, and onefile unpacked unsigned libraries into a temp dir on every
 launch - slow to start and impossible to notarize, #95).
+
+## Signing and notarization (#95)
+
+Downloads of an ad-hoc-signed app are refused by macOS as "damaged"; the
+only fix users never see is a Developer ID signature plus notarization.
+The release workflow does both automatically when the repository carries
+five secrets, and falls back to the unsigned build when it does not:
+
+| Secret | What it is | Where it comes from |
+|---|---|---|
+| `MAC_CERT_P12_BASE64` | Developer ID Application certificate + private key, `.p12`, base64 | Keychain Access on the Mac that requested the certificate: export the certificate WITH its private key, then `base64 -i cert.p12 \| pbcopy` |
+| `MAC_CERT_PASSWORD` | the password chosen at export | same export dialog |
+| `APPLE_API_KEY_P8` | App Store Connect API key, contents of the `.p8` file | App Store Connect > Users and Access > Integrations > Team Keys, role Developer or App Manager; the file downloads once |
+| `APPLE_API_KEY_ID` | the key's ID | shown next to the key |
+| `APPLE_API_ISSUER` | the team's issuer ID | top of the same page |
+
+Requesting the certificate: developer.apple.com > Certificates, Identifiers
+& Profiles > Certificates > "+" > **Developer ID Application** (not "Mac
+Development", not "Apple Distribution"). It needs a Certificate Signing
+Request from Keychain Access (Certificate Assistant > Request a
+Certificate From a Certificate Authority, saved to disk). Only the Account
+Holder can create Developer ID certificates, and Apple allows few of them,
+so keep the `.p12` safe: losing the private key means the certificate is
+unusable and must be revoked.
+
+The build itself: `hardenedRuntime` with `build/entitlements.mac.plist`
+(JIT and unsigned executable memory for V8, library validation off for the
+engine's ctypes-loaded system libraries, audio input), electron-builder
+deep-signs the app including the engine bundle, and `notarize: true` makes
+it upload to Apple's notary service and staple the ticket. The workflow then
+prints `spctl -a -vv`, which must say `accepted` and `source=Notarized
+Developer ID`. Nothing in the pipeline echoes a secret.
+
