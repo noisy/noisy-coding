@@ -43,6 +43,18 @@ INPUT_DEVICE_ENV_VAR = "NOISY_CODING_INPUT_DEVICE"
 # Opt-in for the dashboard tab as microphone/speaker (plain-web deployments);
 # the native app never sets it (#99).
 BROWSER_AUDIO_ENV_VAR = "NOISY_CODING_BROWSER_AUDIO"
+# Set by the desktop app to its own pid; the engine exits when that process dies.
+PARENT_PID_ENV_VAR = "NOISY_CODING_PARENT_PID"
+
+
+def _parent_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 OUTPUT_DEVICE_ENV_VAR = "NOISY_CODING_OUTPUT_DEVICE"
 MANAGEMENT_KEY_ENV_VAR = "NOISY_CODING_MANAGEMENT_KEY"
 TEAM_ID_ENV_VAR = "NOISY_CODING_TEAM_ID"
@@ -463,6 +475,25 @@ def run(config: VadConfig | None = None) -> None:
     state.fill_default_hotkeys(hotkey_mod.DEFAULT_HOTKEYS)  # never overrides a stored value
     hotkeys.configure_bindings(state.hotkeys)  # boot never prompts (#97)
 
+    def _parent_watchdog() -> None:
+        # The app that spawned us may die without SIGTERM (crash, force
+        # quit). "Not detached" does not protect against that: the engine
+        # would live on as an orphan holding the microphone. Exit when the
+        # parent named in the environment is gone.
+        import time as _time
+
+        parent = os.environ.get(PARENT_PID_ENV_VAR, "")
+        if not parent.isdigit():
+            return
+        while _parent_alive(int(parent)):
+            _time.sleep(2)
+        _log("[daemon] parent process gone - shutting down")
+        state.schedule_shutdown(0)
+        _time.sleep(5)  # the shutdown watcher lets a recording finish; then hard stop
+        os._exit(0)
+
+    threading.Thread(target=_parent_watchdog, daemon=True, name="parent-watchdog").start()
+
     def _shutdown_watcher() -> None:
         # Graceful shutdown (#35): exit only past the deadline AND never
         # mid-recording - an in-flight utterance gets to finish first.
@@ -768,6 +799,18 @@ def main() -> None:
     if "--version" in sys.argv[1:]:
         # Lets a build assert what it froze (#100) without opening audio.
         print(DAEMON_VERSION)
+        return
+    if "--list-devices" in sys.argv[1:]:
+        # The frozen daemon's device probe (see http_api._device_probe_command):
+        # a fresh PortAudio instance, JSON on stdout, no server, no mic.
+        import json as _json
+
+        devices = sd.query_devices()
+        default_in = sd.default.device[0]
+        print(_json.dumps([
+            {"name": d["name"], "default": i == default_in}
+            for i, d in enumerate(devices) if d["max_input_channels"] > 0
+        ]))
         return
     try:
         run()

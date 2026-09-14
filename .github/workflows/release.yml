@@ -162,8 +162,15 @@ jobs:
             codesign -dvv "$app" 2>&1 | grep -E "^Authority=Developer ID Application" || { echo "NOT signed with a Developer ID"; codesign -dvv "$app" 2>&1 | head -5; exit 1; }
             verdict="$(spctl -a -vv -t exec "$app" 2>&1)"; echo "$verdict"
             echo "$verdict" | grep -q "source=Notarized Developer ID" || { echo "NOT notarized"; exit 1; }
-            engine="$app/Contents/Resources/daemon/Noisy Studio Engine.app"
+            engine="$app/Contents/Helpers/Noisy Studio Engine.app"
             codesign -dvv "$engine" 2>&1 | grep -E "^Authority=Developer ID Application" || { echo "engine NOT signed"; exit 1; }
+            # Strict, deep verification of both bundles (the outer --deep does
+            # not descend into a nested app) and the stapled notarization
+            # ticket on the app and the disk image.
+            codesign --verify --deep --strict --verbose=2 "$app"
+            codesign --verify --deep --strict --verbose=2 "$engine"
+            xcrun stapler validate "$app"
+            for dmg in dist/*.dmg; do xcrun stapler validate "$dmg" || xcrun stapler staple "$dmg"; done
           else
             # Forks without a certificate: an UNSIGNED build (not even ad-hoc:
             # identity=null skips signing), named so nobody mistakes it for a

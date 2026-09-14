@@ -93,7 +93,7 @@ const keys = (chord: string) => {
       </div>
     </section>
 
-    <p class="foot">Click a field and press the keys you want; twice for a double press. Click elsewhere to cancel, Delete clears. macOS keeps Control with F1–F8 for itself; clashes with other apps cannot be detected.</p>
+    <p class="foot">Click a field and press the keys you want; twice for a double press. Click elsewhere to cancel, Delete clears. macOS keeps Control with F1–F8 for itself; clashes with other apps cannot be detected. The global listener only matches the keys you bind here; nothing you type is recorded or sent anywhere.</p>
   </div>
 </template>
 

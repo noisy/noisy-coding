@@ -77,9 +77,9 @@ instructions for a flow that does not exist are worse than none.
 
 ## The engine is its own app bundle
 
-The frozen daemon ships as `Contents/Resources/daemon/Noisy Studio
-Engine.app` (bundle id `pl.noisy.studio.engine`, `LSUIElement`, the app
-icon), not as a bare executable. macOS keys permissions to the code
+The frozen daemon ships as `Contents/Helpers/Noisy Studio Engine.app` (bundle id `pl.noisy.studio.engine`, `LSUIElement`, the app
+icon), not as a bare executable - under `Helpers`, where macOS treats it as
+nested code that `codesign --deep` validates, not as sealed data. macOS keys permissions to the code
 identity of the process that asks: a bare PyInstaller binary had a random
 ad-hoc identifier per build, so System Settings > Privacy & Security
 showed a generic "exec" icon for it (#98) and every rebuild would have

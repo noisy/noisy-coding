@@ -228,19 +228,29 @@ def list_input_devices() -> list:
     started; the daemon's own (cached) instance would not — and it cannot
     be re-initialized while the input stream is running.
     """
-    script = (
-        "import json, sounddevice as sd; devices = sd.query_devices(); "
-        "default_in = sd.default.device[0]; "
-        "print(json.dumps([{'name': d['name'], 'default': i == default_in} "
-        "for i, d in enumerate(devices) if d['max_input_channels'] > 0]))"
-    )
     try:
-        result = subprocess.run(
-            [sys.executable, "-c", script], capture_output=True, timeout=10
-        )
+        result = subprocess.run(_device_probe_command(), capture_output=True, timeout=10)
         return json.loads(result.stdout)
     except (OSError, ValueError, subprocess.SubprocessError):
         return []
+
+
+DEVICE_PROBE_SCRIPT = (
+    "import json, sounddevice as sd; devices = sd.query_devices(); "
+    "default_in = sd.default.device[0]; "
+    "print(json.dumps([{'name': d['name'], 'default': i == default_in} "
+    "for i, d in enumerate(devices) if d['max_input_channels'] > 0]))"
+)
+
+
+def _device_probe_command() -> list[str]:
+    """In a PyInstaller build sys.executable is the frozen daemon itself, which
+    ignores `-c` and would boot a SECOND engine (same port, open mic, killed
+    by the timeout) on every /devices call. The frozen binary answers
+    `--list-devices` instead; a source checkout runs the script inline."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--list-devices"]
+    return [sys.executable, "-c", DEVICE_PROBE_SCRIPT]
 
 
 def save_characters(state: ListenerState) -> None:

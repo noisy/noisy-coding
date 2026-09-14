@@ -91,7 +91,14 @@ const ENGINE_EXECUTABLE = path.join("Noisy Studio Engine.app", "Contents", "MacO
 
 function daemonBinary() {
   const fs = require("node:fs");
-  const roots = [path.join(process.resourcesPath || "", "daemon"), path.join(__dirname, "build", "daemon")];
+  // Packaged: Contents/Helpers - where macOS expects nested code (a bundle
+  // under Resources is sealed as data, not validated as code). The old
+  // Resources/daemon location is kept as a fallback for older builds.
+  const roots = [
+    path.join(process.resourcesPath || "", "..", "Helpers"),
+    path.join(process.resourcesPath || "", "daemon"),
+    path.join(__dirname, "build", "daemon"),
+  ];
   for (const root of roots) {
     for (const candidate of [path.join(root, ENGINE_EXECUTABLE), path.join(root, "noisy-coding-daemon", "noisy-coding-daemon")]) {
       if (fs.existsSync(candidate)) return candidate;
@@ -109,6 +116,9 @@ async function spawnDaemon() {
     env: {
       ...process.env,
       NOISY_CODING_LISTENER_PORT: String(OWN_PORT),
+      // The engine exits by itself when this process is gone - the only
+      // protection against an orphan holding the microphone after a crash.
+      NOISY_CODING_PARENT_PID: String(process.pid),
       // Its own config directory: sharing one means sharing settings,
       // history and the voice ledger, where the last writer wins.
       NOISY_CODING_CONFIG_DIR:
@@ -116,8 +126,6 @@ async function spawnDaemon() {
         path.join(app.getPath("home"), ".config", "noisy-coding-app"),
     },
     stdio: "ignore",
-    // Not detached: an orphaned daemon holding the microphone is worse
-    // than no daemon at all.
     detached: false,
   });
   child.on("exit", () => (child = null));
