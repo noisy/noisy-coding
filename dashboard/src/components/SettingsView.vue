@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import AppearanceSettings from "./AppearanceSettings.vue";
 
 // The panel got crowded - a toolbar splits it into four homes. AUDIO is
@@ -14,7 +14,7 @@ const PTT_KEYS = [
   "F6", "F7", "F8", "right_cmd", "right_option", "right_ctrl",
 ];
 import type { DiagnosticChecks } from "../api/client";
-import type { InputDevice } from "../types";
+import type { InputDevice, HotkeyState } from "../types";
 import { CUE_LABELS, type CuePrefs } from "../composables/useAudioCues";
 import { HUM_NOISES, startRecordingHum, stopRecordingHum } from "../composables/cueSounds";
 import type { CueName } from "../composables/cueEvents";
@@ -22,7 +22,7 @@ import { playCue } from "../composables/cueSounds";
 import DiagnosticChecklist from "./DiagnosticChecklist.vue";
 import SignalPath from "./SignalPath.vue";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     apiKeyHint: string;
     devices?: InputDevice[];
@@ -33,20 +33,29 @@ withDefaults(
     pttHoldKey?: string;
     pttToggleKey?: string;
     pttCancelKey?: string;
+    hotkeys?: HotkeyState | null;
+    /** Storybook-only: which notice design to show while Krzysztof picks (#97). */
+    hotkeyNoticeLook?: "inline" | "callout" | "row";
     checks?: DiagnosticChecks | null;
     checksRunning?: boolean;
   }>(),
   {
     devices: () => [], selectedDevice: "", outputDevice: "system", browserAudio: false, cuePrefs: null,
-    pttHoldKey: "", pttToggleKey: "", pttCancelKey: "",
+    pttHoldKey: "", pttToggleKey: "", pttCancelKey: "", hotkeys: null, hotkeyNoticeLook: "callout",
     checks: null, checksRunning: false,
   },
+);
+// Keys are set but macOS has not let us see them yet: say so where the
+// keys are picked, and offer the one button that fixes it (#97).
+const hotkeysBlocked = computed(
+  () => !!props.hotkeys && props.hotkeys.configured && props.hotkeys.permission === "missing",
 );
 const emit = defineEmits<{
   save: [key: string];
   pickDevice: [name: string];
   pickOutput: [value: string];
   pickPttKey: [mode: "hold" | "toggle" | "cancel", key: string];
+  grantHotkeys: [];
   refreshDevices: [];
   toggleCue: [name: CueName, value: boolean];
   setHum: [patch: { recordingHum?: boolean; humNoise?: string; humVolume?: number }];
@@ -173,15 +182,22 @@ function submit() {
           <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
         </select>
       </div>
+      <div v-if="hotkeysBlocked" class="permnotice" :class="hotkeyNoticeLook" role="status">
+        <span class="permtext">
+          <b>macOS is not letting Noisy Studio see these keys yet.</b>
+          Global hotkeys need the Input Monitoring permission — that is what
+          the "receive keystrokes from any application" prompt is about.
+        </span>
+        <button class="btn" @click="emit('grantHotkeys')">Grant access</button>
+      </div>
       <div class="text">
         <p>
           System-wide push-to-talk — works no matter which app has focus.
           HOLD opens the mic while the key is down; TOGGLE opens on one press
           and closes on the next. SCRATCH aborts the recording in progress in ANY
           mode — your "forget what I just said" key. PTT keys need the mic
-          mode set to PUSH TO TALK and,
-          on first use, the Accessibility permission for the daemon's
-          terminal (macOS asks once).
+          mode set to PUSH TO TALK. Picking a key is when macOS asks for the
+          Input Monitoring permission — nothing is requested before that.
         </p>
       </div>
     </section>
@@ -377,6 +393,16 @@ function submit() {
 .cuerow { display: flex; align-items: center; gap: 10px; }
 .cuerow .preview { padding: 4px 9px; }
 .cue-label { flex: 1; font-size: 11px; letter-spacing: normal; color: var(--ink); }
+.permnotice { display: flex; align-items: center; gap: 14px; margin: -4px 0 16px; font-size: 12px; line-height: 1.45; color: var(--ink); }
+.permnotice .permtext { flex: 1; min-width: 0; }
+.permnotice b { color: var(--amber); font-weight: 400; }
+.permnotice .btn { flex: none; }
+/* inline: reads as part of the help text, amber lead-in only */
+.permnotice.inline { color: var(--muted); }
+/* callout: framed box with an amber edge, like the tab-audio banner */
+.permnotice.callout { padding: 10px 12px; border: 1px solid var(--amber-dim); border-left-width: 3px; border-radius: 6px; background: var(--bg1); }
+/* row: sits in the key grid as a fourth row, label column kept */
+.permnotice.row { padding-left: 102px; }
 .text {
   font-size: 13px;
   line-height: 1.75;

@@ -6,10 +6,14 @@ focus and drives the SAME push-to-talk lease the dashboard button uses:
 - hold-to-talk:   key down opens the lease, key up releases it;
 - toggle-to-talk: one press opens, the next press releases.
 
-macOS only (the tap needs the Accessibility permission - System
-Settings > Privacy & Security > Accessibility - for the process that
-runs the daemon, typically your terminal). On other platforms, or when
-no key is configured, this module is a silent no-op.
+macOS only: the tap needs the Input Monitoring permission (System
+Settings > Privacy & Security > Input Monitoring) for the process that
+runs the daemon. The permission is never requested at boot (#97): a
+prompt about "receiving keystrokes from any application" the moment an
+app is installed reads as hostile. It is requested when the user picks a
+hotkey, or presses the grant button in settings, and until granted the
+configured keys stay disarmed and /status says so. On other platforms,
+or when no key is configured, this module is a silent no-op.
 
 The lease is renewed from a small thread while engaged, exactly like
 the dashboard's ~2x/s heartbeat, so daemon-side expiry keeps working
@@ -38,6 +42,33 @@ _MODIFIER_KEYS = {"right_cmd", "right_option", "right_ctrl"}
 LEASE_RENEW_SECONDS = 0.4  # matches the dashboard's heartbeat cadence
 
 
+def _quartz():
+    """The Quartz bridge, or None off macOS. One seam for the tests."""
+    try:
+        import Quartz  # noqa: PLC0415
+
+        return Quartz
+    except ImportError:
+        return None
+
+
+def input_monitoring_status() -> str:
+    """"granted" | "missing" | "unavailable" (non-macOS or old pyobjc)."""
+    quartz = _quartz()
+    if quartz is None or not hasattr(quartz, "CGPreflightListenEventAccess"):
+        return "unavailable"
+    return "granted" if quartz.CGPreflightListenEventAccess() else "missing"
+
+
+def request_input_monitoring() -> str:
+    """Ask macOS (it shows its prompt once; a refusal must be undone in
+    System Settings). Returns the status afterwards."""
+    quartz = _quartz()
+    if quartz is None or not hasattr(quartz, "CGRequestListenEventAccess"):
+        return "unavailable"
+    return "granted" if quartz.CGRequestListenEventAccess() else "missing"
+
+
 class _PttState(Protocol):
     def refresh_ptt_hold(self) -> None: ...
     def release_ptt(self) -> None: ...
@@ -60,11 +91,19 @@ class HotkeyListener:
         self._tap_thread: threading.Thread | None = None
         self._renew_thread: threading.Thread | None = None
         self._restart = None  # CFRunLoop stop handle, set by the tap thread
+        self._permission = "unknown"  # last probe: granted | missing | unavailable
 
     # -- configuration ----------------------------------------------------
 
-    def configure(self, hold_key: str, toggle_key: str, cancel_key: str = "") -> None:
-        """Apply key names from settings; restarts the tap as needed."""
+    def configure(
+        self, hold_key: str, toggle_key: str, cancel_key: str = "", *, may_prompt: bool = False
+    ) -> None:
+        """Apply key names from settings; restarts the tap as needed.
+
+        `may_prompt` is True only on a user action (picking a key): that
+        is the one moment macOS may show its Input Monitoring prompt. Boot
+        never prompts; keys restored from settings stay disarmed until the
+        permission is there (#97)."""
         with self._lock:
             self._hold_key = KEYCODES.get(hold_key)
             self._toggle_key = KEYCODES.get(toggle_key)
@@ -76,8 +115,49 @@ class HotkeyListener:
             )
         self._disengage()
         self._stop_tap()
+        if not wanted:
+            return
+        self._arm(may_prompt=may_prompt)
+
+    def _arm(self, *, may_prompt: bool) -> None:
+        status = input_monitoring_status()
+        if status == "missing" and may_prompt:
+            status = request_input_monitoring()
+        with self._lock:
+            self._permission = status
+        if status == "missing":
+            self._log(
+                "hotkey: keys configured but Input Monitoring not granted - "
+                "global PTT disarmed until the user grants it in settings"
+            )
+            return
+        self._start_tap()
+
+    def request_permission(self) -> dict:
+        """The settings GRANT button: prompt now, arm if granted."""
+        with self._lock:
+            wanted = any(
+                k is not None for k in (self._hold_key, self._toggle_key, self._cancel_key)
+            )
         if wanted:
-            self._start_tap()
+            self._stop_tap()
+            self._arm(may_prompt=True)
+        else:
+            with self._lock:
+                self._permission = request_input_monitoring()
+        return self.snapshot()
+
+    def snapshot(self) -> dict:
+        """For /status: what the dashboard needs to explain the hotkey state."""
+        with self._lock:
+            configured = any(
+                k is not None for k in (self._hold_key, self._toggle_key, self._cancel_key)
+            )
+            return {
+                "configured": configured,
+                "permission": self._permission,
+                "armed": configured and self._tap_thread is not None,
+            }
 
     # -- lease driving -----------------------------------------------------
 
@@ -131,9 +211,8 @@ class HotkeyListener:
                 self._engage()
 
     def _start_tap(self) -> None:
-        try:
-            import Quartz
-        except ImportError:
+        Quartz = _quartz()  # noqa: N806 - reads like the module below
+        if Quartz is None:
             self._log("hotkey: Quartz unavailable (non-macOS) — global PTT off")
             return
 
@@ -182,9 +261,12 @@ class HotkeyListener:
             )
             if tap is None:
                 self._log(
-                    "hotkey: event tap refused — grant Accessibility permission "
-                    "to the daemon's terminal (System Settings > Privacy & Security)"
+                    "hotkey: event tap refused — grant Input Monitoring to Noisy Studio "
+                    "(System Settings > Privacy & Security > Input Monitoring)"
                 )
+                with self._lock:
+                    self._permission = "missing"
+                    self._tap_thread = None
                 return
             source = Quartz.CFMachPortCreateRunLoopSource(None, tap, 0)
             loop = Quartz.CFRunLoopGetCurrent()

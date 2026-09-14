@@ -22,3 +22,24 @@ export const BrowserAudioAllowed: StoryObj<typeof SettingsView> = {
   args: { apiKeyHint: "····kRc9", browserAudio: true, outputDevice: "browser" },
   render: Configured.render,
 };
+
+// #97 - keys are configured but macOS has not granted Input Monitoring.
+// Three looks for the notice; the AUDIO tab holds the key pickers.
+const blocked = { configured: true, permission: "missing" as const, armed: false };
+const hotkeyArgs = { apiKeyHint: "····kRc9", pttHoldKey: "F8", pttToggleKey: "F15", pttCancelKey: "escape", hotkeys: blocked };
+export const HotkeysBlockedInline: StoryObj<typeof SettingsView> = {
+  args: { ...hotkeyArgs, hotkeyNoticeLook: "inline" },
+  render: Configured.render,
+};
+export const HotkeysBlockedCallout: StoryObj<typeof SettingsView> = {
+  args: { ...hotkeyArgs, hotkeyNoticeLook: "callout" },
+  render: Configured.render,
+};
+export const HotkeysBlockedRow: StoryObj<typeof SettingsView> = {
+  args: { ...hotkeyArgs, hotkeyNoticeLook: "row" },
+  render: Configured.render,
+};
+export const HotkeysArmed: StoryObj<typeof SettingsView> = {
+  args: { ...hotkeyArgs, hotkeys: { configured: true, permission: "granted", armed: true } },
+  render: Configured.render,
+};

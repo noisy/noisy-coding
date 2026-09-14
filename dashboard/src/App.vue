@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "./styles/dashboard.css";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -405,6 +405,8 @@ const shutdownLabel = computed(() => {
   return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s}s`;
 });
 
+// The GRANT button in settings: the one other moment macOS may prompt (#97).
+const grantHotkeys = () => requestHotkeyPermission().catch(swallow);
 const pickPttKey = (mode: "hold" | "toggle" | "cancel", key: string) =>
   setSettings(
     mode === "hold"
@@ -677,12 +679,14 @@ const LANGUAGES: Record<string, string> = {
             :ptt-hold-key="status?.ptt_hold_key ?? ''"
             :ptt-toggle-key="status?.ptt_toggle_key ?? ''"
             :ptt-cancel-key="status?.ptt_cancel_key ?? ''"
+            :hotkeys="status?.hotkeys ?? null"
             :checks="visibleChecks"
             :checks-running="checksRunning"
             @save="saveKey"
             @pick-device="pickMic"
             @pick-output="pickOutput"
             @pick-ptt-key="pickPttKey"
+            @grant-hotkeys="grantHotkeys"
             @refresh-devices="loadDevices"
             @toggle-cue="setCue"
             @set-hum="setHum"

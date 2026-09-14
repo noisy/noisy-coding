@@ -1,5 +1,11 @@
 /** Shapes of the listener daemon's HTTP API responses. */
 
+export interface HotkeyState {
+  configured: boolean;
+  permission: "granted" | "missing" | "unavailable" | "unknown";
+  armed: boolean;
+}
+
 export interface DaemonStatus {
   /** Named speakers whose bubbles carry a palette tint (twitch purple / youtube red). */
   speaker_colors?: Record<string, string>;
@@ -41,6 +47,8 @@ export interface DaemonStatus {
   browser_audio?: boolean; // the dashboard tab may act as mic/speaker (opt-in, #99)
   /** A browser tab currently holds the audio lease (WS bridge). */
   tab_audio: boolean;
+  /** Global push-to-talk keys and the macOS Input Monitoring permission they need (#97). */
+  hotkeys?: HotkeyState;
   /** Live per-endpoint xAI check results — partial while checks run. */
   diagnostic_checks?: Record<string, { ok?: boolean; ms?: number; detail?: string; pending?: boolean }> | null;
   activity: Record<string, { text: string; at: number }>;

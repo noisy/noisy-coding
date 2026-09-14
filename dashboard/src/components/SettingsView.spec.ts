@@ -50,4 +50,20 @@ describe("SettingsView", () => {
     await open.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
     expect(open.find('option[value="browser"]').exists()).toBe(true);
   });
+
+  it("offers GRANT ACCESS only while configured hotkeys lack Input Monitoring (#97)", async () => {
+    const blocked = mount(SettingsView, {
+      props: { apiKeyHint: "····kRc9", pttHoldKey: "F8", hotkeys: { configured: true, permission: "missing", armed: false } },
+    });
+    await blocked.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
+    expect(blocked.find(".permnotice").exists()).toBe(true);
+    await blocked.find(".permnotice button").trigger("click");
+    expect(blocked.emitted("grantHotkeys")).toHaveLength(1);
+
+    const armed = mount(SettingsView, {
+      props: { apiKeyHint: "····kRc9", pttHoldKey: "F8", hotkeys: { configured: true, permission: "granted", armed: true } },
+    });
+    await armed.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
+    expect(armed.find(".permnotice").exists()).toBe(false);
+  });
 });

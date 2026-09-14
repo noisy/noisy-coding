@@ -7,7 +7,6 @@ import subprocess
 import sys
 import threading
 import time
-import zlib
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -306,6 +305,13 @@ def _queue_first_contact_intro(state: ListenerState) -> None:
         pass
 
 
+def _hotkeys_snapshot(state: ListenerState) -> dict:
+    listener = getattr(state, "hotkey_listener", None)
+    if listener is None:
+        return {"configured": False, "permission": "unknown", "armed": False}
+    return listener.snapshot()
+
+
 def save_settings(state: ListenerState) -> None:
     """Persist tuning that must survive daemon restarts."""
     try:
@@ -542,6 +548,7 @@ def status_payload(state: ListenerState) -> dict:
                             "active_input_device": state.active_input_device,
                             "output_device": state.output_device,
                             "browser_audio": state.browser_audio,
+                            "hotkeys": _hotkeys_snapshot(state),
                             "tab_audio": state.tab_audio_alive,
                             "activity": state.activity,
                             "nudge_clocks": state.nudge_clocks(),
@@ -803,6 +810,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.conversations.hide(name)
                 state.add_event("agent", f"'{name}' closed")
                 self._respond({"dismissed": name, "active_agent": state.active_agent})
+            elif self.path == "/hotkeys/permission":
+                # The settings GRANT button (#97): request Input Monitoring now
+                # and arm the configured keys if macOS says yes.
+                listener = getattr(state, "hotkey_listener", None)
+                self._respond(listener.request_permission() if listener is not None else {})
             elif self.path == "/mute-agent":
                 body = self._read_json_body()
                 name = str(body.get("agent", "")).strip()
@@ -974,7 +986,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     result["ptt_cancel_key"] = new_cancel
                     listener = getattr(state, "hotkey_listener", None)
                     if listener is not None:
-                        listener.configure(new_hold, new_toggle, new_cancel)
+                        # A picked key is the user asking for global hotkeys:
+                        # the one moment macOS may prompt for Input Monitoring (#97).
+                        listener.configure(new_hold, new_toggle, new_cancel, may_prompt=True)
                 if body.get("smart_turn_mode") in ("soft", "hard"):
                     result["smart_turn_mode"] = state.set_smart_turn_mode(
                         body["smart_turn_mode"]

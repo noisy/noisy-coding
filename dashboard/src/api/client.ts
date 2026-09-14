@@ -4,7 +4,7 @@
  * at /next, proxied by Vite in development (see vite.config.ts).
  */
 
-import type { Character, DaemonStatus, InputDevice, SettingsPatch, Utterance } from "../types";
+import type { Character, DaemonStatus, InputDevice, SettingsPatch, Utterance, HotkeyState } from "../types";
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
@@ -250,4 +250,9 @@ export function setProviders(patch: {
   prefetch?: boolean;
 }): Promise<{ tts: string; stt: string }> {
   return postJson<{ tts: string; stt: string }>("/providers", patch);
+}
+
+/** Ask macOS for Input Monitoring now (the settings GRANT button, #97). */
+export function requestHotkeyPermission(): Promise<HotkeyState> {
+  return postJson<HotkeyState>("/hotkeys/permission", {});
 }
