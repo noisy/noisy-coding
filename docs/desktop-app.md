@@ -71,7 +71,7 @@ version if the default install path changes.
 ## When this is real
 
 Add an "Install (macOS app)" section to the README and the plugin skill,
-covering: download, first launch (unsigned - clear the quarantine flag with `xattr -d com.apple.quarantine`, see the setup skill), how hooks
+covering: download, first launch (signed and notarized since 3.0.0-alpha.7: a double-click opens it), how hooks
 get configured, and how to tell which daemon is answering. Not before -
 instructions for a flow that does not exist are worse than none.
 
@@ -96,8 +96,9 @@ launch - slow to start and impossible to notarize, #95).
 
 Downloads of an ad-hoc-signed app are refused by macOS as "damaged"; the
 only fix users never see is a Developer ID signature plus notarization.
-The release workflow does both automatically when the repository carries
-five secrets, and falls back to the unsigned build when it does not:
+The release workflow does both automatically (since 3.0.0-alpha.7 the
+repository carries the five secrets) and falls back to the unsigned build
+when they are absent, e.g. on a fork:
 
 | Secret | What it is | Where it comes from |
 |---|---|---|
@@ -117,12 +118,13 @@ so keep the `.p12` safe: losing the private key means the certificate is
 unusable and must be revoked.
 
 The build itself: `hardenedRuntime` with `build/entitlements.mac.plist`
-(JIT and unsigned executable memory for V8, library validation off for the
-engine's ctypes-loaded system libraries, audio input), electron-builder
+(main app: JIT and audio input; helpers and the engine additionally
+unsigned executable memory for cffi callbacks; library validation stays
+on, since every library we load is signed with our Team ID), electron-builder
 deep-signs the app including the engine bundle, and `notarize: true` makes
 it upload to Apple's notary service and staple the ticket. The workflow then
 prints `spctl -a -vv`, which must say `accepted` and `source=Notarized
-Developer ID`. Nothing in the pipeline echoes a secret.
+Developer ID`. GitHub masks the secret values in logs; on a failed import electron-builder prints file paths and an unsalted sha256 of the export password, which is why that password is 32 random characters. An independent audit on 2026-09-15 confirmed no private material reaches the bundle, the release assets or git.
 
 ## Quality gates - nobody launches an alpha by hand to find out it crashes
 

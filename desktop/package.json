@@ -50,8 +50,9 @@
       "icon": "build/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "notarize": true,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.inherit.plist",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Noisy Studio listens to you so your coding agents can hear you."
       },

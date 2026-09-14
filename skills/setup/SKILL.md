@@ -39,16 +39,10 @@ the user to manage.
 - Download the latest release asset from
   <https://github.com/noisy/noisy-coding/releases>, move it to
   `/Applications`.
-- It is currently a **beta and unsigned**. macOS marks any unsigned
-  download as quarantined and refuses it with *"Noisy Studio.app" is
-  damaged and can't be opened* - the app is fine, the flag is the
-  problem. Clear it once, then open normally:
-
-  ```sh
-  xattr -d com.apple.quarantine "/Applications/Noisy Studio.app"
-  ```
-
-  (Right-click -> Open is not enough on current macOS for this message.)
+- It is signed with a Developer ID and notarized by Apple (from
+  3.0.0-alpha.7 on): drag it to `/Applications` and double-click. If macOS
+  still calls a copy *damaged*, it is an older unsigned alpha - download
+  the current release instead of clearing quarantine flags.
 
 The engine needs speech credentials: open the dashboard (the app's
 menu-bar icon, or the daemon's URL) and either paste a **provider API key**

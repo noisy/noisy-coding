@@ -70,7 +70,7 @@ jobs:
 
   # The desktop app is the product in 3.x. macOS runners build the packaged
   # daemon (PyInstaller) and the Electron bundle and attach them to the
-  # release, so every tag gets a downloadable app - unsigned for now
+  # release, so every tag gets a downloadable app - signed and notarized (#95)
   # (signing/notarisation needs Apple certificates as secrets; #72 family).
   desktop-app:
     needs: [verify-version]
@@ -80,9 +80,9 @@ jobs:
       contents: write
     env:
       TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-      # Signing + notarization (#95) switch on when the repo carries the
-      # Developer ID certificate; without it the build stays ad-hoc signed
-      # and users need the xattr workaround from the setup skill.
+      # Signing + notarization (#95): the canonical repo carries the
+      # Developer ID certificate and must sign; a fork without it produces an
+      # explicitly UNSIGNED artifact.
       # Secrets (Settings > Secrets and variables > Actions):
       #   MAC_CERT_P12_BASE64   Developer ID Application .p12, base64 -w0
       #   MAC_CERT_PASSWORD     the .p12 export password
@@ -137,10 +137,16 @@ jobs:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
+          if [ -z "$MAC_CERT_P12_BASE64" ] && [ "$GITHUB_REPOSITORY" = "noisy/noisy-studio" ]; then
+            echo "The canonical repository must sign its releases - MAC_CERT_P12_BASE64 is missing."; exit 1
+          fi
           if [ -n "$MAC_CERT_P12_BASE64" ]; then
             # Signed + notarized release. electron-builder imports the
             # certificate from CSC_LINK into a throwaway keychain and calls
-            # notarytool with the API key; nothing is printed.
+            # notarytool with the API key. GitHub masks the secret values;
+            # on failure electron-builder prints file paths and a sha256 of
+            # the password (which is 32 random characters).
+            umask 077
             echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
             printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
             export CSC_LINK="$RUNNER_TEMP/developer-id.p12"
@@ -149,7 +155,7 @@ jobs:
             # keychain it just imported into (it needs an explicit identity
             # name) - so turn discovery on for THIS command: the throwaway
             # keychain holds exactly one identity, ours.
-            CSC_IDENTITY_AUTO_DISCOVERY=true npx electron-builder --mac --publish never -c.mac.notarize=true
+            CSC_IDENTITY_AUTO_DISCOVERY=true npx electron-builder --mac --publish never
             # A "successful" build that quietly skipped signing must fail here,
             # not on a user's first launch.
             app="dist/mac-arm64/Noisy Studio.app"
@@ -159,8 +165,11 @@ jobs:
             engine="$app/Contents/Resources/daemon/Noisy Studio Engine.app"
             codesign -dvv "$engine" 2>&1 | grep -E "^Authority=Developer ID Application" || { echo "engine NOT signed"; exit 1; }
           else
-            echo "No Developer ID certificate in secrets - building UNSIGNED (ad-hoc)."
-            npx electron-builder --mac --publish never -c.mac.identity=null
+            # Forks without a certificate: an UNSIGNED build (not even ad-hoc:
+            # identity=null skips signing), named so nobody mistakes it for a
+            # release artifact.
+            echo "No Developer ID certificate in secrets - building UNSIGNED."
+            npx electron-builder --mac --publish never -c.mac.identity=null -c.mac.notarize=false -c.artifactName='${productName}-${version}-${arch}-UNSIGNED.${ext}'
           fi
       - name: Smoke-test the packaged app
         # Launches the real .app: a missing module, a broken engine bundle or

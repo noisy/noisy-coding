@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Inherited by every nested binary: Electron helpers and the PyInstaller
+       engine (#95). allow-unsigned-executable-memory is for the engine's
+       cffi callback trampolines (sounddevice); allow-jit for V8 helpers;
+       audio-input because the engine is the process that opens the mic.
+       No disable-library-validation, no dyld environment variables. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+</dict>
+</plist>
