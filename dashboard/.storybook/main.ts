@@ -8,6 +8,12 @@ const config: StorybookConfig = {
   addons: ["@storybook/addon-essentials"],
   framework: { name: "@storybook/vue3-vite", options: {} },
   viteFinal(config) {
+    // Storybook also renders website components, including static builds.
+    // An empty token keeps analytics disabled without loading production config.
+    config.define = {
+      ...config.define,
+      __POSTHOG_CONFIG__: JSON.stringify({ projectToken: '', host: '' }),
+    };
     // Every Storybook surface is isolated from the user's running daemon.
     const ignored = config.server?.watch?.ignored;
     config.server = {
