@@ -32,6 +32,8 @@ export interface DaemonStatus {
   input_device: string;
   /** Where Claude's voice plays: system speakers or the browser tab. */
   output_device: "system" | "browser";
+  /** The daemon is owned by the packaged desktop app. */
+  native_app?: boolean;
   /** A browser tab currently holds the audio lease (WS bridge). */
   tab_audio: boolean;
   /** Live per-endpoint xAI check results — partial while checks run. */

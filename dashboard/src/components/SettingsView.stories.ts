@@ -15,3 +15,14 @@ export const Configured: StoryObj<typeof SettingsView> = {
     template: `<div style="max-width:720px"><SettingsView v-bind="args" /></div>`,
   }),
 };
+
+export const NativeApp: StoryObj<typeof SettingsView> = {
+  args: {
+    apiKeyHint: "····kRc9",
+    nativeApp: true,
+    devices: [{ name: "MacBook Microphone", default: true }],
+    selectedDevice: "",
+    outputDevice: "system",
+  },
+  render: Configured.render,
+};

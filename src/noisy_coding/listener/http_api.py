@@ -370,7 +370,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/devices":
                 # The dashboard tab is a virtual microphone: selectable
                 # always, audible only while a tab holds the audio lease.
-                browser_entry = [{"name": "THIS BROWSER TAB", "default": False, "value": "browser"}]
+                browser_entry = (
+                    []
+                    if state.native_app
+                    else [{"name": "THIS BROWSER TAB", "default": False, "value": "browser"}]
+                )
                 self._respond(
                     {
                         "devices": list_input_devices() + browser_entry,
@@ -419,6 +423,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "ptt_held": state.ptt_held,
                         "input_device": state.input_device,
                         "output_device": state.output_device,
+                        "native_app": state.native_app,
                         "tab_audio": state.tab_audio_alive,
                         "activity": state.activity,
                         "nudge_clocks": state.nudge_clocks(),
@@ -626,9 +631,15 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if "language" in body:
                     result["language"] = state.set_language(str(body["language"]))
                 if "input_device" in body:
-                    result["input_device"] = state.set_input_device(str(body["input_device"]))
+                    input_device = str(body["input_device"])
+                    if state.native_app and input_device == "browser":
+                        input_device = ""
+                    result["input_device"] = state.set_input_device(input_device)
                 if "output_device" in body:
-                    result["output_device"] = state.set_output_device(str(body["output_device"]))
+                    output_device = str(body["output_device"])
+                    if state.native_app and output_device == "browser":
+                        output_device = "system"
+                    result["output_device"] = state.set_output_device(output_device)
                 if result:
                     save_settings(state)
                     self._respond(result)

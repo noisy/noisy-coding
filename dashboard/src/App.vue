@@ -650,6 +650,7 @@ const LANGUAGES: Record<string, string> = {
             :devices="devices"
             :selected-device="status?.input_device ?? ''"
             :output-device="status?.output_device ?? 'system'"
+            :native-app="status?.native_app ?? false"
             :cue-prefs="cuePrefs"
             :ptt-hold-key="status?.ptt_hold_key ?? ''"
             :ptt-toggle-key="status?.ptt_toggle_key ?? ''"

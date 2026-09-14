@@ -4,6 +4,7 @@ Run with: noisy-coding-listener
 The Claude Code hooks poll GET /drain on the HTTP API to pick up transcripts.
 """
 
+import json
 import os
 import queue
 import sys
@@ -18,14 +19,13 @@ import sounddevice as sd
 from noisy_coding import credentials
 from noisy_coding.config_dir import CONFIG_DIR, migrate_legacy_config_dir
 from noisy_coding.listener import pricing, speech, stt, stt_stream
-import json
-
 from noisy_coding.listener.http_api import (
     CHARACTER_FILE,
-    VOICE_CLAIMS_FILE,
     DEFAULT_PORT,
     PORT_ENV_VAR,
     SETTINGS_FILE,
+    VOICE_CLAIMS_FILE,
+    save_settings,
     start_http_api,
 )
 from noisy_coding.listener.state import ListenerState
@@ -39,6 +39,7 @@ INPUT_DEVICE_ENV_VAR = "NOISY_CODING_INPUT_DEVICE"
 OUTPUT_DEVICE_ENV_VAR = "NOISY_CODING_OUTPUT_DEVICE"
 MANAGEMENT_KEY_ENV_VAR = "NOISY_CODING_MANAGEMENT_KEY"
 TEAM_ID_ENV_VAR = "NOISY_CODING_TEAM_ID"
+NATIVE_APP_ENV_VAR = "NOISY_CODING_NATIVE_APP"
 CREDITS_POLL_SECONDS = 60.0
 # Display gain for the dashboard mic level: int16 speech RMS is small
 # (~0.02-0.08 full-scale), this maps it into a readable 0..1 range.
@@ -89,6 +90,20 @@ def _history_saver(state: ListenerState) -> None:
         if snapshot != last_saved:
             _save_history(state)
             last_saved = snapshot
+
+
+def _migrate_native_audio_choices(state: ListenerState) -> bool:
+    """Removes browser-only audio choices when the daemon belongs to the native app."""
+    if not state.native_app:
+        return False
+    migrated = False
+    if state.input_device == "browser":
+        state.set_input_device("")
+        migrated = True
+    if state.output_device == "browser":
+        state.set_output_device("system")
+        migrated = True
+    return migrated
 
 
 def _poll_credits(state: ListenerState) -> None:
@@ -225,9 +240,13 @@ def _open_input_stream(
     """
     selected = state.input_device
     if selected == "browser":
-        _log("[mic] input = browser tab (WS bridge)")
-        state.create_utterance("system", "", text="MIC → THIS BROWSER TAB")
-        return None
+        if state.native_app:
+            state.set_input_device("")
+            selected = ""
+        else:
+            _log("[mic] input = browser tab (WS bridge)")
+            state.create_utterance("system", "", text="MIC → THIS BROWSER TAB")
+            return None
     options = {"device": selected} if selected else {}
     try:
         input_stream = sd.InputStream(
@@ -240,6 +259,10 @@ def _open_input_stream(
         )
     except (sd.PortAudioError, ValueError) as error:
         if not selected:
+            if state.native_app:
+                _log(f"[mic] no native audio hardware ({error})")
+                state.add_event("mic_error", "no native audio hardware available")
+                raise
             # No selection and even the default won't open: this host has
             # no usable audio hardware at all (a container, a headless
             # box). The browser tab is the only possible microphone —
@@ -271,6 +294,7 @@ def run(config: VadConfig | None = None) -> None:
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
     state = ListenerState()
+    state.set_native_app(os.environ.get(NATIVE_APP_ENV_VAR) == "1")
     state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
     state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
     state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
@@ -327,6 +351,9 @@ def run(config: VadConfig | None = None) -> None:
             state.restore_active_agent(str(saved["active_agent"]))
     except (OSError, ValueError):
         pass
+    if _migrate_native_audio_choices(state):
+        _log("[audio] migrated browser-tab devices to native system audio")
+        save_settings(state)
     _load_history(state)
     threading.Thread(target=_history_saver, args=(state,), daemon=True).start()
     # Global PTT hotkeys (#25): armed only when a key is configured. The
