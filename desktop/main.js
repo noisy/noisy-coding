@@ -89,6 +89,7 @@ async function spawnDaemon() {
     env: {
       ...process.env,
       NOISY_CODING_LISTENER_PORT: String(OWN_PORT),
+      NOISY_CODING_NATIVE_APP: "1",
       // Its own config directory: sharing one means sharing settings,
       // history and the voice ledger, where the last writer wins.
       NOISY_CODING_CONFIG_DIR:

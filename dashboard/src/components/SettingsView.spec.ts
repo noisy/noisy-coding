@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest";
 import SettingsView from "./SettingsView.vue";
 
 describe("SettingsView", () => {
+  it("hides the browser speaker in the native app", () => {
+    const native = mount(SettingsView, {
+      props: { apiKeyHint: "", nativeApp: true },
+    });
+    const web = mount(SettingsView, {
+      props: { apiKeyHint: "", nativeApp: false },
+    });
+
+    expect(native.find('option[value="browser"]').exists()).toBe(false);
+    expect(web.find('option[value="browser"]').exists()).toBe(true);
+  });
+
   it("shows the key as a masked form field plus the pricing/link guidance", async () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "····kRc9" } });
     await wrapper.findAll(".tabbtn").find((b) => b.text() === "SYSTEM")!.trigger("click");

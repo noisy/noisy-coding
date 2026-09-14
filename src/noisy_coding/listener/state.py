@@ -138,6 +138,7 @@ class ListenerState:
         self._ptt_last_hold = float("-inf")  # monotonic time of last lease renewal
         self._language = ""  # "" = auto-detect
         self._input_device = ""  # "" = system default microphone
+        self._native_app = False
         # Character is now PER AGENT: {agent_name: character_dict}. The special
         # key "" holds the character used in single-agent mode (no agents
         # registered) and as the template for a newly seen agent.
@@ -359,6 +360,16 @@ class ListenerState:
         with self._lock:
             self._input_device = str(name)
             return self._input_device
+
+    @property
+    def native_app(self) -> bool:
+        with self._lock:
+            return self._native_app
+
+    def set_native_app(self, value: bool) -> bool:
+        with self._lock:
+            self._native_app = bool(value)
+            return self._native_app
 
     @property
     def output_device(self) -> str:
