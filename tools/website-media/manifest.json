@@ -1,0 +1,50 @@
+{
+  "source_sha256": {
+    "dashboard/src/assets/voice-avatars/editorial.png": "add0a35d43f3f0a86f2f08169677bbb159122b550a206d626f72f47926be1a34",
+    "dashboard/src/components/marketing/recorded-hero/mac-desktop.png": "e531395092c1fc2aad181a438a6cad6fb91229c5e53c8cb6ee741be9c0508090",
+    "dashboard/src/components/marketing/recorded-hero/hero-recording.mp4": "d0d3f9afb8371c3416cb20e66f4d64546fc114b23fc49467d0d6da3c74041bbd",
+    "dashboard/src/components/marketing/recorded-crew/crew-recording.mp4": "f4f313286d3866819de237c4ce166aa89dffe5b337017e24be0d561cef851ad3",
+    "tools/demo-recorder/takes/hero-v1/original.webm": "76c94859bed3c28eead6f8a94cadeeb922231a348609cd9bb400d0197e14ff69",
+    "tools/demo-recorder/takes/crew-v5/original.webm": "1f867ef6f641580c5224a784dcfbff71401f528cf4fddad13aca425cbbdfe923"
+  },
+  "outputs": [
+    {
+      "source": "dashboard/src/assets/voice-avatars/editorial.png",
+      "output": "dashboard/src/assets/voice-avatars/editorial.webp",
+      "source_bytes": 1732042,
+      "output_bytes": 443724,
+      "output_sha256": "32c5071c525b1b98b43adca21a0fffe3cbd73203b45b200631fbad1f70dfee7f"
+    },
+    {
+      "source": "dashboard/src/components/marketing/recorded-hero/mac-desktop.png",
+      "output": "dashboard/src/components/marketing/recorded-hero/mac-desktop.webp",
+      "source_bytes": 1863342,
+      "output_bytes": 260182,
+      "output_sha256": "a949f1d5b833b0e6f3aae04419ee17f05bf119585aedec029f3820d8c5f1457b"
+    },
+    {
+      "source": "dashboard/src/components/marketing/recorded-hero/hero-recording.mp4",
+      "output": "website/src/assets/optimized/hero-recording.mp4",
+      "source_bytes": 9370294,
+      "output_bytes": 3944386,
+      "output_sha256": "820c410e62e0724ff9d0b7daff07aa5d5f6bfc09d3a23d19bd42c68ac08f90de"
+    },
+    {
+      "source": "dashboard/src/components/marketing/recorded-crew/crew-recording.mp4",
+      "output": "website/src/assets/optimized/crew-recording.mp4",
+      "source_bytes": 3105721,
+      "output_bytes": 1306355,
+      "output_sha256": "c4b54b30db4cd94fe24e2c5e78823773f7bfb7b05ac0321c255455e81bd744f8"
+    }
+  ],
+  "settings": {
+    "webp_quality": 90,
+    "video_size": "854x480",
+    "video_crf": 24,
+    "audio": "packet-identical stream copy"
+  },
+  "tools": {
+    "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers",
+    "cwebp": "1.6.0"
+  }
+}
