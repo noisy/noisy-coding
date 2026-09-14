@@ -64,6 +64,8 @@ def test_ingest_feeds_the_frames_queue_only_in_browser_mode():
     assert bridge.ingest(rechunker, _pcm(FRAME_SAMPLES)) == 0  # native mic selected
     assert frames.empty()
 
+    state.set_browser_audio(True)  # plain-web deployment (#99)
+
     state.set_input_device("browser")
     assert bridge.ingest(rechunker, _pcm(FRAME_SAMPLES)) == 1
     assert frames.get_nowait().shape == (FRAME_SAMPLES,)
@@ -168,6 +170,7 @@ def test_stop_tab_playback_is_a_noop_while_nothing_plays():
 
 def test_ingest_marks_the_tab_mic_as_live():
     bridge, state, _ = _bridge()
+    state.set_browser_audio(True)  # plain-web deployment (#99)
     state.set_input_device("browser")
     state.refresh_tab_audio()
 

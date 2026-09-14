@@ -19,7 +19,7 @@ export function resetScenario(next: Scenario) {
     speaking_agents:next === 'speaking' ? ['codex'] : [], queued:next === 'queued' ? 2 : 0,
     session_cost_usd:{user:.0214,claude:.1187}, usage:{stt_seconds:764,tts_chars:18432}, credits_usd:4.21,
     mode:'batch',tts_mode:'live',end_silence_ms:1500,mic_sensitivity:50,smart_turn:.7,smart_turn_mode:'soft',detection_mode:'ptt',ptt_held:false,
-    input_device:'',output_device:'system',tab_audio:false,activity:{},language:'en',
+    input_device:'',output_device:'system',browser_audio:false,tab_audio:false,activity:{},language:'en',
     agents:next === 'no-tabs' ? {} : {codex:1,claude:2,docs:3}, agent_labels:next === 'no-tabs' ? {} : {codex:next === 'long' ? 'codex / investigate-checkout-performance-and-retry-handling' : 'Codex',claude:'Code review',docs:'Documentation'},
     agent_voices:{codex:'lux',claude:'eve',docs:'rex'},active_agent:next === 'no-tabs' ? null : 'codex',muted_agents:[], queued_by_agent:{claude:2},
     version:'2.17.0',latest_version:'2.17.0', shutdown_at:next === 'shutdown' ? now+180 : undefined,

@@ -199,6 +199,7 @@ def test_accepted_key_walks_the_user_to_the_mic_when_the_tab_is_silent(monkeypat
         lambda _state, text, **_k: spoken.append(text),
     )
     state = ListenerState()
+    state.set_browser_audio(True)  # plain-web deployment (#99)
     state.set_input_device("browser")  # tab is the mic, but no live lease yet
     server = start_http_api(state, 0)
     try:
@@ -288,6 +289,7 @@ def test_accepted_key_skips_the_mic_step_when_the_tab_mic_is_live(monkeypatch):
         lambda _state, text, **_k: spoken.append(text),
     )
     state = ListenerState()
+    state.set_browser_audio(True)  # plain-web deployment (#99)
     state.set_input_device("browser")
     state.refresh_tab_audio()
     state.set_tab_mic(True)  # the tab reported a capturing microphone

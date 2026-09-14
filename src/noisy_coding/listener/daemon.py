@@ -39,6 +39,9 @@ STT_LANGUAGE_ENV_VAR = "NOISY_CODING_STT_LANGUAGE"
 MODE_ENV_VAR = "NOISY_CODING_MODE"
 # Container/headless defaults; saved settings (newer intent) override them.
 INPUT_DEVICE_ENV_VAR = "NOISY_CODING_INPUT_DEVICE"
+# Opt-in for the dashboard tab as microphone/speaker (plain-web deployments);
+# the native app never sets it (#99).
+BROWSER_AUDIO_ENV_VAR = "NOISY_CODING_BROWSER_AUDIO"
 OUTPUT_DEVICE_ENV_VAR = "NOISY_CODING_OUTPUT_DEVICE"
 MANAGEMENT_KEY_ENV_VAR = "NOISY_CODING_MANAGEMENT_KEY"
 TEAM_ID_ENV_VAR = "NOISY_CODING_TEAM_ID"
@@ -369,6 +372,7 @@ def run(config: VadConfig | None = None) -> None:
     state = ListenerState()
     state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
     state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
+    state.set_browser_audio(os.environ.get(BROWSER_AUDIO_ENV_VAR, "") == "1")
     state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
     state.set_output_device(os.environ.get(OUTPUT_DEVICE_ENV_VAR, ""))
     try:

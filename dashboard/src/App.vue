@@ -670,6 +670,7 @@ const LANGUAGES: Record<string, string> = {
           <SettingsView
             :api-key-hint="status?.api_key_hint ?? ''"
             :devices="devices"
+            :browser-audio="status?.browser_audio ?? false"
             :selected-device="status?.input_device ?? ''"
             :output-device="status?.output_device ?? 'system'"
             :cue-prefs="cuePrefs"

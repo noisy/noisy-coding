@@ -28,6 +28,7 @@ withDefaults(
     devices?: InputDevice[];
     selectedDevice?: string;
     outputDevice?: string;
+    browserAudio?: boolean;
     cuePrefs?: CuePrefs | null;
     pttHoldKey?: string;
     pttToggleKey?: string;
@@ -36,7 +37,7 @@ withDefaults(
     checksRunning?: boolean;
   }>(),
   {
-    devices: () => [], selectedDevice: "", outputDevice: "system", cuePrefs: null,
+    devices: () => [], selectedDevice: "", outputDevice: "system", browserAudio: false, cuePrefs: null,
     pttHoldKey: "", pttToggleKey: "", pttCancelKey: "",
     checks: null, checksRunning: false,
   },
@@ -123,7 +124,7 @@ function submit() {
           @change="emit('pickOutput', ($event.target as HTMLSelectElement).value)"
         >
           <option value="system">System speakers</option>
-          <option value="browser">This browser tab</option>
+          <option v-if="browserAudio" value="browser">This browser tab</option>
         </select>
       </div>
       <div class="text">

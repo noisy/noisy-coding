@@ -526,6 +526,7 @@ def status_payload(state: ListenerState) -> dict:
                             # input_device while the pick is unavailable (#41).
                             "active_input_device": state.active_input_device,
                             "output_device": state.output_device,
+                            "browser_audio": state.browser_audio,
                             "tab_audio": state.tab_audio_alive,
                             "activity": state.activity,
                             "nudge_clocks": state.nudge_clocks(),
@@ -635,7 +636,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif url.path == "/devices":
                 # The dashboard tab is a virtual microphone: selectable
                 # always, audible only while a tab holds the audio lease.
-                browser_entry = [{"name": "THIS BROWSER TAB", "default": False, "value": "browser"}]
+                browser_entry = (
+                    [{"name": "THIS BROWSER TAB", "default": False, "value": "browser"}]
+                    if state.browser_audio
+                    else []
+                )
                 self._respond(
                     {
                         "devices": list_input_devices() + browser_entry,

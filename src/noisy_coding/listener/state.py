@@ -136,6 +136,11 @@ class ListenerState:
         self._tab_mic = False  # the tab's mic is actually capturing
         self._active_input_device = ""  # what is actually open right now (#41)
         self._output_device = "system"  # where Claude's voice plays: system | browser
+        # The dashboard tab as microphone/speaker was the Docker era's only
+        # audio path. The native app owns the hardware, so the browser
+        # devices are opt-in (NOISY_CODING_BROWSER_AUDIO=1) and a stored
+        # "browser" pick migrates back to the system devices (#99).
+        self._browser_audio = False
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
         # Per-conversation mute: these agents' speech parks as UNHEARD
@@ -558,10 +563,39 @@ class ListenerState:
 
     def set_input_device(self, name: str) -> str:
         """The user's PREFERENCE (persisted). What is actually open lives in
-        active_input_device - a failed open must never rewrite the pick (#41)."""
+        active_input_device - a failed open must never rewrite the pick (#41).
+        "browser" is only a valid pick while browser audio is enabled (#99)."""
         with self._lock:
-            self._input_device = str(name)
+            name = str(name)
+            if name == "browser" and not self._browser_audio:
+                name = ""
+            self._input_device = name
             return self._input_device
+
+    @property
+    def browser_audio(self) -> bool:
+        with self._lock:
+            return self._browser_audio
+
+    def set_browser_audio(self, enabled: bool) -> None:
+        """Allow (or forbid) the dashboard tab as a device. Forbidding it
+        moves any browser pick back to the system devices and reports which."""
+        with self._lock:
+            self._browser_audio = bool(enabled)
+            if self._browser_audio:
+                return
+            migrated = []
+            if self._input_device == "browser":
+                self._input_device = ""
+                migrated.append("microphone")
+            if self._output_device == "browser":
+                self._output_device = "system"
+                migrated.append("speaker")
+        if migrated:
+            self.add_event(
+                "settings_migrated",
+                f"browser-tab {' and '.join(migrated)} is not available here - using the system devices",
+            )
 
     @property
     def active_input_device(self) -> str:
@@ -579,6 +613,8 @@ class ListenerState:
 
     def set_output_device(self, name: str) -> str:
         with self._lock:
+            if name == "browser" and not self._browser_audio:
+                name = "system"
             if name in ("system", "browser"):
                 self._output_device = name
             return self._output_device

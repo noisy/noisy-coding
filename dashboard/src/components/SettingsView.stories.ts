@@ -15,3 +15,10 @@ export const Configured: StoryObj<typeof SettingsView> = {
     template: `<div style="max-width:720px"><SettingsView v-bind="args" /></div>`,
   }),
 };
+
+// Plain-web deployments opt in to the dashboard tab as a speaker/microphone
+// (NOISY_CODING_BROWSER_AUDIO=1); the native app never shows this option (#99).
+export const BrowserAudioAllowed: StoryObj<typeof SettingsView> = {
+  args: { apiKeyHint: "····kRc9", browserAudio: true, outputDevice: "browser" },
+  render: Configured.render,
+};

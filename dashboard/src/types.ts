@@ -38,6 +38,7 @@ export interface DaemonStatus {
   input_device: string;
   /** Where Claude's voice plays: system speakers or the browser tab. */
   output_device: "system" | "browser";
+  browser_audio?: boolean; // the dashboard tab may act as mic/speaker (opt-in, #99)
   /** A browser tab currently holds the audio lease (WS bridge). */
   tab_audio: boolean;
   /** Live per-endpoint xAI check results — partial while checks run. */
