@@ -173,7 +173,13 @@ class HotkeyListener:
         return self.snapshot()
 
     def snapshot(self) -> dict:
-        """For /status: what the dashboard needs to explain the hotkey state."""
+        """For /status: what the dashboard needs to explain the hotkey state.
+
+        Re-probes Input Monitoring every time (CGPreflightListenEventAccess
+        is cheap): a grant revoked in System Settings disarms the keys and
+        brings the GRANT banner back; a grant given there arms them without
+        a prompt. Never prompts - that stays a user action (#97)."""
+        self._refresh_permission()
         with self._lock:
             return {
                 "configured": bool(self._bindings),
@@ -182,6 +188,26 @@ class HotkeyListener:
                 "bindings": {a: str(c) for a, c in self._bindings.items()},
                 "problems": dict(self._problems),
             }
+
+    def _refresh_permission(self) -> None:
+        with self._lock:
+            configured = bool(self._bindings)
+            previous = self._permission
+            armed = self._tap_thread is not None
+        if not configured:
+            return
+        status = input_monitoring_status()
+        if status == "unavailable" or status == previous and (status != "granted" or armed):
+            return
+        with self._lock:
+            self._permission = status
+        if status == "missing" and armed:
+            self._log("hotkey: Input Monitoring revoked - global PTT disarmed")
+            self._disengage()
+            self._stop_tap()
+        elif status == "granted" and not armed:
+            self._log("hotkey: Input Monitoring granted - arming")
+            self._start_tap()
 
     # -- lease driving -----------------------------------------------------
 

@@ -54,9 +54,10 @@ const keys = (chord: string) => {
     <div v-if="locked" class="gate" role="status">
       <div class="gatetext">
         <b>macOS is not letting Noisy Studio see your keys yet.</b>
-        Global hotkeys need the Input Monitoring permission. Your bindings are kept.
+        Global hotkeys need the Input Monitoring permission; your bindings are kept and
+        arm themselves the moment it is granted. The system dialog can open behind other windows.
       </div>
-      <button class="btn" @click="emit('grant')">Grant access</button>
+      <button class="btn primary" @click="emit('grant')">Grant access</button>
     </div>
     <div v-else-if="permission === 'unavailable'" class="gate muted" role="status">
       Global hotkeys are a macOS feature.
@@ -105,6 +106,10 @@ const keys = (chord: string) => {
 .gate b { color: var(--amber); font-weight: 400; }
 .btn { font-family: var(--sans); font-size: 11px; color: var(--cyan); background: rgba(158,188,245,.06); border: 1px solid var(--line-strong); padding: 7px 14px; cursor: pointer; border-radius: 8px; flex: none; }
 .btn:hover { color: var(--cyan-hi); }
+/* The one live control on a locked tab must not look like part of the
+   greyed block: filled, high contrast, hover lift. */
+.btn.primary { color: var(--bg0); background: var(--amber); border-color: var(--amber); font-weight: 600; padding: 8px 16px; }
+.btn.primary:hover { color: var(--bg0); background: var(--accent-hover, var(--amber)); }
 
 .card { margin: 0; min-width: 0; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--bg1) 60%, transparent); }
 .locked .card { opacity: .45; pointer-events: none; }

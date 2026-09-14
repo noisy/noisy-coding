@@ -102,3 +102,25 @@ def test_off_macos_is_unavailable_not_missing(monkeypatch, listener):
     monkeypatch.setattr(hotkey, "_quartz", lambda: None)
     listener.configure("F8", "", "", may_prompt=True)
     assert listener.snapshot()["permission"] == "unavailable"
+
+
+def test_revoking_in_system_settings_disarms_and_brings_the_banner_back(monkeypatch, listener):
+    quartz = _FakeQuartz(granted=True)
+    monkeypatch.setattr(hotkey, "_quartz", lambda: quartz)
+    listener.configure("F8", "", "")
+    assert _core(listener.snapshot())["armed"] is True
+    quartz.granted = False                                   # user flips the switch off
+    snap = listener.snapshot()
+    assert snap["permission"] == "missing" and snap["armed"] is False
+    assert quartz.requests == 0                              # never prompts by itself
+
+
+def test_granting_in_system_settings_arms_without_a_prompt(monkeypatch, listener):
+    quartz = _FakeQuartz(granted=False)
+    monkeypatch.setattr(hotkey, "_quartz", lambda: quartz)
+    listener.configure("F8", "", "")
+    assert _core(listener.snapshot())["armed"] is False
+    quartz.granted = True                                    # user flips the switch on
+    snap = listener.snapshot()
+    assert snap["permission"] == "granted" and snap["armed"] is True
+    assert quartz.requests == 0
