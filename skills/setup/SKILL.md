@@ -39,8 +39,16 @@ the user to manage.
 - Download the latest release asset from
   <https://github.com/noisy/noisy-coding/releases>, move it to
   `/Applications`.
-- It is currently a **beta and unsigned**: the first launch needs
-  **right-click -> Open**, because a double-click is blocked by macOS.
+- It is currently a **beta and unsigned**. macOS marks any unsigned
+  download as quarantined and refuses it with *"Noisy Studio.app" is
+  damaged and can't be opened* - the app is fine, the flag is the
+  problem. Clear it once, then open normally:
+
+  ```sh
+  xattr -d com.apple.quarantine "/Applications/Noisy Studio.app"
+  ```
+
+  (Right-click -> Open is not enough on current macOS for this message.)
 
 The engine needs speech credentials: open the dashboard (the app's
 menu-bar icon, or the daemon's URL) and either paste a **provider API key**

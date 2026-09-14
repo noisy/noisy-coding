@@ -71,6 +71,6 @@ version if the default install path changes.
 ## When this is real
 
 Add an "Install (macOS app)" section to the README and the plugin skill,
-covering: download, first launch (unsigned - right-click Open), how hooks
+covering: download, first launch (unsigned - clear the quarantine flag with `xattr -d com.apple.quarantine`, see the setup skill), how hooks
 get configured, and how to tell which daemon is answering. Not before -
 instructions for a flow that does not exist are worse than none.

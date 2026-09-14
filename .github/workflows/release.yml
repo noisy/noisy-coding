@@ -86,7 +86,12 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - uses: astral-sh/setup-uv@v5
-      - run: uv sync
+      # The offline speech engine (faster-whisper + kokoro) is an opt-in
+      # extra for pip users, but the app must ship it: its dashboard offers
+      # "local (offline) engine" and PyInstaller only bundles what is
+      # installed. Without --extra local the daemon shrinks by ~50 MB and
+      # that option fails with an install hint (alpha.3 shipped like that).
+      - run: uv sync --extra local
       # PyInstaller is a build-time tool, not a project dependency; the npm
       # script expects it in the project venv (.venv/bin/pyinstaller).
       - run: uv pip install pyinstaller
