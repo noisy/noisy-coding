@@ -145,8 +145,19 @@ jobs:
             printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
             export CSC_LINK="$RUNNER_TEMP/developer-id.p12"
             export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
-            npx electron-builder --mac --publish never -c.mac.notarize=true
-            spctl -a -vv "dist/mac-arm64/Noisy Studio.app" 2>&1 | tail -2
+            # With auto-discovery off electron-builder never even looks in the
+            # keychain it just imported into (it needs an explicit identity
+            # name) - so turn discovery on for THIS command: the throwaway
+            # keychain holds exactly one identity, ours.
+            CSC_IDENTITY_AUTO_DISCOVERY=true npx electron-builder --mac --publish never -c.mac.notarize=true
+            # A "successful" build that quietly skipped signing must fail here,
+            # not on a user's first launch.
+            app="dist/mac-arm64/Noisy Studio.app"
+            codesign -dvv "$app" 2>&1 | grep -E "^Authority=Developer ID Application" || { echo "NOT signed with a Developer ID"; codesign -dvv "$app" 2>&1 | head -5; exit 1; }
+            verdict="$(spctl -a -vv -t exec "$app" 2>&1)"; echo "$verdict"
+            echo "$verdict" | grep -q "source=Notarized Developer ID" || { echo "NOT notarized"; exit 1; }
+            engine="$app/Contents/Resources/daemon/Noisy Studio Engine.app"
+            codesign -dvv "$engine" 2>&1 | grep -E "^Authority=Developer ID Application" || { echo "engine NOT signed"; exit 1; }
           else
             echo "No Developer ID certificate in secrets - building UNSIGNED (ad-hoc)."
             npx electron-builder --mac --publish never -c.mac.identity=null
