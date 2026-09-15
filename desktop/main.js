@@ -422,26 +422,22 @@ function buildTray() {
   tray?.setContextMenu(menu);
 }
 
-/* A cold production start waits for the bundled daemon to unpack and boot -
- * up to a minute with nothing on screen, which reads as "the app is broken".
- * The splash is a tiny self-contained page (no daemon, no bundle) that
- * exists only to prove the app is alive while resolveMode() waits. */
+/* A cold production start waits for the engine to boot - seconds with
+ * nothing on screen reads as "the app is broken". The splash is a tiny
+ * self-contained page (no daemon, no bundle) that exists only to prove the
+ * app is alive while resolveMode() waits. Design: dashboard Storybook,
+ * App/Splash (#96); splash.html mirrors the chosen look. */
 function createSplash() {
   const splash = new BrowserWindow({
-    width: 300,
-    height: 130,
+    width: 320,
+    height: 170,
     frame: false,
     resizable: false,
     alwaysOnTop: true,
-    backgroundColor: "#050e18",
+    backgroundColor: "#151619",
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
-  const html = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:#050e18;color:#3fd8ff;font:600 13px -apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;letter-spacing:.25em">
-  <div>NOISY STUDIO</div>
-  <div style="margin-top:10px;width:160px;height:2px;background:#0c2233;overflow:hidden;border-radius:1px"><div style="width:40%;height:100%;background:#3fd8ff;animation:s 1.1s ease-in-out infinite alternate"></div></div>
-  <div style="margin-top:10px;font-size:9px;color:#5b7c8f;letter-spacing:.2em">STARTING THE DAEMON</div>
-  <style>@keyframes s{from{margin-left:0}to{margin-left:60%}}</style></body>`;
-  splash.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+  splash.loadFile(path.join(__dirname, "splash.html"));
   return splash;
 }
 

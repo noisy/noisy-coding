@@ -6,9 +6,10 @@
  * self-contained page for Electron (desktop/splash.html); this component is
  * the design reference and the regression surface.
  *
- * Round 1 (mark / wordmark / card / pulse): A won on idea, lost on balance -
- * everything sat in a tight centre. Round 2 iterates on A only. */
-withDefaults(defineProps<{ look?: "mark" | "spaced" | "row" | "edge" | "icon-only" }>(), { look: "spaced" });
+ * Chosen: "row" (Krzysztof, 2026-09-15) - icon and name as one lockup, the
+ * progress line under it. The other looks stay under Splash/Other variants
+ * for comparison until the design settles. */
+withDefaults(defineProps<{ look?: "mark" | "spaced" | "row" | "edge" | "icon-only" }>(), { look: "row" });
 </script>
 
 <template>

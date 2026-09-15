@@ -38,7 +38,8 @@
       "analytics.js",
       "analytics-config.json",
       "build/icon.png",
-      "build/icon-dev.png"
+      "build/icon-dev.png",
+      "splash.html"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
