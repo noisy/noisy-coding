@@ -70,7 +70,7 @@ const keys = (chord: string) => {
           <div v-for="b in pane.bindings" :key="b.action" class="row" :class="{ capturing: capturing === b.action, bad: b.problem && b.problem.kind !== 'system', warn: b.problem?.kind === 'system' }">
             <span class="lbl">{{ b.label }}</span>
             <button class="chord" :aria-label="`${b.label} key`" @click="emit('capture', b.action)">
-              <span v-if="capturing === b.action" class="listen">Press a key…</span>
+              <span v-if="capturing === b.action" class="listen">Press a key, twice for a double press…</span>
               <template v-else-if="b.chord"><kbd v-for="k in keys(b.chord)" :key="k">{{ k }}</kbd></template>
               <span v-else class="unbound">Not set</span>
             </button>
@@ -93,7 +93,7 @@ const keys = (chord: string) => {
       </div>
     </section>
 
-    <p class="foot">Click a field and press the keys you want; press a key twice for a double-press binding. Escape cancels, Delete clears. Clashes with other apps cannot be detected.</p>
+    <p class="foot">Click a field and press the keys you want; twice for a double press. Click elsewhere to cancel, Delete clears. macOS keeps Control with F1–F8 for itself; clashes with other apps cannot be detected.</p>
   </div>
 </template>
 

@@ -16,10 +16,11 @@ describe("interpretKey (#104)", () => {
     expect(k("AltRight", { altKey: true })).toEqual({ kind: "chord", chord: "right_option" });
     expect(k("MetaLeft", { metaKey: true })).toEqual({ kind: "ignore" });
   });
-  it("Escape cancels, Delete clears, but only unmodified", () => {
-    expect(k("Escape")).toEqual({ kind: "cancel" });
+  it("Escape is a bindable key; Delete clears, but only unmodified", () => {
+    expect(k("Escape")).toEqual({ kind: "chord", chord: "escape" });
     expect(k("Backspace")).toEqual({ kind: "clear" });
     expect(k("Escape", { metaKey: true })).toEqual({ kind: "chord", chord: "cmd+escape" });
+    expect(k("Delete", { shiftKey: true })).toEqual({ kind: "chord", chord: "shift+forward_delete" });
   });
   it("ignores keys it cannot name", () => {
     expect(k("MediaPlayPause")).toEqual({ kind: "ignore" });

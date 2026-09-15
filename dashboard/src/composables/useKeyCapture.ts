@@ -19,10 +19,13 @@ const LEFT_MODIFIERS = new Set(["MetaLeft", "AltLeft", "ControlLeft", "ShiftLeft
 
 export type CaptureResult = { kind: "chord"; chord: string } | { kind: "cancel" } | { kind: "clear" } | { kind: "ignore" };
 
+/* Escape is a KEY here, not a cancel: scratch-on-Escape (single or double)
+ * is the most wanted binding of all. Capture is cancelled by clicking
+ * anywhere else; Delete/Backspace clears the binding. */
+
 /** Turn one keydown into a capture result. Exported for tests. */
 export function interpretKey(e: Pick<KeyboardEvent, "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">): CaptureResult {
   const code = e.code;
-  if (code === "Escape" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) return { kind: "cancel" };
   if ((code === "Backspace" || code === "Delete") && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) return { kind: "clear" };
   if (LEFT_MODIFIERS.has(code)) return { kind: "ignore" }; // wait for the real key
   let key: string | undefined;
@@ -53,6 +56,7 @@ export function useKeyCapture(onResult: (action: string, result: CaptureResult) 
   const finish = (action: string, result: CaptureResult) => {
     capturing.value = null;
     window.removeEventListener("keydown", handler, true);
+    window.removeEventListener("mousedown", clickAway, true);
     if (pending) clearTimeout(pending.timer);
     pending = null;
     onResult(action, result);
@@ -75,18 +79,26 @@ export function useKeyCapture(onResult: (action: string, result: CaptureResult) 
     const chord = result.chord;
     pending = { chord, at: now, timer: setTimeout(() => finish(action, { kind: "chord", chord }), DOUBLE_TAP_MS) };
   };
+  // A click anywhere while capturing cancels (the field's own click
+  // restarts capture right after, which is what a re-click should do).
+  const clickAway = () => {
+    const action = capturing.value;
+    if (action) finish(action, { kind: "cancel" });
+  };
   function start(action: string) {
     if (capturing.value) window.removeEventListener("keydown", handler, true);
     if (pending) clearTimeout(pending.timer);
     pending = null;
     capturing.value = action;
     window.addEventListener("keydown", handler, true);
+    setTimeout(() => window.addEventListener("mousedown", clickAway, true), 0);
   }
   function stop() {
     capturing.value = null;
     if (pending) clearTimeout(pending.timer);
     pending = null;
     window.removeEventListener("keydown", handler, true);
+    window.removeEventListener("mousedown", clickAway, true);
   }
   onBeforeUnmount(stop);
   return { capturing, start, stop };

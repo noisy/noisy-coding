@@ -70,6 +70,16 @@ SYSTEM_SHORTCUTS: dict[str, str] = {
     "ctrl+right": "moves a Space right",
     "cmd+ctrl+f": "toggles full screen",
     "cmd+ctrl+space": "opens the emoji picker",
+    # System Settings > Keyboard > Keyboard Shortcuts > Keyboard: macOS
+    # consumes these before any app sees them.
+    "ctrl+F1": "toggles full keyboard access",
+    "ctrl+F2": "focuses the menu bar",
+    "ctrl+F3": "focuses the Dock",
+    "ctrl+F4": "moves focus to the next window",
+    "ctrl+F5": "focuses the window toolbar",
+    "ctrl+F6": "focuses the floating window",
+    "ctrl+F7": "changes keyboard navigation",
+    "ctrl+F8": "focuses the status menus",
 }
 
 
