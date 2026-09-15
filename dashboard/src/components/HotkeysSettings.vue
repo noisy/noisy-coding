@@ -20,6 +20,8 @@ export interface HotkeyGroup {
   title: string;
   caption: string;         // what the group enables, in one or two sentences
   bindings: HotkeyBinding[];
+  /** Round 2: a sub-block inside the same card ("...to a specific tab"). */
+  sub?: { title: string; caption: string; bindings: HotkeyBinding[] };
 }
 
 const props = withDefaults(
@@ -27,7 +29,7 @@ const props = withDefaults(
     permission?: "granted" | "missing" | "unavailable" | "unknown";
     groups: HotkeyGroup[];
     capturing?: string | null;  // action id whose field is waiting for a key
-    layout?: "list" | "cards" | "table";
+    layout?: "list" | "cards" | "table" | "merged";
   }>(),
   { permission: "unknown", capturing: null, layout: "list" },
 );
@@ -83,6 +85,25 @@ const chordLabel = (chord: string) =>
             <p v-if="b.problem" class="problem">{{ b.problem.detail }}</p>
           </div>
         </div>
+
+        <div v-if="g.sub" class="sub">
+          <header class="grouphead">
+            <h4>{{ g.sub.title }}</h4>
+            <p class="caption">{{ g.sub.caption }}</p>
+          </header>
+          <div class="rows">
+            <div v-for="b in g.sub.bindings" :key="b.action" class="row" :class="{ capturing: capturing === b.action, bad: b.problem?.kind === 'collision', warn: b.problem?.kind === 'system' }">
+              <span class="lbl">{{ b.label }}</span>
+              <button class="chord" :aria-label="`${b.label} key`" @click="emit('capture', b.action)">
+                <template v-if="capturing === b.action"><span class="listen">Press a key or combination…</span></template>
+                <template v-else-if="b.chord"><kbd v-for="k in chordLabel(b.chord).split(' ')" :key="k">{{ k }}</kbd></template>
+                <template v-else><span class="unbound">Not set</span></template>
+              </button>
+              <button v-if="b.chord" class="clear" title="Clear" @click="emit('clear', b.action)">✕</button>
+              <p v-if="b.problem" class="problem">{{ b.problem.detail }}</p>
+            </div>
+          </div>
+        </div>
       </section>
     </fieldset>
 
@@ -126,6 +147,17 @@ kbd { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius
 .warn .chord { border-color: var(--amber-dim); }
 .warn .problem { color: var(--amber); }
 .foot { margin: 0; font-size: 12px; line-height: 1.7; color: var(--muted); max-width: 640px; }
+
+/* ---- layout: merged (round 2) - two panes side by side: Push to talk
+   with "...to a specific tab" as a sub-block inside the same card, and the
+   app-owned companion keys. Narrower: 560px max, 88px labels. */
+.merged { max-width: 560px; }
+.merged .groups { grid-template-columns: 1fr; }
+.merged .group { padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--bg1) 60%, transparent); }
+.merged .row { grid-template-columns: 88px minmax(0, 1fr) auto; }
+.merged .sub { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.merged h4 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--ink); }
+.merged .chord { min-height: 30px; }
 
 /* ---- layout: cards - each group is a bordered card, two per row when wide */
 .cards .groups { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }

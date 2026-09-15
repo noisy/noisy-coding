@@ -21,8 +21,8 @@ const groups = (over: Partial<Record<string, Partial<HotkeyGroup["bindings"][num
     },
     {
       id: "app", title: "Companion window",
-      caption: "Handled by the app itself, listed here so the whole keyboard map is in one place.",
-      bindings: [b("ghost", "Ghost mode", "ctrl+alt+G", { readonly: true }), b("resize", "Cycle size", "ctrl+alt+R", { readonly: true })],
+      caption: "Handled by the app itself, listed here so the whole keyboard map is in one place. Ghost mode makes the floating widget click-through so you can work underneath it; the key is the only way back.",
+      bindings: [b("ghost", "Ghost mode", "ctrl+alt+G", { readonly: true }), b("reload", "Reload windows", "ctrl+alt+R", { readonly: true })],
     },
   ];
 };
@@ -53,3 +53,30 @@ export const B_Cards_Capturing = story("cards", { capturing: "tab2" });
 export const C_Table = story("table", {});
 export const C_Table_Locked = story("table", { permission: "missing" });
 export const C_Table_Collision = story("table", { groups: groups({ tab1: { chord: "F8", problem: { kind: "collision", detail: "F8 is already Hold-to-talk. Pick another key or clear that one first." } } }) });
+
+// --- Round 2, layout D: merged. Krzysztof (2026-09-15): A is too wide, B
+// takes the least space, but "talk to a tab" IS push-to-talk aimed at one
+// tab, so the two blocks belong in one card. Narrower, two panes.
+const merged = (over: Parameters<typeof groups>[0] = {}): HotkeyGroup[] => {
+  const [talk, tabs, app] = groups(over);
+  return [
+    {
+      ...talk,
+      caption: "System-wide, whichever app has focus. HOLD opens the mic while the key is down; TOGGLE opens on one press and closes on the next; SCRATCH throws away the recording in progress.",
+      sub: {
+        title: "…to a specific tab",
+        caption: "Toggle-to-talk aimed at one conversation, counted left to right on the tab strip. Press to select it and open the mic; press again to close; another tab's key hands the mic over.",
+        bindings: tabs.bindings,
+      },
+    },
+    app,
+  ];
+};
+const mergedStory = (state: object): StoryObj<typeof HotkeysSettings> => ({
+  args: { layout: "merged", groups: merged(), permission: "granted", ...state },
+  render: (args) => wrap(args),
+});
+export const D_Merged = mergedStory({});
+export const D_Merged_Locked = mergedStory({ permission: "missing" });
+export const D_Merged_Capturing = mergedStory({ capturing: "tab2" });
+export const D_Merged_Collision = mergedStory({ groups: merged({ tab1: { chord: "F8", problem: { kind: "collision", detail: "F8 is already Hold-to-talk. Pick another key or clear that one first." } } }) });
