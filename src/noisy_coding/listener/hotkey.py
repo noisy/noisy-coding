@@ -1,10 +1,13 @@
-"""System-wide push-to-talk hotkeys (#25).
+"""System-wide push-to-talk hotkeys (#25, chords and per-tab keys #104).
 
-A Quartz event tap sees the configured keys no matter which app has
+A Quartz event tap sees the configured chords no matter which app has
 focus and drives the SAME push-to-talk lease the dashboard button uses:
 
-- hold-to-talk:   key down opens the lease, key up releases it;
-- toggle-to-talk: one press opens, the next press releases.
+- hold:    key down opens the lease, key up releases it;
+- toggle:  one press opens, the next press releases;
+- scratch: abort the recording in progress, in any mode;
+- tabN:    select the N-th visible conversation and toggle the lease -
+           press again to close, another tab's key hands the mic over.
 
 macOS only: the tap needs the Input Monitoring permission (System
 Settings > Privacy & Security > Input Monitoring) for the process that
@@ -25,19 +28,12 @@ from __future__ import annotations
 import threading
 from typing import Callable, Protocol
 
-# Key NAMES are what settings store - keycodes are a macOS detail.
-# Deliberately a safe list: keys that don't type characters in editors.
-KEYCODES: dict[str, int] = {
-    "F13": 105, "F14": 107, "F15": 113, "F16": 106,
-    "F17": 64, "F18": 79, "F19": 80,
-    "F6": 97, "F7": 98, "F8": 100,
-    "right_cmd": 54, "right_option": 61, "right_ctrl": 62,
-    # escape types nothing, and scratch is a no-op unless recording - so a
-    # global Escape binding is side-effect-free in other apps.
-    "escape": 53,
-}
-# Modifier keys never emit keyDown/keyUp - only flagsChanged.
-_MODIFIER_KEYS = {"right_cmd", "right_option", "right_ctrl"}
+from noisy_coding.listener.chords import Chord, ChordError, MODIFIER_KEYS, parse_chord, problems
+
+# Every action a chord can drive. "tabN" = toggle-to-talk aimed at the N-th
+# visible conversation (#104). Settings store {action: chord text}.
+ACTIONS = ("hold", "toggle", "scratch", "tab1", "tab2", "tab3", "tab4")
+TAB_ACTIONS = {f"tab{i}": i for i in range(1, 5)}
 
 LEASE_RENEW_SECONDS = 0.4  # matches the dashboard's heartbeat cadence
 
@@ -73,6 +69,7 @@ class _PttState(Protocol):
     def refresh_ptt_hold(self) -> None: ...
     def release_ptt(self) -> None: ...
     def request_recording_abort(self) -> None: ...
+    def talk_to_tab(self, index: int) -> bool: ...
 
 
 class HotkeyListener:
@@ -82,12 +79,12 @@ class HotkeyListener:
         self._state = state
         self._log = log
         self._lock = threading.Lock()
-        self._hold_key: int | None = None
-        self._toggle_key: int | None = None
-        self._cancel_key: int | None = None
+        self._bindings: dict[str, Chord] = {}
+        self._problems: dict[str, dict[str, str]] = {}
         self._modifier_down: set[int] = set()
         self._engaged = False          # lease currently open (either mode)
         self._toggle_latched = False   # toggle mode: waiting for 2nd press
+        self._tab_latched: int | None = None  # which tabN opened the lease
         self._tap_thread: threading.Thread | None = None
         self._renew_thread: threading.Thread | None = None
         self._restart = None  # CFRunLoop stop handle, set by the tap thread
@@ -98,21 +95,33 @@ class HotkeyListener:
     def configure(
         self, hold_key: str, toggle_key: str, cancel_key: str = "", *, may_prompt: bool = False
     ) -> None:
-        """Apply key names from settings; restarts the tap as needed.
+        """Legacy three-key form; keeps the other actions as they are."""
+        current = {a: str(c) for a, c in self._bindings.items()}
+        current.update({"hold": hold_key, "toggle": toggle_key, "scratch": cancel_key})
+        self.configure_bindings(current, may_prompt=may_prompt)
 
-        `may_prompt` is True only on a user action (picking a key): that
-        is the one moment macOS may show its Input Monitoring prompt. Boot
-        never prompts; keys restored from settings stay disarmed until the
-        permission is there (#97)."""
+    def configure_bindings(self, bindings: dict[str, str], *, may_prompt: bool = False) -> None:
+        """Apply {action: chord text} from settings; restarts the tap as needed.
+
+        Unparseable or colliding chords are recorded as problems and NOT
+        armed - the other bindings still work. `may_prompt` is True only on
+        a user action (picking a key): that is the one moment macOS may show
+        its Input Monitoring prompt. Boot never prompts; keys restored from
+        settings stay disarmed until the permission is there (#97)."""
+        text = {a: (bindings.get(a) or "") for a in ACTIONS}
+        found = problems(text)
+        armed: dict[str, Chord] = {}
+        for action, chord_text in text.items():
+            if not chord_text or found.get(action, {}).get("kind") in ("invalid", "collision"):
+                continue
+            try:
+                armed[action] = parse_chord(chord_text)
+            except ChordError:
+                continue
         with self._lock:
-            self._hold_key = KEYCODES.get(hold_key)
-            self._toggle_key = KEYCODES.get(toggle_key)
-            self._cancel_key = KEYCODES.get(cancel_key)
-            self._hold_name, self._toggle_name = hold_key, toggle_key
-            self._cancel_name = cancel_key
-            wanted = any(
-                k is not None for k in (self._hold_key, self._toggle_key, self._cancel_key)
-            )
+            self._bindings = armed
+            self._problems = found
+            wanted = bool(armed)
         self._disengage()
         self._stop_tap()
         if not wanted:
@@ -136,9 +145,7 @@ class HotkeyListener:
     def request_permission(self) -> dict:
         """The settings GRANT button: prompt now, arm if granted."""
         with self._lock:
-            wanted = any(
-                k is not None for k in (self._hold_key, self._toggle_key, self._cancel_key)
-            )
+            wanted = bool(self._bindings)
         if wanted:
             self._stop_tap()
             self._arm(may_prompt=True)
@@ -150,13 +157,12 @@ class HotkeyListener:
     def snapshot(self) -> dict:
         """For /status: what the dashboard needs to explain the hotkey state."""
         with self._lock:
-            configured = any(
-                k is not None for k in (self._hold_key, self._toggle_key, self._cancel_key)
-            )
             return {
-                "configured": configured,
+                "configured": bool(self._bindings),
                 "permission": self._permission,
-                "armed": configured and self._tap_thread is not None,
+                "armed": bool(self._bindings) and self._tap_thread is not None,
+                "bindings": {a: str(c) for a, c in self._bindings.items()},
+                "problems": dict(self._problems),
             }
 
     # -- lease driving -----------------------------------------------------
@@ -175,6 +181,7 @@ class HotkeyListener:
             was = self._engaged
             self._engaged = False
             self._toggle_latched = False
+            self._tab_latched = None
         if was:
             self._state.release_ptt()
 
@@ -188,27 +195,48 @@ class HotkeyListener:
             self._state.refresh_ptt_hold()
             time.sleep(LEASE_RENEW_SECONDS)
 
-    # -- the tap -----------------------------------------------------------
+    # -- dispatch ------------------------------------------------------------
 
-    def _on_key(self, keycode: int, down: bool) -> None:
-        if keycode == self._cancel_key and down:
-            # Scratch-my-words: abort the recording in ANY mode, and if the
-            # toggle latch is open, close it - the turn is over either way.
-            self._state.request_recording_abort()
-            self._disengage()
-            return
-        if keycode == self._hold_key:
+    def _on_event(self, keycode: int, flags: int, down: bool) -> None:
+        """One tap event -> the action whose chord it fires, if any."""
+        with self._lock:
+            hit = [a for a, c in self._bindings.items() if _matches(c, keycode, flags)]
+        for action in hit:
+            self._run(action, down)
+
+    def _run(self, action: str, down: bool) -> None:
+        if action == "scratch":
+            if down:
+                # Scratch-my-words: abort the recording in ANY mode, and if a
+                # latch is open, close it - the turn is over either way.
+                self._state.request_recording_abort()
+                self._disengage()
+        elif action == "hold":
             if down:
                 self._engage()
             else:
                 self._disengage()
-        elif keycode == self._toggle_key and down:
+        elif action == "toggle" and down:
             if self._toggle_latched:
                 self._disengage()
             else:
                 with self._lock:
                     self._toggle_latched = True
                 self._engage()
+        elif action in TAB_ACTIONS and down:
+            index = TAB_ACTIONS[action]
+            if self._tab_latched == index:
+                self._disengage()          # second press on the same tab closes
+                return
+            if not self._state.talk_to_tab(index):
+                self._log(f"hotkey: no visible conversation #{index}")
+                return
+            self._disengage()              # hand-over from another tab / toggle
+            with self._lock:
+                self._tab_latched = index
+            self._engage()
+
+    # -- the tap -----------------------------------------------------------
 
     def _start_tap(self) -> None:
         Quartz = _quartz()  # noqa: N806 - reads like the module below
@@ -217,17 +245,17 @@ class HotkeyListener:
             return
 
         def run() -> None:
-            watched_modifiers = {
-                code
-                for name, code in KEYCODES.items()
-                if name in _MODIFIER_KEYS
-                and code in (self._hold_key, self._toggle_key, self._cancel_key)
-            }
+            with self._lock:
+                watched_modifiers = {
+                    c.keycode for c in self._bindings.values() if c.key in MODIFIER_KEYS
+                }
+                summary = ", ".join(f"{a}={c}" for a, c in self._bindings.items())
 
             def callback(_proxy, event_type, event, _refcon):
                 keycode = Quartz.CGEventGetIntegerValueField(
                     event, Quartz.kCGKeyboardEventKeycode
                 )
+                flags = Quartz.CGEventGetFlags(event)
                 if event_type == Quartz.kCGEventFlagsChanged:
                     if keycode in watched_modifiers:
                         down = keycode not in self._modifier_down
@@ -235,7 +263,7 @@ class HotkeyListener:
                             self._modifier_down.add(keycode)
                         else:
                             self._modifier_down.discard(keycode)
-                        self._on_key(keycode, down)
+                        self._on_event(keycode, flags, down)
                 elif event_type in (Quartz.kCGEventKeyDown, Quartz.kCGEventKeyUp):
                     # Ignore key-repeat: a held F-key fires repeats that
                     # would flap the toggle.
@@ -243,7 +271,7 @@ class HotkeyListener:
                         event, Quartz.kCGKeyboardEventAutorepeat
                     ):
                         return event
-                    self._on_key(keycode, event_type == Quartz.kCGEventKeyDown)
+                    self._on_event(keycode, flags, event_type == Quartz.kCGEventKeyDown)
                 return event  # listen-only: never swallow the key
 
             mask = (
@@ -273,10 +301,7 @@ class HotkeyListener:
             Quartz.CFRunLoopAddSource(loop, source, Quartz.kCFRunLoopCommonModes)
             Quartz.CGEventTapEnable(tap, True)
             self._restart = loop
-            self._log(
-                f"hotkey: global PTT armed (hold={self._hold_name or '-'}, "
-                f"toggle={self._toggle_name or '-'}, cancel={self._cancel_name or '-'})"
-            )
+            self._log(f"hotkey: global PTT armed ({summary})")
             Quartz.CFRunLoopRun()
 
         self._tap_thread = threading.Thread(target=run, daemon=True, name="ptt-hotkey")
@@ -286,10 +311,16 @@ class HotkeyListener:
         loop = self._restart
         if loop is not None:
             try:
-                import Quartz
-
-                Quartz.CFRunLoopStop(loop)
+                Quartz = _quartz()  # noqa: N806
+                if Quartz is not None:
+                    Quartz.CFRunLoopStop(loop)
             except Exception:
                 pass
             self._restart = None
         self._tap_thread = None
+
+
+def _matches(chord: Chord, keycode: int, flags: int) -> bool:
+    from noisy_coding.listener.chords import matches
+
+    return matches(chord, keycode, flags)

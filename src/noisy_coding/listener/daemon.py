@@ -419,11 +419,15 @@ def run(config: VadConfig | None = None) -> None:
             state.set_smart_turn_mode(saved["smart_turn_mode"])
         if saved.get("detection_mode") in ("auto", "ptt"):
             state.set_detection_mode(saved["detection_mode"])
-        state.set_ptt_keys(
-            str(saved.get("ptt_hold_key", "")),
-            str(saved.get("ptt_toggle_key", "")),
-            str(saved.get("ptt_cancel_key", "")),
-        )
+        if isinstance(saved.get("hotkeys"), dict):
+            state.set_hotkeys({str(a): str(t or "") for a, t in saved["hotkeys"].items()})
+        else:
+            # Pre-#104 settings: the three named keys become the map.
+            state.set_ptt_keys(
+                str(saved.get("ptt_hold_key", "")),
+                str(saved.get("ptt_toggle_key", "")),
+                str(saved.get("ptt_cancel_key", "")),
+            )
         if "input_device" in saved:
             state.set_input_device(str(saved["input_device"]))
         if saved.get("output_device") in ("system", "browser"):
@@ -455,7 +459,7 @@ def run(config: VadConfig | None = None) -> None:
 
     hotkeys = HotkeyListener(state, _log)
     state.hotkey_listener = hotkeys
-    hotkeys.configure(state.ptt_hold_key, state.ptt_toggle_key, state.ptt_cancel_key)
+    hotkeys.configure_bindings(state.hotkeys)  # boot never prompts (#97)
 
     def _shutdown_watcher() -> None:
         # Graceful shutdown (#35): exit only past the deadline AND never

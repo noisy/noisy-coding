@@ -175,9 +175,9 @@ class ListenerState:
         self._smart_turn = DEFAULT_SMART_TURN
         self._smart_turn_mode = "soft"
         # Global PTT hotkeys (#25): key NAMES from hotkey.KEYCODES, "" = off.
-        self._ptt_hold_key = ""
-        self._ptt_toggle_key = ""
-        self._ptt_cancel_key = ""
+        # Global hotkeys (#104): {action: chord text}. The legacy ptt_*_key
+        # views below read hold / toggle / scratch out of this map.
+        self._hotkeys: dict[str, str] = {}
         # Scratch-my-words (#30 follow-up): set by the cancel hotkey or the
         # /abort-recording endpoint, consumed by the audio loop.
         self._recording_abort_requested = False
@@ -701,31 +701,57 @@ class ListenerState:
             self._shutdown_at = 0.0
 
     @property
+    def hotkeys(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self._hotkeys)
+
+    def set_hotkeys(self, patch: dict[str, str]) -> dict[str, str]:
+        """Merge {action: chord text}; "" clears the action. Returns the map."""
+        with self._lock:
+            for action, text in patch.items():
+                text = str(text or "")
+                if text:
+                    self._hotkeys[action] = text
+                else:
+                    self._hotkeys.pop(action, None)
+            return dict(self._hotkeys)
+
+    @property
     def ptt_hold_key(self) -> str:
         with self._lock:
-            return self._ptt_hold_key
+            return self._hotkeys.get("hold", "")
 
     @property
     def ptt_toggle_key(self) -> str:
         with self._lock:
-            return self._ptt_toggle_key
+            return self._hotkeys.get("toggle", "")
 
     @property
     def ptt_cancel_key(self) -> str:
         with self._lock:
-            return self._ptt_cancel_key
+            return self._hotkeys.get("scratch", "")
 
     def set_ptt_keys(
         self, hold: str | None, toggle: str | None, cancel: str | None = None
     ) -> tuple[str, str, str]:
-        with self._lock:
-            if hold is not None:
-                self._ptt_hold_key = hold
-            if toggle is not None:
-                self._ptt_toggle_key = toggle
-            if cancel is not None:
-                self._ptt_cancel_key = cancel
-            return self._ptt_hold_key, self._ptt_toggle_key, self._ptt_cancel_key
+        patch = {}
+        if hold is not None:
+            patch["hold"] = hold
+        if toggle is not None:
+            patch["toggle"] = toggle
+        if cancel is not None:
+            patch["scratch"] = cancel
+        self.set_hotkeys(patch)
+        return self.ptt_hold_key, self.ptt_toggle_key, self.ptt_cancel_key
+
+    def talk_to_tab(self, index: int) -> bool:
+        """The tabN hotkey: hand the mic to the index-th visible conversation
+        (1-based, left to right on the strip). False when there is no such tab."""
+        registry = getattr(self, "conversations", None)
+        keys = registry.visible_keys() if registry is not None else []
+        if index < 1 or index > len(keys):
+            return False
+        return self.set_active_agent(keys[index - 1]) == keys[index - 1]
 
     def request_recording_abort(self) -> None:
         with self._lock:

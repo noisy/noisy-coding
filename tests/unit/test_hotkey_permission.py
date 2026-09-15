@@ -33,6 +33,10 @@ class _State:
     def request_recording_abort(self): ...
 
 
+def _core(snapshot: dict) -> dict:
+    return {k: snapshot[k] for k in ("configured", "permission", "armed")}
+
+
 @pytest.fixture
 def listener(monkeypatch):
     started = []
@@ -50,7 +54,7 @@ def test_boot_with_restored_keys_never_prompts(monkeypatch, listener):
     listener.configure("F8", "F15", "escape")  # settings restore: no user action
     assert quartz.requests == 0
     assert listener.started == []
-    assert listener.snapshot() == {"configured": True, "permission": "missing", "armed": False}
+    assert _core(listener.snapshot()) == {"configured": True, "permission": "missing", "armed": False}
 
 
 def test_boot_with_permission_already_granted_arms_quietly(monkeypatch, listener):
@@ -66,7 +70,7 @@ def test_picking_a_key_is_the_moment_macos_may_prompt(monkeypatch, listener):
     monkeypatch.setattr(hotkey, "_quartz", lambda: quartz)
     listener.configure("F8", "", "", may_prompt=True)
     assert quartz.requests == 1
-    assert listener.snapshot() == {"configured": True, "permission": "granted", "armed": True}
+    assert _core(listener.snapshot()) == {"configured": True, "permission": "granted", "armed": True}
 
 
 def test_grant_button_prompts_and_arms(monkeypatch, listener):
@@ -83,7 +87,7 @@ def test_refused_prompt_leaves_keys_disarmed_but_configured(monkeypatch, listene
     quartz = _FakeQuartz(granted=False)
     monkeypatch.setattr(hotkey, "_quartz", lambda: quartz)
     listener.configure("F8", "", "", may_prompt=True)
-    assert listener.snapshot() == {"configured": True, "permission": "missing", "armed": False}
+    assert _core(listener.snapshot()) == {"configured": True, "permission": "missing", "armed": False}
 
 
 def test_no_keys_means_no_probe_and_no_prompt(monkeypatch, listener):
@@ -91,7 +95,7 @@ def test_no_keys_means_no_probe_and_no_prompt(monkeypatch, listener):
     monkeypatch.setattr(hotkey, "_quartz", lambda: quartz)
     listener.configure("", "", "", may_prompt=True)
     assert quartz.requests == 0
-    assert listener.snapshot() == {"configured": False, "permission": "unknown", "armed": False}
+    assert _core(listener.snapshot()) == {"configured": False, "permission": "unknown", "armed": False}
 
 
 def test_off_macos_is_unavailable_not_missing(monkeypatch, listener):

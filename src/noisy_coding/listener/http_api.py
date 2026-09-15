@@ -307,9 +307,46 @@ def _queue_first_contact_intro(state: ListenerState) -> None:
 
 def _hotkeys_snapshot(state: ListenerState) -> dict:
     listener = getattr(state, "hotkey_listener", None)
-    if listener is None:
-        return {"configured": False, "permission": "unknown", "armed": False}
-    return listener.snapshot()
+    base = (
+        listener.snapshot()
+        if listener is not None
+        else {"configured": False, "permission": "unknown", "armed": False, "bindings": {}, "problems": {}}
+    )
+    base["stored"] = state.hotkeys  # every chord the user set, armed or not
+    return base
+
+
+def _apply_hotkeys(state: ListenerState, patch: dict[str, str]) -> tuple[dict, dict]:
+    """Merge a hotkey patch (#104). A chord that would collide with another
+    action, or cannot be parsed, is NOT stored - the user sees the problem
+    next to the field and the previous binding survives. System-shortcut
+    warnings are stored and reported. Rearms the tap; a user pick is the
+    one moment macOS may prompt for Input Monitoring (#97)."""
+    from noisy_coding.listener import hotkey as hotkey_mod
+    from noisy_coding.listener.chords import problems
+
+    known = {a: t for a, t in patch.items() if a in hotkey_mod.ACTIONS}
+    proposed = {**state.hotkeys, **{a: t for a, t in known.items() if t}}
+    for action, text in known.items():
+        if not text:
+            proposed.pop(action, None)
+    found = problems(proposed)
+    rejected = {}
+    for action in known:
+        kind = found.get(action, {}).get("kind")
+        if kind in ("collision", "invalid"):
+            rejected[action] = found[action]
+            proposed.pop(action, None)
+            if action in state.hotkeys:
+                proposed[action] = state.hotkeys[action]  # keep what was there
+    # write the accepted map back (clear actions that disappeared)
+    state.set_hotkeys({a: "" for a in state.hotkeys if a not in proposed})
+    stored = state.set_hotkeys(proposed)
+    listener = getattr(state, "hotkey_listener", None)
+    if listener is not None:
+        listener.configure_bindings(stored, may_prompt=True)
+    reported = {**problems(stored), **rejected}
+    return stored, reported
 
 
 def save_settings(state: ListenerState) -> None:
@@ -329,6 +366,7 @@ def save_settings(state: ListenerState) -> None:
                     "ptt_hold_key": state.ptt_hold_key,
                     "ptt_toggle_key": state.ptt_toggle_key,
                     "ptt_cancel_key": state.ptt_cancel_key,
+                    "hotkeys": state.hotkeys,
                     "input_device": state.input_device,
                     "output_device": state.output_device,
                     "language": state.language,
@@ -970,25 +1008,16 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if body.get("tts_mode") in ("batch", "live"):
                     state.set_tts_mode(body["tts_mode"])
                     result["tts_mode"] = body["tts_mode"]
-                if any(k in body for k in ("ptt_hold_key", "ptt_toggle_key", "ptt_cancel_key")):
-                    from noisy_coding.listener import hotkey as hotkey_mod
-
-                    valid = lambda v: v == "" or v in hotkey_mod.KEYCODES  # noqa: E731
-                    keys = {}
-                    for name in ("ptt_hold_key", "ptt_toggle_key", "ptt_cancel_key"):
-                        v = body.get(name)
-                        keys[name] = v if isinstance(v, str) and valid(v) else None
-                    new_hold, new_toggle, new_cancel = state.set_ptt_keys(
-                        keys["ptt_hold_key"], keys["ptt_toggle_key"], keys["ptt_cancel_key"]
-                    )
-                    result["ptt_hold_key"] = new_hold
-                    result["ptt_toggle_key"] = new_toggle
-                    result["ptt_cancel_key"] = new_cancel
-                    listener = getattr(state, "hotkey_listener", None)
-                    if listener is not None:
-                        # A picked key is the user asking for global hotkeys:
-                        # the one moment macOS may prompt for Input Monitoring (#97).
-                        listener.configure(new_hold, new_toggle, new_cancel, may_prompt=True)
+                legacy = {"ptt_hold_key": "hold", "ptt_toggle_key": "toggle", "ptt_cancel_key": "scratch"}
+                if "hotkeys" in body or any(k in body for k in legacy):
+                    # {action: chord text}; the legacy three keys map onto it.
+                    patch = {legacy[k]: body[k] for k in legacy if isinstance(body.get(k), str)}
+                    if isinstance(body.get("hotkeys"), dict):
+                        patch.update({str(a): str(t or "") for a, t in body["hotkeys"].items()})
+                    result["hotkeys"], result["hotkey_problems"] = _apply_hotkeys(state, patch)
+                    result["ptt_hold_key"] = state.ptt_hold_key
+                    result["ptt_toggle_key"] = state.ptt_toggle_key
+                    result["ptt_cancel_key"] = state.ptt_cancel_key
                 if body.get("smart_turn_mode") in ("soft", "hard"):
                     result["smart_turn_mode"] = state.set_smart_turn_mode(
                         body["smart_turn_mode"]
