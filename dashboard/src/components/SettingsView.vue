@@ -4,15 +4,9 @@ import AppearanceSettings from "./AppearanceSettings.vue";
 
 // The panel got crowded - a toolbar splits it into four homes. AUDIO is
 // first: it's what gets touched mid-session.
-const TABS = ["AUDIO", "SOUNDS", "APPEARANCE", "SYSTEM"] as const;
+const TABS = ["AUDIO", "HOTKEYS", "SOUNDS", "APPEARANCE", "SYSTEM"] as const;
 const tab = ref<(typeof TABS)[number]>("AUDIO");
 
-// Mirrors KEYCODES in listener/hotkey.py - keys that never type characters.
-const PTT_KEYS = [
-  "escape",
-  "F13", "F14", "F15", "F16", "F17", "F18", "F19",
-  "F6", "F7", "F8", "right_cmd", "right_option", "right_ctrl",
-];
 import type { DiagnosticChecks } from "../api/client";
 import type { InputDevice, HotkeyState } from "../types";
 import { CUE_LABELS, type CuePrefs } from "../composables/useAudioCues";
@@ -20,6 +14,8 @@ import { HUM_NOISES, startRecordingHum, stopRecordingHum } from "../composables/
 import type { CueName } from "../composables/cueEvents";
 import { playCue } from "../composables/cueSounds";
 import DiagnosticChecklist from "./DiagnosticChecklist.vue";
+import HotkeysSettings, { type HotkeyBinding, type HotkeyPane } from "./HotkeysSettings.vue";
+import { useKeyCapture } from "../composables/useKeyCapture";
 import SignalPath from "./SignalPath.vue";
 
 const props = withDefaults(
@@ -30,31 +26,53 @@ const props = withDefaults(
     outputDevice?: string;
     browserAudio?: boolean;
     cuePrefs?: CuePrefs | null;
-    pttHoldKey?: string;
-    pttToggleKey?: string;
-    pttCancelKey?: string;
     hotkeys?: HotkeyState | null;
-    /** Storybook-only: which notice design to show while Krzysztof picks (#97). */
-    hotkeyNoticeLook?: "inline" | "callout" | "row";
     checks?: DiagnosticChecks | null;
     checksRunning?: boolean;
   }>(),
   {
     devices: () => [], selectedDevice: "", outputDevice: "system", browserAudio: false, cuePrefs: null,
-    pttHoldKey: "", pttToggleKey: "", pttCancelKey: "", hotkeys: null, hotkeyNoticeLook: "callout",
+    hotkeys: null,
     checks: null, checksRunning: false,
   },
 );
-// Keys are set but macOS has not let us see them yet: say so where the
-// keys are picked, and offer the one button that fixes it (#97).
-const hotkeysBlocked = computed(
-  () => !!props.hotkeys && props.hotkeys.configured && props.hotkeys.permission === "missing",
-);
+// Settings > Hotkeys (#104): the daemon's action map rendered as two panes;
+// a click on a field captures the next chord from THIS window.
+const HOTKEY_LABELS: Record<string, string> = {
+  hold: "Hold", toggle: "Toggle", scratch: "Scratch", tab1: "Tab 1", tab2: "Tab 2", tab3: "Tab 3", tab4: "Tab 4",
+};
+const binding = (action: string): HotkeyBinding => ({
+  action,
+  label: HOTKEY_LABELS[action],
+  chord: props.hotkeys?.stored?.[action] ?? "",
+  problem: props.hotkeys?.problems?.[action],
+});
+const talkPane = computed<HotkeyPane>(() => ({
+  title: "Push to talk",
+  caption: "Works in any app. Hold opens the mic while held; toggle opens and closes on a press; scratch drops the recording in progress.",
+  bindings: ["hold", "toggle", "scratch"].map(binding),
+}));
+const tabsPane = computed<HotkeyPane>(() => ({
+  title: "…to a specific tab",
+  caption: "Toggle aimed at one conversation, counted left to right. Press again to close; another tab's key hands the mic over.",
+  bindings: ["tab1", "tab2", "tab3", "tab4"].map(binding),
+}));
+const appPane: HotkeyPane = {
+  title: "Companion window",
+  bindings: [
+    { action: "ghost", label: "Ghost mode", chord: "ctrl+alt+g", readonly: true },
+    { action: "reload", label: "Reload windows", chord: "ctrl+alt+r", readonly: true },
+  ],
+};
+const capture = useKeyCapture((action, result) => {
+  if (result.kind === "chord") emit("setHotkey", action, result.chord);
+  else if (result.kind === "clear") emit("setHotkey", action, "");
+});
 const emit = defineEmits<{
   save: [key: string];
   pickDevice: [name: string];
   pickOutput: [value: string];
-  pickPttKey: [mode: "hold" | "toggle" | "cancel", key: string];
+  setHotkey: [action: string, chord: string];
   grantHotkeys: [];
   refreshDevices: [];
   toggleCue: [name: CueName, value: boolean];
@@ -93,6 +111,18 @@ function submit() {
     </nav>
 
     <AppearanceSettings v-if="tab === 'APPEARANCE'" />
+
+    <HotkeysSettings
+      v-if="tab === 'HOTKEYS'"
+      :permission="hotkeys?.permission ?? 'unknown'"
+      :talk="talkPane"
+      :tabs="tabsPane"
+      :app="appPane"
+      :capturing="capture.capturing.value"
+      @grant="emit('grantHotkeys')"
+      @capture="capture.start"
+      @clear="(action) => emit('setHotkey', action, '')"
+    />
 
     <template v-if="tab === 'AUDIO'">
     <!-- Microphone first: switched far more often than the API key. -->
@@ -147,61 +177,10 @@ function submit() {
 
     <section class="sec">
       <div class="keyrow">
-        <span class="lbl">Hold-to-talk key</span>
-        <select
-          class="keyinput"
-          :value="pttHoldKey"
-          aria-label="Hold-to-talk key"
-          @change="emit('pickPttKey', 'hold', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">Off</option>
-          <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
-        </select>
-      </div>
-      <div class="keyrow">
-        <span class="lbl">Toggle-to-talk key</span>
-        <select
-          class="keyinput"
-          :value="pttToggleKey"
-          aria-label="Toggle-to-talk key"
-          @change="emit('pickPttKey', 'toggle', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">Off</option>
-          <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
-        </select>
-      </div>
-      <div class="keyrow">
-        <span class="lbl">Scratch key</span>
-        <select
-          class="keyinput"
-          :value="pttCancelKey"
-          aria-label="Scratch key"
-          @change="emit('pickPttKey', 'cancel', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">Off</option>
-          <option v-for="k in PTT_KEYS" :key="k" :value="k">{{ k.toUpperCase() }}</option>
-        </select>
-      </div>
-      <div v-if="hotkeysBlocked" class="permnotice" :class="hotkeyNoticeLook" role="status">
-        <span class="permtext">
-          <b>macOS is not letting Noisy Studio see these keys yet.</b>
-          Global hotkeys need the Input Monitoring permission — that is what
-          the "receive keystrokes from any application" prompt is about.
-        </span>
-        <button class="btn" @click="emit('grantHotkeys')">Grant access</button>
-      </div>
-      <div class="text">
-        <p>
-          System-wide push-to-talk — works no matter which app has focus.
-          HOLD opens the mic while the key is down; TOGGLE opens on one press
-          and closes on the next. SCRATCH aborts the recording in progress in ANY
-          mode — your "forget what I just said" key. PTT keys need the mic
-          mode set to PUSH TO TALK. Picking a key is when macOS asks for the
-          Input Monitoring permission — nothing is requested before that.
-        </p>
+        <span class="lbl">Hotkeys</span>
+        <span class="pointer">Hold, toggle, scratch and per-tab keys live in the <button class="linkbtn" @click="tab = 'HOTKEYS'">Hotkeys</button> tab.</span>
       </div>
     </section>
-
     </template>
 
     <template v-if="tab === 'SYSTEM'">
@@ -393,16 +372,9 @@ function submit() {
 .cuerow { display: flex; align-items: center; gap: 10px; }
 .cuerow .preview { padding: 4px 9px; }
 .cue-label { flex: 1; font-size: 11px; letter-spacing: normal; color: var(--ink); }
-.permnotice { display: flex; align-items: center; gap: 14px; margin: -4px 0 16px; font-size: 12px; line-height: 1.45; color: var(--ink); }
-.permnotice .permtext { flex: 1; min-width: 0; }
-.permnotice b { color: var(--amber); font-weight: 400; }
-.permnotice .btn { flex: none; }
-/* inline: reads as part of the help text, amber lead-in only */
-.permnotice.inline { color: var(--muted); }
-/* callout: framed box with an amber edge, like the tab-audio banner */
-.permnotice.callout { padding: 10px 12px; border: 1px solid var(--amber-dim); border-left-width: 3px; border-radius: 6px; background: var(--bg1); }
-/* row: sits in the key grid as a fourth row, label column kept */
-.permnotice.row { padding-left: 102px; }
+.pointer { font-size: 12px; color: var(--muted); }
+.linkbtn { background: none; border: 0; padding: 0; font: inherit; color: var(--cyan); cursor: pointer; border-bottom: 1px dotted var(--cyan-dim); }
+.linkbtn:hover { color: var(--cyan-hi); }
 .text {
   font-size: 13px;
   line-height: 1.75;

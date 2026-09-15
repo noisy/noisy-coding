@@ -1,9 +1,16 @@
 /** Shapes of the listener daemon's HTTP API responses. */
 
+export type HotkeyAction = "hold" | "toggle" | "scratch" | "tab1" | "tab2" | "tab3" | "tab4";
+export interface HotkeyProblem { kind: "collision" | "system" | "invalid"; detail: string }
 export interface HotkeyState {
   configured: boolean;
   permission: "granted" | "missing" | "unavailable" | "unknown";
   armed: boolean;
+  /** Chords actually armed in the tap (canonical text per action). */
+  bindings?: Record<string, string>;
+  /** Everything the user stored, armed or not. */
+  stored?: Record<string, string>;
+  problems?: Record<string, HotkeyProblem>;
 }
 
 export interface DaemonStatus {
@@ -115,6 +122,7 @@ export interface Character {
 }
 
 export interface SettingsPatch {
+  hotkeys?: Record<string, string>; // {action: chord}, "" clears (#104)
   tts_mode?: "batch" | "live";
   end_silence_ms?: number;
   mic_sensitivity?: number;

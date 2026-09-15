@@ -51,19 +51,16 @@ describe("SettingsView", () => {
     expect(open.find('option[value="browser"]').exists()).toBe(true);
   });
 
-  it("offers GRANT ACCESS only while configured hotkeys lack Input Monitoring (#97)", async () => {
-    const blocked = mount(SettingsView, {
-      props: { apiKeyHint: "····kRc9", pttHoldKey: "F8", hotkeys: { configured: true, permission: "missing", armed: false } },
+  it("moves the keys to a Hotkeys tab and keeps a pointer in Audio (#104)", async () => {
+    const w = mount(SettingsView, {
+      props: { apiKeyHint: "····kRc9", hotkeys: { configured: true, permission: "missing", armed: false, stored: { hold: "F8" }, problems: {} } },
     });
-    await blocked.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
-    expect(blocked.find(".permnotice").exists()).toBe(true);
-    await blocked.find(".permnotice button").trigger("click");
-    expect(blocked.emitted("grantHotkeys")).toHaveLength(1);
-
-    const armed = mount(SettingsView, {
-      props: { apiKeyHint: "····kRc9", pttHoldKey: "F8", hotkeys: { configured: true, permission: "granted", armed: true } },
-    });
-    await armed.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
-    expect(armed.find(".permnotice").exists()).toBe(false);
+    await w.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
+    expect(w.find("select[aria-label='Hold-to-talk key']").exists()).toBe(false);
+    await w.find(".linkbtn").trigger("click");
+    expect(w.find(".hotkeys").exists()).toBe(true);
+    expect(w.find(".gate").exists()).toBe(true);           // locked: permission missing
+    await w.find(".gate button").trigger("click");
+    expect(w.emitted("grantHotkeys")).toHaveLength(1);
   });
 });

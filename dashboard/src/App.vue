@@ -407,14 +407,9 @@ const shutdownLabel = computed(() => {
 
 // The GRANT button in settings: the one other moment macOS may prompt (#97).
 const grantHotkeys = () => requestHotkeyPermission().catch(swallow);
-const pickPttKey = (mode: "hold" | "toggle" | "cancel", key: string) =>
-  setSettings(
-    mode === "hold"
-      ? { ptt_hold_key: key }
-      : mode === "toggle"
-        ? { ptt_toggle_key: key }
-        : { ptt_cancel_key: key },
-  ).catch(swallow);
+// One action at a time: the daemon merges, refuses collisions, and the
+// next snapshot carries the stored map plus any problem to show (#104).
+const setHotkey = (action: string, chord: string) => setSettings({ hotkeys: { [action]: chord } }).catch(swallow);
 
 async function pickOutput(value: string) {
   if (value !== "browser") {
@@ -676,16 +671,13 @@ const LANGUAGES: Record<string, string> = {
             :selected-device="status?.input_device ?? ''"
             :output-device="status?.output_device ?? 'system'"
             :cue-prefs="cuePrefs"
-            :ptt-hold-key="status?.ptt_hold_key ?? ''"
-            :ptt-toggle-key="status?.ptt_toggle_key ?? ''"
-            :ptt-cancel-key="status?.ptt_cancel_key ?? ''"
             :hotkeys="status?.hotkeys ?? null"
             :checks="visibleChecks"
             :checks-running="checksRunning"
             @save="saveKey"
             @pick-device="pickMic"
             @pick-output="pickOutput"
-            @pick-ptt-key="pickPttKey"
+            @set-hotkey="setHotkey"
             @grant-hotkeys="grantHotkeys"
             @refresh-devices="loadDevices"
             @toggle-cue="setCue"

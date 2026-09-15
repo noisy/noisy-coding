@@ -23,23 +23,14 @@ export const BrowserAudioAllowed: StoryObj<typeof SettingsView> = {
   render: Configured.render,
 };
 
-// #97 - keys are configured but macOS has not granted Input Monitoring.
-// Three looks for the notice; the AUDIO tab holds the key pickers.
-const blocked = { configured: true, permission: "missing" as const, armed: false };
-const hotkeyArgs = { apiKeyHint: "····kRc9", pttHoldKey: "F8", pttToggleKey: "F15", pttCancelKey: "escape", hotkeys: blocked };
-export const HotkeysBlockedInline: StoryObj<typeof SettingsView> = {
-  args: { ...hotkeyArgs, hotkeyNoticeLook: "inline" },
-  render: Configured.render,
-};
-export const HotkeysBlockedCallout: StoryObj<typeof SettingsView> = {
-  args: { ...hotkeyArgs, hotkeyNoticeLook: "callout" },
-  render: Configured.render,
-};
-export const HotkeysBlockedRow: StoryObj<typeof SettingsView> = {
-  args: { ...hotkeyArgs, hotkeyNoticeLook: "row" },
-  render: Configured.render,
-};
-export const HotkeysArmed: StoryObj<typeof SettingsView> = {
-  args: { ...hotkeyArgs, hotkeys: { configured: true, permission: "granted", armed: true } },
-  render: Configured.render,
+// Settings > Hotkeys (#104): the tab is HUD/Hotkeys tab; here only the
+// pointer in Audio and the tab switch are of interest.
+export const HotkeysTab: StoryObj<typeof SettingsView> = {
+  args: { apiKeyHint: "····kRc9", hotkeys: { configured: true, permission: "granted", armed: true, stored: { hold: "F8", toggle: "F15", scratch: "escape", tab1: "F1" }, problems: {} } },
+  render: (args) => ({
+    components: { SettingsView },
+    setup: () => ({ args }),
+    template: `<div style="max-width:760px"><SettingsView v-bind="args" /></div>`,
+    mounted() { (this.$el as HTMLElement).querySelectorAll<HTMLButtonElement>(".tabbtn").forEach((b) => { if (b.textContent?.trim() === "Hotkeys") b.click(); }); },
+  }),
 };
