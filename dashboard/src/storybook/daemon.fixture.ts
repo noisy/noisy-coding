@@ -41,6 +41,8 @@ export function resetScenario(next: Scenario) {
   localStorage.setItem('noisy-coding.audio-cues', JSON.stringify({enabled:false,recordingHum:false,cues:{}}));
 }
 export async function getStatus() { if(scenario==='offline') throw new Error('Simulated offline'); return clone(status); }
+// Browser previews cannot request native macOS permissions.
+export async function requestHotkeyPermission() { return clone(status.hotkeys); }
 export async function getUtterances() { return clone(messages); }
 export async function getCharacter() { return clone(character); }
 export async function getEvents(sinceSeq=0) { return scenario==='error' && sinceSeq < 1 ? [{seq:1,ts:Date.now()/1000,kind:'tts_error',detail:'Voice service unavailable. Retry playback when the connection returns.'}] : []; }
