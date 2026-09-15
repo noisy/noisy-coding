@@ -325,27 +325,21 @@ def _apply_hotkeys(state: ListenerState, patch: dict[str, str]) -> tuple[dict, d
     from noisy_coding.listener import hotkey as hotkey_mod
     from noisy_coding.listener.chords import problems
 
-    known = {a: t for a, t in patch.items() if a in hotkey_mod.ACTIONS}
-    proposed = {**state.hotkeys, **{a: t for a, t in known.items() if t}}
-    for action, text in known.items():
-        if not text:
-            proposed.pop(action, None)
-    found = problems(proposed)
+    known = {a: str(t or "") for a, t in patch.items() if a in hotkey_mod.ACTIONS}
+    current = state.hotkeys
+    proposed = {**current, **known}
+    found = problems({a: t for a, t in proposed.items() if t})
     rejected = {}
     for action in known:
         kind = found.get(action, {}).get("kind")
         if kind in ("collision", "invalid"):
             rejected[action] = found[action]
-            proposed.pop(action, None)
-            if action in state.hotkeys:
-                proposed[action] = state.hotkeys[action]  # keep what was there
-    # write the accepted map back (clear actions that disappeared)
-    state.set_hotkeys({a: "" for a in state.hotkeys if a not in proposed})
+            proposed[action] = current.get(action, "")  # keep what was there
     stored = state.set_hotkeys(proposed)
     listener = getattr(state, "hotkey_listener", None)
     if listener is not None:
         listener.configure_bindings(stored, may_prompt=True)
-    reported = {**problems(stored), **rejected}
+    reported = {**problems({a: t for a, t in stored.items() if t}), **rejected}
     return stored, reported
 
 

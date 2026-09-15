@@ -455,10 +455,12 @@ def run(config: VadConfig | None = None) -> None:
             state.register_agent(key, conversation.label())
     # Global PTT hotkeys (#25): armed only when a key is configured. The
     # listener hangs off the state so the /settings endpoint can rearm it.
+    from noisy_coding.listener import hotkey as hotkey_mod
     from noisy_coding.listener.hotkey import HotkeyListener
 
     hotkeys = HotkeyListener(state, _log)
     state.hotkey_listener = hotkeys
+    state.fill_default_hotkeys(hotkey_mod.DEFAULT_HOTKEYS)  # never overrides a stored value
     hotkeys.configure_bindings(state.hotkeys)  # boot never prompts (#97)
 
     def _shutdown_watcher() -> None:

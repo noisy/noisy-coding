@@ -118,3 +118,14 @@ def test_hold_refuses_a_double_press(armed):
     lst.configure_bindings({"hold": "F8 x2"})
     snap = lst.snapshot()
     assert snap["bindings"] == {} and snap["problems"]["hold"]["kind"] == "invalid"
+
+
+def test_global_toggle_closes_a_lease_a_tab_key_opened(armed):
+    lst, st = armed
+    lst.configure_bindings({"toggle": "F15", "tab2": "F17"})
+    press(lst, "F17")                 # start talking to tab 2
+    assert st.selected == [2] and st.log == ["hold"]
+    press(lst, "F15")                 # finish with the everyday toggle
+    assert st.log == ["hold", "release"]
+    press(lst, "F15"); press(lst, "F17")   # toggle open, tab key hands over
+    assert st.log[-3:] == ["hold", "release", "hold"]

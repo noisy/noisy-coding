@@ -43,7 +43,7 @@ def test_colliding_chord_is_refused_and_the_old_binding_survives():
 def test_invalid_chord_is_refused():
     st = _state()
     stored, problems = http_api._apply_hotkeys(st, {"hold": "F99"})
-    assert stored == {} and problems["hold"]["kind"] == "invalid"
+    assert stored == {"hold": ""} and problems["hold"]["kind"] == "invalid"   # nothing armed, explicit off
 
 
 def test_system_shortcut_is_stored_with_a_warning():
@@ -56,7 +56,7 @@ def test_empty_clears_and_unknown_actions_are_ignored():
     st = _state()
     http_api._apply_hotkeys(st, {"hold": "F8", "bogus": "F9"})
     stored, _ = http_api._apply_hotkeys(st, {"hold": ""})
-    assert stored == {}
+    assert stored == {"hold": ""}                       # explicit off, no bogus action
 
 
 def test_legacy_views_read_the_map():
@@ -78,3 +78,22 @@ def test_talk_to_tab_counts_visible_conversations_left_to_right(tmp_path):
     assert st.talk_to_tab(2) and st.active_agent == "c"     # hidden b is skipped
     assert st.talk_to_tab(3) is False and st.active_agent == "c"
     assert st.talk_to_tab(0) is False
+
+
+def test_defaults_fill_untouched_actions_but_never_an_explicit_off():
+    from noisy_coding.listener.hotkey import DEFAULT_HOTKEYS
+
+    st = _state()
+    st.set_hotkeys({"toggle": "F15", "tab1": ""})   # tab1 cleared on purpose
+    st.fill_default_hotkeys(DEFAULT_HOTKEYS)
+    h = st.hotkeys
+    assert h["toggle"] == "F15" and h["tab1"] == ""
+    assert h["scratch"] == "escape x2" and h["tab2"] == "F17" and h["tab4"] == "F19"
+
+
+def test_clearing_over_http_is_an_explicit_off():
+    st = _state()
+    http_api._apply_hotkeys(st, {"tab1": "F16"})
+    stored, problems = http_api._apply_hotkeys(st, {"tab1": ""})
+    assert stored["tab1"] == "" and problems == {}
+    assert st.hotkey_listener.calls[-1][0]["tab1"] == ""

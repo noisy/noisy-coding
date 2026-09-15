@@ -706,15 +706,18 @@ class ListenerState:
             return dict(self._hotkeys)
 
     def set_hotkeys(self, patch: dict[str, str]) -> dict[str, str]:
-        """Merge {action: chord text}; "" clears the action. Returns the map."""
+        """Merge {action: chord text}. "" is kept as an explicit OFF: the user
+        cleared it on purpose, so a default must not refill it at boot."""
         with self._lock:
             for action, text in patch.items():
-                text = str(text or "")
-                if text:
-                    self._hotkeys[action] = text
-                else:
-                    self._hotkeys.pop(action, None)
+                self._hotkeys[action] = str(text or "")
             return dict(self._hotkeys)
+
+    def fill_default_hotkeys(self, defaults: dict[str, str]) -> None:
+        """Actions the user never touched get the default (boot only)."""
+        with self._lock:
+            for action, chord in defaults.items():
+                self._hotkeys.setdefault(action, chord)
 
     @property
     def ptt_hold_key(self) -> str:

@@ -42,6 +42,9 @@ from noisy_coding.listener.chords import (
 # visible conversation (#104). Settings store {action: chord text}.
 ACTIONS = ("hold", "toggle", "scratch", "tab1", "tab2", "tab3", "tab4")
 TAB_ACTIONS = {f"tab{i}": i for i in range(1, 5)}
+# What a fresh install gets, and what fills an action the user never touched.
+# F16-F19 type nothing anywhere; a double Escape never fires by accident.
+DEFAULT_HOTKEYS = {"scratch": "escape x2", "tab1": "F16", "tab2": "F17", "tab3": "F18", "tab4": "F19"}
 
 LEASE_RENEW_SECONDS = 0.4  # matches the dashboard's heartbeat cadence
 
@@ -242,7 +245,12 @@ class HotkeyListener:
             else:
                 self._disengage()
         elif action == "toggle" and down:
-            if self._toggle_latched:
+            # The global toggle also CLOSES a lease a tab key opened: start
+            # talking to tab 2 with its key, finish with the toggle you
+            # always use.
+            with self._lock:
+                open_lease = self._engaged
+            if open_lease:
                 self._disengage()
             else:
                 with self._lock:
