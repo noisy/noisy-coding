@@ -4,7 +4,7 @@ import AppearanceSettings from "./AppearanceSettings.vue";
 
 // The panel got crowded - a toolbar splits it into four homes. AUDIO is
 // first: it's what gets touched mid-session.
-const TABS = ["AUDIO", "HOTKEYS", "SOUNDS", "APPEARANCE", "SYSTEM"] as const;
+const TABS = ["AUDIO", "SOUNDS", "HOTKEYS", "APPEARANCE", "SYSTEM"] as const;
 const tab = ref<(typeof TABS)[number]>("AUDIO");
 
 import type { DiagnosticChecks } from "../api/client";
