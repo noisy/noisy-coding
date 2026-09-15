@@ -29,7 +29,7 @@ const props = withDefaults(
     permission?: "granted" | "missing" | "unavailable" | "unknown";
     groups: HotkeyGroup[];
     capturing?: string | null;  // action id whose field is waiting for a key
-    layout?: "list" | "cards" | "table" | "merged";
+    layout?: "list" | "cards" | "table" | "merged" | "split";
   }>(),
   { permission: "unknown", capturing: null, layout: "list" },
 );
@@ -158,6 +158,20 @@ kbd { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius
 .merged .sub { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); }
 .merged h4 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--ink); }
 .merged .chord { min-height: 30px; }
+
+/* ---- layout: split (round 2, E) - like merged, but the sub-block sits to
+   the RIGHT of push-to-talk inside the same card: two panes, one idea. */
+.split { max-width: 760px; }
+.split .groups { grid-template-columns: 1fr; }
+.split .group { padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--bg1) 60%, transparent); }
+.split .group:has(.sub) { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; grid-template-areas: "head subhead" "rows subrows"; }
+.split .group:has(.sub) > .grouphead { grid-area: head; }
+.split .group:has(.sub) > .rows { grid-area: rows; align-content: start; }
+.split .group:has(.sub) > .sub { grid-area: subhead / subhead / subrows / subrows; display: grid; grid-template-rows: subgrid; margin: 0; padding: 0 0 0 24px; border-top: 0; border-left: 1px dashed var(--line); }
+.split .row { grid-template-columns: 88px minmax(0, 1fr) auto; }
+.split h4 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--ink); }
+.split .sub .rows { margin-top: 12px; }
+.split .chord { min-height: 30px; }
 
 /* ---- layout: cards - each group is a bordered card, two per row when wide */
 .cards .groups { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }

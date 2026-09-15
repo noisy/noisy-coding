@@ -80,3 +80,13 @@ export const D_Merged = mergedStory({});
 export const D_Merged_Locked = mergedStory({ permission: "missing" });
 export const D_Merged_Capturing = mergedStory({ capturing: "tab2" });
 export const D_Merged_Collision = mergedStory({ groups: merged({ tab1: { chord: "F8", problem: { kind: "collision", detail: "F8 is already Hold-to-talk. Pick another key or clear that one first." } } }) });
+
+// --- Round 2, layout E: split. Same single card as D, push to talk on the
+// left and "…to a specific tab" on the right (Krzysztof's ask).
+const splitStory = (state: object): StoryObj<typeof HotkeysSettings> => ({
+  args: { layout: "split", groups: merged(), permission: "granted", ...state },
+  render: (args) => wrap(args),
+});
+export const E_Split = splitStory({});
+export const E_Split_Locked = splitStory({ permission: "missing" });
+export const E_Split_Capturing = splitStory({ capturing: "tab2" });
