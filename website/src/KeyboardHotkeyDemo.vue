@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import VoiceAvatar from '@dashboard/components/VoiceAvatar.vue';
-import keyboardPhoto from './assets/optimized/apple-keyboard.webp';
+import keyboardPhoto from './assets/optimized/apple-magic-keyboard.webp';
 
 const props = withDefaults(defineProps<{ staticPreview?: boolean }>(), { staticPreview: false });
+// Centers measured on the 2000 × 560 delivery crop. Keep portraits in the
+// same transformed plane as the photo so registration survives every zoom.
 const agents = [
-  { name: 'Lux', voice: 'lux', key: 'F16', x: 81.25, role: 'Work', context: 'Website redesign', message: 'Ready to pick up where we left off.' },
-  { name: 'Rex', voice: 'rex', key: 'F17', x: 85.2, role: 'Side projects', context: 'Weekend project', message: 'Your next idea has my attention.' },
-  { name: 'Luna', voice: 'luna', key: 'F18', x: 89.05, role: 'Personal', context: 'Personal assistant', message: 'What can I help you with?' },
-  { name: 'Celeste', voice: 'celeste', key: 'F19', x: 92.85, role: 'Research', context: 'Research notes', message: 'Let’s continue exploring.' },
+  { name: 'Lux', voice: 'lux', key: 'F16', x: 83.35, role: 'Work', context: 'Website redesign', message: 'Ready to pick up where we left off.' },
+  { name: 'Rex', voice: 'rex', key: 'F17', x: 87.85, role: 'Side projects', context: 'Weekend project', message: 'Your next idea has my attention.' },
+  { name: 'Luna', voice: 'luna', key: 'F18', x: 92.35, role: 'Personal', context: 'Personal assistant', message: 'What can I help you with?' },
+  { name: 'Celeste', voice: 'celeste', key: 'F19', x: 96.85, role: 'Research', context: 'Research notes', message: 'Let’s continue exploring.' },
 ];
 const root = ref<HTMLElement>();
 const phase = ref(props.staticPreview ? 2 : 0);
@@ -60,7 +62,7 @@ onBeforeUnmount(() => { clearTimers(); observer?.disconnect(); motion?.removeEve
         <div><strong>{{ agents[active].context }}</strong><span>{{ agents[active].message }}</span></div><span class="active-label">Selected</span>
       </div>
     </div>
-    <p class="photo-credit">Photo: <a href="https://commons.wikimedia.org/wiki/File:Apple_iMac_Keyboard_A1243.png">Wiki637</a> · <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> · cropped view with illustrative overlays</p>
+    <p class="photo-credit">Apple Magic Keyboard · illustrative shortcut overlays</p>
   </div>
 </template>
 
@@ -70,12 +72,12 @@ onBeforeUnmount(() => { clearTimers(); observer?.disconnect(); motion?.removeEve
 .demo-topline span { display:flex; gap:9px; align-items:center; }.demo-topline i { width:6px; height:6px; border-radius:50%; background:#83cbbb; box-shadow:0 0 14px #83cbbb80; }
 button { font:inherit; cursor:pointer; }.demo-topline button { background:#ffffff06; color:#bfcbcf; border:1px solid #ffffff17; border-radius:20px; padding:8px 13px; font-size:11px; letter-spacing:0; }
 .keyboard-viewport { position:relative; height:350px; overflow:hidden; }
-.keyboard-plane { position:absolute; width:94%; left:3%; top:27%; transform-origin:87% 15%; transition:transform 1.8s cubic-bezier(.22,.7,.15,1); }
+.keyboard-plane { position:absolute; width:94%; left:3%; top:27%; transform-origin:90% 10.7%; transition:transform 1.8s cubic-bezier(.22,.7,.15,1); }
 .focused .keyboard-plane { transform:translateX(-32%) scale(2.65); }
 .keyboard-photo { display:block; width:100%; height:auto; border-radius:12px; box-shadow:0 25px 40px #0008; }
-.key-person { position:absolute; top:14.6%; width:3.4%; aspect-ratio:1; transform:translate(-50%,-65%) scale(.7); opacity:0; padding:0; border:1px solid #afc2cc; border-radius:24%; box-shadow:0 3px 5px #0007; background:#202a2d; transition:opacity .45s, transform .6s, border-color .3s; transition-delay:var(--reveal-delay); }
-.key-person :deep(.voice-avatar) { width:100% !important; height:100% !important; display:block; }
-.assigned .key-person { opacity:1; transform:translate(-50%,-65%) scale(1); }
+.key-person { position:absolute; top:10.7%; width:3.65%; aspect-ratio:1; transform:translate(-50%,-50%) scale(.7); opacity:0; padding:0; border:1px solid #afc2cc; border-radius:13%; box-sizing:border-box; box-shadow:0 3px 5px #0007; background:#202a2d; transition:opacity .45s, transform .6s, border-color .3s; transition-delay:var(--reveal-delay); }
+.key-person :deep(.voice-avatar) { width:100% !important; height:100% !important; display:block; border-radius:inherit; }
+.assigned .key-person { opacity:1; transform:translate(-50%,-50%) scale(1); }
 .key-person.selected { border-color:#96e2d1; box-shadow:0 0 0 1px #96e2d1,0 0 10px #71c7b678,0 3px 6px #0009; }.key-person:focus-visible { outline:2px solid white; outline-offset:3px; }
 .overview-caption { position:absolute; top:0; left:28px; font-size:14px; line-height:1.6; color:#9eafb6; transition:opacity .4s; }.overview-caption strong { color:#e1e9e8; font-weight:500; }.overview-caption.hidden { opacity:0; }
 .demo-bottom { position:relative; z-index:2; padding:0 28px 12px; background:linear-gradient(transparent,#15191e 18%); }
