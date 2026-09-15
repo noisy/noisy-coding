@@ -4,8 +4,9 @@ import VoiceAvatar from '@dashboard/components/VoiceAvatar.vue';
 import keyboardPhoto from './assets/optimized/apple-magic-keyboard.webp';
 
 const props = withDefaults(defineProps<{ staticPreview?: boolean }>(), { staticPreview: false });
-// Centers measured on the 2000 × 560 delivery crop. Keep portraits in the
-// same transformed plane as the photo so registration survives every zoom.
+// Keycap outlines measured on the 2000 × 560 delivery crop: 80 × 78px.
+// Cover with 82 × 80px overlays (1px bleed per edge) so antialiased key borders
+// cannot peek through at high zoom. Keep photo and portraits in the same plane.
 const agents = [
   { name: 'Lux', voice: 'lux', key: 'F16', x: 83.35, role: 'Work', context: 'Website redesign', message: 'Ready to pick up where we left off.' },
   { name: 'Rex', voice: 'rex', key: 'F17', x: 87.85, role: 'Side projects', context: 'Weekend project', message: 'Your next idea has my attention.' },
@@ -26,7 +27,8 @@ function replay() {
   if (props.staticPreview || reducedMotion.value) { phase.value = 2; return; }
   phase.value = 0;
   timers.push(setTimeout(() => phase.value = 1, 1400));
-  timers.push(setTimeout(() => phase.value = 2, 3200));
+  // Let the 1.8s keyboard zoom settle before fading in fixed-size portraits.
+  timers.push(setTimeout(() => phase.value = 2, 3500));
   [1, 2, 3].forEach((index) => timers.push(setTimeout(() => active.value = index, 4300 + index * 1500)));
 }
 function updateMotion() { reducedMotion.value = !!motion?.matches; if (reducedMotion.value) { clearTimers(); phase.value = 2; } }
@@ -75,9 +77,9 @@ button { font:inherit; cursor:pointer; }.demo-topline button { background:#fffff
 .keyboard-plane { position:absolute; width:94%; left:3%; top:27%; transform-origin:90% 10.7%; transition:transform 1.8s cubic-bezier(.22,.7,.15,1); }
 .focused .keyboard-plane { transform:translateX(-32%) scale(2.65); }
 .keyboard-photo { display:block; width:100%; height:auto; border-radius:12px; box-shadow:0 25px 40px #0008; }
-.key-person { position:absolute; top:10.7%; width:3.65%; aspect-ratio:1; transform:translate(-50%,-50%) scale(.7); opacity:0; padding:0; border:1px solid #afc2cc; border-radius:13%; box-sizing:border-box; box-shadow:0 3px 5px #0007; background:#202a2d; transition:opacity .45s, transform .6s, border-color .3s; transition-delay:var(--reveal-delay); }
+.key-person { position:absolute; top:10.7%; width:4.1%; height:14.285714%; transform:translate(-50%,-50%); opacity:0; padding:0; border:1px solid #afc2cc; border-radius:10%; box-sizing:border-box; box-shadow:0 3px 5px #0007; background:#202a2d; transition:opacity .45s, border-color .3s; transition-delay:var(--reveal-delay); }
 .key-person :deep(.voice-avatar) { width:100% !important; height:100% !important; display:block; border-radius:inherit; }
-.assigned .key-person { opacity:1; transform:translate(-50%,-50%) scale(1); }
+.assigned .key-person { opacity:1; transform:translate(-50%,-50%); }
 .key-person.selected { border-color:#96e2d1; box-shadow:0 0 0 1px #96e2d1,0 0 10px #71c7b678,0 3px 6px #0009; }.key-person:focus-visible { outline:2px solid white; outline-offset:3px; }
 .overview-caption { position:absolute; top:0; left:28px; font-size:14px; line-height:1.6; color:#9eafb6; transition:opacity .4s; }.overview-caption strong { color:#e1e9e8; font-weight:500; }.overview-caption.hidden { opacity:0; }
 .demo-bottom { position:relative; z-index:2; padding:0 28px 12px; background:linear-gradient(transparent,#15191e 18%); }

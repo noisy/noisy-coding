@@ -14,4 +14,4 @@ User-provided product photograph, source: https://store.storeimages.cdn-apple.co
 
 Delivery copy: `cwebp -quiet -q 90 -crop 0 720 2000 560 tools/website-media/originals/apple-magic-keyboard-mq052.jpg -o website/src/assets/optimized/apple-magic-keyboard.webp`. The crop removes the large blank margins.
 
-F16–F19 centers on that crop: (1667, 60), (1757, 60), (1847, 60), (1937, 60). Portrait overlays are 73px square in source coordinates. Keep image and overlays in one transformed plane.
+F16–F19 centers on that crop: (1667, 60), (1757, 60), (1847, 60), (1937, 60). Key outlines are approximately 80 × 78px. Portrait overlays are 82 × 80px in source coordinates, including a 1px bleed per edge to hide antialiasing at high zoom. Their 10% corner radius follows the keycaps; this slight stretch is local to the synthetic screenshot. Keep image and overlays in one transformed plane.
