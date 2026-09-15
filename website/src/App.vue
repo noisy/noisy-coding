@@ -5,6 +5,7 @@ import { onMounted, onBeforeUnmount } from 'vue';
 import { observePageScroll } from './analytics/scroll';
 import CharacterSection from "./CharacterSection.vue";
 import CrewSection from "./CrewSection.vue";
+import HotkeySection from "./HotkeySection.vue";
 import HeroShowcase from "./HeroShowcase.vue";
 import DashboardShowcase from "./DashboardShowcase.vue";
 import AnalyticsPreference from './AnalyticsPreference.vue';
@@ -47,6 +48,7 @@ const source = "https://github.com/noisy/noisy-coding";
       <p><span>03 / Continue</span> Keep your attention on the work.</p>
     </section>
     <CrewSection />
+    <HotkeySection />
     <CharacterSection />
     <section id="dashboard" class="section wrap">
       <div class="section-heading">
