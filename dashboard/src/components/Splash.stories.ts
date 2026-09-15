@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import Splash from "./Splash.vue";
 
-/* The launch splash (#96). Four looks at the window's real size (the
- * Electron frameless window is 320x150). Pick one; the others go. None says
- * "daemon": the user sees that the app is alive, nothing they cannot act on. */
+/* The launch splash (#96), round 2. Round 1's "A Mark" won on idea and lost
+ * on balance (everything in a tight centre); B had no logo and a bar too
+ * close to the name, C's name sat oddly, D's ring hid behind the name.
+ * These four iterate on A only. The Electron window becomes 320x170. */
 const meta: Meta<typeof Splash> = { component: Splash, title: "App/Splash" };
 export default meta;
 
-const at = (look: "mark" | "wordmark" | "card" | "pulse"): StoryObj<typeof Splash> => ({
+const at = (look: "mark" | "spaced" | "row" | "edge" | "icon-only"): StoryObj<typeof Splash> => ({
   args: { look },
   render: (args) => ({
     components: { Splash },
@@ -16,7 +17,8 @@ const at = (look: "mark" | "wordmark" | "card" | "pulse"): StoryObj<typeof Splas
   }),
 });
 
-export const A_Mark = at("mark");
-export const B_Wordmark = at("wordmark");
-export const C_Card = at("card");
-export const D_Pulse = at("pulse");
+export const A_Mark_Round1 = at("mark");
+export const E_Spaced = at("spaced");
+export const F_Row = at("row");
+export const G_EdgeLine = at("edge");
+export const H_IconOnly = at("icon-only");

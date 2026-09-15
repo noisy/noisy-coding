@@ -4,30 +4,31 @@
  * It says the app is alive, nothing more - no engine or daemon wording, no
  * status text a user cannot act on. The chosen variant is exported as a
  * self-contained page for Electron (desktop/splash.html); this component is
- * the design reference and the regression surface. */
-withDefaults(defineProps<{ look?: "mark" | "wordmark" | "card" | "pulse" }>(), { look: "mark" });
+ * the design reference and the regression surface.
+ *
+ * Round 1 (mark / wordmark / card / pulse): A won on idea, lost on balance -
+ * everything sat in a tight centre. Round 2 iterates on A only. */
+withDefaults(defineProps<{ look?: "mark" | "spaced" | "row" | "edge" | "icon-only" }>(), { look: "spaced" });
 </script>
 
 <template>
   <div class="splash" :class="look" role="status" aria-label="Noisy Studio is starting">
-    <svg v-if="look !== 'wordmark'" class="icon" viewBox="0 0 46 46" aria-hidden="true">
+    <svg class="icon" viewBox="0 0 46 46" aria-hidden="true">
       <rect x="3" y="3" width="40" height="40" rx="11" fill="#263448" />
       <g stroke="#b8cff3" stroke-width="3.2" stroke-linecap="round">
         <path d="M14 17v12 M20 11v24 M26 15v16 M32 19v8" />
       </g>
     </svg>
-    <div v-if="look === 'pulse'" class="ring" aria-hidden="true"></div>
-    <div class="name">Noisy Studio</div>
-    <div v-if="look !== 'pulse'" class="track" aria-hidden="true"><div class="bar"></div></div>
-    <div v-else class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div v-if="look !== 'icon-only'" class="name">Noisy Studio</div>
+    <div class="track" aria-hidden="true"><div class="bar"></div></div>
   </div>
 </template>
 
 <style scoped>
 .splash {
   --bg: #151619; --ink: #edeef0; --muted: #a3a8b2; --line: #363940; --accent: #80d1cb;
-  width: 320px; height: 150px; box-sizing: border-box;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  width: 320px; height: 170px; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: var(--bg); color: var(--ink);
   font: 500 14px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0.01em; position: relative; overflow: hidden;
@@ -38,26 +39,35 @@ withDefaults(defineProps<{ look?: "mark" | "wordmark" | "card" | "pulse" }>(), {
 .bar { width: 38%; height: 100%; border-radius: 2px; background: var(--accent); animation: slide 1.2s ease-in-out infinite alternate; }
 @keyframes slide { from { margin-left: 0 } to { margin-left: 62% } }
 
-/* mark: icon + name, one quiet line under it (default) */
+/* mark: round 1 winner, kept for comparison (gap 12 everywhere) */
+.mark { gap: 12px; height: 150px; }
 
-/* wordmark: no icon, larger name, bar tight under the word */
-.wordmark { gap: 10px; }
-.wordmark .name { font-size: 18px; letter-spacing: 0.02em; }
-.wordmark .track { width: 96px; }
+/* spaced: same stack, tuned rhythm - bigger icon, air above the name,
+   more air before the bar, the bar wider and thinner so it reads as a
+   baseline rather than a third object */
+.spaced { gap: 0; }
+.spaced .icon { width: 52px; height: 52px; }
+.spaced .name { margin-top: 18px; font-size: 15px; letter-spacing: 0.02em; }
+.spaced .track { margin-top: 26px; width: 180px; height: 2px; }
 
-/* card: a bordered HUD panel; icon and name side by side, bar spans the card */
-.card { padding: 18px 22px; align-items: stretch; gap: 14px; }
-.card::before { content: ""; position: absolute; inset: 10px; border: 1px solid var(--line); border-radius: 10px; pointer-events: none; }
-.card .icon { width: 28px; height: 28px; position: absolute; left: 24px; top: 26px; }
-.card .name { margin-left: 40px; font-size: 15px; height: 28px; line-height: 28px; }
-.card .track { width: auto; }
+/* row: icon and name side by side as one lockup, the bar centred under the
+   lockup - two rows instead of three, so the centre is no longer crowded */
+.row { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 14px; row-gap: 22px; justify-content: center; align-content: center; }
+.row .icon { width: 36px; height: 36px; grid-column: 1; grid-row: 1; }
+.row .name { grid-column: 2; grid-row: 1; align-self: center; font-size: 17px; letter-spacing: 0.02em; }
+.row .track { grid-column: 1 / span 2; grid-row: 2; width: 100%; height: 2px; }
 
-/* pulse: icon with a soft breathing ring, three dots instead of a bar */
-.pulse .icon { width: 44px; height: 44px; position: relative; z-index: 1; }
-.pulse .ring { position: absolute; top: 50%; left: 50%; width: 64px; height: 64px; margin: -50px 0 0 -32px; border-radius: 18px; border: 1px solid var(--accent); opacity: 0.35; animation: breathe 1.6s ease-in-out infinite; }
-@keyframes breathe { 0%, 100% { transform: scale(0.92); opacity: 0.15 } 50% { transform: scale(1.06); opacity: 0.45 } }
-.dots { display: flex; gap: 6px; }
-.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: 0.3; animation: blink 1.2s infinite; }
-.dots i:nth-child(2) { animation-delay: 0.2s } .dots i:nth-child(3) { animation-delay: 0.4s }
-@keyframes blink { 0%, 100% { opacity: 0.3 } 50% { opacity: 1 } }
+/* edge: icon and name centred with real air, the progress line is the
+   window's bottom edge - like a browser's loading bar, never competing
+   with the lockup */
+.edge { gap: 0; justify-content: center; }
+.edge .icon { width: 52px; height: 52px; }
+.edge .name { margin-top: 18px; font-size: 15px; letter-spacing: 0.02em; }
+.edge .track { position: absolute; left: 0; right: 0; bottom: 0; width: auto; height: 3px; border-radius: 0; background: var(--line); }
+.edge .bar { border-radius: 0; }
+
+/* icon-only: the mark is the name; nothing else but the line */
+.icon-only { gap: 0; }
+.icon-only .icon { width: 64px; height: 64px; }
+.icon-only .track { margin-top: 30px; width: 120px; height: 2px; }
 </style>
