@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpretKey } from "./useKeyCapture";
+import { foldDouble, interpretKey } from "./useKeyCapture";
 
 const k = (code: string, mods: Partial<Record<"metaKey" | "ctrlKey" | "altKey" | "shiftKey", boolean>> = {}) =>
   interpretKey({ code, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...mods });
@@ -23,5 +23,11 @@ describe("interpretKey (#104)", () => {
   });
   it("ignores keys it cannot name", () => {
     expect(k("MediaPlayPause")).toEqual({ kind: "ignore" });
+  });
+  it("folds a quick second identical press into an x2 chord", () => {
+    expect(foldDouble(null, "escape", Infinity)).toEqual({ emit: null, pending: "escape" });
+    expect(foldDouble("escape", "escape", 200)).toEqual({ emit: "escape x2", pending: null });
+    expect(foldDouble("escape", "escape", 600)).toEqual({ emit: null, pending: "escape" });
+    expect(foldDouble("escape", "F8", 100)).toEqual({ emit: null, pending: "F8" });
   });
 });

@@ -36,26 +36,56 @@ export function interpretKey(e: Pick<KeyboardEvent, "code" | "metaKey" | "ctrlKe
   return { kind: "chord", chord: [...mods, key].join("+") };
 }
 
+/** Same window the daemon uses (listener/chords.py DOUBLE_TAP_SECONDS). */
+export const DOUBLE_TAP_MS = 350;
+
+/** Fold a second press into an "x2" chord: returns the chord to emit now, or
+ * null to keep waiting. Exported for tests. */
+export function foldDouble(pending: string | null, next: string, elapsedMs: number): { emit: string | null; pending: string | null } {
+  if (pending && pending === next && elapsedMs <= DOUBLE_TAP_MS) return { emit: `${next} x2`, pending: null };
+  return { emit: null, pending: next };
+}
+
 export function useKeyCapture(onResult: (action: string, result: CaptureResult) => void) {
   const capturing = ref<string | null>(null);
+  let pending: { chord: string; at: number; timer: ReturnType<typeof setTimeout> } | null = null;
+
+  const finish = (action: string, result: CaptureResult) => {
+    capturing.value = null;
+    window.removeEventListener("keydown", handler, true);
+    if (pending) clearTimeout(pending.timer);
+    pending = null;
+    onResult(action, result);
+  };
   const handler = (e: KeyboardEvent) => {
     const action = capturing.value;
     if (!action) return;
     e.preventDefault();
     e.stopPropagation();
+    if (e.repeat) return;
     const result = interpretKey(e);
     if (result.kind === "ignore") return;
-    capturing.value = null;
-    window.removeEventListener("keydown", handler, true);
-    onResult(action, result);
+    if (result.kind !== "chord") { finish(action, result); return; }
+    // A single press is held back for DOUBLE_TAP_MS: the same key again in
+    // that window makes it a double-press binding ("escape x2").
+    const now = performance.now();
+    const folded = foldDouble(pending?.chord ?? null, result.chord, pending ? now - pending.at : Infinity);
+    if (folded.emit) { finish(action, { kind: "chord", chord: folded.emit }); return; }
+    if (pending) clearTimeout(pending.timer);
+    const chord = result.chord;
+    pending = { chord, at: now, timer: setTimeout(() => finish(action, { kind: "chord", chord }), DOUBLE_TAP_MS) };
   };
   function start(action: string) {
     if (capturing.value) window.removeEventListener("keydown", handler, true);
+    if (pending) clearTimeout(pending.timer);
+    pending = null;
     capturing.value = action;
     window.addEventListener("keydown", handler, true);
   }
   function stop() {
     capturing.value = null;
+    if (pending) clearTimeout(pending.timer);
+    pending = null;
     window.removeEventListener("keydown", handler, true);
   }
   onBeforeUnmount(stop);

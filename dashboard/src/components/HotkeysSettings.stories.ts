@@ -42,6 +42,7 @@ export const Hotkeys = story({});
 export const Locked = story({ permission: "missing" });
 export const Capturing = story({ capturing: "tab2" });
 export const Collision = story({}, { tab1: { chord: "F8", problem: { kind: "collision", detail: "F8 is already Hold." } } });
+export const DoublePress = story({}, { scratch: { chord: "escape x2" } });
 export const SystemShortcut = story({}, { hold: { chord: "cmd+space", problem: { kind: "system", detail: "⌘ Space opens Spotlight unless you changed that in System Settings." } } });
 export const Narrow: StoryObj<typeof HotkeysSettings> = {
   ...story({}),

@@ -98,3 +98,23 @@ def test_legacy_three_key_configure_keeps_tab_bindings(armed):
     lst.configure_bindings({"tab1": "F1"})
     lst.configure("F8", "", "escape")
     assert lst.snapshot()["bindings"] == {"hold": "F8", "scratch": "escape", "tab1": "F1"}
+
+
+def test_double_press_fires_on_the_second_press_within_the_window(armed):
+    lst, st = armed
+    clock = [0.0]
+    lst._clock = lambda: clock[0]
+    lst.configure_bindings({"scratch": "escape x2"})
+    press(lst, "escape")
+    assert st.log == []                                     # one press: nothing yet
+    clock[0] = 0.2; press(lst, "escape")
+    assert st.log == ["abort"]                              # nothing was engaged, so no release
+    clock[0] = 1.0; press(lst, "escape"); clock[0] = 1.6; press(lst, "escape")   # too slow
+    assert st.log == ["abort"]
+
+
+def test_hold_refuses_a_double_press(armed):
+    lst, _ = armed
+    lst.configure_bindings({"hold": "F8 x2"})
+    snap = lst.snapshot()
+    assert snap["bindings"] == {} and snap["problems"]["hold"]["kind"] == "invalid"

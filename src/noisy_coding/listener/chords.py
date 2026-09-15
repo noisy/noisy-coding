@@ -1,4 +1,5 @@
-"""Key chords for global hotkeys (#104): "cmd+shift+F8", "F15", "right_option".
+"""Key chords for global hotkeys (#104): "cmd+shift+F8", "F15", "right_option",
+"escape x2" (a double press within DOUBLE_TAP_SECONDS).
 
 Pure functions, no Quartz: the dashboard captures a chord from a keydown
 event, the daemon stores it as text and matches it against the event tap.
@@ -11,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 MODIFIER_ORDER = ("cmd", "ctrl", "alt", "shift")
+DOUBLE_TAP_SECONDS = 0.35  # two presses closer than this are one "x2" chord
+TAPS_SUFFIX = " x2"
 MODIFIER_ALIASES = {
     "cmd": "cmd", "command": "cmd", "meta": "cmd", "super": "cmd",
     "ctrl": "ctrl", "control": "ctrl",
@@ -74,6 +77,12 @@ SYSTEM_SHORTCUTS: dict[str, str] = {
 class Chord:
     key: str
     modifiers: frozenset[str] = frozenset()
+    taps: int = 1  # 2 = double press
+
+    @property
+    def base(self) -> "Chord":
+        """The same keys pressed once - what the tap physically sees."""
+        return Chord(self.key, self.modifiers, 1)
 
     @property
     def keycode(self) -> int:
@@ -92,7 +101,14 @@ class ChordError(ValueError):
 
 
 def parse_chord(text: str) -> Chord:
-    parts = [p.strip() for p in str(text).split("+")]
+    text = str(text).strip()
+    taps = 1
+    for suffix in (TAPS_SUFFIX, " ×2", "x2", "×2"):
+        if text.lower().endswith(suffix.strip().lower()) and len(text) > len(suffix.strip()):
+            text = text[: -len(suffix.strip())].rstrip()
+            taps = 2
+            break
+    parts = [p.strip() for p in text.split("+")]
     if not parts or not parts[-1]:
         raise ChordError("empty chord")
     *mods, key = parts
@@ -105,12 +121,13 @@ def parse_chord(text: str) -> Chord:
             raise ChordError(f"unknown modifier {m!r}") from None
     if key in MODIFIER_KEYS and modifiers:
         raise ChordError("a modifier key is bound alone, without other modifiers")
-    return Chord(key, frozenset(modifiers))
+    return Chord(key, frozenset(modifiers), taps)
 
 
 def format_chord(chord: Chord) -> str:
     mods = [m for m in MODIFIER_ORDER if m in chord.modifiers]
-    return "+".join([*mods, chord.key])
+    text = "+".join([*mods, chord.key])
+    return text + TAPS_SUFFIX if chord.taps == 2 else text
 
 
 def canonical(text: str) -> str:
@@ -165,13 +182,15 @@ def problems(bindings: dict[str, str]) -> dict[str, dict[str, str]]:
         except ChordError as error:
             out[action] = {"kind": "invalid", "detail": str(error)}
     for action, chord in canon.items():
-        if chord in seen:
-            other = seen[chord]
+        base = format_chord(parse_chord(chord).base)  # F8 and "F8 x2" cannot coexist
+        if base in seen:
+            other = seen[base]
             out[action] = {"kind": "collision", "detail": f"{chord} is already bound to {other}"}
             out.setdefault(other, {"kind": "collision", "detail": f"{chord} is also bound to {action}"})
         else:
-            seen[chord] = action
+            seen[base] = action
     for action, chord in canon.items():
+        chord = format_chord(parse_chord(chord).base)
         if action not in out and chord in SYSTEM_SHORTCUTS:
             out[action] = {"kind": "system", "detail": f"{chord} {SYSTEM_SHORTCUTS[chord]} on most Macs; it reaches Noisy Studio only if you changed that in System Settings"}
     return out

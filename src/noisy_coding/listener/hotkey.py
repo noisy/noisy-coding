@@ -26,9 +26,17 @@ if this process dies mid-hold.
 from __future__ import annotations
 
 import threading
+import time
 from typing import Callable, Protocol
 
-from noisy_coding.listener.chords import Chord, ChordError, MODIFIER_KEYS, parse_chord, problems
+from noisy_coding.listener.chords import (
+    DOUBLE_TAP_SECONDS,
+    Chord,
+    ChordError,
+    MODIFIER_KEYS,
+    parse_chord,
+    problems,
+)
 
 # Every action a chord can drive. "tabN" = toggle-to-talk aimed at the N-th
 # visible conversation (#104). Settings store {action: chord text}.
@@ -89,6 +97,8 @@ class HotkeyListener:
         self._renew_thread: threading.Thread | None = None
         self._restart = None  # CFRunLoop stop handle, set by the tap thread
         self._permission = "unknown"  # last probe: granted | missing | unavailable
+        self._last_down: dict[str, float] = {}  # action -> time of previous press (x2 chords)
+        self._clock = time.monotonic
 
     # -- configuration ----------------------------------------------------
 
@@ -115,9 +125,14 @@ class HotkeyListener:
             if not chord_text or found.get(action, {}).get("kind") in ("invalid", "collision"):
                 continue
             try:
-                armed[action] = parse_chord(chord_text)
+                chord = parse_chord(chord_text)
             except ChordError:
                 continue
+            if chord.taps == 2 and action == "hold":
+                # Hold needs the key-up of the SAME press; a double press has none.
+                found[action] = {"kind": "invalid", "detail": "hold cannot be a double press"}
+                continue
+            armed[action] = chord
         with self._lock:
             self._bindings = armed
             self._problems = found
@@ -186,8 +201,6 @@ class HotkeyListener:
             self._state.release_ptt()
 
     def _renew_loop(self) -> None:
-        import time
-
         while True:
             with self._lock:
                 if not self._engaged:
@@ -198,10 +211,22 @@ class HotkeyListener:
     # -- dispatch ------------------------------------------------------------
 
     def _on_event(self, keycode: int, flags: int, down: bool) -> None:
-        """One tap event -> the action whose chord it fires, if any."""
+        """One tap event -> the action whose chord it fires, if any. An x2
+        chord fires on the second press within DOUBLE_TAP_SECONDS."""
         with self._lock:
-            hit = [a for a, c in self._bindings.items() if _matches(c, keycode, flags)]
-        for action in hit:
+            hit = [(a, c) for a, c in self._bindings.items() if _matches(c.base, keycode, flags)]
+        for action, chord in hit:
+            if chord.taps == 2:
+                if not down:
+                    continue
+                now = self._clock()
+                previous = self._last_down.get(action)
+                if previous is not None and now - previous <= DOUBLE_TAP_SECONDS:
+                    self._last_down.pop(action, None)
+                    self._run(action, True)
+                else:
+                    self._last_down[action] = now
+                continue
             self._run(action, down)
 
     def _run(self, action: str, down: bool) -> None:

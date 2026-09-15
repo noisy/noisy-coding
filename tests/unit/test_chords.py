@@ -67,3 +67,15 @@ def test_chord_flags_and_str():
     c = Chord("F8", frozenset({"shift", "cmd"}))
     assert str(c) == "cmd+shift+F8"
     assert c.flags == chords.FLAG_MASKS["cmd"] | chords.FLAG_MASKS["shift"]
+
+
+def test_double_press_spelling_and_base():
+    assert canonical("escape x2") == "escape x2"
+    assert canonical("Escape ×2") == "escape x2"
+    assert canonical("cmd+F8 X2") == "cmd+F8 x2"
+    assert parse_chord("escape x2").taps == 2 and str(parse_chord("escape x2").base) == "escape"
+
+
+def test_single_and_double_on_the_same_key_collide():
+    out = problems({"scratch": "escape x2", "toggle": "escape"})
+    assert out["toggle"]["kind"] == "collision" and out["scratch"]["kind"] == "collision"

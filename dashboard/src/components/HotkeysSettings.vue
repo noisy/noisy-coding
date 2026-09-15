@@ -42,8 +42,11 @@ const emit = defineEmits<{
 
 const locked = computed(() => props.permission === "missing");
 const GLYPH: Record<string, string> = { cmd: "⌘", shift: "⇧", alt: "⌥", ctrl: "⌃" };
-const keys = (chord: string) =>
-  chord.split("+").map((k) => GLYPH[k] ?? (k.length === 1 ? k.toUpperCase() : k));
+const keys = (chord: string) => {
+  const [base, taps] = chord.split(" ");
+  const parts = base.split("+").map((k) => GLYPH[k] ?? (k.length === 1 ? k.toUpperCase() : k));
+  return taps === "x2" ? [...parts, "×2"] : parts;
+};
 </script>
 
 <template>
@@ -90,7 +93,7 @@ const keys = (chord: string) =>
       </div>
     </section>
 
-    <p class="foot">Click a field and press the keys you want. Escape cancels, Delete clears. Clashes with other apps cannot be detected.</p>
+    <p class="foot">Click a field and press the keys you want; press a key twice for a double-press binding. Escape cancels, Delete clears. Clashes with other apps cannot be detected.</p>
   </div>
 </template>
 
