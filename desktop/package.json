@@ -1,6 +1,6 @@
 {
   "name": "noisy-coding-companion",
-  "version": "3.0.0-alpha.5",
+  "version": "3.0.0-alpha.6",
   "private": true,
   "description": "The Noisy Studio companion widget, always on top",
   "main": "main.js",
